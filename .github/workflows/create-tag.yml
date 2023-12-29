@@ -1,0 +1,31 @@
+name: Create Tag on Merge to Master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Git
+      run: |
+        git config user.email "actions@github.com"
+        git config user.name "GitHub Actions"
+
+    - name: Determine version bump
+      id: version_bump
+      run: |
+        current_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+        new_version=$(./bump_version.sh $current_version)
+        echo "::set-output name=TAG::v$new_version"
+
+    - name: Create Tag
+      run: |
+        git tag ${{ steps.version_bump.outputs.TAG }}
+        git push origin ${{ steps.version_bump.outputs.TAG }}
