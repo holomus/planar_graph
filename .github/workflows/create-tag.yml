@@ -22,7 +22,7 @@ jobs:
       id: version_bump
       run: |
         current_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-        new_version=$(./bump_version.sh $current_version)
+        new_version=$(./.github/workflows/bump_version.sh $current_version)
         echo "::set-output name=TAG::v$new_version"
 
     - name: Create Tag
