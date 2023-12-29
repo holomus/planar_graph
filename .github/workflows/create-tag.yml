@@ -39,7 +39,10 @@ jobs:
 
     - name: Generate release notes
       id: release-notes
-      run: npx conventional-changelog -p angular -i CHANGELOG.md -s
+      run: |
+        # Your release notes generation script here
+        # Save the result to an output variable
+        echo "::set-output name=release_notes::$(your-script.sh)"
 
     - name: Create release
       uses: softprops/action-gh-release@v1
@@ -47,6 +50,6 @@ jobs:
         files: ''
         tag_name: "${{ steps.read-version.outputs.tag_name }}"
         title: "Release ${{ steps.read-version.outputs.tag_name }}"
-        body: "${{ steps.release-notes.outputs.body }}"
+        body: "${{ steps.release-notes.outputs.release_notes }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
