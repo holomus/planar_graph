@@ -37,19 +37,12 @@ jobs:
         git tag "${{ steps.read-version.outputs.tag_name }}" -m "Tag created on merge to master"
         git push origin "${{ steps.read-version.outputs.tag_name }}"
 
-    - name: Generate release notes
-      id: release-notes
-      run: |
-        # Your release notes generation script here
-        # Save the result to an output variable
-        echo "::set-output name=release_notes::$(your-script.sh)"
-
     - name: Create release
       uses: softprops/action-gh-release@v1
       with:
-        files: ''
+        files: ''  # Add file paths to include in the release (leave empty for just the tag)
         tag_name: "${{ steps.read-version.outputs.tag_name }}"
         title: "Release ${{ steps.read-version.outputs.tag_name }}"
-        body: "${{ steps.release-notes.outputs.release_notes }}"
+        body: "Release notes or description for version ${{ steps.read-version.outputs.tag_name }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
