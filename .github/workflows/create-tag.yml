@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  create-tag:
+  create-tag-and-release:
     runs-on: ubuntu-latest
     
     steps:
@@ -36,3 +36,13 @@ jobs:
       run: |
         git tag "${{ steps.read-version.outputs.tag_name }}" -m "Tag created on merge to master"
         git push origin "${{ steps.read-version.outputs.tag_name }}"
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ''  # Add file paths to include in the release (leave empty for just the tag)
+        tag_name: "${{ steps.read-version.outputs.tag_name }}"
+        title: "Release ${{ steps.read-version.outputs.tag_name }}"
+        body: "Release notes or description for version ${{ steps.read-version.outputs.tag_name }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
