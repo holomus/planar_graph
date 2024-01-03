@@ -1,0 +1,141 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+  let pg = page.grid('table');
+
+  pg.asHtml('name_html', 'name', row => {
+    return `<div class="inbox-view">${ row.name }</div>`;
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function deleteAction(message, question_id) {
+    page.confirm(message, function() {
+      fi.delete({ question_id: question_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete question group $1{name}?')(row.name), row.question_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{question_group_count} question_group(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'question_id'));
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    page.close([row]);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ question_id: row.question_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : fi.edit ? edit(row) : null;
+  }
+
+  var sc = [ // success
+    { grant: fi.add, fn: add },
+    { grant: fi.import, fn: importData }
+  ];
+
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.first = q.sc.acc[0].grant;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.first" b-hotkey="add">{{ q.sc.first.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog()" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="question_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-created_on, name" search="code, name, group_name1, group_name2, group_name3, group_name4, group_name5" searchable="question_id"
+          extra-columns="question_id, writing_hint, answers_count, has_file, group_name3, group_name4, group_name5, created_by_name, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="name" as-html="name_html" size=10/>
+      <b-col name="created_on" size=3/>
+      <b-col name="group_name1" size=2/>
+      <b-col name="group_name2" size=3/>
+      <b-col name="answer_type" as-html="answer_type_name" size=3/>
+      <b-col name="code" size=2/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="question_id" directive="equal" extra/>
+    <b-filter name="code"/>
+    <b-filter name="name"/>
+    <b-filter name="answer_type" decorate-with="answer_type_name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="group_id1" decorate-with="group_name1"/>
+    <b-filter name="group_id2" decorate-with="group_name2"/>
+    <b-filter name="group_id3" decorate-with="group_name3" extra/>
+    <b-filter name="group_id4" decorate-with="group_name4" extra/>
+    <b-filter name="group_id5" decorate-with="group_name5" extra/>
+    <b-filter name="answers_count" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,20 @@
+{
+ "add": "Qo'shish",
+ "add person inventory": "Qo'shish",
+ "close": "Yopish",
+ "date assigned": "Qabul qilingan sana",
+ "date returned": "Qaytarish sanasi",
+ "delete": "O'chirish",
+ "delete person inventory $1{title}?": "$1 inventarni o'chirmoqchimisiz?",
+ "edit": "Tahrirlash",
+ "edit person inventory": "Tahrirlash",
+ "inventories": "Inventarlar",
+ "inventory type": "Inventar turlari",
+ "note": "Izoh",
+ "pg.person_inventories.action": "Amallar",
+ "pg.person_inventories.date_assigned": "Qabul qilingan sana",
+ "pg.person_inventories.date_returned": "Qaytarish sanasi",
+ "pg.person_inventories.inventory_type_name": "Inventar turi",
+ "pg.person_inventories.note": "Izoh",
+ "save": "Saqlash"
+}

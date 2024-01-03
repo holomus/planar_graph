@@ -1,0 +1,5 @@
+{
+ "pg.lang_level.before": "Старое значение",
+ "pg.lang_level.current": "Новое значение",
+ "pg.lang_level.field_name": "Поле"
+}

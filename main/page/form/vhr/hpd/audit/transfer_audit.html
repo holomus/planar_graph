@@ -1,0 +1,145 @@
+<script biruni>
+page.init(function(param) {
+  page.query(':table_audit').param(param);
+});
+page.ctrl(function(scope, fi, param, $timeout) {
+  var d = param,
+      q = { enabledGrids: [] };
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  function changeSection(section) {
+    if (_.contains(q.enabledGrids, section)) return;
+    if (section) {
+      page.subpage(section).run(fi[section].uri, { journal_id: d.journal_id });
+    }
+    q.enabledGrids.push(section);
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ journal_id: d.journal_id, context_id: row.t_context_id });
+  }
+  
+  $timeout(function() {
+    let tab = _.find(['journal_audit', 'page_audit'], (x) => fi[x]) || 'transfer_audit';
+    page.$content.find('[data-target="' + pageId(tab, '#') + '"]').addClass('active');
+    page.$content.find(pageId(tab, '#')).addClass('active');
+    changeSection(tab);
+  });
+  
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="card card-custom">
+    <div class="card-header card-header-tabs-line">
+      <div class="card-toolbar align-items-end">
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item" ng-if="fi.journal_audit">
+            <a ng-click="changeSection('journal_audit')" data-target="{{ pageId('journal_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+              <t>journal</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.page_audit">
+            <a ng-click="changeSection('page_audit')" data-target="{{ pageId('page_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+              <t>page_audit</t>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a data-target="{{ pageId('transfer_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>transfers</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.robot_audit">
+            <a ng-click="changeSection('robot_audit')" data-target="{{ pageId('robot_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>robots</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.contract_audit">
+            <a ng-click="changeSection('contract_audit')" data-target="{{ pageId('contract_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>contratcs</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.schedule_audit">
+            <a ng-click="changeSection('schedule_audit')" data-target="{{ pageId('schedule_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>schedules</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.oper_type_audit">
+            <a ng-click="changeSection('oper_type_audit')" data-target="{{ pageId('oper_type_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>oper types</t>
+            </a>
+          </li>
+          <li class="nav-item" ng-if="fi.indicator_audit">
+            <a ng-click="changeSection('indicator_audit')" data-target="{{ pageId('indicator_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+              <t>indicators</t>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="tab-content">
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('journal_audit') }}">
+          <b-subpage name="journal_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('page_audit') }}">
+          <b-subpage name="page_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('transfer_audit') }}">
+          <div class="row mb-2">
+            <div class="offset-sm-14 col-sm-10">
+              <b-grid-controller name="table_audit"/>
+            </div>
+          </div>
+          <b-grid name="table_audit" required="t_context_id, page_id" on-dblclick="auditDetails(row)"
+                  sort="-t_timestamp" search="t_user_name, t_event_name"
+                  extra-columns="t_audit_id, t_source_project_name, t_date, t_filial_name, page_id, transfer_end, transfer_base">
+            <b-row>
+              <b-col name="t_timestamp" size="5"/>
+              <b-col name="t_user_name" size="5"/>
+              <b-col name="t_event_name" size="5"/>
+              <b-col name="transfer_reason" size="5"/>
+              <b-col name="transfer_begin" size="4"/>
+            </b-row>
+        
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+            </b-action>
+        
+            <b-filter name="t_date"/>
+            <b-filter name="t_user_id" decorate-with="t_user_name"/>
+            <b-filter name="t_event" decorate-with="t_event_name"/>
+            <b-filter name="t_filial_id" decorate-with="t_filial_name"/>
+            <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+            <b-filter name="transfer_reason"/>
+            <b-filter name="transfer_begin"/>
+            <b-filter name="transfer_end" extra/>
+            <b-filter name="transfer_base" extra/>
+          </b-grid>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('robot_audit') }}">
+          <b-subpage name="robot_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('contract_audit') }}">
+          <b-subpage name="contract_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('schedule_audit') }}">
+          <b-subpage name="schedule_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('oper_type_audit') }}">
+          <b-subpage name="oper_type_audit"/>
+        </div>
+        <div class="tab-pane" role="tabpanel" id="{{ pageId('indicator_audit') }}">
+          <b-subpage name="indicator_audit"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

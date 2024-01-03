@@ -1,0 +1,70 @@
+<script biruni>
+page.header();
+page.ctrl(function(scope, model, fi, t, AppSession) {
+  let q = model;
+
+  function hasBuyLicense() {
+    return fi.buy_license && !!q.filial_head;
+  }
+
+  function buyLicense() {
+    if (!hasBuyLicense()) return;
+    if (fi.isFilial) {
+      AppSession.setFilial(AppSession.si.project.hash, q.filial_head);
+    }
+    page.open('/core/kl/license_list');
+  }
+
+  function licenseCorrection() {
+    if (!fi.correct_license) return;
+    fi.correct_license();
+  }
+
+  // if (q.terminated == 'N' && fi.dashboard) {
+  //   fi.dashboard();
+  // }
+
+  q.t_employee_message = t('Contact your administrator to solve this issue!')();
+  q.t_admin_message = t('Buy license or contact your HR to dismiss unnecessary employees!')();
+  q.t_hr_message = t('Dismiss unnecessary employees or contact your administrator to buy licenses!')();
+  q.t_super_admin_message = t('Buy licenses or dismiss unnecessary employees')();
+
+  scope.q = q;
+});
+</script>
+<div class="b-content h-100">
+  <div class="d-flex h-100 justify-content-center align-items-md-start align-items-center pt-sm-20">
+    <div class="col-sm-6">
+      <div class="card card-custom" style="background-color: #fff !important;">
+        <div class="card-body user-select-none">
+          <div class="text-center">
+            <span class="display-4 font-weight-boldest"><t>License expired</t></span>
+          </div>
+          <div class="my-20 text-center">
+            <i style="font-size: 11rem;" class="fas fa-lock text-primary"></i>
+          </div>
+          <div class="text-center alert alert-light">
+            <div class="font-weight-bolder" ng-if="false && !hasBuyLicense() && !fi.correct_license" ng-bind-html="q.t_employee_message"></div>
+            <div class="font-weight-bolder" ng-if="false && hasBuyLicense() && !fi.correct_license" ng-bind-html="q.t_admin_message"></div>
+            <div class="font-weight-bolder" ng-if="false && !hasBuyLicense() && fi.correct_license" ng-bind-html="q.t_hr_message"></div>
+            <div class="font-weight-bolder" ng-if="true || hasBuyLicense() && fi.correct_license" ng-bind-html="q.t_super_admin_message"></div>
+          </div>
+          <div class="text-center" ng-if="false && hasBuyLicense() && !fi.correct_license">
+            <a href class="text-center" style="text-decoration: underline;" ng-click="buyLicense()">{{ fi.buy_license.title }}</a>
+          </div>
+          <div class="text-center" ng-if="false && !hasBuyLicense() && fi.correct_license">
+            <a href class="text-center" style="text-decoration: underline;" ng-click="licenseCorrection()">{{ fi.correct_license.title }}</a>
+          </div>
+          <div class="text-center row" ng-if="false && hasBuyLicense() && fi.correct_license">
+            <div class="col-12 border-right border-right-light-dark">
+              <a href style="text-decoration: underline;" ng-click="buyLicense()">{{ fi.buy_license.title }}</a>
+            </div>
+            <div class="col-12">
+              <a href style="text-decoration: underline;" ng-click="licenseCorrection()">{{ fi.correct_license.title }}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

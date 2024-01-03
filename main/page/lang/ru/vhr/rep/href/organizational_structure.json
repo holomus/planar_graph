@@ -1,0 +1,16 @@
+{
+ "export": "Экспорт",
+ "export to pdf": "Документ PDF",
+ "export to png": "Изображение PNG",
+ "organization-structure": "Организационная структура",
+ "$1 employees": "$1 сотрудник(а/ов)",
+ "division": "Подразделение",
+ "divisions count: $1": "Кол-во организаций: $1",
+ "email": "E-mail",
+ "employees": "Сотрудники",
+ "filial": "Организация",
+ "phone": "Номер телефона",
+ "region": "Регион",
+ "subdivisions count: $1": "Кол-во подразделений: $1",
+ "view all": "Все сотрудники"
+}

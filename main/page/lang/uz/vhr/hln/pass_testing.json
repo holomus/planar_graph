@@ -1,0 +1,14 @@
+{
+ "before start": "Test sinovdan oldingi vaqt",
+ "Do you finish ? If you want you can go back to review your answers.": "Haqiqatan ham testni yakunlamoqchimisiz? Agar xohlasangiz, orqaga qaytib, javoblaringizni tekshirishingiz mumkin.",
+ "finish": "Yakunlash",
+ "mark question": "Savolni belgilash",
+ "next": "Keyingisi",
+ "Options": "Javoblar",
+ "prev": "Oldingisi",
+ "Question № $1:": "Savol № $1:",
+ "test finished": "Test sinovi yakunlandi",
+ "testing paused for some time": "Test sinovi to'xtatildi qilindi",
+ "testing time has expired": "Test sinovi vaqti tugadi",
+ "view result": "Natijalarni ko'rish"
+}

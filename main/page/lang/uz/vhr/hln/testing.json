@@ -1,0 +1,13 @@
+{
+ "begin time": "Boshlanish vaqti",
+ "begin time period begin": "Boshlash oraliq vaqti (dan)",
+ "begin time period end": "Boshlash oraliq vaqti (gacha)",
+ "candidate name": "Ishtirokchi",
+ "exam name": "Imtihon",
+ "examiner name": "Tekshiruvchi",
+ "note": "Izoh",
+ "period begin must be less than period end": "Davr ochilish vaqti yopilish vaqtidan avval boʻlishi kerak",
+ "save": "Saqlash",
+ "testing date": "Sana",
+ "testing number": "Raqam"
+}

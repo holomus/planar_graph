@@ -1,0 +1,20 @@
+{
+ "details": "Details",
+ "table_audit.concluding_term": "Concluding Term",
+ "table_audit.contract_date": "Contract Date",
+ "table_audit.contract_number": "Contract Number",
+ "table_audit.expiry_date": "Contract Expiry Date",
+ "table_audit.fixed_term_base_name": "Fixed-term Contrac t Reason",
+ "table_audit.hiring_conditions": "Hiring Requirements",
+ "table_audit.other_conditions": "Other Requirements",
+ "table_audit.page_id": "Page ID",
+ "table_audit.representative_basis": "Representative Reason",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User",
+ "table_audit.workplace_equipment": "Workspace Equipment"
+}

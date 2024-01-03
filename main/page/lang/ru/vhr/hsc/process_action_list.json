@@ -1,0 +1,13 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{actions_count} action(s)?": "Удалить действия в количестве <b>$1</b>?",
+ "delete action $1{action_name}?": "Удалить действие <b>$1</b>?",
+ "select": "Выбрать",
+ "table.action_id": "ИД",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

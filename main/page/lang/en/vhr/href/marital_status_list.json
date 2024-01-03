@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{marital_status_count} marital status(es)?": "Do you really want to delete <b>$1</b> marital status(es)?",
+ "delete $1{marital_status_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.marital_status_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

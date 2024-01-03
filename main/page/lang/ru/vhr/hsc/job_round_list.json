@@ -1,0 +1,15 @@
+{
+ "add": "Создать",
+ "delete $1": "Удалить $1",
+ "delete $1{rounds_count} round(s)?": "Удалить округления в количестве <b>$1</b>?",
+ "delete round?": "Удалить округление?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.job_name": "Должность",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.object_name": "Объект",
+ "table.round_id": "ИД",
+ "table.round_model_type_name": "Вид округления"
+}

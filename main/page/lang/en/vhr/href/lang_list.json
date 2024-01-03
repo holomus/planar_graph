@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{lang_count} lang(s)?": "Do you really want to delete <b>$1</b> language(s)?",
+ "delete lang $1{lang_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.lang_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,12 @@
+{
+ "application number": "Number",
+ "division name": "Department",
+ "job name": "Job",
+ "note": "Note",
+ "quantity": "Qty people to hire",
+ "requirements": "Requirements",
+ "responsibilities": "Responsibilities",
+ "save": "Save",
+ "save as draft": "Save as Draft",
+ "wage": "Salary"
+}

@@ -1,0 +1,307 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, xparam) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {};
+
+  function getDefaultPhotoSrc() {
+    var res = d.gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc();
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    d.photo_sha = null;
+    d.photo = null;
+    setPhotoSrc();
+  }
+
+  function showPhoto(photo) {
+    if (d.photo || d.photo_sha) {
+      page.previewFile({
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  // nationality
+  function setNationality(row) {
+    if (!row) return;
+    d.nationality_id = row.nationality_id;
+    d.nationality_name = row.name;
+  }
+
+  function addNationality(value) {
+    fi.add_nationality(null, setNationality, { name: value });
+  }
+
+  function selectNationality() {
+    fi.select_nationality(null, setNationality);
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save person info?')(), function() {
+        let data = _.omit(d, 'photo');
+        if (d.photo) {
+          data.photo_sha = d.photo;
+        }
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  // person
+  function splitName() {
+    [d.last_name, d.first_name, d.middle_name] = [];
+    if (!d.name) return;
+
+    let name_array = _.reject(d.name.split(' '), x => { return _.isEmpty(x); });
+    if (name_array.length == 1) {
+      d.first_name = name_array[0];
+    } else {
+      [d.last_name, d.first_name, d.middle_name] = name_array;
+      if (name_array.length == 4) {
+        d.middle_name += ' ' + (_.rest(name_array, 3)).join(' ');
+      }
+    }
+  }
+
+  function changePerson(query, value) {
+    query.searchValue(value);
+    splitName();
+  }
+
+  function setPerson(row) {
+    if (fi.person_edit) {
+      if (fi.isHead || row.attached == 'Y') {
+        page.confirm(t('person already exists. go to edit?')(), function() {
+          fi.person_edit({ person_id: row.person_id });
+        });
+      } else {
+        page.confirm(t('person already exists but not attached to filial. attach to filial and go to edit?')(), function() {
+          page.post(':attach_person', { person_id: row.person_id }).then(function() {
+            fi.person_edit({ person_id: row.person_id });
+          }, page.alert);
+        });
+      }
+    } else {
+      page.alert(t('no access to edit')());
+    }
+  }
+
+  function deletePerson() {
+    d.person_id = '';
+    d.name = '';
+    splitName();
+  }
+
+  q.activeSection = 'person_info';
+  q.enabledGrids = ['person_info'];
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  q.genders = _.mapRows(q.genders, ['kind', 'name']);
+
+  $timeout(() => {
+    d = _.extend(d, xparam);
+    splitName();
+    setPhotoSrc();
+  });
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom bg-white">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>main info</t></h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm">
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <b-input name="table_persons"
+                       model="d.name | name"
+                       model-key="d.person_id | person_id"
+                       column="attached"
+                       on-change="changePerson(query, value)"
+                       on-select="setPerson(row)"
+                       on-delete="deletePerson()"
+                       hide-on-focus
+                       required>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm">
+                <label><t>last name</t></label>
+                <span class="form-view">{{ d.last_name }}</span>
+              </div>
+              <div class="col-sm">
+                <label><t>first name</t><r/></label>
+                <span class="form-view">{{ d.first_name }}</span>
+              </div>
+              <div class="col-sm">
+                <label><t>middle name</t></label>
+                <span class="form-view">{{ d.middle_name }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.key_person"/>
+                <span><t>key person</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.access_all_employees"/>
+                <span><t>access all employees</t></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="col-sm">
+                <div class="form-group">
+                  <label><t>birthday</t></label>
+                  <input type="text" class="form-control" ng-model="d.birthday" b-date-picker="DD.MM.YYYY" />
+                </div>
+                <div class="form-group">
+                  <label><t>nationality</t></label>
+                  <b-input name="nationalities"
+                           model="d.nationality_name | name"
+                           model-key="d.nationality_id | nationality_id"
+                           is-add="fi.add_nationality"
+                           is-view="fi.select_nationality"
+                           on-add="addNationality(value)"
+                           on-view="selectNationality()">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+                <div class="form-group">
+                  <label><t>gender</t></label><br />
+                  <label class="radio" ng-repeat="gender in q.genders">
+                    <input type="radio" name="gender" value="{{ gender.kind }}" ng-model="d.gender" ng-change="setPhotoSrc()"/>
+                    <span>{{ gender.name }}</span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm">
+                <div class="form-group">
+                  <label><t>tin</t></label>
+                  <input type="text" class="form-control" ng-model="d.tin" b-maxlength="18"/>
+                </div>
+                <div class="form-group">
+                  <label><t>iapa</t></label>
+                  <input type="text" class="form-control" ng-model="d.iapa" b-maxlength="14"/>
+                </div>
+                <div class="form-group">
+                  <label><t>npin</t></label>
+                  <input type="text" class="form-control" ng-model="d.npin" b-maxlength="14"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>photo</t></label><br />
+                <div class="image-input image-input-outline bgi-position-center">
+                  <div class="image-input-wrapper w-auto h-auto">
+                    <img class="mw-100 mh-100 cursor-pointer" ngf-src="d.photo || q.photo_src" ng-if="d.photo || q.photo_src" ng-click="showPhoto()">
+                  </div>
+                  <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" b-cropper="d.photo">
+                    <i class="fa fa-pen icon-sm text-muted"></i>
+                  </a>
+                  <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto()" ng-if="d.photo || d.photo_sha">
+                    <i class="fa fa-times icon-xs text-muted"></i>
+                  </span>
+                </div><br/>
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.photo_as_face_rec" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>photo as face rec</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>contacts and address</t></h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm">
+            <div class="form-group">
+              <label><t>main phone</t></label>
+              <input type="text" class="form-control" ng-model="d.main_phone" b-maxlength="100"/>
+            </div>
+            <div class="form-group">
+              <label><t>email</t></label>
+              <input type="text" class="form-control" ng-model="d.email" b-maxlength="50"/>
+            </div>
+          </div>
+          <div class="col-sm">
+            <div class="form-group">
+              <label><t>region name</t></label>
+              <b-tree-select origin="q.regions" id-key="region_id" model="d.region_id"/>
+            </div>
+            <div class="form-group">
+              <label><t>address</t></label>
+              <textarea class="form-control" rows="1" ng-model="d.address" b-maxlength="500"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>legal address</t></label>
+              <textarea class="form-control" rows="1" ng-model="d.legal_address" b-maxlength="300"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>extra</t></h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>code</t></label>
+                <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>state</t></label><br />
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                <span>
+                  <t ng-if="d.state == 'A'">active</t>
+                  <t ng-if="d.state == 'P'">passive</t>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

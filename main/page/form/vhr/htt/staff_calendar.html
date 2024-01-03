@@ -1,0 +1,987 @@
+<script biruni>
+page.require("fullcalendar");
+page.init(function(param) {
+  page.query('tracks').param(param);
+
+  const check_track_type = 'C',
+        potential_output_type = 'P';
+
+  var trackTypeColors = { C: '#ffa800', I: '#6993ff', O: '#f64e60', M:'#8950fc', P:'#ff8b97', G: '#ff499a' };
+  var statusClass = { D: 'secondary', N: 'warning', P: 'info', U: 'primary' };
+  var grid = page.grid('tracks')
+
+  function trackRow(track) {
+    return `<span class="row m-0"><span class="fa fa-circle" style="color:${ trackTypeColors[track.type] }"></span>&nbsp;<span>${ track.type_name }</span></span>`;
+  }
+
+  grid.asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+  grid.asHtml('track_type_html', 'track_type, track_type_name, original_type, original_type_name', function(row) {
+    let track_types = _.chain((row.track_type || row.original_type).split(','))
+                       .map(str => str.trim())
+                       .unique()
+                       .value();
+    let track_names = _.chain((row.track_type_name || row.original_type_name).split(','))
+                       .map(str => str.trim())
+                       .unique()
+                       .value();
+
+    return _.chain(track_types)
+            .zip(track_names)
+            .map(x => _.object(['type', 'type_name'], x))
+            .reject(x => track_types.length > 1 && x.type == check_track_type)
+            .reduce((memo, x) => memo + trackRow(x), '')
+            .value();
+  });
+  grid.asHtml('original_type_html', 'original_type, original_type_name', function(row) {
+    return `<span class="fa fa-circle" style="color:${ trackTypeColors[row.original_type] }"></span>&nbsp;<span>${ row.original_type_name }</span>`;
+  });
+  grid.asHtml('modified_track_type_html', 'modified_track_type, modified_track_type_name', function(row) {
+    return `<span class="fa fa-circle" style="color:${ trackTypeColors[row.modified_track_type] }"></span>&nbsp;<span>${ row.modified_track_type_name }</span>`;
+  });
+  grid.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageSmall(row.photo_sha) }"/>` : null;
+  });
+  grid.asHtml('latlng_exists_html', 'latlng_exists', function(row) {
+    return `<i class="fa ${ row.latlng_exists == 'Y' ? 'fa-check text-success' : 'fa-times text-danger' }"/>`;
+  });
+  grid.asHtml('photo_exists_html', 'photo_exists', function(row) {
+    return `<i class="fa ${ row.photo_exists == 'Y' ? 'fa-check text-success' : 'fa-times text-danger' }"/>`;
+  });
+  grid.asHtml('track_changed_html', 'track_changed, track_changed_name', function(row) {
+    return `<span class="badge badge-${ row.track_changed == 'Y' ? 'primary' : 'secondary' }">${ row.track_changed_name }</span>`;
+  });
+  grid.asHtml('is_potential_output_html', 'is_potential_output, is_potential_output_name', function(row) {
+    return `<span class="badge badge-${ row.is_potential_output == 'Y' ? 'primary' : 'secondary' }">${ row.is_potential_output_name }</span>`;
+  });
+  grid.asHtml('is_valid_html', 'is_valid, is_valid_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.is_valid == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.is_valid_name }</div></div>`;
+  });
+  grid.disable();
+});
+page.ctrl(function(scope, param, model, fi, t, bUtil, bConfig, $timeout) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {},
+      data = _.pick(param, 'person_id', 'filial_id');
+
+  function setActiveTab(active_tab) {
+    if (q.active_tab == active_tab) return;
+    q.active_tab = active_tab;
+
+    if (q.staff_track) return;
+
+    page.grid('tracks').enable();
+    page.grid('tracks').fetch();
+    q.staff_track = true;
+  }
+
+  function setModalTab(active_tab) {
+    if (q.modal_tab == active_tab) return;
+    if (!_.contains(p.enabled_tabs, active_tab)) {
+      data.timesheet_id = p.data.timesheet_id;
+
+      page.post(':daily_tracks', data).then(function(result){
+        p.data.daily_tracks = _.mapRows(result.daily_tracks, ['track_id',
+                                                              'track_time',
+                                                              'track_type',
+                                                              'track_type_name']);
+      }, page.alert);
+
+      p.enabled_tabs.push(active_tab);
+    }
+
+    q.modal_tab = active_tab;
+  }
+
+  function updateData() {
+    page.query('tracks').fetch();
+    q.to_valid = {};
+    q.to_invalid = {};
+    q.to_delete = {};
+    reloadCalendar();
+  }
+
+  // track
+  function add() {
+    fi.add(null, updateData, { person_id: data.person_id, person_name: d.person_name });
+  }
+
+  function view(row) {
+    fi.view({ track_id: row.track_id });
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : null;
+  }
+
+  function doAction(action, message, track_id) {
+    page.confirm(message, function() {
+      action({ employee_id: data.person_id, track_id: track_id }).then(updateData, page.alert);
+    });
+  }
+
+  function doActionOne(action, confirmFunc) {
+    return function(row) {
+      doAction(action, confirmFunc(d.person_name, row.track_time), row.track_id);
+    };
+  }
+
+  function doActionMany(action, confirmFunc, key) {
+    return function() {
+      doAction(action, confirmFunc(q[key].size), _.pluck(q[key].rows, 'track_id'), key);
+    };
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepareChecked('to_valid', checked, x => x.is_valid == 'N');
+    prepareChecked('to_invalid', checked, x => x.is_valid == 'Y');
+    prepareChecked('to_delete', checked, x => true);
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : null;
+  }
+
+  // calendar
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function trackColor(track_type) {
+    let track_color = track_type == q.tt_input     ? '#6993ff'
+                    : track_type == q.tt_output    ? '#f64e60'
+                    : track_type == q.tt_merger    ? '#8950fc'
+                    : track_type == q.tt_potential ? '#ff8b97'
+                    : track_type == q.tt_gps       ? '#ff499a'
+                    : '#ffa800';
+    return track_color;
+  }
+
+  var t_today               = t('today')(),
+      t_change_title        = t('change title')(),
+      t_rest_day            = t('rest day')(),
+      t_holiday             = t('holiday')(),
+      t_additional_rest_day = t('additional rest day')(),
+      t_nonworking_day      = t('nonworking day')(),
+      t_working_day         = t('working day')(),
+      t_free_working_day    = t('free working day')(),
+      t_not_worked          = d.gender == 'M' ? t('not worked (M)')() : t('not worked (F)')(),
+      t_not_input           = t('not input')(),
+      t_not_output          = t('not output')(),
+      t_short_hour          = t('hh')(),
+      t_short_minute        = t('min')(),
+      t_done                = d.gender == 'M' ? t('done (M)')() : t('done (F)')(),
+      t_sk_hourly           = t('schedule_kind:hourly')();
+
+  let cached_timesheets = {};
+  let timesheet_dictionary = {};
+  let changes_dictionary = {};
+
+  function parseTimeToWord(minutes) {
+    if (!minutes) return '';
+    minutes = parseInt(minutes);
+    if (minutes == 0) return '0';
+    let [hour, min] = [parseInt(minutes / 60), minutes % 60];
+    return (hour ? hour + ' ' + t_short_hour : '') + ' ' + (min ? min + ' ' + t_short_minute : '');
+  }
+
+  function parseTimeToHtml(minutes) {
+    minutes = parseInt(minutes);
+    if (!minutes) return '-';
+    let [hour, min] = [parseInt(minutes / 60), minutes % 60];
+    return (hour? `<span class="bold-6">${hour}</span> <i>${t_short_hour}</i>` : '') + ' ' +
+           (min? `<span class="bold-6">${min}</span> <i>${t_short_minute}</i>` : '');
+  }
+
+  function formatTimesheetFacts(timesheet_facts) {
+    return _.chain(timesheet_facts)
+            .mapRows(['timesheet_id', 'time_kind_id', 'fact_value'])
+            .groupBy('timesheet_id')
+            .mapObject(function(timesheet_facts, timesheet_id) {
+              return _.chain(timesheet_facts)
+                      .map(fact => [fact.time_kind_id, fact.fact_value])
+                      .object()
+                      .value();
+            })
+            .value();
+  }
+
+  function fillTimesheetDictionary(callback, date, result) {
+    result.facts = formatTimesheetFacts(result.facts);
+    _.chain(result.dates)
+     .mapRows(['timesheet_id', 'timesheet_date', 'day_kind', 'schedule_kind', 'begin_time', 'end_time',
+               'break_enabled', 'break_begin_time', 'break_end_time',
+               'plan_time', 'full_time', 'input_time', 'output_time',
+               'planned_marks', 'done_marks', 'request_kind_id', 'timeoff_tk_id'])
+     .each(x=> {
+             x.turnout_time = +result.facts[x.timesheet_id][q.turnout_id] || 0;
+             x.free_time = +result.facts[x.timesheet_id][q.free_id] || 0;
+             x.unworked_time = +result.facts[x.timesheet_id][q.lack_id] || 0;
+             x.unworked_time += +result.facts[x.timesheet_id][q.early_id] || 0;
+             x.unworked_time += +result.facts[x.timesheet_id][q.late_id] || 0;
+             x.overtime = +result.facts[x.timesheet_id][q.overtime_id] || 0;
+             x.fact_time = +x.turnout_time + +x.free_time;
+             ['plan_time', 'full_time', 'fact_time', 'turnout_time', 'free_time', 'unworked_time', 'overtime']
+             .forEach(e=> { x[e + '_html'] = parseTimeToHtml(x[e]); });
+             bUtil.minutesToTime(x, ['plan_time',
+                                     'full_time',
+                                     'fact_time',
+                                     'turnout_time',
+                                     'free_time',
+                                     'unworked_time',
+                                     'overtime']);
+
+             x.request_exists = !!x.request_kind_id;
+             x.timeoff_exists = !!x.timeoff_tk_id;
+             x.marks = [];
+
+             timesheet_dictionary[x.timesheet_date] = x;
+           });
+
+    _.chain(result.marks)
+     .mapRows(['timesheet_date', 'begin_time', 'end_time', 'done'])
+     .groupBy('timesheet_date')
+     .map((x, k) => { return { timesheet_date: k, marks: x }; })
+     .each(x => {
+       timesheet_dictionary[x.timesheet_date].marks = x.marks;
+     });
+
+    _.chain(result.changes)
+    .mapRows(['change_date'])
+    .each(x=> {
+            changes_dictionary[x.change_date] = x;
+          });
+
+    callback(date);
+    cached_timesheets[date.substr(3)] = true;
+  }
+
+  function changeEvents(val) {
+    return changes_dictionary[val.timesheet_date] ? {
+      title: t_change_title,
+      style: {
+        'background-color': "#44B6AE",
+        'color': "#fff",
+        'border-color': "#44B6AE",
+        'text-align': 'center',
+        'font-size': '14px',
+      }
+    } : null;
+  }
+
+  function timesheetMarkEvents(events, val) {
+    if (val.planned_marks == 0) return;
+
+    if (val.timesheet_date.split('.').reverse().join('.') > moment().format('YYYY.MM.DD')) {
+      events.push({
+        title: t('mark $1{mark count}')(val.planned_marks),
+        className: 'border-green-steel bg-green-steel bg-font-green-steel',
+        style: {
+          'font-size': '14px',
+          'text-align': 'center'
+        }
+      });
+    } else {
+      let title = t('mark $1{done count}/$2{mark count}')(val.done_marks, val.planned_marks);
+      if (val.done_marks == 0) {
+        events.push({
+          title: title,
+          className: 'border-red-haze bg-red-haze bg-font-red-haze',
+          style: {
+            'font-size': '14px',
+            'text-align': 'center'
+          }
+        });
+      } else if (val.done_marks < val.planned_marks) {
+        events.push({
+          title: title,
+          className: 'border-yellow-crusta bg-yellow-crusta bg-font-yellow-crusta',
+          style: {
+            'font-size': '14px',
+            'text-align': 'center'
+          }
+        });
+      } else {
+        events.push({
+          title: title,
+          className: 'border-green-jungle bg-green-jungle bg-font-green-jungle',
+          style: {
+            'font-size': '14px',
+            'text-align': 'center'
+          }
+        });
+      }
+    }
+  }
+
+  function timesheetEvents(events, val) {
+    if (!val.timesheet_id) return;
+    if (val.timesheet_date.split('.').reverse().join('.') > moment().format('YYYY.MM.DD')) {
+      return;
+    }
+
+    let [plan_time, fact_time, turnout_time, unworked_time, overtime] =
+        [val.plan_time, val.fact_time, val.turnout_time, val.unworked_time, val.overtime].map(x=> bUtil.timeToMinutes(x));
+
+    let class_name;
+    if (val.input_time || val.output_time) {
+      let fact_text = (val.input_time || t_not_input) + ' - ' + (val.output_time || t_not_output);
+
+      if (val.input_time && val.output_time)
+        class_name = 'border-green-jungle bg-green-jungle bg-font-green-jungle';
+      else class_name = 'border-yellow-crusta bg-yellow-crusta bg-font-yellow-crusta';
+
+      events.push({
+        title: fact_text,
+        style: {
+          'font-size': '14px',
+          'text-align': 'center'
+        },
+        className: class_name
+      });
+    }
+
+    if (fact_time > 0) {
+      class_name = null;
+      var style = {
+        'background-color': 'rgba(0,0,0,0)',
+        'border-style': 'dashed',
+        'font-size': '12px',
+        'font-weight': '600',
+        'text-align': 'center'
+      };
+
+      class_name = null;
+      style = angular.copy(style);
+
+      if (0 < unworked_time && unworked_time <= 30) class_name = 'border-yellow-crusta font-yellow-crusta';
+      else if (30 < unworked_time) class_name = 'border-red font-red';
+
+      if (class_name) {
+        events.push({
+          title: '- ' + parseTimeToWord(unworked_time),
+          className: class_name,
+          style: style
+        });
+      }
+    }
+    if (overtime > 0) {
+      events.push({
+        title: '+' + parseTimeToWord(overtime),
+        style: {
+          'background-color': 'rgba(0,0,0,0)',
+          'border-style': 'dashed',
+          'border-color':'green',
+          'color': 'green',
+          'font-size': '12px',
+          'font-weight': '600',
+          'text-align': 'center'
+        }
+      })
+    }
+  }
+
+  function collectEvents(val, start) {
+    var events = [];
+    events.push(changeEvents(val));
+    switch (val.day_kind) {
+      case 'R':
+        events.push({
+          title: t_rest_day,
+          className: 'border-red-haze bg-red-haze bg-font-red-haze',
+          style: {
+            'text-align': 'center',
+            'font-size': '14px'
+          }
+        });
+        break;
+      case 'H':
+        events.push({
+          title: t_holiday,
+          style: {
+            'background-color': "#50C878",
+            'color': "#fff",
+            'border-color': "#50C878",
+            'text-align': 'center',
+            'font-size': '14px',
+          }
+        });
+        break;
+      case 'A':
+        events.push({
+          title: t_additional_rest_day,
+          style: {
+            'background-color': "#50C878",
+            'color': "#fff",
+            'border-color': "#50C878",
+            'text-align': 'center',
+            'font-size': '14px',
+          }
+        });
+        break;
+      case 'N':
+        events.push({
+          title: t_nonworking_day,
+          style: {
+            'background-color': "#FFD300",
+            'color': "#000",
+            'border-color': "#FFD300",
+            'text-align': 'center',
+            'font-size': '14px',
+          }
+        });
+        break;
+      default:
+        let plan = val.schedule_kind == q.sk_hourly ? t_sk_hourly : [val.begin_time, val.end_time].join(' - ');
+        events.push({
+          title: plan,
+          className: 'border-blue-steel bg-blue-steel bg-font-blue-steel',
+          style: {
+            'font-size': '14px',
+            'text-align': 'center'
+          }
+        });
+    }
+
+    if (val.request_exists) {
+      let request_kind = q.request_kinds[val.request_kind_id];
+      events.push({
+        title: request_kind.name,
+        style: {
+          'background-color': request_kind.bg_color,
+          'color': request_kind.color,
+          'border-color': request_kind.bg_color,
+          'text-align': 'center',
+          'font-size': '14px',
+        }
+      });
+    }
+
+    if (val.timeoff_exists) {
+      let time_kind = q.time_kinds[val.timeoff_tk_id];
+      events.push({
+        title: time_kind.name,
+        style: {
+          'background-color': time_kind.bg_color,
+          'color': time_kind.color,
+          'border-color': time_kind.bg_color,
+          'text-align': 'center',
+          'font-size': '14px',
+        }
+      });
+    }
+
+    timesheetEvents(events, val);
+    timesheetMarkEvents(events, val);
+
+    return _.reduce(events, function(m, x, order_no) {
+      if (x) {
+        x.start = start;
+        x.order_no = order_no;
+        x.allDay = true;
+        m.push(x);
+      }
+      return m;
+    }, []);
+  }
+
+  function renderEvents(date) {
+    var daysInMonth = date.toMoment().daysInMonth();
+
+    let [day, month, year] = date.split('.');
+    var events = _.chain(1)
+                  .range(date.toMoment().daysInMonth() + 1)
+                  .map(function(val) {
+                    let key = [val < 10? '0' + val : val, month, year].join('.');
+                    let data = timesheet_dictionary[key];
+                    return data ? collectEvents(data, new Date(year, month - 1, val)) : null;
+                  })
+                  .compact()
+                  .flatten(true)
+                  .value();
+    calendar.batchRendering(function() {
+      calendar.getEvents().forEach(x=> x.remove());
+      _.each(events, function(event) {
+        calendar.addEvent(event);
+      })
+    });
+  }
+
+  function postTimesheet(date, callback) {
+    var key = date.substr(3);
+    if (!cached_timesheets[key]) {
+      page.post(':load_timesheets', {
+        filial_id: param.filial_id,
+        employee_id: d.employee_id,
+        month: date
+      }).then(_.partial(fillTimesheetDictionary, callback, date), page.alert);
+    } else callback();
+  }
+
+  function renderCalendar() {
+    var date = moment(calendar.getDate()).startOf("months").format("DD.MM.YYYY");
+
+    postTimesheet(date, _.partial(renderEvents, date));
+  }
+
+  function gotoTrack() {
+    fi.goto_track(null, null, {where: ['and', [['person_id', '=', [d.employee_id]], ['track_date', '=', [p.date]]]]})
+  }
+
+  function openViewTimesheet() {
+    p.data = angular.copy(timesheet_dictionary[p.date] || {});
+    p.t_not_worked   = t_not_worked;
+    p.t_done         = t_done;
+    p.enabled_tabs   = ['statistics_tab'];
+    q.modal_tab      = 'statistics_tab';
+    p.show_plan_time =  _.contains(['W', 'N'], p.data.day_kind);
+    p.show_no_plan   = !p.show_plan_time;
+    p.show_fact_time = p.data.timesheet_id && (p.data.input_time || p.data.output_time);
+    p.show_no_fact   = p.data.timesheet_id && !p.data.input_time && !p.data.output_time;
+    p.marks_exist    = p.data.planned_marks > 0;
+
+    if (p.data.request_exists) p.request_name = q.request_kinds[p.data.request_kind_id].name;
+    if (p.data.timeoff_exists) p.timeoff_name = q.time_kinds[p.data.timeoff_tk_id].name;
+
+    switch (p.data.day_kind) {
+      case 'R':
+        p.data.day_kind_text = t_rest_day;
+        break;
+      case 'H':
+        p.data.day_kind_text = t_holiday;
+        break;
+      case 'A':
+        p.data.day_kind_text = t_additional_rest_day;
+        break;
+      case 'N':
+        p.data.day_kind_text = t_nonworking_day;
+        break;
+      default:
+        p.data.day_kind_text = p.data.plan_time < p.data.full_time ? t_free_working_day : t_working_day;
+    };
+
+    showModal();
+  }
+
+  function openTimesheetModal(start) {
+    scope.p = p = {};
+    p.date = start.format('DD.MM.YYYY');
+    p.date_text = start.format('D MMMM');
+    p.date_for_sort = start.format('YYYY.MM.DD');
+
+    let date = moment(calendar.getDate());
+    let begin_date = date.startOf('month').format('YYYY.MM.DD');
+    let end_date = date.endOf('month').format('YYYY.MM.DD');
+    let cmd_date = start.format('YYYY.MM.DD');
+    if (cmd_date < begin_date || cmd_date > end_date) return;
+
+    if (!timesheet_dictionary[p.date]) return;
+
+    openViewTimesheet();
+  }
+
+  function loadCalendar() {
+    var calendarEl = page.$content.find('.staff-calendar')[0];
+    calendar = new FullCalendar.Calendar(calendarEl, {
+      plugins: [ 'dayGrid', 'interaction'],
+      datesRender: function(info) {
+        var $today = $(info.el).find('.fc-today span').first();
+        if ($today.length > 0) {
+          var txt = $today.text();
+          $today.html('<span class="fc-day-number" style="color: red;">' + txt + ' ' + t_today + '</span>');
+        }
+        renderCalendar();
+      },
+      dayRender: function(info) {
+        var _start = moment(info.view.currentStart).format('YYYY.MM.DD');
+        var _end = moment(info.view.currentEnd).format('YYYY.MM.DD');
+        var date = moment(info.date).format('YYYY.MM.DD');
+        var element = $(info.el);
+        if (!(date >= _start && date < _end))
+          element.css('background-color', '#F7F7F8');
+        else {
+          element.css('cursor', 'pointer');
+        }
+        if (date == moment().format('YYYY.MM.DD')) {
+          element.css('background-color', 'rgba(92, 155, 209, 0.1)');
+        }
+      },
+      eventRender: function(info) {
+        $(info.el).css(info.event.extendedProps.style);
+      },
+      firstDay: 1,
+      eventOrder: 'order_no',
+      eventClick: function(info) {
+        openTimesheetModal(moment(info.event.start));
+      },
+      dateClick: function(info) {
+        openTimesheetModal(moment(info.date));
+      },
+      locale: bConfig.langCode(),
+      buttonText: {
+        today: t_today
+      },
+      header: {
+        left: 'title',
+        right: 'prev,next,today'
+      },
+      editable: false
+    });
+    $timeout(function() {
+      calendar.render();
+    });
+  }
+
+  function reloadCalendar() {
+    cached_timesheets = {};
+    timesheet_dictionary = {};
+    changes_dictionary = {};
+    renderCalendar();
+  }
+
+  function changeTrackType(row, type) {
+    fi.change_type({ person_id: d.employee_id, track_id: row.track_id, track_type: type.key }).then(page.query('tracks').fetch, page.alert);
+  }
+
+  function canChangeType(row) {
+    if (q.access_all_employee == 'Y' &&
+        (row.modified_track_type == q.tt_input ||
+         row.modified_track_type == q.tt_output ||
+         row.modified_track_type == q.tt_check)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  q.track_types = [
+    { name: t('input')(),  key: q.tt_input },
+    { name: t('output')(), key: q.tt_output },
+    { name: t('check')(),  key: q.tt_check }
+  ];
+
+  q.time_kinds = _.chain(q.time_kinds)
+                  .mapRows(['time_kind_id', 'name', 'bg_color', 'color'])
+                  .indexBy('time_kind_id')
+                  .value();
+  q.request_kinds = _.chain(q.request_kinds)
+                     .mapRows(['request_kind_id', 'name', 'bg_color', 'color'])
+                     .indexBy('request_kind_id')
+                     .value();
+
+  loadCalendar();
+
+  page.on('journal_post', function() {
+    reloadCalendar();
+  });
+
+  q.active_tab = 'staff_calendar';
+  q.staff_track = false;
+  q.daily_track = false;
+
+  scope.d = d;
+  scope.p = p;
+  scope.q = q;
+
+  scope.deleteOne = doActionOne(fi.delete, t('delete track of $1 at $2?'));
+  scope.deleteMany = doActionMany(fi.delete, t('delete $1 row(s)?'), 'to_delete');
+  scope.setValidOne = doActionOne(fi.set_valid, t('valid track of $1 at $2?'));
+  scope.setValidMany = doActionMany(fi.set_valid, t('valid $1 row(s)?'), 'to_valid');
+  scope.setInvalidOne = doActionOne(fi.set_invalid, t('invalid track of $1 at $2?'));
+  scope.setInvalidMany = doActionMany(fi.set_invalid, t('invalid $1 row(s)?'), 'to_invalid');
+});
+</script>
+<div class="b-content">
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-body">
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'staff_calendar' }" data-toggle="tab" ng-click="setActiveTab('staff_calendar')" role="tab">
+            <span><t>calendar</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'staff_track' }" data-toggle="tab" ng-click="setActiveTab('staff_track')" role="tab">
+            <span><t>tracks</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4">
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'staff_calendar' }">
+          <div class="staff-calendar">
+          </div>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'staff_track' }">
+          <div class="row mb-4">
+            <div class="col-sm-12">
+              <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add && q.access_all_employee == 'Y'" b-hotkey="add">{{ fi.add.title }}</button>
+              <button type="button" class="btn btn-primary" ng-click="setValidMany()" ng-if="fi.set_valid && q.has_access == 'Y'" ng-show="q.to_valid.has">
+                <t p1="q.to_valid.size">set valid $1</t>
+              </button>
+              <button type="button" class="btn btn-danger" ng-click="setInvalidMany()" ng-if="fi.set_invalid && q.has_access == 'Y'" ng-show="q.to_invalid.has">
+                <t p1="q.to_invalid.size">set invalid $1</t>
+              </button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.to_delete.has && q.access_all_employee == 'Y'">
+                <t p1="q.to_delete.size">delete $1</t>
+              </button>
+              <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+            </div>
+            <div class="col-sm-12">
+              <b-grid-controller name="tracks"/>
+            </div>
+          </div>
+          <b-grid name="tracks" required="track_id, is_valid, track_time, modified_track_type" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="-track_time"
+                  search="location_name, device_type_name" searchable="track_type_name, mark_type_name, track_time, location_type_name"
+                  extra-columns="location_type_name, note, latlng, region_name, track_time_hh24_mi, device_name, created_by_name, created_on, modified_by_name, modified_on">
+            <b-row>
+              <b-col name="track_time" size=5/>
+              <b-col name="location_name" size=6/>
+              <b-col name="device_type_name" size=6/>
+              <b-col name="track_type_name" as-html="track_type_html" size=3/>
+              <b-col name="mark_type_name" size=3/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="photo_sha" as-html="photo_html" img="100;100"/>
+              <b-col name="latlng_exists_name" as-html="latlng_exists_html"/>
+              <b-col name="photo_exists_name" as-html="photo_exists_html"/>
+              <b-col name="is_valid_name" as-html="is_valid_html"/>
+              <b-col name="original_type_name" as-html="original_type_html"/>
+              <b-col name="modified_track_type_name" as-html="modified_track_type_html"/>
+              <b-col name="is_potential_output_name" as-html="is_potential_output_html"/>
+              <b-col name="status_name" as-html="status_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="setValidOne(row)" ng-if="fi.set_valid && row.is_valid == 'N' && q.has_access == 'Y'">{{ fi.set_valid.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="setInvalidOne(row)" ng-if="fi.set_invalid && row.is_valid == 'Y' && q.has_access == 'Y'">{{ fi.set_invalid.title }}</button>
+              <div class="btn-group" ng-if="canChangeType(row) && fi.change_type">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change type to: </t></button>
+                <div class="dropdown-menu">
+                  <a href class="dropdown-item" ng-repeat="type in q.track_types" ng-if="type.key != row.modified_track_type" ng-click="changeTrackType(row, type)">{{ type.name }}</a>
+                </div>
+              </div>
+              <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && q.access_all_employee == 'Y'">{{ fi.delete.title }}</button>
+            </b-action>
+
+            <b-filter name="track_id" directive="equal" extra/>
+            <b-filter name="location_id" decorate-with="location_name"/>
+            <b-filter name="device_type_id" decorate-with="device_type_name"/>
+            <b-filter name="track_type" decorate-with="track_type_name"/>
+            <b-filter name="mark_type" decorate-with="mark_type_name"/>
+            <b-filter name="track_time"/>
+            <b-filter name="region_id" decorate-with="region_name" extra/>
+            <b-filter name="location_type_id" decorate-with="location_type_name" extra/>
+            <b-filter name="latlng_exists" decorate-with="latlng_exists_name" extra/>
+            <b-filter name="photo_exists" decorate-with="photo_exists_name" extra/>
+            <b-filter name="original_type" decorate-with="original_type_name" extra/>
+            <b-filter name="is_valid" decorate-with="is_valid_name" extra/>
+            <b-filter name="is_potential_output" decorate-with="is_potential_output_name" extra/>
+            <b-filter name="device_id" decorate-with="device_name" extra/>
+            <b-filter name="status" decorate-with="status_name" extra/>
+            <b-filter name="created_by" decorate-with="created_by_name" extra/>
+            <b-filter name="created_on" extra/>
+            <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+            <b-filter name="modified_on" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form name="modal">
+    <div class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><b>{{ p.date_text }}</b> -
+              <span class="label label-inline label-light-primary py-4" ng-show="p.data.day_kind == 'W'">{{ p.data.day_kind_text }}</span>
+              <span class="label label-inline label-light-success py-4" ng-show="p.data.day_kind == 'H'">{{ p.data.day_kind_text }}</span>
+              <span class="label label-inline label-light-success py-4" ng-show="p.data.day_kind == 'A'">{{ p.data.day_kind_text }}</span>
+              <span class="label label-inline label-light-warning py-4" ng-show="p.data.day_kind == 'N'">{{ p.data.day_kind_text }}</span>
+              <span class="label label-inline label-light-danger" ng-show="p.data.day_kind == 'R'">{{ p.data.day_kind_text }}</span>
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+              <li class="nav-item">
+                <a href class="nav-link" ng-class="{ 'active': q.modal_tab == 'statistics_tab' }" data-toggle="tab" ng-click="setModalTab('statistics_tab')" role="tab">
+                  <span><t>day statistics</t></span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href class="nav-link" ng-class="{ 'active': q.modal_tab == 'tracks_tab' }" data-toggle="tab" ng-click="setModalTab('tracks_tab')" role="tab">
+                  <span><t>day tracks</t></span>
+                </a>
+              </li>
+            </ul>
+            <div class="tab-content mt-4">
+              <div class="tab-pane" ng-class="{ 'active': q.modal_tab == 'statistics_tab' }">
+                <table class="table table-hover table-condensed">
+                  <col width="30%">
+                  <col width="20%">
+                  <col width="20%">
+                  <col width="30%">
+                  <thead>
+                    <tr>
+                      <th class="pt-0"></th>
+                      <th class="pt-0"><t>input</t></th>
+                      <th class="pt-0"><t>output</t></th>
+                      <th class="pt-0"><t>break</t></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-if="p.show_plan_time">
+                      <td><t>plan</t></td>
+                      <td>{{ p.data.begin_time }}</td>
+                      <td>{{ p.data.end_time }}</td>
+                      <td>{{ p.data.break_begin_time }} - {{ p.data.break_end_time }}</td>
+                    </tr>
+                    <tr ng-if="p.show_no_plan">
+                      <td><t>plan</t></td>
+                      <td></td>
+                      <td colspan="2" style="font-style: italic;"><t>no data</t></td>
+                    </tr>
+                    <tr ng-if="p.show_fact_time">
+                      <td><t>fact</t></td>
+                      <td>{{ p.data.input_time || '-' }}</td>
+                      <td>{{ p.data.output_time || '-' }}</td>
+                      <td>-</td>
+                    </tr>
+                    <tr ng-if="p.show_no_fact">
+                      <td><t>fact</t></td>
+                      <td></td>
+                      <td colspan="2" ng-if="p.data.timeoff_exists"
+                          style="font-style: italic;">{{ p.timeoff_name }}</td>
+                      <td colspan="2" ng-if="p.data.request_exists && !p.data.timeoff_exists"
+                          style="font-style: italic;">{{ p.request_name }}</td>
+                      <td colspan="2" ng-if="!p.data.timeoff_exists && !p.data.request_exists"
+                          style="font-style: italic; color: #D9534F;">{{ p.t_not_worked }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h5 class="font-blue-soft mb-0"><t>day totals</t></h5>
+                <table class="table table-hover table-condensed">
+                  <col width="30%">
+                  <col width="70%">
+                  <thead>
+                    <tr>
+                      <th class="pt-0"></th>
+                      <th class="pt-0"><t>time</t></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><t>plan time</t></td>
+                      <td colspan="3" ng-bind-html="p.data.plan_time_html"></td>
+                    </tr>
+                  </tbody>
+                  <tbody style="border-top: none;" ng-show="p.data.timesheet_id">
+                    <tr>
+                      <td><t>fact time</t></td>
+                      <td colspan="3" ng-bind-html="p.data.fact_time_html"></td>
+                    </tr>
+                    <tr>
+                      <td><t>turnout time</t></td>
+                      <td colspan="3" style="color: #3379B5" ng-bind-html="p.data.turnout_time_html"></td>
+                    </tr>
+                    <tr>
+                      <td><t>free time</t></td>
+                      <td colspan="3" ng-bind-html="p.data.free_time_html"></td>
+                    </tr>
+                    <tr>
+                      <td><t>unworked time</t></td>
+                      <td colspan="3" style="color: #D9534F" ng-bind-html="p.data.unworked_time_html"></td>
+                    </tr>
+                    <tr>
+                      <td><t>overtime hours</t></td>
+                      <td colspand="3" style="color: green"  ng-bind-html="p.data.overtime_html"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h5 class="font-blue-soft mb-0" ng-show="p.marks_exist"><t>mark statistics</t></h5>
+                <table class="table table-hover table-condensed" ng-show="p.marks_exist">
+                  <col width="40%">
+                  <col width="40%">
+                  <col width="20%">
+                  <thead>
+                    <tr>
+                      <th class="pt-0"><t>begin time</t></th>
+                      <th class="pt-0"><t>end time</t></th>
+                      <th class="text-center pt-0">{{ p.t_done }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-repeat="mark in p.data.marks">
+                      <td>{{ mark.begin_time }}</td>
+                      <td>{{ mark.end_time }}</td>
+                      <td class="text-center">
+                        <i class="far fa-check-circle text-success"
+                          style="font-size: 20px;" ng-if="mark.done == 'Y'"></i>
+                        <i class="far fa-times-circle text-danger"
+                          style="font-size: 20px;" ng-if="mark.done == 'N'"></i>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="tab-pane" ng-class="{ 'active': q.modal_tab == 'tracks_tab' }">
+                <div class="sg grid">
+                  <div class="sg-header">
+                    <div class="sg-row">
+                      <div class="sg-sub-row">
+                        <div class="sg-cell col-sm-8"><t>track time</t></div>
+                        <div class="sg-cell col-sm-12"><t>track type name</t></div>
+                        <div class="sg-cell col-sm-4"><t>action</t></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sg-content">
+                    <div class="sg-row" ng-if="p.data.daily_tracks.length == 0">
+                      <div class="sg-sub-row">
+                        <div class="sg-cell col-sm-24 font-italic text-muted"><t>no track</t></div>
+                      </div>
+                    </div>
+                    <div class="sg-row" ng-repeat="row in p.data.daily_tracks">
+                      <div class="sg-sub-row">
+                        <div class="sg-cell col-sm-8">{{ row.track_time }}</div>
+                        <div class="sg-cell col-sm-12">
+                          <span class="fa fa-circle" ng-style="{color:trackColor(row.track_type)}"></span>&nbsp;
+                          <span>{{ row.track_type_name }}</span>
+                        </div>
+                        <div class="sg-cell col-sm-4">
+                          <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

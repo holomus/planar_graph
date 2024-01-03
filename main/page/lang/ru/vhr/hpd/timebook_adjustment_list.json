@@ -1,0 +1,23 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{journal_count} journal(s)?": "Удалить документы в количестве <b>$1</b>?",
+ "delete journal No. $1{journal_number} of $2{journal_date}?": "Удалить документ № <b>$1</b> от <b>$2</b>?",
+ "post $1": "Провести $1",
+ "post $1 journal(s)?": "Провести документы в количестве <b>$1</b>?",
+ "post journal No. $1{journal_number} of $2{journal_date}?": "Провести документ № <b>$1</b> от <b>$2</b>?",
+ "table.adjustment_date": "Дата корректировки",
+ "table.adjustment_division_name": "Подразделение",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.employee_names": "Сотрудники",
+ "table.journal_date": "Дата",
+ "table.journal_id": "ИД",
+ "table.journal_name": "Название документа",
+ "table.journal_number": "Номер",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.posted_name": "Проведен",
+ "unpost $1": "Отменить $1",
+ "unpost $1 journal(s)?": "Отменить документы в количестве <b>$1</b>?",
+ "unpost journal No. $1{journal_number} of $2{journal_date}?": "Отменить документ № <b>$1</b> от <b>$2</b>?"
+}

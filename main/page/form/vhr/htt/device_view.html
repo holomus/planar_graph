@@ -1,0 +1,416 @@
+<script biruni>
+page.init(function(param, xparam, t) {
+  page.grid('persons').disable();
+
+  var pg = page.grid('tracks');
+  var trackTypeClass = { C: 'warning', I: 'primary', O: 'danger' };
+
+  pg.asHtml('track_type_html', 'track_type, track_type_name', function(row) {
+    return `<span class="fa fa-circle text-${ trackTypeClass[row.track_type] }"></span>&nbsp;<span>${ row.track_type_name }</span>`;
+  });
+
+  pg.disable();
+});
+page.ctrl(function(scope, model, fi, t, param, $timeout) {
+  var d = _.omit(model, 'references'), q = model.references, p = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (!_.contains(q.enabledGrids, section)) {
+      page.query(section).param({ device_id: d.device_id });
+      page.grid(section).fetch();
+      page.grid(section).enable();
+      q.enabledGrids.push(section);
+    }
+  }
+
+  function edit() {
+    fi.edit({ device_id: d.device_id, location_id: param.location_id });
+  }
+
+  function trackView(row) {
+    if (!fi.track_view) return;
+    fi.track_view({ track_id: row.track_id });
+  }
+
+  function doAction(action, message, data, success_message, func = null) {
+    data.device_id = d.device_id;
+
+    page.confirm(message, function() {
+      action(data).then(function() {
+        notify(success_message);
+
+        if (func) func();
+      }, page.alert);
+    });
+  }
+
+  function syncDevice() {
+    doAction(fi.sync_device, t('sync deivce?')(), {}, t('device $1 succesfully synced')(d.name));
+  }
+
+  function syncPersonOne(row) {
+    doAction(fi.sync_person, t('sync device person $1?')(row.name), { person_id: row.person_id }, t('device person $1 succesfully synced')(row.name));
+  }
+
+  function syncPersonMany() {
+    doAction(fi.sync_person, t('sync device $1{person_count} person(s)?')(q.checked.size), { person_id: _.pluck(q.checked.rows(), 'person_id') }, t('device $1{person_count} person(s) succesfully synced')(q.checked.size),
+              () => {
+                page.grid('persons').fetch();
+                onCheck({});
+              });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    page.untouch(scope.modal);
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function syncTracks() {
+    if (page.valid(scope.modal)) {
+      fi.sync_tracks(p.data).then(function(){
+        hideModal();
+        notify(t('sync track command succesfully sent')());
+      }, page.alert);
+    }
+  }
+
+  p.data = {
+    device_id: d.device_id,
+    begin_date: moment().startOf('month').format('DD.MM.YYYY'),
+    end_date: moment().format('DD.MM.YYYY')
+  };
+
+  q.enabledGrids = ['main'];
+  q.activeSection = 'main';
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-success" ng-click="fi.migr({ device_id: d.device_id })" ng-if="fi.migr && d.device_type_id == q.terminal">{{ fi.migr.title }}</button>
+  <button type="button" class="btn btn-primary" ng-click="syncDevice()" ng-if="fi.sync_device && (d.device_type_id == q.terminal || d.device_type_id == q.hikvision || d.device_type_id == q.dahua)">{{ fi.sync_device.title }}</button>
+  <button type="button" class="btn btn-primary" ng-click="syncPersonMany()" ng-if="fi.sync_person && (d.device_type_id == q.terminal || d.device_type_id == q.hikvision || d.device_type_id == q.dahua)" ng-show="q.checked.has">
+    <t p1="q.checked.size">sync $1{person_count} person(s)</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <style>
+    .font-20px{font-size: 20px;}
+
+    .fa-battery-filling{
+      position: relative;
+    }
+    .fa-battery-filling span{
+      position: absolute;
+      background: #A5D6A7;
+      top: 28%;
+      height: 44%;
+      left: 11%;
+      border-radius: 1px;
+      transition: 250ms ease;
+    }
+    .fa-battery-filling [style="width:calc(1% * 0.73)"],
+    .fa-battery-filling [style="width:calc(2% * 0.73)"],
+    .fa-battery-filling [style="width:calc(3% * 0.73)"],
+    .fa-battery-filling [style="width:calc(4% * 0.73)"],
+    .fa-battery-filling [style="width:calc(5% * 0.73)"],
+    .fa-battery-filling [style="width:calc(6% * 0.73)"],
+    .fa-battery-filling [style="width:calc(7% * 0.73)"],
+    .fa-battery-filling [style="width:calc(8% * 0.73)"],
+    .fa-battery-filling [style="width:calc(9% * 0.73)"],
+    .fa-battery-filling [style="width:calc(10% * 0.73)"],
+    .fa-battery-filling [style="width:calc(11% * 0.73)"],
+    .fa-battery-filling [style="width:calc(12% * 0.73)"],
+    .fa-battery-filling [style="width:calc(13% * 0.73)"],
+    .fa-battery-filling [style="width:calc(14% * 0.73)"],
+    .fa-battery-filling [style="width:calc(15% * 0.73)"]{
+      background: #EF9A9A;
+    }
+  </style>
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.serial_number }}</span>
+              <span class="text-muted">&nbsp;({{ d.device_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center d-flex justify-content-center py-1 px-5 mb-0 mt-2" ng-if="d.charge_percentage">
+              <div class="mr-2" ng-style="{ 'color': d.charge_percentage > 15 ? '#A5D6A7' : '#EF9A9A' }">{{ d.charge_percentage + ' %' }}</div>
+              <i class="fa fa-battery-empty font-20px fa-battery-filling mb-0" style="color: {{ d.charge_percentage > 15 ? '#A5D6A7' : '#EF9A9A' }}">
+                <span style="width:calc({{ d.charge_percentage }}% * 0.73)"></span>
+              </i>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.state=='A' ? 'alert-light-success' : 'alert-light-danger'">
+              <div class="alert-text">{{ d.state_name }}
+              </div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-address-card mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>information</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'persons' }" ng-click="changeSection('persons')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-users"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>persons</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'tracks' }" ng-click="changeSection('tracks')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-user-clock"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>tracks</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header py-3">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>information</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>device type name</t></label>
+                <span class="form-view">{{ d.device_type_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>name</t></label>
+                <span class="form-view">{{ d.name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>location name</t></label>
+                <span class="form-view">{{ d.location_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>last seen on</t></label>
+                <span class="form-view">{{ d.last_seen_on }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>autogen inputs</t></label>
+                <span class="form-view">{{ d.autogen_inputs }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>autogen outputs</t></label>
+                <span class="form-view">{{ d.autogen_outputs }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>lang name</t></label>
+                <span class="form-view">{{ d.lang_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>mark type</t></label>
+                <span class="form-view">{{ d.mark_types }}</span>
+              </div>
+              <div class="form-group" ng-if="d.ignore_tracks == 'Y'">
+                <label><t>ignore tracks</t></label>
+                <span class="form-view">{{ d.ignore_tracks_name }}</span>
+              </div>
+              <div class="form-group" ng-if="d.ignore_tracks == 'N'">
+                <label><t>track type</t></label>
+                <span class="form-view">{{ d.track_types }}</span>
+              </div>
+              <div ng-if="d.integrate_by_service == 'Y' && (d.device_type_id == q.hikvision || d.device_type_id == q.dahua)">
+                <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                  <label><t>ip address</t></label>
+                  <span class="form-view">{{ d.ip_address }}</span>
+                </div>
+                <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                  <label><t>port</t></label>
+                  <span class="form-view">{{ d.port }}</span>
+                </div>
+                <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                  <label><t>protocol name</t></label>
+                  <span class="form-view">{{ d.protocol_name }}</span>
+                </div>
+                <div class="form-group" ng-if="d.dynamic_ip == 'N'">
+                  <label><t>host</t></label>
+                  <span class="form-view">{{ d.host }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>login</t></label>
+                  <span class="form-view">{{ d.login }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>use general settings</t></label>
+                <span class="form-view">{{ d.use_settings }}</span>
+              </div>
+              <div class="form-group" ng-if="d.restricted_type">
+                <label><t>restricted track type</t></label>
+                <span class="form-view">{{ d.restricted_type_name }}</span>
+              </div>
+              <div class="form-group" ng-if="d.restricted_type != q.tk_check && d.only_last_restricted">
+                <label><t>turnstile mode</t></label>
+                <span class="form-view">{{ d.only_last_restricted_name }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>created by name</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>modified by name</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'persons'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>persons</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-sm-12 offset-sm-12">
+              <b-grid-controller name="persons"/>
+            </div>
+          </div>
+          <b-grid name="persons" required="person_id, name" search="name, pin" on-check="onCheck(checked)">
+            <b-row>
+              <b-col name="pin" size=3/>
+              <b-col name="name" size=13/>
+              <b-col name="person_role_name" size=3/>
+              <b-col name="synchronized_name" size=3/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="syncPersonOne(row)" ng-if="fi.sync_person && (d.device_type_id == q.terminal || d.device_type_id == q.hikvision || d.device_type_id == q.dahua)">
+                {{ fi.sync_person.title }}
+              </button>
+            </b-action>
+
+            <b-filter name="person_id" directive="equal"/>
+            <b-filter name="name"/>
+            <b-filter name="pin"/>
+            <b-filter name="person_role" decorate-with="person_role_name"/>
+            <b-filter name="synchronized" decorate-with="synchronized_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'tracks'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>tracks</t></h3>
+          </div>
+          <div class="card-toolbar">
+            <button type="button" class="btn btn-primary" ng-if="fi.sync_tracks && (d.device_type_id == q.hikvision || d.device_type_id == q.dahua)" ng-click="showModal()">{{ fi.sync_tracks.title }}</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-sm-12 offset-sm-12">
+              <b-grid-controller name="tracks" />
+            </div>
+          </div>
+          <b-grid  name="tracks" required="track_id, is_valid" on-dblclick="trackView(row)" sort="-track_time" search="person_name, location_name"
+                   extra-columns="note, track_date, track_datetime, accuracy, is_valid, created_by_name, created_on, modified_by_name, modified_on">
+            <b-row>
+              <b-col name="person_name" size=7/>
+              <b-col name="location_name" size=5/>
+              <b-col name="mark_type_name" size=4/>
+              <b-col name="track_type_name" as-html="track_type_html" size=4/>
+              <b-col name="track_time" size=4/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="trackView(row)" ng-if="fi.track_view"><t>view</t></button>
+            </b-action>
+
+            <b-filter name="track_id" directive="equal" extra/>
+            <b-filter name="person_id" decorate-with="person_name"/>
+            <b-filter name="location_id" decorate-with="location_name"/>
+            <b-filter name="track_type" decorate-with="track_type_name"/>
+            <b-filter name="mark_type" decorate-with="mark_type_name"/>
+            <b-filter name="track_date"/>
+            <b-filter name="is_valid" decorate-with="is_valid_name" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>select period</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group col-sm-12">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.begin_date" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+              <div class="form-group col-sm-12">
+                <label><t>end date</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.sync_tracks" ng-click="syncTracks()">{{ fi.sync_tracks.title }}</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

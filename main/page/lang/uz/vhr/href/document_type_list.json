@@ -1,0 +1,17 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{document_type_count} document type(s)?": "Haqiqatan ham <b>$1</b> hujjat turi(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete document type $1{document_type_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "set $1{document_type_count} document type(s) as not required?": "Haqiqatan ham <b>$1</b> hujjat turi(lar)ni Ishga qabul qilish hujjatlaridan olib tashlamoqchimisiz?",
+ "set $1{document_type_count} document type(s) as required?": "Haqiqatan ham <b>$1</b> hujjatlar turini Ishga qabul qilish hujjati sifatida belgilamoqchimisiz?",
+ "set document type $1{document_type_name} as not required?": "Haqiqatan ham <b>$1</b> ni Ishga qabul qilish hujjatlaridan olib tashlamoqchimisiz?",
+ "set document type $1{document_type_name} as required?": "Haqiqatan ham <b>$1</b> hujjat turini Ishga qabul qilish hujjati sifatida belgilamoqchimisiz?",
+ "set not required $1": "$1ni Ishga qabul qilish hujjatlaridan olib tashlash",
+ "set required $1": "$1 Ishga qabul qilish hujjati sifatida belgilang",
+ "table.code": "Kod",
+ "table.doc_type_id": "ID",
+ "table.is_required_name": "",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

@@ -1,0 +1,14 @@
+select q.Company_Id,
+       Round(sum(w.File_Size) / 1024 / 1024 / 1024, 2) Size_Gb,
+       Round(max(w.File_Size) / 1024 / 1024, 2) Max_Mb,
+       Round(min(w.File_Size) / 1024 / 1024, 2) Min_Mb,
+       Round(avg(w.File_Size) / 1024 / 1024, 2) Avg_Mb,
+       count(1)
+  from Mvt_Visit_Photos q
+  join Biruni_Files w
+    on q.Photo_Sha = w.Sha
+ where exists (select *
+          from Biruni_Filespace k
+         where k.Sha = w.Sha)
+ group by q.Company_Id
+ order by 2 desc

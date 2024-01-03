@@ -1,0 +1,17 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{vacancy_group_count} vacancy group(s)?": "Delete $1 Reference(s) for vacancies?",
+ "delete vacancy group $1{vacancy_group_name}?": "Delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.is_required_name": "Required",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.multiple_select_name": "Multiple select",
+ "table.name": "Name",
+ "table.order_no": "No.",
+ "table.state_name": "Status",
+ "table.vacancy_group_id": "ID"
+}

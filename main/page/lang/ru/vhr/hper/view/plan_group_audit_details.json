@@ -1,0 +1,5 @@
+{
+ "pg.plan_group.before": "Старое значение",
+ "pg.plan_group.current": "Новое значение",
+ "pg.plan_group.field_name": "Поле"
+}

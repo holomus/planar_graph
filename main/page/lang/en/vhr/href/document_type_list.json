@@ -1,0 +1,17 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{document_type_count} document type(s)?": "Do you really want to delete <b>$1</b> document type(s)?",
+ "delete document type $1{document_type_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "set $1{document_type_count} document type(s) as not required?": "Do you really want to remove <b>$1</b> document type(s) from Documents at Hiring?",
+ "set $1{document_type_count} document type(s) as required?": "Do you really want to set <b>$1</b> document type(s) as Documents at Hiring?",
+ "set document type $1{document_type_name} as not required?": "Do you really want to remove <b>$1</b> from Documents at Hiring?",
+ "set document type $1{document_type_name} as required?": "Do you really want to set <b>$1</b> as Documents at Hiring?",
+ "set not required $1": "Remove from Documents at Hiring $1",
+ "set required $1": "Set as Document at Hiring $1",
+ "table.code": "Code",
+ "table.doc_type_id": "ID",
+ "table.is_required_name": "Document at Hiring",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

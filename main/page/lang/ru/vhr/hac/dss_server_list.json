@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{server_count} server(s)?": "Удалить <b>$1</b> сервер(ы)?",
+ "delete server $1{server_name}?": "Удалить сервер <b>$1</b>?",
+ "table.host_url": "URL-адрес",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.password": "Пароль",
+ "table.server_id": "ИД",
+ "table.username": "Логин"
+}

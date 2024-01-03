@@ -1,0 +1,350 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bBig, xparam) {
+  var d = _.omit(model, 'round_types', 'round_values'),
+      q = {},
+      Big = bBig(d.round_value + d.round_type);
+
+  function setWageScale(row) {
+    if (!row) return;
+    d.wage_scale_id = row.wage_scale_id;
+    d.wage_scale_name = row.name;
+  }
+
+  function addWageScale(value) {
+    fi.add_wage_scale(null, setWageScale, { name: value });
+  }
+
+  function selectWageScale() {
+    fi.select_wage_scale(null, setWageScale, { where: ['state', '=', 'A'] });
+  }
+
+  function whereRank() {
+    let rank_ids = _.chain(d.ranks).pluck('rank_id').compact().value() || [];
+
+    if (!_.isEmpty(rank_ids)) {
+      return ['rank_id', '<>', rank_ids];
+    } else return null;
+  }
+
+  function changeRankQuery(query, value) {
+    query.where(whereRank()).searchValue(value);
+  }
+
+  function addItem() {
+    let default_indicator = [{ indicator_id: model.wage_indicator_id, name: model.wage_indicator_name }];
+    d.ranks.push({ indicators: d.indicators.length > 0 ? angular.copy(default_indicator.concat(d.indicators)) : default_indicator });
+  }
+
+  function removeItems() {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(d.ranks, row);
+      d.ranks.splice(index, 1);
+    });
+    q.checked = {};
+
+    if (d.ranks.length == 0) addItem();
+  }
+
+  function setRank(item, row) {
+    if (!row) return;
+    item.rank_id = row.rank_id;
+    item.rank_name = row.name;
+  }
+
+  function addRank(item, value) {
+    fi.add_rank(null, _.partial(setRank, item), { name: value });
+  }
+
+  function selectRank(item) {
+    fi.select_rank(null, _.partial(setRank, item), { where: whereRank() });
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        d.round_model = d.with_base_wage == 'Y' ? d.round_value + d.round_type : null;
+
+        let data = _.omit(d, 'wage_scale_name', 'round_value', 'round_type', 'ranks', 'indicator_id', 'indicator_name', 'indicators');
+        data.posted = posted;
+        data.ranks = [];
+
+        _.each(d.ranks, x => { data.ranks.push(_.omit(x, ['rank_name', 'rownum'])); });
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function changeCoefficient(indicator) {
+    indicator.indicator_value = Big((d.base_wage * indicator.coefficient) || 0).round().toString();
+  }
+
+  function changeBaseWage() {
+    if (d.with_base_wage == 'N') return;
+    _.each(d.ranks, x => {
+      _.each(x.indicators, y => {
+        y.indicator_value = Big((d.base_wage * y.coefficient) || 0).round().toString();
+      });
+    });
+  }
+
+  function slideToggle(name) {
+    var block = page.$content.find('#' + name);
+    block.find('#vhr-slider-btn').find('.fas').toggleClass('fa-chevron-right').toggleClass('fa-chevron-down');
+    block.children('#vhr-slider-content').slideToggle(300);
+  }
+
+  function onSelect(row) {
+    if (!row) return;
+    d.indicators.push(row);
+
+    _.each(d.ranks, x => {
+      x.indicators.push(angular.copy(row))
+    });
+  }
+
+  function onDelete(row) {
+    if (!row) return;
+    d.indicators.splice(_.findIndex(d.indicators, row), 1);
+    _.each(d.ranks, x => { x.indicators.splice(_.findIndex(x.indicators, row), 1) })
+  }
+
+  q.round_types = _.mapRows(model.round_types, ['round_type','name']);
+  q.round_values = _.mapRows(model.round_values, ['round_value','name']);
+
+  d.with_base_wage = d.base_wage ? 'Y' : 'N';
+  d.indicators = [];
+
+  let rank_indicators = _.mapRows(model.rank_indicators, ['rank_id', 'indicator_id', 'name', 'indicator_value', 'coefficient']);
+  d.ranks = _.chain(model.ranks)
+             .mapRows(['rank_id', 'rank_name'])
+             .each( x => {
+              x.indicators = [];
+              _.each(rank_indicators, y => {
+                if (x.rank_id == y.rank_id) {
+                  x.indicators.push(_.omit(y, 'rank_id'))
+                }
+              })
+             })
+             .value();
+
+
+  if (_.isUndefined(model.register_id)) {
+    d = _.extend(d, xparam);
+    addItem();
+  } else {
+   d.indicators = _.mapRows(model.indicators, ['indicator_id', 'name']);
+   d.indicators.length > 0 ? slideToggle('indicator-input') : null;
+  }
+
+  scope.d = d;
+  scope.q = q;
+
+  scope.$watchGroup(['d.round_value', 'd.round_type'], function() {
+    if (d.round_value && d.round_type) {
+      Big.roundModel(d.round_value + d.round_type);
+      changeBaseWage();
+    }
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom gutter-b">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>register date</t><r/></label>
+                <input type="text" class="form-control" view-format="DD.MM.YYYY" ng-model="d.register_date" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>register number</t></label>
+                <input class="form-control" ng-model="d.register_number" ng-required="d.register_id" b-maxlength="50"/>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>wage scale</t><r/></label>
+            <b-input name="wage_scales"
+                     model="d.wage_scale_name | name"
+                     model-key="d.wage_scale_id | wage_scale_id"
+                     is-add="fi.add_wage_scale"
+                     on-add="addWageScale(value)"
+                     is-view="fi.select_wage_scale"
+                     on-view="selectWageScale()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>valid from</t><r/></label>
+            <input type="text" class="form-control" view-format="DD.MM.YYYY" ng-model="d.valid_from" b-date-picker="DD.MM.YYYY" required/>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.with_base_wage" ng-change="changeBaseWage()"/>
+              <span><t>with base wage</t></span>
+            </label>
+          </div>
+          <div ng-if="d.with_base_wage == 'Y'">
+            <div class="form-row">
+              <div class="form-group col-sm-12">
+                <label><t>round type</t></label><br/>
+                <ui-select ng-model="d.round_type" ng-required="true">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.round_type as item in q.round_types | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+              <div class="form-group col-sm-12">
+                <label><t>round model</t></label><br/>
+                <ui-select ng-model="d.round_value" ng-required="true">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.round_value as item in q.round_values | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>base wage</t></label>
+              <input type="text"
+                     class="form-control"
+                     ng-model="d.base_wage"
+                     b-number precision="20" scale="6"
+                     ng-blur="changeBaseWage()"
+                     required/>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea rows=2 class="form-control" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+          <div id="indicator-input">
+            <div id="vhr-slider-btn" class="cursor-pointer" ng-click="slideToggle('indicator-input')">
+              <t>indicators</t>
+              <i class="ml-1 fas fa-chevron-right"></i>
+            </div>
+            <div id="vhr-slider-content" class="mt-2" style="display: none;">
+            <b-input multiple
+                     name="indicators"
+                     model="d.indicators"
+                     model-key="indicator_id"
+                     is-view="fi.select_role"
+                     on-view="selectRole()"
+                     on-select="onSelect(row)"
+                     on-delete="onDelete(row)"
+                     label="name">
+              {{ row.name }}
+            </b-input>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="separator separator-solid my-2"></div>
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+          <button type="button" class="btn btn-danger" ng-click="removeItems()" ng-show="q.checked.has">
+            <t p1="q.checked.size">delete $1</t>
+          </button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-pg-controller name="ranks"/>
+        </div>
+      </div>
+      <b-pg-grid name="ranks" on-check="onCheck(checked)" search="rank_name" local-data="d.ranks" iterator="item" current-limit="1000">
+        <b-pg-header name="wage_html">
+          <div class="text-right">
+            <t ng-if="d.indicators.length == 0">wage</t>
+            <t ng-if="d.indicators.length > 0">indicators</t>
+          </div>
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1">
+            <div class="text-right">{{ item.rownum }}</div>
+          </b-pg-col>
+          <b-pg-col name="rank_name" size="10">
+            <b-input name="ranks"
+                     model="item.rank_name | name"
+                     model-key="item.rank_id | rank_id"
+                     column="order_no"
+                     sort="order_no, name"
+                     on-change="changeRankQuery(query, value)"
+                     is-add="fi.add_rank"
+                     on-add="addRank(item, value)"
+                     is-view="fi.select_rank"
+                     on-view="selectRank(item)"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </b-pg-col>
+          <b-pg-col name="coefficient" size="6">
+            <div ng-if="item.indicators.length > 1" ng-repeat="indicator in item.indicators">
+              <span>&nbsp;</span><br>
+              <input type="text"
+                     class="form-control mb-4"
+                     b-number precision="20" scale="6"
+                     ng-model="indicator.coefficient"
+                     ng-change="changeCoefficient(indicator)"
+                     ng-if="d.with_base_wage == 'Y'"
+                     required/>
+              <input type="text"
+                     class="form-control mb-4"
+                     ng-if="d.with_base_wage == 'N'"
+                     disabled/>
+            </div>
+            <div ng-if="item.indicators.length == 1">
+              <input type="text"
+                     class="form-control"
+                     b-number precision="20" scale="6"
+                     ng-model="item.indicators[0].coefficient"
+                     ng-change="changeCoefficient(item.indicators[0])"
+                     ng-if="d.with_base_wage == 'Y'"
+                     required/>
+              <input type="text"
+                     class="form-control"
+                     ng-if="d.with_base_wage == 'N'"
+                     disabled/>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="wage_html" size="6">
+            <div ng-if="item.indicators.length > 1" ng-repeat="indicator in item.indicators">
+              <span>{{ indicator.name }}</span><br>
+              <input type="text"
+                     class="form-control mb-4"
+                     b-number precision="20" scale="6"
+                     ng-model="indicator.indicator_value"
+                     ng-disabled="d.with_base_wage == 'Y'"
+                     required/>
+            </div>
+            <div ng-if="item.indicators.length == 1">
+              <input type="text"
+                     class="form-control"
+                     b-number precision="20" scale="6"
+                     ng-model="item.indicators[0].indicator_value"
+                     ng-disabled="d.with_base_wage == 'Y'"
+                     required/>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

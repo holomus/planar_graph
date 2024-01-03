@@ -1,0 +1,8 @@
+select 'prompt delete ' || q.Table_Name || '
+       delete from biruni_files_new q where exists (select 1 from ' || q.Table_Name ||
+       ' k where k.' || w.Column_Name || ' = q.sha);' qss
+  from User_Constraints q
+  join User_Cons_Columns w
+    on q.Constraint_Name = w.Constraint_Name
+ where q.r_Constraint_Name = 'BIRUNI_FILES_PK'
+ order by q.table_name

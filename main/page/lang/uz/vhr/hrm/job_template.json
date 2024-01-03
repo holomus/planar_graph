@@ -1,0 +1,17 @@
+{
+ "accrual": "Ish haqi",
+ "add": "Qo'shish",
+ "division name": "Bo'lim",
+ "job name": "Lavozim",
+ "pg.oper_types.actions": "Amallar",
+ "pg.oper_types.indicators": "Ko'rsatkichlar",
+ "pg.oper_types.oper_type": "Hisoblash",
+ "pg.oper_types.rownum": "№",
+ "rank name": "Daraja",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "schedule name": "Ish jadvali",
+ "vacation days limit": "Yillik mehnat ta'tili davomiyligi",
+ "wage scale": "Tarif setkasi",
+ "you don't have access to add or view salaries": "Ish haqini ko'rish uchun ruxsat yo'q"
+}

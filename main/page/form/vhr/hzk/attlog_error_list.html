@@ -1,0 +1,68 @@
+<script biruni>
+page.init(function(param) {
+  var statusClass = { N: 'warning', D: 'success'};
+
+  page.grid('table').asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+
+  page.query('table').param(param);
+});
+page.ctrl(function(scope, fi, t, model) {
+  var q = model;
+
+  function evalOne(row) {
+    page.confirm(t('eval error $1?')(row.error.length < 100 ? row.error : row.error.slice(0, 100) + '...'), function() {
+      fi.eval({ error_id: row.error_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function evalMany() {
+    page.confirm(t('eval $1 error(s)?')(q.checked.size), function() {
+      fi.eval({ error_id:  _.pluck(q.checked.rows, 'error_id') }).then(page.reload, page.alert);
+    });
+  }
+
+  function onCheck(checked) {
+    q.checked = {};
+    q.checked.rows = _.filter(checked.rows(), x => x.status == q.attlog_error_status_new);
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+  }
+
+  function onDblclick(row) {
+    if (fi.eval && row.status == q.attlog_error_status_new)
+      evalOne(row);
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+    <button type="button" class="btn btn-success" ng-click="evalMany()" ng-show="q.checked.has">
+      <t p1="q.checked.size">eval $1</t>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" sort="device_name" required="error_id, error, status" search="device_name, command, error" on-dblclick="onDblclick(row)" on-check="onCheck(checked)" extra-columns="error_id, device_id">
+    <b-row>
+      <b-col name="device_name" size=6/>
+      <b-col name="command" size=8/>
+      <b-col name="error" size=6/>
+      <b-col name="status_name" as-html="status_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="evalOne(row)" ng-if="fi.eval && row.status == q.attlog_error_status_new"><t>eval</t></button>
+    </b-action>
+
+    <b-filter name="error_id" directive="equal" extra/>
+    <b-filter name="device_id" decorate-with="device_name"/>
+    <b-filter name="status" decorate-with="status_name"/>
+  </b-grid>
+</form></div>

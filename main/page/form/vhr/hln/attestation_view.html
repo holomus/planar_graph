@@ -1,0 +1,260 @@
+<script biruni>
+page.init(function() {
+  var pg = page.grid('testings'),
+      statusClass = { N: 'primary', E: 'info', P: 'warning', C: 'danger', F: 'success' },
+      passedClass = { Y: 'primary', N: 'danger', I: 'secondary' };
+
+  pg.asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+  pg.asHtml('passed_html', 'passed, passed_name', row => {
+    return `<span class="badge badge-${ passedClass[row.passed] }">${ row.passed_name }</span>`;
+  });
+  pg.asHtml('passing_percentage_html', 'passing_percentage', row => {
+    return !!row.passing_percentage ? row.passing_percentage + '%' : '';
+  });
+
+  pg.disable();
+});
+page.ctrl(function(scope, model, fi) {
+  var d = model,
+      q = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if(_.contains(q.enabledGrids, section)) return;
+
+    page.query(section).param({ attestation_id: d.attestation_id });
+    page.grid(section).fetch();
+    page.grid(section).enable();
+
+    q.enabledGrids.push(section);
+  }
+
+  function edit() {
+    fi.edit({ attestation_id: d.attestation_id });
+  }
+
+  function testing_view(row) {
+    fi.testing_view({ testing_id: row.testing_id });
+  }
+
+  function control() {
+    fi.control({ attestation_id: d.attestation_id });
+  }
+
+  function onDblclick(row) {
+    fi.testing_view ? testing_view(row) : null;
+  }
+
+  switch (d.status) {
+    case 'N': q.status_class = 'alert-light-primary'; break;
+    case 'P': q.status_class = 'alert-light-info'; break;
+    case 'F': q.status_class = 'alert-light-success'; break;
+  }
+
+  q.activeSection = 'attestation_info';
+  q.enabledGrids = ['attestation_info'];
+  q.passed_percent = ((d.passed_persons / d.all_persons) * 100).toPrecision(4);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-if="fi.edit && d.status == 'N'" ng-click="edit()">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-success" ng-if="fi.control" ng-click="control()">{{ fi.control.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.name }}</span><br>
+              <span class="font-weight-bolder font-size-h6">{{ d.attestation_number }}</span>
+              <span class="text-muted">&nbsp;({{ d.attestation_id }})</span>
+            </div><br>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.status_class">
+              <div class="alert-text">{{ d.status_name }}</div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'attestation_info' }" ng-click="changeSection('attestation_info')">
+                <span class="navi-icon mr-2">
+                  <i class="far fa-file-alt"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>attestation info</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'testings' }" ng-click="changeSection('testings')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-users"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>testings</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'attestation_info'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>main info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>attestation number</t></label>
+                  <span class="form-view">{{ d.attestation_number }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>attestation date</t></label>
+                  <span class="form-view">{{ d.attestation_date }}</span>
+                </div>
+              </div>
+              <div ng-if="d.is_period == 'Y'">
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>begin time period begin</t></label>
+                    <span class="form-view">{{ d.begin_time_period_begin }}</span>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>begin time period end</t></label>
+                    <span class="form-view">{{ d.begin_time_period_end }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>examiner name</t></label>
+                  <span class="form-view">{{ d.examiner_name }}</span>
+                </div>
+              </div>
+              <div class="form-row" ng-if="d.is_period == 'N'">
+                <div class="col-sm-12 mb-4">
+                  <label><t>begin time</t></label>
+                  <span class="form-view">{{ d.begin_time_period_begin }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>examiner name</t></label>
+                  <span class="form-view">{{ d.examiner_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>all persons count</t></label>
+                <span class="form-view">{{ d.all_persons }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>finished persons count</t></label>
+                  <span class="form-view">{{ d.finished_persons }}</span>
+                </div>
+                <div class="col-sm-6 mb-4" ng-if="d.finished_persons > 0">
+                  <label><t>passeds</t></label>
+                  <span class="form-view">{{ d.passed_persons }}</span>
+                </div>
+                <div class="col-sm-6 mb-4" ng-if="d.finished_persons > 0">
+                  <label><t>not passeds</t></label>
+                  <span class="form-view">{{ d.not_passed_persons }}</span>
+                </div>
+              </div>
+              <div class="form-group" ng-if="d.status == 'F'">
+                <label><t>passed percent</t></label>
+                <span class="form-view">{{ q.passed_percent }}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'testings'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>testings</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="testings"/>
+            </div>
+          </div>
+          <b-grid name="testings" required="testing_id" on-dblclick="onDblclick(row)" sort="person_name" search="exam_name" searchable="testing_id"
+                  extra-columns="testing_id, testing_number, end_time, pause_time, fact_begin_time, begin_time_period_end, fact_end_time, current_question_no, note, created_by_name, created_on, modified_by_name, modified_on">
+            <b-row>
+              <b-col name="person_name" size=5/>
+              <b-col name="exam_name" size=5/>
+              <b-col name="passing_score" size=2/>
+              <b-col name="duration" size=3/>
+              <b-col name="begin_time_period_begin" size=3/>
+              <b-col name="passed_name" size=3 as-html="passed_html"/>
+              <b-col name="status_name" size=3 as-html="status_html"/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="passing_percentage" as-html="passing_percentage_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="testing_view(row)" ng-if="fi.testing_view">{{ fi.testing_view.title }}</button>
+            </b-action>
+
+            <b-filter name="testing_id" directive="equal" extra/>
+            <b-filter name="exam_id" decorate-with="exam_name"/>
+            <b-filter name="duration"/>
+            <b-filter name="passing_score"/>
+            <b-filter name="person_id" decorate-with="person_name"/>
+            <b-filter name="begin_time_period_begin"/>
+            <b-filter name="begin_time_period_end"/>
+            <b-filter name="end_time"/>
+            <b-filter name="passed" decorate-with="passed_name" extra/>
+            <b-filter name="status" decorate-with="status_name"/>
+            <b-filter name="created_by" decorate-with="created_by_name" extra/>
+            <b-filter name="created_on" extra/>
+            <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+            <b-filter name="modified_on" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+{
+ "address": "Address",
+ "begin date": "Start Date",
+ "delete $1": "Delete $1",
+ "mentor name": "Mentor",
+ "pg.persons.name": "Full Name",
+ "pg.persons.rownum": "№",
+ "save": "Save",
+ "select": "Pick-up",
+ "subject group name": "Subject Group",
+ "subject name": "Subject",
+ "there is no subjects depends on for this subject group, select another one": "No subjects have been selected for this subject group. Please specify the appropriate training subjects for this group in order to successfully generate trainings.",
+ "training number": "Training Number",
+ "you must select at least one subject": "At least one subject must be selected!"
+}

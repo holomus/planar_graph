@@ -1,0 +1,20 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{exam_count} exam(s)?": "Haqiqatan ham <b>$1</b> imtihon(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete exam $1{ name }?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.duration": "Davomiylik",
+ "table.exam_id": "ID",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.passing_percentage": "O'tish foizi",
+ "table.passing_score": "O'tish balli",
+ "table.pick_kind_name": "Turni tanlash",
+ "table.question_count": "Savollar soni",
+ "table.randomize_options_name": "Tasodifiy javoblar",
+ "table.randomize_questions_name": "Tasodifiy savollar",
+ "table.state_name": "Holat"
+}

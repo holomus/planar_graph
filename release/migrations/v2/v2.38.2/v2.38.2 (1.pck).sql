@@ -1,0 +1,9488 @@
+set define off
+create or replace package Hpd_Util is
+  ----------------------------------------------------------------------------------------------------
+  -- hiring
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_View_Uri
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Hiring_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Hiring_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Hiring
+  (
+    p_Journal              in out nocopy Hpd_Pref.Hiring_Journal_Rt,
+    i_Page_Id              number,
+    i_Employee_Id          number,
+    i_Staff_Number         varchar2,
+    i_Hiring_Date          date,
+    i_Dismissal_Date       date := null,
+    i_Trial_Period         number,
+    i_Employment_Source_Id number,
+    i_Schedule_Id          number,
+    i_Vacation_Days_Limit  number,
+    i_Is_Booked            varchar2,
+    i_Robot                Hpd_Pref.Robot_Rt,
+    i_Contract             Hpd_Pref.Contract_Rt,
+    i_Cv_Contract          Hpd_Pref.Cv_Contract_Rt := null,
+    i_Indicators           Href_Pref.Indicator_Nt,
+    i_Oper_Types           Href_Pref.Oper_Type_Nt,
+    i_Currency_Id          number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- transfer
+  ----------------------------------------------------------------------------------------------------
+  Procedure Transfer_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Transfer_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Transfer
+  (
+    p_Journal             in out nocopy Hpd_Pref.Transfer_Journal_Rt,
+    i_Page_Id             number,
+    i_Transfer_Begin      date,
+    i_Transfer_End        date,
+    i_Staff_Id            number,
+    i_Schedule_Id         number,
+    i_Vacation_Days_Limit number,
+    i_Is_Booked           varchar2,
+    i_Transfer_Reason     varchar2,
+    i_Transfer_Base       varchar2,
+    i_Robot               Hpd_Pref.Robot_Rt,
+    i_Contract            Hpd_Pref.Contract_Rt,
+    i_Indicators          Href_Pref.Indicator_Nt,
+    i_Oper_Types          Href_Pref.Oper_Type_Nt,
+    i_Currency_Id         number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- dismissal
+  ----------------------------------------------------------------------------------------------------
+  Procedure Dismissal_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Dismissal_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Dismissal
+  (
+    p_Journal              in out nocopy Hpd_Pref.Dismissal_Journal_Rt,
+    i_Page_Id              number,
+    i_Staff_Id             number,
+    i_Dismissal_Date       date,
+    i_Dismissal_Reason_Id  number,
+    i_Employment_Source_Id number,
+    i_Based_On_Doc         varchar2,
+    i_Note                 varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- wage change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Wage_Change_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Wage_Change_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Wage_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Wage_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Change_Date date,
+    i_Indicators  Href_Pref.Indicator_Nt,
+    i_Oper_Types  Href_Pref.Oper_Type_Nt,
+    i_Currency_Id number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- rank change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Rank_Change_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Rank_Change_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null,
+    i_Journal_Type_Id number,
+    i_Source_Table    varchar2 := null,
+    i_Source_Id       number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Rank_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Rank_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Change_Date date,
+    i_Rank_Id     number
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- vacation limit change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Limit_Change_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Limit_Change_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null,
+    i_Division_Id    number,
+    i_Days_Limit     number,
+    i_Change_Date    date
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Limit_Change_Add_Page
+  (
+    p_Journal  in out nocopy Hpd_Pref.Limit_Change_Journal_Rt,
+    i_Page_Id  number,
+    i_Staff_Id number
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- schedule change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Schedule_Change_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Schedule_Change_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Division_Id    number,
+    i_Begin_Date     date,
+    i_End_Date       date,
+    i_Lang_Code      varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Schedule_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Schedule_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Schedule_Id number
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- sick leave
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sick_Leave_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Sick_Leave_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Sick_Leave
+  (
+    p_Journal           in out nocopy Hpd_Pref.Sick_Leave_Journal_Rt,
+    i_Timeoff_Id        number,
+    i_Staff_Id          number,
+    i_Reason_Id         number,
+    i_Coefficient       number,
+    i_Sick_Leave_Number varchar2,
+    i_Begin_Date        date,
+    i_End_Date          date,
+    i_Shas              Array_Varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- business trips
+  ----------------------------------------------------------------------------------------------------
+  Procedure Business_Trip_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Business_Trip_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Business_Trip
+  (
+    p_Journal    in out nocopy Hpd_Pref.Business_Trip_Journal_Rt,
+    i_Timeoff_Id number,
+    i_Staff_Id   number,
+    i_Region_Ids Array_Number,
+    i_Person_Id  number,
+    i_Reason_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date,
+    i_Note       varchar2,
+    i_Shas       Array_Varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- vacations
+  ----------------------------------------------------------------------------------------------------
+  Procedure Vacation_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Vacation_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Vacation
+  (
+    p_Journal      in out nocopy Hpd_Pref.Vacation_Journal_Rt,
+    i_Timeoff_Id   number,
+    i_Staff_Id     number,
+    i_Time_Kind_Id number,
+    i_Begin_Date   date,
+    i_End_Date     date,
+    i_Shas         Array_Varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- overtime
+  ----------------------------------------------------------------------------------------------------
+  Procedure Overtime_Add
+  (
+    p_Overtimes        in out nocopy Hpd_Pref.Overtime_Nt,
+    i_Overtime_Date    date,
+    i_Overtime_Seconds number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Overtime
+  (
+    p_Journal     in out nocopy Hpd_Pref.Overtime_Journal_Rt,
+    i_Staff_Id    number,
+    i_Month       date,
+    i_Overtime_Id number,
+    i_Overtimes   Hpd_Pref.Overtime_Nt
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Overtime_Journal_New
+  (
+    o_Overtime_Journal out Hpd_Pref.Overtime_Journal_Rt,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Journal_Id       number,
+    i_Journal_Number   varchar2,
+    i_Journal_Date     date,
+    i_Journal_Name     varchar2,
+    i_Division_Id      number := null,
+    i_Lang_Code        varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- timebook adjustment
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_Adjustment_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Timebook_Adjustment_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Division_Id     number,
+    i_Adjustment_Date date,
+    i_Lang_Code       varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_Adjustment_Add_Adjustment
+  (
+    p_Journal    in out Hpd_Pref.Timebook_Adjustment_Journal_Rt,
+    i_Adjustment Hpd_Pref.Adjustment_Rt
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Adjustment_New
+  (
+    o_Adjustment out Hpd_Pref.Adjustment_Rt,
+    i_Page_Id    number,
+    i_Staff_Id   number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Adjustment_Add_Kind
+  (
+    p_Adjustment   in out Hpd_Pref.Adjustment_Rt,
+    i_Kind         varchar2,
+    i_Free_Time    number,
+    i_Overtime     number,
+    i_Turnout_Time number
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- journal page parts
+  ----------------------------------------------------------------------------------------------------
+  Procedure Robot_New
+  (
+    o_Robot           out Hpd_Pref.Robot_Rt,
+    i_Robot_Id        number,
+    i_Division_Id     number,
+    i_Job_Id          number,
+    i_Org_Unit_Id     number := null,
+    i_Rank_Id         number := null,
+    i_Wage_Scale_Id   number := null,
+    i_Employment_Type varchar2,
+    i_Fte_Id          number,
+    i_Fte             number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Contract_New
+  (
+    o_Contract             out Hpd_Pref.Contract_Rt,
+    i_Contract_Number      varchar2,
+    i_Contract_Date        date,
+    i_Fixed_Term           varchar2,
+    i_Expiry_Date          date,
+    i_Fixed_Term_Base_Id   number,
+    i_Concluding_Term      varchar2,
+    i_Hiring_Conditions    varchar2,
+    i_Other_Conditions     varchar2,
+    i_Workplace_Equipment  varchar2,
+    i_Representative_Basis varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Oper_Type_Add
+  (
+    p_Oper_Type     in out nocopy Href_Pref.Oper_Type_Nt,
+    i_Oper_Type_Id  number,
+    i_Indicator_Ids Array_Number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Indicator_Add
+  (
+    p_Indicator       in out nocopy Href_Pref.Indicator_Nt,
+    i_Indicator_Id    number,
+    i_Indicator_Value number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_New
+  (
+    o_Contract                 out Hpd_Pref.Cv_Contract_Rt,
+    i_Company_Id               number,
+    i_Filial_Id                number,
+    i_Contract_Id              number,
+    i_Contract_Number          varchar2,
+    i_Page_Id                  number := null,
+    i_Division_Id              number,
+    i_Person_Id                number,
+    i_Begin_Date               date,
+    i_End_Date                 date,
+    i_Contract_Kind            varchar2,
+    i_Contract_Employment_Kind varchar2,
+    i_Access_To_Add_Item       varchar2,
+    i_Early_Closed_Date        date := null,
+    i_Early_Closed_Note        varchar2 := null,
+    i_Note                     varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Add_Item
+  (
+    o_Contract         in out nocopy Hpd_Pref.Cv_Contract_Rt,
+    i_Contract_Item_Id number,
+    i_Name             varchar2,
+    i_Quantity         number,
+    i_Amount           number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Add_File
+  (
+    o_Contract in out nocopy Hpd_Pref.Cv_Contract_Rt,
+    i_File_Sha varchar2,
+    i_Note     varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  -- application
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Create_Robot_New
+  (
+    o_Application    out Hpd_Pref.Application_Create_Robot_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number,
+    i_Name           varchar2,
+    i_Opened_Date    date,
+    i_Division_Id    number,
+    i_Job_Id         number,
+    i_Quantity       number,
+    i_Note           varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Hiring_New
+  (
+    o_Application    out Hpd_Pref.Application_Hiring_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number,
+    i_Hiring_Date    date,
+    i_Robot_Id       number,
+    i_Note           varchar2,
+    -- person info
+    i_First_Name      varchar2,
+    i_Last_Name       varchar2,
+    i_Middle_Name     varchar2,
+    i_Birthday        date,
+    i_Gender          varchar2,
+    i_Phone           varchar2,
+    i_Email           varchar2,
+    i_Photo_Sha       varchar2,
+    i_Address         varchar2,
+    i_Legal_Address   varchar2,
+    i_Region_Id       number,
+    i_Passport_Series varchar2,
+    i_Passport_Number varchar2,
+    i_Npin            varchar2,
+    i_Iapa            varchar2,
+    i_Employment_Type varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Transfer_New
+  (
+    o_Application    out Hpd_Pref.Application_Transfer_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Add_Transfer
+  (
+    o_Application         in out nocopy Hpd_Pref.Application_Transfer_Rt,
+    i_Application_Unit_Id number,
+    i_Staff_Id            number,
+    i_Transfer_Begin      date,
+    i_Robot_Id            number,
+    i_Note                varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Dismissal_New
+  (
+    o_Application         out Hpd_Pref.Application_Dismissal_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Application_Id      number,
+    i_Staff_Id            number,
+    i_Dismissal_Date      date,
+    i_Dismissal_Reason_Id number,
+    i_Note                varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number Result_Cache;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Hiring_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Contractor_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Transfer_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Dismissal_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Wage_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Rank_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Limit_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Schedule_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Sick_Leave_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Business_Trip_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Vacation_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Overtime_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Timebook_Adjustment_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------
+  Function Transfer_Kind(i_Transfer_End date := null) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Cast_Staff_Kind_By_Emp_Type(i_Employment_Type varchar2) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Changing_Transaction
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date
+  ) return Hpd_Transactions%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Closest_Trans_Info
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date,
+    o_Trans_Id   out number,
+    o_Action     out varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Closest_Trans_Info
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Trans_Type       varchar2,
+    i_Period           date,
+    i_Except_Jounal_Id number := null,
+    o_Trans_Id         out number,
+    o_Action           out varchar2,
+    o_Period           out date
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Trans_Id_By_Period
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Schedule
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Schedules%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Currency
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Currencies%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Vacation_Limit
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Vacation_Limits%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Rank
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Ranks%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Robots%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contract
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Page_Contracts%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Mrf_Robots%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Hrm_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hrm_Robots%rowtype;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Fte
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Robot_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Org_Unit_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Division_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Job_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Rank_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Schedule_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Currency_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Vacation_Days_Limit
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contractual_Wage
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Wage_Scale_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Oper_Type_Id
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Id      number,
+    i_Oper_Group_Id number,
+    i_Period        date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Oper_Type_Ids
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Id      number,
+    i_Oper_Group_Id number,
+    i_Period        date
+  ) return Array_Number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Wage
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contractual_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Current_Limit_Days
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Opened_Transaction_Dates
+  (
+    i_Company_Id        number,
+    i_Filial_Id         number,
+    i_Staff_Id          number,
+    i_Begin_Date        date,
+    i_End_Date          date,
+    i_Trans_Types       Array_Varchar2,
+    i_With_Wage_Scale   boolean := false,
+    i_Partition_By_Year boolean := false
+  ) return Hpd_Pref.Transaction_Part_Nt;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Trans_Code
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Trans_Id   number,
+    i_Trans_Type varchar2
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Assert_Singular_Journal
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Journal_Id       number,
+    i_Page_Id          number,
+    i_Journal_Type_Id  number,
+    i_Singular_Type_Id number,
+    i_Pages_Cnt        number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Staff_Timebook_Adjustment_Calced
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Staff_Id        number,
+    i_Adjustment_Date date,
+    i_Kind            varchar2,
+    i_Journal_Id      number := null
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function User_Name
+  (
+    i_Company_Id number,
+    i_User_Id    number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_Type_Name
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Type_Name
+  (
+    i_Company_Id          number,
+    i_Application_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number Result_Cache;
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Has_Result
+  (
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Page(i_Page_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Overtime(i_Overtime_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Timeoffs(i_Timeoff_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Journal(i_Journal_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Page(i_Page_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Overtime(i_Overtime_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Timeoff(i_Timeoff_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Grant_Part
+  (
+    i_Company_Id          number,
+    i_Application_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------           
+  Function Sign_Process_Id_By_Pcode
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number;
+  ----------------------------------------------------------------------------------------------------         
+  Function Journal_Type_Sign_Template_Id
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Type_Id number
+  ) return number;
+  ----------------------------------------------------------------------------------------------------         
+  Function Has_Journal_Type_Sign_Template
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Type_Id number
+  ) return boolean;
+  ----------------------------------------------------------------------------------------------------         
+  Function Load_Sign_Document_Status
+  (
+    i_Company_Id  number,
+    i_Document_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_Main_Job return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_External_Parttime return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_Internal_Parttime return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type(i_Employment_Type varchar2) return varchar2;
+  Function Employment_Types(i_Include_Contractors boolean := false) return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind(i_Lock_Interval_Kind varchar2) return varchar2;
+  Function Lock_Interval_Kinds return Matrix_Varchar2;
+  Function Charge_Lock_Interval_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Trial_Period(i_Trial_Period varchar2) return varchar2;
+  Function Trial_Periods return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Transfer_Kind(i_Transfer_Kind varchar2) return varchar2;
+  Function Transfer_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type(i_Journal_Type varchar2) return varchar2;
+  Function Journal_Types return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Fte_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Adjustment_Kind(i_Adjustment_Kind varchar2) return varchar2;
+  Function Adjustment_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Contract_Kind(i_Contract_Kind varchar2) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Cv_Contract_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status(i_Status varchar2) return varchar2;
+  Function Application_Statuses return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Contract_Employment(i_Status varchar2) return varchar2;
+  Function Contract_Employments return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  -- journal notification
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Post
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Unpost
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Save
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Update
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Delete
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  -- application notification
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Application_Created
+  (
+    i_Company_Id          number,
+    i_User_Id             number,
+    i_Application_Type_Id number,
+    i_Application_Number  varchar2
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Application_Status_Changed
+  (
+    i_Company_Id          number,
+    i_User_Id             number,
+    i_Application_Type_Id number,
+    i_Application_Number  varchar2,
+    i_Old_Status          varchar2,
+    i_New_Status          varchar2
+  ) return varchar2;
+end Hpd_Util;
+/
+create or replace package body Hpd_Util is
+  ----------------------------------------------------------------------------------------------------
+  Function t
+  (
+    i_Message varchar2,
+    i_P1      varchar2 := null,
+    i_P2      varchar2 := null,
+    i_P3      varchar2 := null,
+    i_P4      varchar2 := null,
+    i_P5      varchar2 := null
+  ) return varchar2 is
+  begin
+    return b.Translate('HPD:' || i_Message, i_P1, i_P2, i_P3, i_P4, i_P5);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- uri of journal view forms by journal_type id
+  Function Journal_View_Uri
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+    v_Pcode varchar2(20);
+  begin
+    v_Pcode := z_Hpd_Journal_Types.Take(i_Company_Id => i_Company_Id, i_Journal_Type_Id => i_Journal_Type_Id).Pcode;
+  
+    case v_Pcode
+      when Hpd_Pref.c_Pcode_Journal_Type_Hiring then
+        return Hpd_Pref.c_Form_Hiring_Journal_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Hiring_Multiple then
+        return Hpd_Pref.c_Form_Hiring_Multiple_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Transfer then
+        return Hpd_Pref.c_Form_Transfer_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Transfer_Multiple then
+        return Hpd_Pref.c_Form_Transfer_Multiple_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Dismissal then
+        return Hpd_Pref.c_Form_Dismissal_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Dismissal_Multiple then
+        return Hpd_Pref.c_Form_Dismissal_Multiple_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Rank_Change then
+        return Hpd_Pref.c_Form_Rank_Change_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Limit_Change then
+        return Hpd_Pref.c_Form_Vacation_Limit_Change_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Wage_Change then
+        return Hpd_Pref.c_Form_Wage_Change_View;
+        --  you should add this part when multiple wage change view form created.
+      when Hpd_Pref.c_Pcode_Journal_Type_Schedule_Change then
+        return Hpd_Pref.c_Form_Schedule_Change_View;
+      when Hpd_Pref.c_Pcode_Journal_Type_Timebook_Adjustment then
+        return Hpd_Pref.c_Form_Timebook_Adjustment_View;
+      else
+        return null;
+    end case;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Hiring_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Hiring_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Hirings := Hpd_Pref.Hiring_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Hiring
+  (
+    p_Journal              in out nocopy Hpd_Pref.Hiring_Journal_Rt,
+    i_Page_Id              number,
+    i_Employee_Id          number,
+    i_Staff_Number         varchar2,
+    i_Hiring_Date          date,
+    i_Dismissal_Date       date := null,
+    i_Trial_Period         number,
+    i_Employment_Source_Id number,
+    i_Schedule_Id          number,
+    i_Vacation_Days_Limit  number,
+    i_Is_Booked            varchar2,
+    i_Robot                Hpd_Pref.Robot_Rt,
+    i_Contract             Hpd_Pref.Contract_Rt,
+    i_Cv_Contract          Hpd_Pref.Cv_Contract_Rt := null,
+    i_Indicators           Href_Pref.Indicator_Nt,
+    i_Oper_Types           Href_Pref.Oper_Type_Nt,
+    i_Currency_Id          number := null
+  ) is
+    v_Hiring Hpd_Pref.Hiring_Rt;
+  begin
+    v_Hiring.Page_Id              := i_Page_Id;
+    v_Hiring.Employee_Id          := i_Employee_Id;
+    v_Hiring.Staff_Number         := i_Staff_Number;
+    v_Hiring.Hiring_Date          := i_Hiring_Date;
+    v_Hiring.Dismissal_Date       := i_Dismissal_Date;
+    v_Hiring.Trial_Period         := i_Trial_Period;
+    v_Hiring.Employment_Source_Id := i_Employment_Source_Id;
+    v_Hiring.Schedule_Id          := i_Schedule_Id;
+    v_Hiring.Currency_Id          := i_Currency_Id;
+    v_Hiring.Vacation_Days_Limit  := i_Vacation_Days_Limit;
+    v_Hiring.Is_Booked            := i_Is_Booked;
+    v_Hiring.Robot                := i_Robot;
+    v_Hiring.Contract             := i_Contract;
+    v_Hiring.Cv_Contract          := i_Cv_Contract;
+    v_Hiring.Indicators           := i_Indicators;
+    v_Hiring.Oper_Types           := i_Oper_Types;
+  
+    p_Journal.Hirings.Extend();
+    p_Journal.Hirings(p_Journal.Hirings.Count) := v_Hiring;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- transfer
+  ----------------------------------------------------------------------------------------------------
+  Procedure Transfer_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Transfer_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Lang_Code       := i_Lang_Code;
+    o_Journal.Transfers       := Hpd_Pref.Transfer_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Transfer
+  (
+    p_Journal             in out nocopy Hpd_Pref.Transfer_Journal_Rt,
+    i_Page_Id             number,
+    i_Transfer_Begin      date,
+    i_Transfer_End        date,
+    i_Staff_Id            number,
+    i_Schedule_Id         number,
+    i_Vacation_Days_Limit number,
+    i_Is_Booked           varchar2,
+    i_Transfer_Reason     varchar2,
+    i_Transfer_Base       varchar2,
+    i_Robot               Hpd_Pref.Robot_Rt,
+    i_Contract            Hpd_Pref.Contract_Rt,
+    i_Indicators          Href_Pref.Indicator_Nt,
+    i_Oper_Types          Href_Pref.Oper_Type_Nt,
+    i_Currency_Id         number := null
+  ) is
+    v_Transfer Hpd_Pref.Transfer_Rt;
+  begin
+    v_Transfer.Page_Id             := i_Page_Id;
+    v_Transfer.Transfer_Begin      := i_Transfer_Begin;
+    v_Transfer.Transfer_End        := i_Transfer_End;
+    v_Transfer.Staff_Id            := i_Staff_Id;
+    v_Transfer.Schedule_Id         := i_Schedule_Id;
+    v_Transfer.Currency_Id         := i_Currency_Id;
+    v_Transfer.Vacation_Days_Limit := i_Vacation_Days_Limit;
+    v_Transfer.Is_Booked           := i_Is_Booked;
+    v_Transfer.Transfer_Reason     := i_Transfer_Reason;
+    v_Transfer.Transfer_Base       := i_Transfer_Base;
+    v_Transfer.Robot               := i_Robot;
+    v_Transfer.Contract            := i_Contract;
+    v_Transfer.Indicators          := i_Indicators;
+    v_Transfer.Oper_Types          := i_Oper_Types;
+  
+    p_Journal.Transfers.Extend();
+    p_Journal.Transfers(p_Journal.Transfers.Count) := v_Transfer;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- dismissal
+  ----------------------------------------------------------------------------------------------------
+  Procedure Dismissal_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Dismissal_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Dismissals := Hpd_Pref.Dismissal_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Dismissal
+  (
+    p_Journal              in out nocopy Hpd_Pref.Dismissal_Journal_Rt,
+    i_Page_Id              number,
+    i_Staff_Id             number,
+    i_Dismissal_Date       date,
+    i_Dismissal_Reason_Id  number,
+    i_Employment_Source_Id number,
+    i_Based_On_Doc         varchar2,
+    i_Note                 varchar2
+  ) is
+    v_Dismissal Hpd_Pref.Dismissal_Rt;
+  begin
+    v_Dismissal.Page_Id              := i_Page_Id;
+    v_Dismissal.Staff_Id             := i_Staff_Id;
+    v_Dismissal.Dismissal_Date       := i_Dismissal_Date;
+    v_Dismissal.Dismissal_Reason_Id  := i_Dismissal_Reason_Id;
+    v_Dismissal.Employment_Source_Id := i_Employment_Source_Id;
+    v_Dismissal.Based_On_Doc         := i_Based_On_Doc;
+    v_Dismissal.Note                 := i_Note;
+  
+    p_Journal.Dismissals.Extend();
+    p_Journal.Dismissals(p_Journal.Dismissals.Count) := v_Dismissal;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- wage change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Wage_Change_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Wage_Change_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Wage_Changes := Hpd_Pref.Wage_Change_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Wage_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Wage_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Change_Date date,
+    i_Indicators  Href_Pref.Indicator_Nt,
+    i_Oper_Types  Href_Pref.Oper_Type_Nt,
+    i_Currency_Id number := null
+  ) is
+    v_Wage_Change Hpd_Pref.Wage_Change_Rt;
+  begin
+    v_Wage_Change.Page_Id     := i_Page_Id;
+    v_Wage_Change.Staff_Id    := i_Staff_Id;
+    v_Wage_Change.Change_Date := i_Change_Date;
+    v_Wage_Change.Currency_Id := i_Currency_Id;
+    v_Wage_Change.Indicators  := i_Indicators;
+    v_Wage_Change.Oper_Types  := i_Oper_Types;
+  
+    p_Journal.Wage_Changes.Extend();
+    p_Journal.Wage_Changes(p_Journal.Wage_Changes.Count) := v_Wage_Change;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- rank change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Rank_Change_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Rank_Change_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null,
+    i_Journal_Type_Id number,
+    i_Source_Table    varchar2 := null,
+    i_Source_Id       number := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Source_Table    := i_Source_Table;
+    o_Journal.Source_Id       := i_Source_Id;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Rank_Changes := Hpd_Pref.Rank_Change_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Rank_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Rank_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Change_Date date,
+    i_Rank_Id     number
+  ) is
+    v_Rank_Change Hpd_Pref.Rank_Change_Rt;
+  begin
+    v_Rank_Change.Page_Id     := i_Page_Id;
+    v_Rank_Change.Staff_Id    := i_Staff_Id;
+    v_Rank_Change.Change_Date := i_Change_Date;
+    v_Rank_Change.Rank_Id     := i_Rank_Id;
+  
+    p_Journal.Rank_Changes.Extend();
+    p_Journal.Rank_Changes(p_Journal.Rank_Changes.Count) := v_Rank_Change;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- vacation limit change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Limit_Change_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Limit_Change_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null,
+    i_Division_Id    number,
+    i_Days_Limit     number,
+    i_Change_Date    date
+  ) is
+  begin
+    o_Journal.Company_Id     := i_Company_Id;
+    o_Journal.Filial_Id      := i_Filial_Id;
+    o_Journal.Journal_Id     := i_Journal_Id;
+    o_Journal.Journal_Number := i_Journal_Number;
+    o_Journal.Journal_Date   := i_Journal_Date;
+    o_Journal.Journal_Name   := i_Journal_Name;
+    o_Journal.Division_Id    := i_Division_Id;
+    o_Journal.Days_Limit     := i_Days_Limit;
+    o_Journal.Change_Date    := i_Change_Date;
+    o_Journal.Lang_Code      := i_Lang_Code;
+  
+    o_Journal.Pages := Hpd_Pref.Page_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Limit_Change_Add_Page
+  (
+    p_Journal  in out nocopy Hpd_Pref.Limit_Change_Journal_Rt,
+    i_Page_Id  number,
+    i_Staff_Id number
+  ) is
+    v_Page Hpd_Pref.Page_Rt;
+  begin
+    v_Page.Page_Id  := i_Page_Id;
+    v_Page.Staff_Id := i_Staff_Id;
+  
+    p_Journal.Pages.Extend();
+    p_Journal.Pages(p_Journal.Pages.Count) := v_Page;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- schedule change
+  ----------------------------------------------------------------------------------------------------
+  Procedure Schedule_Change_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Schedule_Change_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Division_Id    number,
+    i_Begin_Date     date,
+    i_End_Date       date,
+    i_Lang_Code      varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id     := i_Company_Id;
+    o_Journal.Filial_Id      := i_Filial_Id;
+    o_Journal.Journal_Id     := i_Journal_Id;
+    o_Journal.Journal_Number := i_Journal_Number;
+    o_Journal.Journal_Date   := i_Journal_Date;
+    o_Journal.Journal_Name   := i_Journal_Name;
+    o_Journal.Division_Id    := i_Division_Id;
+    o_Journal.Begin_Date     := i_Begin_Date;
+    o_Journal.End_Date       := i_End_Date;
+    o_Journal.Lang_Code      := i_Lang_Code;
+  
+    o_Journal.Schedule_Changes := Hpd_Pref.Schedule_Change_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Schedule_Change
+  (
+    p_Journal     in out nocopy Hpd_Pref.Schedule_Change_Journal_Rt,
+    i_Page_Id     number,
+    i_Staff_Id    number,
+    i_Schedule_Id number
+  ) is
+    v_Schedule_Change Hpd_Pref.Schedule_Change_Rt;
+  begin
+    v_Schedule_Change.Page_Id     := i_Page_Id;
+    v_Schedule_Change.Staff_Id    := i_Staff_Id;
+    v_Schedule_Change.Schedule_Id := i_Schedule_Id;
+  
+    p_Journal.Schedule_Changes.Extend;
+    p_Journal.Schedule_Changes(p_Journal.Schedule_Changes.Count) := v_Schedule_Change;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- sick leave
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sick_Leave_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Sick_Leave_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id     := i_Company_Id;
+    o_Journal.Filial_Id      := i_Filial_Id;
+    o_Journal.Journal_Id     := i_Journal_Id;
+    o_Journal.Journal_Number := i_Journal_Number;
+    o_Journal.Journal_Date   := i_Journal_Date;
+    o_Journal.Journal_Name   := i_Journal_Name;
+    o_Journal.Lang_Code      := i_Lang_Code;
+  
+    o_Journal.Sick_Leaves := Hpd_Pref.Sick_Leave_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Sick_Leave
+  (
+    p_Journal           in out nocopy Hpd_Pref.Sick_Leave_Journal_Rt,
+    i_Timeoff_Id        number,
+    i_Staff_Id          number,
+    i_Reason_Id         number,
+    i_Coefficient       number,
+    i_Sick_Leave_Number varchar2,
+    i_Begin_Date        date,
+    i_End_Date          date,
+    i_Shas              Array_Varchar2
+  ) is
+    v_Sick_Leave Hpd_Pref.Sick_Leave_Rt;
+  begin
+    v_Sick_Leave.Timeoff_Id        := i_Timeoff_Id;
+    v_Sick_Leave.Staff_Id          := i_Staff_Id;
+    v_Sick_Leave.Reason_Id         := i_Reason_Id;
+    v_Sick_Leave.Coefficient       := i_Coefficient;
+    v_Sick_Leave.Sick_Leave_Number := i_Sick_Leave_Number;
+    v_Sick_Leave.Begin_Date        := i_Begin_Date;
+    v_Sick_Leave.End_Date          := i_End_Date;
+    v_Sick_Leave.Shas              := i_Shas;
+  
+    p_Journal.Sick_Leaves.Extend();
+    p_Journal.Sick_Leaves(p_Journal.Sick_Leaves.Count) := v_Sick_Leave;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- business trips
+  ----------------------------------------------------------------------------------------------------
+  Procedure Business_Trip_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Business_Trip_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Type_Id number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Type_Id := i_Journal_Type_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Business_Trips := Hpd_Pref.Business_Trip_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Business_Trip
+  (
+    p_Journal    in out nocopy Hpd_Pref.Business_Trip_Journal_Rt,
+    i_Timeoff_Id number,
+    i_Staff_Id   number,
+    i_Region_Ids Array_Number,
+    i_Person_Id  number,
+    i_Reason_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date,
+    i_Note       varchar2,
+    i_Shas       Array_Varchar2
+  ) is
+    v_Business_Trip Hpd_Pref.Business_Trip_Rt;
+  begin
+    v_Business_Trip.Timeoff_Id := i_Timeoff_Id;
+    v_Business_Trip.Staff_Id   := i_Staff_Id;
+    v_Business_Trip.Region_Ids := i_Region_Ids;
+    v_Business_Trip.Person_Id  := i_Person_Id;
+    v_Business_Trip.Reason_Id  := i_Reason_Id;
+    v_Business_Trip.Begin_Date := i_Begin_Date;
+    v_Business_Trip.End_Date   := i_End_Date;
+    v_Business_Trip.Note       := i_Note;
+    v_Business_Trip.Shas       := i_Shas;
+  
+    p_Journal.Business_Trips.Extend();
+    p_Journal.Business_Trips(p_Journal.Business_Trips.Count) := v_Business_Trip;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- vacations
+  ----------------------------------------------------------------------------------------------------
+  Procedure Vacation_Journal_New
+  (
+    o_Journal        out Hpd_Pref.Vacation_Journal_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Journal_Id     number,
+    i_Journal_Number varchar2,
+    i_Journal_Date   date,
+    i_Journal_Name   varchar2,
+    i_Lang_Code      varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id     := i_Company_Id;
+    o_Journal.Filial_Id      := i_Filial_Id;
+    o_Journal.Journal_Id     := i_Journal_Id;
+    o_Journal.Journal_Number := i_Journal_Number;
+    o_Journal.Journal_Date   := i_Journal_Date;
+    o_Journal.Journal_Name   := i_Journal_Name;
+    o_Journal.Lang_Code      := i_Lang_Code;
+  
+    o_Journal.Vacations := Hpd_Pref.Vacation_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Vacation
+  (
+    p_Journal      in out nocopy Hpd_Pref.Vacation_Journal_Rt,
+    i_Timeoff_Id   number,
+    i_Staff_Id     number,
+    i_Time_Kind_Id number,
+    i_Begin_Date   date,
+    i_End_Date     date,
+    i_Shas         Array_Varchar2
+  ) is
+    v_Vacation Hpd_Pref.Vacation_Rt;
+  begin
+    v_Vacation.Timeoff_Id   := i_Timeoff_Id;
+    v_Vacation.Staff_Id     := i_Staff_Id;
+    v_Vacation.Time_Kind_Id := i_Time_Kind_Id;
+    v_Vacation.Begin_Date   := i_Begin_Date;
+    v_Vacation.End_Date     := i_End_Date;
+    v_Vacation.Shas         := i_Shas;
+  
+    p_Journal.Vacations.Extend();
+    p_Journal.Vacations(p_Journal.Vacations.Count) := v_Vacation;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- overtime
+  ----------------------------------------------------------------------------------------------------
+  Procedure Overtime_Add
+  (
+    p_Overtimes        in out nocopy Hpd_Pref.Overtime_Nt,
+    i_Overtime_Date    date,
+    i_Overtime_Seconds number
+  ) is
+    v_Overtime Hpd_Pref.Overtime_Rt;
+  begin
+    v_Overtime.Overtime_Date    := i_Overtime_Date;
+    v_Overtime.Overtime_Seconds := i_Overtime_Seconds;
+  
+    p_Overtimes.Extend();
+    p_Overtimes(p_Overtimes.Count) := v_Overtime;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Journal_Add_Overtime
+  (
+    p_Journal     in out nocopy Hpd_Pref.Overtime_Journal_Rt,
+    i_Staff_Id    number,
+    i_Month       date,
+    i_Overtime_Id number,
+    i_Overtimes   Hpd_Pref.Overtime_Nt
+  ) is
+    v_Overtime_Staff Hpd_Pref.Overtime_Staff_Rt;
+  begin
+    v_Overtime_Staff.Staff_Id    := i_Staff_Id;
+    v_Overtime_Staff.Month       := i_Month;
+    v_Overtime_Staff.Overtime_Id := i_Overtime_Id;
+    v_Overtime_Staff.Overtimes   := i_Overtimes;
+  
+    p_Journal.Overtime_Staffs.Extend();
+    p_Journal.Overtime_Staffs(p_Journal.Overtime_Staffs.Count) := v_Overtime_Staff;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Overtime_Journal_New
+  (
+    o_Overtime_Journal out Hpd_Pref.Overtime_Journal_Rt,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Journal_Id       number,
+    i_Journal_Number   varchar2,
+    i_Journal_Date     date,
+    i_Journal_Name     varchar2,
+    i_Division_Id      number := null,
+    i_Lang_Code        varchar2 := null
+  ) is
+  begin
+    o_Overtime_Journal.Company_Id      := i_Company_Id;
+    o_Overtime_Journal.Filial_Id       := i_Filial_Id;
+    o_Overtime_Journal.Journal_Id      := i_Journal_Id;
+    o_Overtime_Journal.Journal_Number  := i_Journal_Number;
+    o_Overtime_Journal.Journal_Date    := i_Journal_Date;
+    o_Overtime_Journal.Journal_Name    := i_Journal_Name;
+    o_Overtime_Journal.Lang_Code       := i_Lang_Code;
+    o_Overtime_Journal.Division_Id     := i_Division_Id;
+    o_Overtime_Journal.Overtime_Staffs := Hpd_Pref.Overtime_Staff_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- timebook adjustment
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_Adjustment_Journal_New
+  (
+    o_Journal         out Hpd_Pref.Timebook_Adjustment_Journal_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Id      number,
+    i_Journal_Number  varchar2,
+    i_Journal_Date    date,
+    i_Journal_Name    varchar2,
+    i_Division_Id     number,
+    i_Adjustment_Date date,
+    i_Lang_Code       varchar2 := null
+  ) is
+  begin
+    o_Journal.Company_Id      := i_Company_Id;
+    o_Journal.Filial_Id       := i_Filial_Id;
+    o_Journal.Journal_Id      := i_Journal_Id;
+    o_Journal.Journal_Number  := i_Journal_Number;
+    o_Journal.Journal_Date    := i_Journal_Date;
+    o_Journal.Journal_Name    := i_Journal_Name;
+    o_Journal.Division_Id     := i_Division_Id;
+    o_Journal.Adjustment_Date := i_Adjustment_Date;
+    o_Journal.Lang_Code       := i_Lang_Code;
+  
+    o_Journal.Adjustments := Hpd_Pref.Adjustment_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_Adjustment_Add_Adjustment
+  (
+    p_Journal    in out Hpd_Pref.Timebook_Adjustment_Journal_Rt,
+    i_Adjustment Hpd_Pref.Adjustment_Rt
+  ) is
+  begin
+    p_Journal.Adjustments.Extend;
+    p_Journal.Adjustments(p_Journal.Adjustments.Count) := i_Adjustment;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Adjustment_New
+  (
+    o_Adjustment out Hpd_Pref.Adjustment_Rt,
+    i_Page_Id    number,
+    i_Staff_Id   number
+  ) is
+  begin
+    o_Adjustment.Page_Id  := i_Page_Id;
+    o_Adjustment.Staff_Id := i_Staff_Id;
+  
+    o_Adjustment.Kinds := Hpd_Pref.Adjustment_Kind_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Adjustment_Add_Kind
+  (
+    p_Adjustment   in out Hpd_Pref.Adjustment_Rt,
+    i_Kind         varchar2,
+    i_Free_Time    number,
+    i_Overtime     number,
+    i_Turnout_Time number
+  ) is
+    v_Kind Hpd_Pref.Adjustment_Kind_Rt;
+  begin
+    v_Kind.Kind         := i_Kind;
+    v_Kind.Free_Time    := i_Free_Time;
+    v_Kind.Overtime     := i_Overtime;
+    v_Kind.Turnout_Time := i_Turnout_Time;
+  
+    p_Adjustment.Kinds.Extend;
+    p_Adjustment.Kinds(p_Adjustment.Kinds.Count) := v_Kind;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- journal page parts
+  ----------------------------------------------------------------------------------------------------
+  Procedure Robot_New
+  (
+    o_Robot           out Hpd_Pref.Robot_Rt,
+    i_Robot_Id        number,
+    i_Division_Id     number,
+    i_Job_Id          number,
+    i_Org_Unit_Id     number := null,
+    i_Rank_Id         number := null,
+    i_Wage_Scale_Id   number := null,
+    i_Employment_Type varchar2,
+    i_Fte_Id          number,
+    i_Fte             number
+  ) is
+  begin
+    o_Robot.Robot_Id        := i_Robot_Id;
+    o_Robot.Division_Id     := i_Division_Id;
+    o_Robot.Job_Id          := i_Job_Id;
+    o_Robot.Org_Unit_Id     := i_Org_Unit_Id;
+    o_Robot.Rank_Id         := i_Rank_Id;
+    o_Robot.Wage_Scale_Id   := i_Wage_Scale_Id;
+    o_Robot.Employment_Type := i_Employment_Type;
+    o_Robot.Fte_Id          := i_Fte_Id;
+    o_Robot.Fte             := i_Fte;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Contract_New
+  (
+    o_Contract             out Hpd_Pref.Contract_Rt,
+    i_Contract_Number      varchar2,
+    i_Contract_Date        date,
+    i_Fixed_Term           varchar2,
+    i_Expiry_Date          date,
+    i_Fixed_Term_Base_Id   number,
+    i_Concluding_Term      varchar2,
+    i_Hiring_Conditions    varchar2,
+    i_Other_Conditions     varchar2,
+    i_Workplace_Equipment  varchar2,
+    i_Representative_Basis varchar2
+  ) is
+  begin
+    o_Contract.Contract_Number      := i_Contract_Number;
+    o_Contract.Contract_Date        := i_Contract_Date;
+    o_Contract.Fixed_Term           := i_Fixed_Term;
+    o_Contract.Expiry_Date          := i_Expiry_Date;
+    o_Contract.Fixed_Term_Base_Id   := i_Fixed_Term_Base_Id;
+    o_Contract.Concluding_Term      := i_Concluding_Term;
+    o_Contract.Hiring_Conditions    := i_Hiring_Conditions;
+    o_Contract.Other_Conditions     := i_Other_Conditions;
+    o_Contract.Workplace_Equipment  := i_Workplace_Equipment;
+    o_Contract.Representative_Basis := i_Representative_Basis;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Oper_Type_Add
+  (
+    p_Oper_Type     in out nocopy Href_Pref.Oper_Type_Nt,
+    i_Oper_Type_Id  number,
+    i_Indicator_Ids Array_Number
+  ) is
+    v_Oper_Type Href_Pref.Oper_Type_Rt;
+  begin
+    v_Oper_Type.Oper_Type_Id  := i_Oper_Type_Id;
+    v_Oper_Type.Indicator_Ids := i_Indicator_Ids;
+  
+    p_Oper_Type.Extend;
+    p_Oper_Type(p_Oper_Type.Count) := v_Oper_Type;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Indicator_Add
+  (
+    p_Indicator       in out nocopy Href_Pref.Indicator_Nt,
+    i_Indicator_Id    number,
+    i_Indicator_Value number
+  ) is
+    v_Indicator Href_Pref.Indicator_Rt;
+  begin
+    v_Indicator.Indicator_Id    := i_Indicator_Id;
+    v_Indicator.Indicator_Value := i_Indicator_Value;
+  
+    p_Indicator.Extend;
+    p_Indicator(p_Indicator.Count) := v_Indicator;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- CV Contracts
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_New
+  (
+    o_Contract                 out Hpd_Pref.Cv_Contract_Rt,
+    i_Company_Id               number,
+    i_Filial_Id                number,
+    i_Contract_Id              number,
+    i_Contract_Number          varchar2,
+    i_Page_Id                  number := null,
+    i_Division_Id              number,
+    i_Person_Id                number,
+    i_Begin_Date               date,
+    i_End_Date                 date,
+    i_Contract_Kind            varchar2,
+    i_Contract_Employment_Kind varchar2,
+    i_Access_To_Add_Item       varchar2,
+    i_Early_Closed_Date        date := null,
+    i_Early_Closed_Note        varchar2 := null,
+    i_Note                     varchar2 := null
+  ) is
+  begin
+    o_Contract.Company_Id               := i_Company_Id;
+    o_Contract.Filial_Id                := i_Filial_Id;
+    o_Contract.Contract_Id              := i_Contract_Id;
+    o_Contract.Contract_Number          := i_Contract_Number;
+    o_Contract.Page_Id                  := i_Page_Id;
+    o_Contract.Division_Id              := i_Division_Id;
+    o_Contract.Person_Id                := i_Person_Id;
+    o_Contract.Begin_Date               := i_Begin_Date;
+    o_Contract.End_Date                 := i_End_Date;
+    o_Contract.Contract_Kind            := i_Contract_Kind;
+    o_Contract.Contract_Employment_Kind := i_Contract_Employment_Kind;
+    o_Contract.Access_To_Add_Item       := i_Access_To_Add_Item;
+    o_Contract.Early_Closed_Date        := i_Early_Closed_Date;
+    o_Contract.Early_Closed_Note        := i_Early_Closed_Note;
+    o_Contract.Note                     := i_Note;
+  
+    o_Contract.Items := Hpd_Pref.Cv_Contract_Item_Nt();
+    o_Contract.Files := Hpd_Pref.Cv_Contract_File_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Add_Item
+  (
+    o_Contract         in out nocopy Hpd_Pref.Cv_Contract_Rt,
+    i_Contract_Item_Id number,
+    i_Name             varchar2,
+    i_Quantity         number,
+    i_Amount           number
+  ) is
+    v_Item Hpd_Pref.Cv_Contract_Item_Rt;
+  begin
+    v_Item.Contract_Item_Id := i_Contract_Item_Id;
+    v_Item.Name             := i_Name;
+    v_Item.Quantity         := i_Quantity;
+    v_Item.Amount           := i_Amount;
+  
+    o_Contract.Items.Extend;
+    o_Contract.Items(o_Contract.Items.Count) := v_Item;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Add_File
+  (
+    o_Contract in out nocopy Hpd_Pref.Cv_Contract_Rt,
+    i_File_Sha varchar2,
+    i_Note     varchar2 := null
+  ) is
+    v_File Hpd_Pref.Cv_Contract_File_Rt;
+  begin
+    v_File.File_Sha := i_File_Sha;
+    v_File.Note     := i_Note;
+  
+    o_Contract.Files.Extend;
+    o_Contract.Files(o_Contract.Files.Count) := v_File;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- Application
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Create_Robot_New
+  (
+    o_Application    out Hpd_Pref.Application_Create_Robot_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number,
+    i_Name           varchar2,
+    i_Opened_Date    date,
+    i_Division_Id    number,
+    i_Job_Id         number,
+    i_Quantity       number,
+    i_Note           varchar2
+  ) is
+  begin
+    o_Application.Company_Id     := i_Company_Id;
+    o_Application.Filial_Id      := i_Filial_Id;
+    o_Application.Application_Id := i_Application_Id;
+    o_Application.Name           := i_Name;
+    o_Application.Opened_Date    := i_Opened_Date;
+    o_Application.Division_Id    := i_Division_Id;
+    o_Application.Job_Id         := i_Job_Id;
+    o_Application.Quantity       := i_Quantity;
+    o_Application.Note           := i_Note;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Hiring_New
+  (
+    o_Application    out Hpd_Pref.Application_Hiring_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number,
+    i_Hiring_Date    date,
+    i_Robot_Id       number,
+    i_Note           varchar2,
+    -- person info
+    i_First_Name      varchar2,
+    i_Last_Name       varchar2,
+    i_Middle_Name     varchar2,
+    i_Birthday        date,
+    i_Gender          varchar2,
+    i_Phone           varchar2,
+    i_Email           varchar2,
+    i_Photo_Sha       varchar2,
+    i_Address         varchar2,
+    i_Legal_Address   varchar2,
+    i_Region_Id       number,
+    i_Passport_Series varchar2,
+    i_Passport_Number varchar2,
+    i_Npin            varchar2,
+    i_Iapa            varchar2,
+    i_Employment_Type varchar2
+  ) is
+  begin
+    o_Application.Company_Id      := i_Company_Id;
+    o_Application.Filial_Id       := i_Filial_Id;
+    o_Application.Application_Id  := i_Application_Id;
+    o_Application.Hiring_Date     := i_Hiring_Date;
+    o_Application.Robot_Id        := i_Robot_Id;
+    o_Application.Note            := i_Note;
+    o_Application.First_Name      := i_First_Name;
+    o_Application.Last_Name       := i_Last_Name;
+    o_Application.Middle_Name     := i_Middle_Name;
+    o_Application.Birthday        := i_Birthday;
+    o_Application.Gender          := i_Gender;
+    o_Application.Phone           := i_Phone;
+    o_Application.Email           := i_Email;
+    o_Application.Photo_Sha       := i_Photo_Sha;
+    o_Application.Address         := i_Address;
+    o_Application.Legal_Address   := i_Legal_Address;
+    o_Application.Region_Id       := i_Region_Id;
+    o_Application.Passport_Series := i_Passport_Series;
+    o_Application.Passport_Number := i_Passport_Number;
+    o_Application.Npin            := i_Npin;
+    o_Application.Iapa            := i_Iapa;
+    o_Application.Employment_Type := i_Employment_Type;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Transfer_New
+  (
+    o_Application    out Hpd_Pref.Application_Transfer_Rt,
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number
+  ) is
+  begin
+    o_Application.Company_Id     := i_Company_Id;
+    o_Application.Filial_Id      := i_Filial_Id;
+    o_Application.Application_Id := i_Application_Id;
+  
+    o_Application.Transfer_Units := Hpd_Pref.Application_Transfer_Unit_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Add_Transfer
+  (
+    o_Application         in out nocopy Hpd_Pref.Application_Transfer_Rt,
+    i_Application_Unit_Id number,
+    i_Staff_Id            number,
+    i_Transfer_Begin      date,
+    i_Robot_Id            number,
+    i_Note                varchar2
+  ) is
+    v_Transfer Hpd_Pref.Application_Transfer_Unit_Rt;
+  begin
+    v_Transfer.Application_Unit_Id := i_Application_Unit_Id;
+    v_Transfer.Staff_Id            := i_Staff_Id;
+    v_Transfer.Transfer_Begin      := i_Transfer_Begin;
+    v_Transfer.Robot_Id            := i_Robot_Id;
+    v_Transfer.Note                := i_Note;
+  
+    o_Application.Transfer_Units.Extend();
+    o_Application.Transfer_Units(o_Application.Transfer_Units.Count) := v_Transfer;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Application_Dismissal_New
+  (
+    o_Application         out Hpd_Pref.Application_Dismissal_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Application_Id      number,
+    i_Staff_Id            number,
+    i_Dismissal_Date      date,
+    i_Dismissal_Reason_Id number,
+    i_Note                varchar2
+  ) is
+  begin
+    o_Application.Company_Id          := i_Company_Id;
+    o_Application.Filial_Id           := i_Filial_Id;
+    o_Application.Application_Id      := i_Application_Id;
+    o_Application.Staff_Id            := i_Staff_Id;
+    o_Application.Dismissal_Date      := i_Dismissal_Date;
+    o_Application.Dismissal_Reason_Id := i_Dismissal_Reason_Id;
+    o_Application.Note                := i_Note;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number Result_Cache is
+    result number;
+  begin
+    select q.Journal_Type_Id
+      into result
+      from Hpd_Journal_Types q
+     where q.Company_Id = i_Company_Id
+       and q.Pcode = i_Pcode;
+  
+    return result;
+  exception
+    when No_Data_Found then
+      Hpd_Error.Raise_043;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Hiring_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id, Hpd_Pref.c_Pcode_Journal_Type_Hiring),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Hiring_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Contractor_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Hiring_Contractor));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Transfer_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Transfer),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Transfer_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Dismissal_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Dismissal),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Dismissal_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Wage_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Wage_Change),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Wage_Change_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Rank_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Rank_Change),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Rank_Change_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Limit_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Limit_Change);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Schedule_Change_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Schedule_Change);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Sick_Leave_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Sick_Leave);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Business_Trip_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id in(Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Business_Trip),
+                                Journal_Type_Id(i_Company_Id,
+                                                Hpd_Pref.c_Pcode_Journal_Type_Business_Trip_Multiple));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Vacation_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Vacation);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Timebook_Adjustment_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Timebook_Adjustment);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Overtime_Journal
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return boolean is
+  begin
+    return i_Journal_Type_Id = Journal_Type_Id(i_Company_Id,
+                                               Hpd_Pref.c_Pcode_Journal_Type_Overtime);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Transfer_Kind(i_Transfer_End date := null) return varchar2 is
+  begin
+    if i_Transfer_End is null then
+      return Hpd_Pref.c_Transfer_Kind_Permanently;
+    end if;
+  
+    return Hpd_Pref.c_Transfer_Kind_Temporarily;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Cast_Staff_Kind_By_Emp_Type(i_Employment_Type varchar2) return varchar2 is
+  begin
+    if i_Employment_Type = Hpd_Pref.c_Employment_Type_Internal_Parttime then
+      return Href_Pref.c_Staff_Kind_Secondary;
+    end if;
+  
+    return Href_Pref.c_Staff_Kind_Primary;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Changing_Transaction
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date
+  ) return Hpd_Transactions%rowtype is
+    result Hpd_Transactions%rowtype;
+  begin
+    select q.*
+      into result
+      from Hpd_Transactions q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Staff_Id = i_Staff_Id
+       and q.Trans_Type = i_Trans_Type
+       and q.Event in
+           (Hpd_Pref.c_Transaction_Event_To_Be_Integrated, Hpd_Pref.c_Transaction_Event_In_Progress)
+       and q.Begin_Date <= i_Period
+       and Nvl(q.End_Date, Href_Pref.c_Max_Date) >= i_Period
+     order by q.Begin_Date desc, q.Order_No desc
+     fetch first row only;
+  
+    return result;
+  exception
+    when No_Data_Found then
+      return null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Closest_Trans_Info
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date,
+    o_Trans_Id   out number,
+    o_Action     out varchar2
+  ) is
+  begin
+    select q.Trans_Id, q.Action
+      into o_Trans_Id, o_Action
+      from Hpd_Agreements q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Staff_Id = i_Staff_Id
+       and q.Trans_Type = i_Trans_Type
+       and q.Period = (select max(w.Period)
+                         from Hpd_Agreements w
+                        where w.Company_Id = i_Company_Id
+                          and w.Filial_Id = i_Filial_Id
+                          and w.Staff_Id = i_Staff_Id
+                          and w.Trans_Type = i_Trans_Type
+                          and w.Period <= i_Period);
+  exception
+    when No_Data_Found then
+      o_Trans_Id := null;
+      o_Action   := null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Closest_Trans_Info
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Trans_Type       varchar2,
+    i_Period           date,
+    i_Except_Jounal_Id number := null,
+    o_Trans_Id         out number,
+    o_Action           out varchar2,
+    o_Period           out date
+  ) is
+  begin
+    if i_Except_Jounal_Id is null then
+      select q.Trans_Id, q.Action, q.Period
+        into o_Trans_Id, o_Action, o_Period
+        from Hpd_Agreements q
+       where q.Company_Id = i_Company_Id
+         and q.Filial_Id = i_Filial_Id
+         and q.Staff_Id = i_Staff_Id
+         and q.Trans_Type = i_Trans_Type
+         and q.Period = (select max(w.Period)
+                           from Hpd_Agreements w
+                          where w.Company_Id = i_Company_Id
+                            and w.Filial_Id = i_Filial_Id
+                            and w.Staff_Id = i_Staff_Id
+                            and w.Trans_Type = i_Trans_Type
+                            and w.Period <= i_Period);
+    else
+      select q.Trans_Id, q.Action, q.Period
+        into o_Trans_Id, o_Action, o_Period
+        from Hpd_Agreements q
+       where q.Company_Id = i_Company_Id
+         and q.Filial_Id = i_Filial_Id
+         and q.Staff_Id = i_Staff_Id
+         and q.Trans_Type = i_Trans_Type
+         and q.Period = (select max(w.Period)
+                           from Hpd_Agreements w
+                          where w.Company_Id = i_Company_Id
+                            and w.Filial_Id = i_Filial_Id
+                            and w.Staff_Id = i_Staff_Id
+                            and w.Trans_Type = i_Trans_Type
+                            and w.Period <= i_Period
+                            and exists (select *
+                                   from Hpd_Transactions Tr
+                                  where Tr.Company_Id = i_Company_Id
+                                    and Tr.Filial_Id = i_Filial_Id
+                                    and Tr.Trans_Id = w.Trans_Id
+                                    and Tr.Journal_Id <> i_Except_Jounal_Id))
+         and exists (select *
+                from Hpd_Transactions Tr
+               where Tr.Company_Id = i_Company_Id
+                 and Tr.Filial_Id = i_Filial_Id
+                 and Tr.Trans_Id = q.Trans_Id
+                 and Tr.Journal_Id <> i_Except_Jounal_Id);
+    end if;
+  exception
+    when No_Data_Found then
+      o_Trans_Id := null;
+      o_Action   := null;
+      o_Period   := null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Trans_Id_By_Period
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Trans_Type varchar2,
+    i_Period     date
+  ) return number is
+    v_Trans_Id number;
+    v_Action   varchar2(1);
+  begin
+    Closest_Trans_Info(i_Company_Id => i_Company_Id,
+                       i_Filial_Id  => i_Filial_Id,
+                       i_Staff_Id   => i_Staff_Id,
+                       i_Trans_Type => i_Trans_Type,
+                       i_Period     => i_Period,
+                       o_Trans_Id   => v_Trans_Id,
+                       o_Action     => v_Action);
+  
+    if v_Action = Hpd_Pref.c_Transaction_Action_Continue then
+      return v_Trans_Id;
+    end if;
+  
+    return null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Schedule
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Schedules%rowtype is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Schedule,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Schedules.Load(i_Company_Id => i_Company_Id,
+                                      i_Filial_Id  => i_Filial_Id,
+                                      i_Trans_Id   => v_Trans_Id);
+  
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Currency
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Currencies%rowtype is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Currency,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Currencies.Load(i_Company_Id => i_Company_Id,
+                                       i_Filial_Id  => i_Filial_Id,
+                                       i_Trans_Id   => v_Trans_Id);
+  
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Rank
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Ranks%rowtype is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Rank,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Ranks.Load(i_Company_Id => i_Company_Id,
+                                  i_Filial_Id  => i_Filial_Id,
+                                  i_Trans_Id   => v_Trans_Id);
+  
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Vacation_Limit
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Vacation_Limits%rowtype is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Vacation_Limit,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Vacation_Limits.Load(i_Company_Id => i_Company_Id,
+                                            i_Filial_Id  => i_Filial_Id,
+                                            i_Trans_Id   => v_Trans_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contract
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Page_Contracts%rowtype is
+    v_Trans_Id number;
+    v_Page_Id  number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Robot,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    v_Page_Id := z_Hpd_Transactions.Load(i_Company_Id => i_Company_Id, --
+                 i_Filial_Id => i_Filial_Id, --
+                 i_Trans_Id => v_Trans_Id).Page_Id;
+  
+    return z_Hpd_Page_Contracts.Take(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Page_Id    => v_Page_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Closest_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hpd_Trans_Robots%rowtype is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Robot,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Robots.Load(i_Company_Id => i_Company_Id,
+                                   i_Filial_Id  => i_Filial_Id,
+                                   i_Trans_Id   => v_Trans_Id);
+  
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Mrf_Robots%rowtype is
+    r_Closest_Robot Hpd_Trans_Robots%rowtype;
+  begin
+    r_Closest_Robot := Closest_Robot(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Period     => i_Period);
+  
+    if r_Closest_Robot.Company_Id is null then
+      return null;
+    end if;
+  
+    return z_Mrf_Robots.Load(i_Company_Id => r_Closest_Robot.Company_Id,
+                             i_Filial_Id  => r_Closest_Robot.Filial_Id,
+                             i_Robot_Id   => r_Closest_Robot.Robot_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Hrm_Robot
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return Hrm_Robots%rowtype is
+    r_Closest_Robot Hpd_Trans_Robots%rowtype;
+  begin
+    r_Closest_Robot := Closest_Robot(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Period     => i_Period);
+  
+    if r_Closest_Robot.Company_Id is null then
+      return null;
+    end if;
+  
+    return z_Hrm_Robots.Load(i_Company_Id => r_Closest_Robot.Company_Id,
+                             i_Filial_Id  => r_Closest_Robot.Filial_Id,
+                             i_Robot_Id   => r_Closest_Robot.Robot_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Fte
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+    r_Closest_Robot Hpd_Trans_Robots%rowtype;
+  begin
+    r_Closest_Robot := Closest_Robot(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Period     => i_Period);
+  
+    if r_Closest_Robot.Company_Id is null then
+      return null;
+    end if;
+  
+    return r_Closest_Robot.Fte;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Robot_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Robot(i_Company_Id => i_Company_Id,
+                         i_Filial_Id  => i_Filial_Id,
+                         i_Staff_Id   => i_Staff_Id,
+                         i_Period     => i_Period).Robot_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Org_Unit_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+    r_Robot Hrm_Robots%rowtype;
+  begin
+    r_Robot := Get_Closest_Hrm_Robot(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Period     => i_Period);
+  
+    return r_Robot.Org_Unit_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Division_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+    r_Robot Mrf_Robots%rowtype;
+  begin
+    r_Robot := Get_Closest_Robot(i_Company_Id => i_Company_Id,
+                                 i_Filial_Id  => i_Filial_Id,
+                                 i_Staff_Id   => i_Staff_Id,
+                                 i_Period     => i_Period);
+  
+    return r_Robot.Division_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Job_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+    r_Robot Mrf_Robots%rowtype;
+  begin
+    r_Robot := Get_Closest_Robot(i_Company_Id => i_Company_Id,
+                                 i_Filial_Id  => i_Filial_Id,
+                                 i_Staff_Id   => i_Staff_Id,
+                                 i_Period     => i_Period);
+  
+    return r_Robot.Job_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Rank_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Rank(i_Company_Id => i_Company_Id,
+                        i_Filial_Id  => i_Filial_Id,
+                        i_Staff_Id   => i_Staff_Id,
+                        i_Period     => i_Period).Rank_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Schedule_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Schedule(i_Company_Id => i_Company_Id,
+                            i_Filial_Id  => i_Filial_Id,
+                            i_Staff_Id   => i_Staff_Id,
+                            i_Period     => i_Period).Schedule_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Currency_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Currency(i_Company_Id => i_Company_Id,
+                            i_Filial_Id  => i_Filial_Id,
+                            i_Staff_Id   => i_Staff_Id,
+                            i_Period     => i_Period).Currency_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Vacation_Days_Limit
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Vacation_Limit(i_Company_Id => i_Company_Id,
+                                  i_Filial_Id  => i_Filial_Id,
+                                  i_Staff_Id   => i_Staff_Id,
+                                  i_Period     => i_Period).Days_Limit;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contractual_Wage
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return varchar2 is
+  begin
+    return Closest_Robot(i_Company_Id => i_Company_Id,
+                         i_Filial_Id  => i_Filial_Id,
+                         i_Staff_Id   => i_Staff_Id,
+                         i_Period     => i_Period).Contractual_Wage;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Wage_Scale_Id
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    return Closest_Robot(i_Company_Id => i_Company_Id,
+                         i_Filial_Id  => i_Filial_Id,
+                         i_Staff_Id   => i_Staff_Id,
+                         i_Period     => i_Period).Wage_Scale_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number is
+    v_Trans_Id number;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Operation,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return z_Hpd_Trans_Indicators.Take(i_Company_Id   => i_Company_Id,
+                                       i_Filial_Id    => i_Filial_Id,
+                                       i_Trans_Id     => v_Trans_Id,
+                                       i_Indicator_Id => i_Indicator_Id).Indicator_Value;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Oper_Type_Id
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Id      number,
+    i_Oper_Group_Id number,
+    i_Period        date
+  ) return number is
+    v_Trans_Id number;
+  
+    --------------------------------------------------
+    Function Take_Oper_Type_Id
+    (
+      i_Company_Id    number,
+      i_Filial_Id     number,
+      i_Trans_Id      number,
+      i_Oper_Group_Id number
+    ) return number is
+      result number;
+    begin
+      begin
+        select t.Oper_Type_Id
+          into result
+          from Hpd_Trans_Oper_Types t
+         where t.Company_Id = i_Company_Id
+           and t.Filial_Id = i_Filial_Id
+           and t.Trans_Id = i_Trans_Id
+           and exists (select *
+                  from Hpr_Oper_Types s
+                 where s.Company_Id = t.Company_Id
+                   and s.Oper_Type_Id = t.Oper_Type_Id
+                   and s.Oper_Group_Id = i_Oper_Group_Id);
+      
+        return result;
+      exception
+        when No_Data_Found then
+          return null;
+        when Too_Many_Rows then
+          Hpd_Error.Raise_044(i_Staff_Name      => Href_Util.Staff_Name(i_Company_Id => i_Company_Id,
+                                                                        i_Filial_Id  => i_Filial_Id,
+                                                                        i_Staff_Id   => i_Staff_Id),
+                              i_Oper_Group_Name => z_Hpr_Oper_Groups.Load(i_Company_Id => i_Company_Id, --
+                                                   i_Oper_Group_Id => i_Oper_Group_Id).Name);
+      end;
+    end;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Operation,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return null;
+    end if;
+  
+    return Take_Oper_Type_Id(i_Company_Id    => i_Company_Id,
+                             i_Filial_Id     => i_Filial_Id,
+                             i_Trans_Id      => v_Trans_Id,
+                             i_Oper_Group_Id => i_Oper_Group_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Oper_Type_Ids
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Id      number,
+    i_Oper_Group_Id number,
+    i_Period        date
+  ) return Array_Number is
+    v_Trans_Id number;
+  
+    --------------------------------------------------
+    Function Load_Oper_Type_Ids
+    (
+      i_Company_Id    number,
+      i_Filial_Id     number,
+      i_Trans_Id      number,
+      i_Oper_Group_Id number
+    ) return Array_Number is
+      result Array_Number;
+    begin
+      begin
+        select t.Oper_Type_Id
+          bulk collect
+          into result
+          from Hpd_Trans_Oper_Types t
+         where t.Company_Id = i_Company_Id
+           and t.Filial_Id = i_Filial_Id
+           and t.Trans_Id = i_Trans_Id
+           and exists (select *
+                  from Hpr_Oper_Types s
+                 where s.Company_Id = t.Company_Id
+                   and s.Oper_Type_Id = t.Oper_Type_Id
+                   and s.Oper_Group_Id = i_Oper_Group_Id);
+      
+        return result;
+      end;
+    end;
+  begin
+    v_Trans_Id := Trans_Id_By_Period(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Staff_Id   => i_Staff_Id,
+                                     i_Trans_Type => Hpd_Pref.c_Transaction_Type_Operation,
+                                     i_Period     => i_Period);
+  
+    if v_Trans_Id is null then
+      return Array_Number();
+    end if;
+  
+    return Load_Oper_Type_Ids(i_Company_Id    => i_Company_Id,
+                              i_Filial_Id     => i_Filial_Id,
+                              i_Trans_Id      => v_Trans_Id,
+                              i_Oper_Group_Id => i_Oper_Group_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Wage
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+  begin
+    if Get_Closest_Contractual_Wage(i_Company_Id => i_Company_Id,
+                                    i_Filial_Id  => i_Filial_Id,
+                                    i_Staff_Id   => i_Staff_Id,
+                                    i_Period     => i_Period) = 'N' then
+      return Hrm_Util.Closest_Wage(i_Company_Id    => i_Company_Id,
+                                   i_Filial_Id     => i_Filial_Id,
+                                   i_Wage_Scale_Id => Get_Closest_Wage_Scale_Id(i_Company_Id => i_Company_Id,
+                                                                                i_Filial_Id  => i_Filial_Id,
+                                                                                i_Staff_Id   => i_Staff_Id,
+                                                                                i_Period     => i_Period),
+                                   i_Period        => i_Period,
+                                   i_Rank_Id       => Get_Closest_Rank_Id(i_Company_Id => i_Company_Id,
+                                                                          i_Filial_Id  => i_Filial_Id,
+                                                                          i_Staff_Id   => i_Staff_Id,
+                                                                          i_Period     => i_Period));
+    else
+      return Get_Closest_Indicator_Value(i_Company_Id   => i_Company_Id,
+                                         i_Filial_Id    => i_Filial_Id,
+                                         i_Staff_Id     => i_Staff_Id,
+                                         i_Indicator_Id => Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                                                  i_Pcode      => Href_Pref.c_Pcode_Indicator_Wage),
+                                         i_Period       => i_Period);
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Contractual_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number is
+    r_Trans_Robots Hpd_Trans_Robots%rowtype;
+    v_Rank_Id      number;
+    result         number;
+  begin
+    r_Trans_Robots := Closest_Robot(i_Company_Id => i_Company_Id,
+                                    i_Filial_Id  => i_Filial_Id,
+                                    i_Staff_Id   => i_Staff_Id,
+                                    i_Period     => i_Period);
+  
+    if r_Trans_Robots.Contractual_Wage = 'N' then
+      v_Rank_Id := Get_Closest_Rank_Id(i_Company_Id => i_Company_Id,
+                                       i_Filial_Id  => i_Filial_Id,
+                                       i_Staff_Id   => i_Staff_Id,
+                                       i_Period     => i_Period);
+    
+      result := Hrm_Util.Closest_Wage_Scale_Indicator_Value(i_Company_Id    => i_Company_Id,
+                                                            i_Filial_Id     => i_Filial_Id,
+                                                            i_Wage_Scale_Id => r_Trans_Robots.Wage_Scale_Id,
+                                                            i_Indicator_Id  => i_Indicator_Id,
+                                                            i_Period        => i_Period,
+                                                            i_Rank_Id       => v_Rank_Id);
+    end if;
+  
+    if result is null then
+      result := Get_Closest_Indicator_Value(i_Company_Id   => i_Company_Id,
+                                            i_Filial_Id    => i_Filial_Id,
+                                            i_Staff_Id     => i_Staff_Id,
+                                            i_Indicator_Id => i_Indicator_Id,
+                                            i_Period       => i_Period);
+    end if;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Current_Limit_Days
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Period     date
+  ) return number is
+    result number;
+  begin
+    select q.Free_Days
+      into result
+      from Hpd_Vacation_Turnover q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Staff_Id = i_Staff_Id
+       and q.Period = (select max(q.Period)
+                         from Hpd_Vacation_Turnover q
+                        where q.Company_Id = i_Company_Id
+                          and q.Filial_Id = i_Filial_Id
+                          and q.Staff_Id = i_Staff_Id
+                          and q.Period < i_Period
+                          and q.Period >= Trunc(i_Period, 'yyyy'));
+  
+    return result;
+  
+  exception
+    when No_Data_Found then
+      return Get_Closest_Vacation_Days_Limit(i_Company_Id => i_Company_Id,
+                                             i_Filial_Id  => i_Filial_Id,
+                                             i_Staff_Id   => i_Staff_Id,
+                                             i_Period     => i_Period);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Opened_Transaction_Dates
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Staff_Id        number,
+    i_Begin_Date      date,
+    i_End_Date        date,
+    i_Trans_Type      varchar2,
+    i_With_Wage_Scale boolean := false
+  ) return Array_Date is
+    v_Trans_Id        number;
+    v_Action          varchar2(1);
+    v_Prev_Trans_Code varchar2(4000);
+    v_Trans_Code      varchar2(4000);
+    r_Robot           Hpd_Trans_Robots%rowtype;
+    result            Array_Date := Array_Date();
+  begin
+    Closest_Trans_Info(i_Company_Id => i_Company_Id,
+                       i_Filial_Id  => i_Filial_Id,
+                       i_Staff_Id   => i_Staff_Id,
+                       i_Trans_Type => i_Trans_Type,
+                       i_Period     => i_Begin_Date,
+                       o_Trans_Id   => v_Trans_Id,
+                       o_Action     => v_Action);
+  
+    v_Prev_Trans_Code := Get_Trans_Code(i_Company_Id => i_Company_Id,
+                                        i_Filial_Id  => i_Filial_Id,
+                                        i_Trans_Id   => null,
+                                        i_Trans_Type => i_Trans_Type);
+  
+    for r in (select Qr.Period Period_Begin,
+                     Lead(Qr.Period) Over(order by Qr.Period) - 1 Period_End,
+                     Qr.Trans_Id,
+                     Qr.Action
+                from (select p.Period, p.Trans_Id, p.Action
+                        from Hpd_Agreements p
+                       where p.Company_Id = i_Company_Id
+                         and p.Filial_Id = i_Filial_Id
+                         and p.Staff_Id = i_Staff_Id
+                         and p.Trans_Type = i_Trans_Type
+                         and p.Period between i_Begin_Date and i_End_Date
+                      union
+                      select i_Begin_Date, v_Trans_Id, v_Action
+                        from Dual) Qr)
+    loop
+      exit when r.Action = Hpd_Pref.c_Transaction_Action_Stop;
+    
+      if i_With_Wage_Scale and i_Trans_Type = Hpd_Pref.c_Transaction_Type_Robot then
+        r_Robot := Closest_Robot(i_Company_Id => i_Company_Id,
+                                 i_Filial_Id  => i_Filial_Id,
+                                 i_Staff_Id   => i_Staff_Id,
+                                 i_Period     => r.Period_Begin);
+      
+        result := result multiset union distinct
+                  Hrm_Util.Register_Change_Dates(i_Company_Id    => i_Company_Id,
+                                                 i_Filial_Id     => i_Filial_Id,
+                                                 i_Wage_Scale_Id => r_Robot.Wage_Scale_Id,
+                                                 i_Begin_Date    => r.Period_Begin,
+                                                 i_End_Date      => Nvl(r.Period_End, i_End_Date));
+      end if;
+    
+      v_Trans_Code := Get_Trans_Code(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Trans_Id   => r.Trans_Id,
+                                     i_Trans_Type => i_Trans_Type);
+    
+      if v_Prev_Trans_Code <> v_Trans_Code then
+        Fazo.Push(result, r.Period_Begin);
+      
+        v_Prev_Trans_Code := v_Trans_Code;
+      end if;
+    end loop;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Opened_Transaction_Dates
+  (
+    i_Company_Id        number,
+    i_Filial_Id         number,
+    i_Staff_Id          number,
+    i_Begin_Date        date,
+    i_End_Date          date,
+    i_Trans_Types       Array_Varchar2,
+    i_With_Wage_Scale   boolean := false,
+    i_Partition_By_Year boolean := false
+  ) return Hpd_Pref.Transaction_Part_Nt is
+    v_Partition_Fmt  varchar2(4) := 'Mon';
+    v_Dismissal_Date date;
+    v_Opened_Dates   Array_Date;
+    v_Part           Hpd_Pref.Transaction_Part_Rt;
+    result           Hpd_Pref.Transaction_Part_Nt := Hpd_Pref.Transaction_Part_Nt();
+    v_Index          number;
+    v_Count          number;
+  
+    --------------------------------------------------
+    Function Get_Last_Day(i_Date date) return date is
+    begin
+      if i_Partition_By_Year then
+        return Htt_Util.Year_Last_Day(i_Date);
+      end if;
+      return Last_Day(i_Date);
+    end;
+  begin
+    if i_Partition_By_Year then
+      v_Partition_Fmt := 'yyyy';
+    end if;
+  
+    v_Dismissal_Date := z_Href_Staffs.Load(i_Company_Id => i_Company_Id, --
+                        i_Filial_Id => i_Filial_Id, --
+                        i_Staff_Id => i_Staff_Id).Dismissal_Date;
+  
+    v_Opened_Dates := Array_Date(Least(i_End_Date, Nvl(v_Dismissal_Date, i_End_Date)) + 1);
+  
+    for i in 1 .. i_Trans_Types.Count
+    loop
+      v_Opened_Dates := v_Opened_Dates multiset union distinct
+                        Get_Opened_Transaction_Dates(i_Company_Id      => i_Company_Id,
+                                                     i_Filial_Id       => i_Filial_Id,
+                                                     i_Staff_Id        => i_Staff_Id,
+                                                     i_Begin_Date      => i_Begin_Date,
+                                                     i_End_Date        => i_End_Date,
+                                                     i_Trans_Type      => i_Trans_Types(i),
+                                                     i_With_Wage_Scale => i_With_Wage_Scale);
+    end loop;
+  
+    Fazo.Sort(v_Opened_Dates);
+  
+    v_Part.Part_Begin := v_Opened_Dates(1);
+    v_Index           := 2;
+    v_Count           := v_Opened_Dates.Count;
+  
+    while v_Index <= v_Count
+    loop
+      v_Part.Part_End := v_Opened_Dates(v_Index) - 1;
+    
+      if Trunc(v_Part.Part_Begin, v_Partition_Fmt) = Trunc(v_Part.Part_End, v_Partition_Fmt) then
+        v_Index := v_Index + 1;
+      else
+        v_Part.Part_End := Get_Last_Day(v_Part.Part_Begin);
+      end if;
+    
+      Result.Extend;
+      result(Result.Count) := v_Part;
+    
+      v_Part.Part_Begin := v_Part.Part_End + 1;
+    end loop;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Trans_Code
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Trans_Id   number,
+    i_Trans_Type varchar2
+  ) return varchar2 is
+    r_Robot      Hpd_Trans_Robots%rowtype;
+    v_Indicators Array_Varchar2;
+    result       Gmap := Gmap;
+  begin
+    case i_Trans_Type
+      when Hpd_Pref.c_Transaction_Type_Robot then
+        r_Robot := z_Hpd_Trans_Robots.Take(i_Company_Id => i_Company_Id,
+                                           i_Filial_Id  => i_Filial_Id,
+                                           i_Trans_Id   => i_Trans_Id);
+      
+        Result.Put(z.Robot_Id, r_Robot.Robot_Id);
+        Result.Put(z.Division_Id, r_Robot.Division_Id);
+        Result.Put(z.Job_Id, r_Robot.Job_Id);
+        Result.Put(z.Fte_Id, r_Robot.Fte_Id);
+        Result.Put(z.Fte, r_Robot.Fte);
+        Result.Put(z.Wage_Scale_Id, r_Robot.Wage_Scale_Id);
+      when Hpd_Pref.c_Transaction_Type_Schedule then
+        Result.Put(z.Schedule_Id,
+                   z_Hpd_Trans_Schedules.Take(i_Company_Id => i_Company_Id, --
+                   i_Filial_Id => i_Filial_Id, --
+                   i_Trans_Id => i_Trans_Id).Schedule_Id);
+      when Hpd_Pref.c_Transaction_Type_Currency then
+        Result.Put(z.Currency_Id,
+                   z_Hpd_Trans_Currencies.Take(i_Company_Id => i_Company_Id, --
+                   i_Filial_Id => i_Filial_Id, --
+                   i_Trans_Id => i_Trans_Id).Currency_Id);
+      when Hpd_Pref.c_Transaction_Type_Rank then
+        Result.Put(z.Rank_Id,
+                   z_Hpd_Trans_Ranks.Take(i_Company_Id => i_Company_Id, --
+                   i_Filial_Id => i_Filial_Id, --
+                   i_Trans_Id => i_Trans_Id).Rank_Id);
+      when Hpd_Pref.c_Transaction_Type_Vacation_Limit then
+        Result.Put(z.Days_Limit,
+                   z_Hpd_Trans_Vacation_Limits.Take(i_Company_Id => i_Company_Id, --
+                   i_Filial_Id => i_Filial_Id, --
+                   i_Trans_Id => i_Trans_Id).Days_Limit);
+      when Hpd_Pref.c_Transaction_Type_Operation then
+        select Json_Object('o' value Ti.Oper_Type_Id,
+                           'i' value Tv.Indicator_Id,
+                           'e' value Tv.Indicator_Value null on null)
+          bulk collect
+          into v_Indicators
+          from Hpd_Trans_Oper_Type_Indicators Ti
+          join Hpd_Trans_Indicators Tv
+            on Tv.Company_Id = Ti.Company_Id
+           and Tv.Filial_Id = Ti.Filial_Id
+           and Tv.Trans_Id = Ti.Trans_Id
+           and Tv.Indicator_Id = Ti.Indicator_Id
+         where Ti.Company_Id = i_Company_Id
+           and Ti.Filial_Id = i_Filial_Id
+           and Ti.Trans_Id = i_Trans_Id
+         order by Ti.Oper_Type_Id, Tv.Indicator_Id, Tv.Indicator_Value;
+      
+        Result.Put(Zt.Hpd_Trans_Oper_Types.Name, v_Indicators);
+      else
+        null;
+    end case;
+  
+    return Result.Json();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Page(i_Page_Id number) return varchar2 is
+    r_Page Hpd_Journal_Pages%rowtype;
+    result varchar2(4000);
+  begin
+    result := b.Translate(Ui_Kernel.Gen_Table_Message(Lower(Zt.Hpd_Journal_Pages.Name)));
+  
+    if i_Page_Id is null then
+      return result;
+    end if;
+  
+    r_Page := z_Hpd_Journal_Pages.Take(i_Company_Id => Md_Env.Company_Id,
+                                       i_Filial_Id  => Md_Env.Filial_Id,
+                                       i_Page_Id    => i_Page_Id);
+  
+    return result || ': ' || t('# $1{staff_name}',
+                               Href_Util.Staff_Name(i_Company_Id => r_Page.Company_Id,
+                                                    i_Filial_Id  => r_Page.Filial_Id,
+                                                    i_Staff_Id   => r_Page.Staff_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Overtime(i_Overtime_Id number) return varchar2 is
+    r_Overtime Hpd_Journal_Overtimes%rowtype;
+    result     varchar2(4000);
+  begin
+    result := b.Translate(Ui_Kernel.Gen_Table_Message(Lower(Zt.Hpd_Journal_Overtimes.Name)));
+  
+    if i_Overtime_Id is null then
+      return result;
+    end if;
+  
+    r_Overtime := z_Hpd_Journal_Overtimes.Take(i_Company_Id  => Md_Env.Company_Id,
+                                               i_Filial_Id   => Md_Env.Filial_Id,
+                                               i_Overtime_Id => i_Overtime_Id);
+  
+    return result || ': ' || t('# $1{staff_name}',
+                               Href_Util.Staff_Name(i_Company_Id => r_Overtime.Company_Id,
+                                                    i_Filial_Id  => r_Overtime.Filial_Id,
+                                                    i_Staff_Id   => r_Overtime.Staff_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Tname_Timeoffs(i_Timeoff_Id number) return varchar2 is
+    r_Timeoffs Hpd_Journal_Timeoffs%rowtype;
+    result     varchar2(4000);
+  begin
+    result := b.Translate(Ui_Kernel.Gen_Table_Message(Lower(Zt.Hpd_Journal_Timeoffs.Name)));
+  
+    if i_Timeoff_Id is null then
+      return result;
+    end if;
+  
+    r_Timeoffs := z_Hpd_Journal_Timeoffs.Take(i_Company_Id => Md_Env.Company_Id,
+                                              i_Filial_Id  => Md_Env.Filial_Id,
+                                              i_Timeoff_Id => i_Timeoff_Id);
+  
+    return result || ': ' || t('# $1{staff_name}',
+                               Href_Util.Staff_Name(i_Company_Id => r_Timeoffs.Company_Id,
+                                                    i_Filial_Id  => r_Timeoffs.Filial_Id,
+                                                    i_Staff_Id   => r_Timeoffs.Staff_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Journal(i_Journal_Id number) return varchar2 is
+    v_Journal_Type_Id number;
+    v_Pcode           varchar2(20);
+    v_Uri             varchar2(100);
+  begin
+    v_Journal_Type_Id := z_Hpd_Journals.Take(i_Company_Id => Ui.Company_Id, i_Filial_Id => Ui.Filial_Id, i_Journal_Id => i_Journal_Id).Journal_Type_Id;
+    v_Pcode           := z_Hpd_Journal_Types.Take(i_Company_Id => Ui.Company_Id, i_Journal_Type_Id => v_Journal_Type_Id).Pcode;
+  
+    if v_Pcode in
+       (Hpd_Pref.c_Pcode_Journal_Type_Hiring, Hpd_Pref.c_Pcode_Journal_Type_Hiring_Multiple) then
+      v_Uri := '/vhr/hpd/audit/hiring_audit';
+    elsif v_Pcode in
+          (Hpd_Pref.c_Pcode_Journal_Type_Transfer, Hpd_Pref.c_Pcode_Journal_Type_Transfer_Multiple) then
+      v_Uri := '/vhr/hpd/audit/transfer_audit';
+    elsif v_Pcode in (Hpd_Pref.c_Pcode_Journal_Type_Dismissal,
+                      Hpd_Pref.c_Pcode_Journal_Type_Dismissal_Multiple) then
+      v_Uri := '/vhr/hpd/audit/dismissal_audit';
+    elsif v_Pcode = Hpd_Pref.c_Pcode_Journal_Type_Wage_Change then
+      v_Uri := '/vhr/hpd/audit/wage_change_audit';
+    elsif v_Pcode = Hpd_Pref.c_Pcode_Journal_Type_Schedule_Change then
+      v_Uri := '/vhr/hpd/audit/schedule_change_audit';
+    elsif v_Pcode = Hpd_Pref.c_Pcode_Journal_Type_Sick_Leave then
+      v_Uri := '/vhr/hpd/audit/sick_leave_audit';
+    elsif v_Pcode = Hpd_Pref.c_Pcode_Journal_Type_Business_Trip then
+      v_Uri := '/vhr/hpd/audit/businnes_trip_audit';
+    elsif v_Pcode = Hpd_Pref.c_Pcode_Journal_Type_Overtime then
+      v_Uri := '/vhr/hpd/audit/overtime_audit';
+    end if;
+  
+    return v_Uri || '?journal_id=' || i_Journal_Id;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Page(i_Page_Id number) return varchar2 is
+    v_Journal_Id number;
+  begin
+    v_Journal_Id := z_Hpd_Journal_Pages.Take(i_Company_Id => Ui.Company_Id, i_Filial_Id => Ui.Filial_Id, i_Page_Id => i_Page_Id).Journal_Id;
+  
+    return Table_Uri_Journal(v_Journal_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Overtime(i_Overtime_Id number) return varchar2 is
+    v_Journal_Id number;
+  begin
+    v_Journal_Id := z_Hpd_Journal_Overtimes.Take(i_Company_Id => Ui.Company_Id, i_Filial_Id => Ui.Filial_Id, i_Overtime_Id => i_Overtime_Id).Journal_Id;
+  
+    return Table_Uri_Journal(v_Journal_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Table_Uri_Timeoff(i_Timeoff_Id number) return varchar2 is
+    v_Journal_Id number;
+  begin
+    v_Journal_Id := z_Hpd_Journal_Timeoffs.Take(i_Company_Id => Ui.Company_Id, i_Filial_Id => Ui.Filial_Id, i_Timeoff_Id => i_Timeoff_Id).Journal_Id;
+  
+    return Table_Uri_Journal(v_Journal_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Assert_Singular_Journal
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Journal_Id       number,
+    i_Page_Id          number,
+    i_Journal_Type_Id  number,
+    i_Singular_Type_Id number,
+    i_Pages_Cnt        number
+  ) is
+    --------------------------------------------------
+    Function Has_Other_Pages return boolean is
+      v_Dummy varchar2(1);
+    begin
+      select 'x'
+        into v_Dummy
+        from Hpd_Journal_Pages Jp
+       where Jp.Company_Id = i_Company_Id
+         and Jp.Filial_Id = i_Filial_Id
+         and Jp.Journal_Id = i_Journal_Id
+         and Jp.Page_Id <> i_Page_Id
+         and Rownum = 1;
+    
+      return true;
+    exception
+      when No_Data_Found then
+        return false;
+    end;
+  begin
+    if i_Journal_Type_Id <> i_Singular_Type_Id then
+      return;
+    end if;
+  
+    if i_Pages_Cnt <> 1 then
+      Hpd_Error.Raise_045;
+    end if;
+  
+    if Has_Other_Pages then
+      Hpd_Error.Raise_047;
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Staff_Timebook_Adjustment_Calced
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Staff_Id        number,
+    i_Adjustment_Date date,
+    i_Kind            varchar2,
+    i_Journal_Id      number := null
+  ) return varchar2 is
+    v_Dummy varchar2(1);
+  begin
+    select 'X'
+      into v_Dummy
+      from Hpd_Lock_Adjustments q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Staff_Id = i_Staff_Id
+       and q.Adjustment_Date = i_Adjustment_Date
+       and q.Kind = i_Kind
+       and (i_Journal_Id is null or q.Journal_Id <> i_Journal_Id);
+  
+    return 'Y';
+  exception
+    when No_Data_Found then
+      return 'N';
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function User_Name
+  (
+    i_Company_Id number,
+    i_User_Id    number
+  ) return varchar2 is
+  begin
+    return z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_Type_Name
+  (
+    i_Company_Id      number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return z_Hpd_Journal_Types.Load(i_Company_Id      => i_Company_Id,
+                                    i_Journal_Type_Id => i_Journal_Type_Id).Name;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Type_Name
+  (
+    i_Company_Id          number,
+    i_Application_Type_Id number
+  ) return varchar2 is
+  begin
+    return z_Hpd_Application_Types.Load(i_Company_Id          => i_Company_Id,
+                                        i_Application_Type_Id => i_Application_Type_Id).Name;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number Result_Cache is
+    result number;
+  begin
+    select q.Application_Type_Id
+      into result
+      from Hpd_Application_Types q
+     where q.Company_Id = i_Company_Id
+       and q.Pcode = i_Pcode;
+  
+    return result;
+  exception
+    when No_Data_Found then
+      Hpd_Error.Raise_057;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Has_Result
+  (
+    i_Company_Id     number,
+    i_Filial_Id      number,
+    i_Application_Id number
+  ) return varchar2 is
+    v_Application_Type_Id number;
+    v_Pcode               varchar2(50);
+    v_Dummy               number;
+  begin
+    v_Application_Type_Id := z_Hpd_Applications.Load(i_Company_Id => i_Company_Id, i_Filial_Id => i_Filial_Id, --
+                             i_Application_Id => i_Application_Id).Application_Type_Id;
+  
+    v_Pcode := z_Hpd_Application_Types.Load(i_Company_Id => i_Company_Id, i_Application_Type_Id => v_Application_Type_Id).Pcode;
+  
+    begin
+      if v_Pcode = Hpd_Pref.c_Pcode_Application_Type_Create_Robot then
+        --------------------------------------------------
+        select 1
+          into v_Dummy
+          from Hpd_Application_Robots t
+         where t.Company_Id = i_Company_Id
+           and t.Filial_Id = i_Filial_Id
+           and t.Application_Id = i_Application_Id
+           and Rownum = 1;
+      else
+        --------------------------------------------------
+        select 1
+          into v_Dummy
+          from Hpd_Application_Journals t
+         where t.Company_Id = i_Company_Id
+           and t.Filial_Id = i_Filial_Id
+           and t.Application_Id = i_Application_Id
+           and exists (select *
+                  from Hpd_Journals q
+                 where q.Company_Id = t.Company_Id
+                   and q.Filial_Id = t.Filial_Id
+                   and q.Journal_Id = t.Journal_Id
+                   and q.Posted = 'Y');
+      end if;
+    exception
+      when No_Data_Found then
+        return 'N';
+    end;
+  
+    return 'Y';
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- application grant part
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Grant_Part
+  (
+    i_Company_Id          number,
+    i_Application_Type_Id number
+  ) return varchar2 is
+    v_Pcode Hpd_Application_Types.Pcode%type;
+  begin
+    v_Pcode := z_Hpd_Application_Types.Load(i_Company_Id => i_Company_Id, i_Application_Type_Id => i_Application_Type_Id).Pcode;
+  
+    case v_Pcode
+      when Hpd_Pref.c_Pcode_Application_Type_Create_Robot then
+        return Hpd_Pref.c_App_Grant_Part_Create_Robot;
+      when Hpd_Pref.c_Pcode_Application_Type_Hiring then
+        return Hpd_Pref.c_App_Grant_Part_Hiring;
+      when Hpd_Pref.c_Pcode_Application_Type_Transfer then
+        return Hpd_Pref.c_App_Grant_Part_Transfer;
+      when Hpd_Pref.c_Pcode_Application_Type_Transfer_Multiple then
+        return Hpd_Pref.c_App_Grant_Part_Transfer;
+      when Hpd_Pref.c_Pcode_Application_Type_Dismissal then
+        return Hpd_Pref.c_App_Grant_Part_Dismissal;
+    end case;
+  end;
+
+  ----------------------------------------------------------------------------------------------------           
+  Function Sign_Process_Id_By_Pcode
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number is
+    v_Process_Id number;
+  begin
+    select q.Process_Id
+      into v_Process_Id
+      from Mdf_Sign_Processes q
+     where q.Company_Id = i_Company_Id
+       and q.Pcode = i_Pcode;
+  
+    return v_Process_Id;
+  exception
+    when No_Data_Found then
+      return null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------         
+  Function Journal_Type_Sign_Template_Id
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Type_Id number
+  ) return number is
+    v_Template_Id number;
+  begin
+    select q.Template_Id
+      into v_Template_Id
+      from Hpd_Sign_Templates q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Journal_Type_Id = i_Journal_Type_Id;
+  
+    return v_Template_Id;
+  exception
+    when No_Data_Found then
+      return null;
+  end;
+
+  ----------------------------------------------------------------------------------------------------         
+  Function Has_Journal_Type_Sign_Template
+  (
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Journal_Type_Id number
+  ) return boolean is
+    v_Template_Id number;
+  begin
+    v_Template_Id := Journal_Type_Sign_Template_Id(i_Company_Id      => i_Company_Id,
+                                                   i_Filial_Id       => i_Filial_Id,
+                                                   i_Journal_Type_Id => i_Journal_Type_Id);
+  
+    if v_Template_Id is not null then
+      return true;
+    else
+      return false;
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------         
+  Function Load_Sign_Document_Status
+  (
+    i_Company_Id  number,
+    i_Document_Id number
+  ) return varchar2 is
+  begin
+    return z_Mdf_Sign_Documents.Take(i_Company_Id => i_Company_Id, i_Document_Id => i_Document_Id).Status;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- employment type
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_Main_Job return varchar2 is
+  begin
+    return t('employment_type:main_job');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_External_Parttime return varchar2 is
+  begin
+    return t('employment_type:external_parttime');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_Internal_Parttime return varchar2 is
+  begin
+    return t('employment_type:internal_parttime');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type_Contractor return varchar2 is
+  begin
+    return t('employment_type:contractor');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Employment_Type(i_Employment_Type varchar2) return varchar2 is
+  begin
+    return --
+    case i_Employment_Type --
+    when Hpd_Pref.c_Employment_Type_Main_Job then t_Employment_Type_Main_Job --
+    when Hpd_Pref.c_Employment_Type_External_Parttime then t_Employment_Type_External_Parttime --
+    when Hpd_Pref.c_Employment_Type_Internal_Parttime then t_Employment_Type_Internal_Parttime --
+    when Hpd_Pref.c_Employment_Type_Contractor then t_Employment_Type_Contractor --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Employment_Types(i_Include_Contractors boolean := false) return Matrix_Varchar2 is
+    v_Types      Array_Varchar2 := Array_Varchar2(Hpd_Pref.c_Employment_Type_Main_Job,
+                                                  Hpd_Pref.c_Employment_Type_External_Parttime,
+                                                  Hpd_Pref.c_Employment_Type_Internal_Parttime);
+    v_Translates Array_Varchar2 := Array_Varchar2(t_Employment_Type_Main_Job,
+                                                  t_Employment_Type_External_Parttime,
+                                                  t_Employment_Type_Internal_Parttime);
+  begin
+    if i_Include_Contractors then
+      Fazo.Push(v_Types, Hpd_Pref.c_Employment_Type_Contractor);
+      Fazo.Push(v_Translates, t_Employment_Type_Contractor);
+    end if;
+  
+    return Matrix_Varchar2(v_Types, v_Translates);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- lock interval kind
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Timebook return varchar2 is
+  begin
+    return t('lock_interval_kind:timebook');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Timeoff return varchar2 is
+  begin
+    return t('lock_interval_kind:timeoff');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Performance return varchar2 is
+  begin
+    return t('lock_interval_kind:performance');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Sales_Bonus_Personal_Sales return varchar2 is
+  begin
+    return t('lock_interval_kind:sales bonus personal sales');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Sales_Bonus_Department_Sales return varchar2 is
+  begin
+    return t('lock_interval_kind:sales bonus department sales');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind_Sales_Bonus_Successful_Delivery return varchar2 is
+  begin
+    return t('lock_interval_kind:sales bonus successful delivery');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Lock_Interval_Kind(i_Lock_Interval_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Lock_Interval_Kind --
+    when Hpd_Pref.c_Lock_Interval_Kind_Timebook then t_Lock_Interval_Kind_Timebook --
+    when Hpd_Pref.c_Lock_Interval_Kind_Timeoff then t_Lock_Interval_Kind_Timeoff --
+    when Hpd_Pref.c_Lock_Interval_Kind_Performance then t_Lock_Interval_Kind_Performance --
+    when Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Personal_Sales then t_Lock_Interval_Kind_Sales_Bonus_Personal_Sales --
+    when Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Department_Sales then t_Lock_Interval_Kind_Sales_Bonus_Department_Sales --
+    when Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Successful_Delivery then t_Lock_Interval_Kind_Sales_Bonus_Successful_Delivery --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Lock_Interval_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Lock_Interval_Kind_Timebook,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Timeoff,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Performance,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Personal_Sales,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Department_Sales,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Sales_Bonus_Successful_Delivery),
+                           Array_Varchar2(t_Lock_Interval_Kind_Timebook,
+                                          t_Lock_Interval_Kind_Timeoff,
+                                          t_Lock_Interval_Kind_Performance,
+                                          t_Lock_Interval_Kind_Sales_Bonus_Personal_Sales,
+                                          t_Lock_Interval_Kind_Sales_Bonus_Department_Sales,
+                                          t_Lock_Interval_Kind_Sales_Bonus_Successful_Delivery));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Charge_Lock_Interval_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Lock_Interval_Kind_Timebook,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Timeoff,
+                                          Hpd_Pref.c_Lock_Interval_Kind_Performance),
+                           Array_Varchar2(t_Lock_Interval_Kind_Timebook,
+                                          t_Lock_Interval_Kind_Timeoff,
+                                          t_Lock_Interval_Kind_Performance));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- trial period
+  ----------------------------------------------------------------------------------------------------
+  Function t_Trial_Period_Exists return varchar2 is
+  begin
+    return t('trial_period:exists');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Trial_Period_Not_Exists return varchar2 is
+  begin
+    return t('trial_period:not_exists');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Trial_Period(i_Trial_Period varchar2) return varchar2 is
+  begin
+    return --
+    case i_Trial_Period --
+    when 'Y' then t_Trial_Period_Exists --
+    when 'N' then t_Trial_Period_Not_Exists --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Trial_Periods return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2('Y', --
+                                          'N'),
+                           Array_Varchar2(t_Trial_Period_Exists, --
+                                          t_Trial_Period_Not_Exists));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- transfer kind
+  ----------------------------------------------------------------------------------------------------
+  Function t_Transfer_Kind_Permanently return varchar2 is
+  begin
+    return t('transfer_kind:permanently');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Transfer_Kind_Temporarily return varchar2 is
+  begin
+    return t('transfer_kind:temporarily');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Transfer_Kind(i_Transfer_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Transfer_Kind --
+    when Hpd_Pref.c_Transfer_Kind_Permanently then t_Transfer_Kind_Permanently --
+    when Hpd_Pref.c_Transfer_Kind_Temporarily then t_Transfer_Kind_Temporarily --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Transfer_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Transfer_Kind_Permanently,
+                                          Hpd_Pref.c_Transfer_Kind_Temporarily),
+                           Array_Varchar2(t_Transfer_Kind_Permanently, --
+                                          t_Transfer_Kind_Temporarily));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- journal types
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Hiring return varchar2 is
+  begin
+    return t('journal_type: hiring');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Transfer return varchar2 is
+  begin
+    return t('journal_type: transfer');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Dismissal return varchar2 is
+  begin
+    return t('journal_type: dismissal');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Schedule_Change return varchar2 is
+  begin
+    return t('journal_type: schedule_change');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Wage_Change return varchar2 is
+  begin
+    return t('journal_type: wage_change');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Rank_Change return varchar2 is
+  begin
+    return t('journal_type: rank_change');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type_Limit_Change return varchar2 is
+  begin
+    return t('journal_type: vacation_limit_change');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Journal_Type(i_Journal_Type varchar2) return varchar2 is
+  begin
+    return --
+    case i_Journal_Type --
+    when Hpd_Pref.c_Journal_Type_Hiring then t_Journal_Type_Hiring --
+    when Hpd_Pref.c_Journal_Type_Transfer then t_Journal_Type_Transfer --
+    when Hpd_Pref.c_Journal_Type_Dismissal then t_Journal_Type_Dismissal --
+    when Hpd_Pref.c_Journal_Type_Schedule_Change then t_Journal_Type_Schedule_Change --
+    when Hpd_Pref.c_Journal_Type_Wage_Change then t_Journal_Type_Wage_Change --
+    when Hpd_Pref.c_Journal_Type_Rank_Change then t_Journal_Type_Rank_Change --
+    when Hpd_Pref.c_Journal_Type_Limit_Change then t_Journal_Type_Limit_Change --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Journal_Types return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Journal_Type_Hiring,
+                                          Hpd_Pref.c_Journal_Type_Transfer,
+                                          Hpd_Pref.c_Journal_Type_Dismissal,
+                                          Hpd_Pref.c_Journal_Type_Schedule_Change,
+                                          Hpd_Pref.c_Journal_Type_Wage_Change,
+                                          Hpd_Pref.c_Journal_Type_Rank_Change,
+                                          Hpd_Pref.c_Journal_Type_Limit_Change),
+                           Array_Varchar2(t_Journal_Type_Hiring,
+                                          t_Journal_Type_Transfer,
+                                          t_Journal_Type_Dismissal,
+                                          t_Journal_Type_Schedule_Change,
+                                          t_Journal_Type_Wage_Change,
+                                          t_Journal_Type_Rank_Change,
+                                          t_Journal_Type_Limit_Change));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- fte kinds
+  ----------------------------------------------------------------------------------------------------
+  Function t_Fte_Kind_Full return varchar2 is
+  begin
+    return t('fte_kind:full');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Fte_Kind_Half return varchar2 is
+  begin
+    return t('fte_kind:half');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Fte_Kind_Quarter return varchar2 is
+  begin
+    return t('fte_kind:quarter');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Fte_Kind_Occupied return varchar2 is
+  begin
+    return t('fte_kind:occupied');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Fte_Kind_Custom return varchar2 is
+  begin
+    return t('fte_kind:custom');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Fte_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Fte_Kind_Full,
+                                          Hpd_Pref.c_Fte_Kind_Half,
+                                          Hpd_Pref.c_Fte_Kind_Quarter,
+                                          Hpd_Pref.c_Fte_Kind_Occupied,
+                                          Hpd_Pref.c_Fte_Kind_Custom),
+                           Array_Varchar2(t_Fte_Kind_Full,
+                                          t_Fte_Kind_Half,
+                                          t_Fte_Kind_Quarter,
+                                          t_Fte_Kind_Occupied,
+                                          t_Fte_Kind_Custom));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- Adjustment Kinds
+  ----------------------------------------------------------------------------------------------------
+  Function t_Adjustment_Kind_Full return varchar2 is
+  begin
+    return t('adjustment_kind: full');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Adjustment_Kind_Incomplete return varchar2 is
+  begin
+    return t('adjustment_kind: incomplete');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Adjustment_Kind(i_Adjustment_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Adjustment_Kind --
+    when Hpd_Pref.c_Adjustment_Kind_Full then t_Adjustment_Kind_Full --
+    when Hpd_Pref.c_Adjustment_Kind_Incomplete then t_Adjustment_Kind_Incomplete --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Adjustment_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Adjustment_Kind_Full,
+                                          Hpd_Pref.c_Adjustment_Kind_Incomplete),
+                           Array_Varchar2(t_Adjustment_Kind_Full, t_Adjustment_Kind_Incomplete));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Contract_Kind_Simple return varchar2 is
+  begin
+    return t('cv_contract_kind:simple');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Contract_Kind_Cyclical return varchar2 is
+  begin
+    return t('cv_contract_kind:cyclical');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Contract_Kind(i_Contract_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Contract_Kind --
+    when Hpd_Pref.c_Cv_Contract_Kind_Simple then t_Cv_Contract_Kind_Simple --
+    when Hpd_Pref.c_Cv_Contract_Kind_Cyclical then t_Cv_Contract_Kind_Cyclical --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Cv_Contract_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Cv_Contract_Kind_Simple,
+                                          Hpd_Pref.c_Cv_Contract_Kind_Cyclical),
+                           Array_Varchar2(t_Cv_Contract_Kind_Simple, t_Cv_Contract_Kind_Cyclical));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- Application Status
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_New return varchar2 is
+  begin
+    return t('application_status:new');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_Waiting return varchar2 is
+  begin
+    return t('application_status:waiting');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_Approved return varchar2 is
+  begin
+    return t('application_status:approved');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_In_Progress return varchar2 is
+  begin
+    return t('application_status:in_progress');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_Completed return varchar2 is
+  begin
+    return t('application_status:completed');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status_Canceled return varchar2 is
+  begin
+    return t('application_status:canceled');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Application_Status(i_Status varchar2) return varchar2 is
+  begin
+    return --
+    case i_Status --
+    when Hpd_Pref.c_Application_Status_New then t_Application_Status_New --
+    when Hpd_Pref.c_Application_Status_Waiting then t_Application_Status_Waiting --
+    when Hpd_Pref.c_Application_Status_Approved then t_Application_Status_Approved --
+    when Hpd_Pref.c_Application_Status_In_Progress then t_Application_Status_In_Progress --
+    when Hpd_Pref.c_Application_Status_Completed then t_Application_Status_Completed --
+    when Hpd_Pref.c_Application_Status_Canceled then t_Application_Status_Canceled --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Application_Statuses return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Application_Status_New,
+                                          Hpd_Pref.c_Application_Status_Waiting,
+                                          Hpd_Pref.c_Application_Status_Approved,
+                                          Hpd_Pref.c_Application_Status_In_Progress,
+                                          Hpd_Pref.c_Application_Status_Completed,
+                                          Hpd_Pref.c_Application_Status_Canceled),
+                           Array_Varchar2(t_Application_Status_New,
+                                          t_Application_Status_Waiting,
+                                          t_Application_Status_Approved,
+                                          t_Application_Status_In_Progress,
+                                          t_Application_Status_Completed,
+                                          t_Application_Status_Canceled));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- Contract Employment
+  ----------------------------------------------------------------------------------------------------
+  Function t_Contract_Employment_Freelancer return varchar2 is
+  begin
+    return t('contract_employment:freelancer');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Contract_Employment_Staff_Member return varchar2 is
+  begin
+    return t('contract_employment:staff member');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Contract_Employment(i_Status varchar2) return varchar2 is
+  begin
+    return --
+    case i_Status --
+    when Hpd_Pref.c_Contract_Employment_Freelancer then t_Contract_Employment_Freelancer --
+    when Hpd_Pref.c_Contract_Employment_Staff_Member then t_Contract_Employment_Staff_Member --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Contract_Employments return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpd_Pref.c_Contract_Employment_Freelancer,
+                                          Hpd_Pref.c_Contract_Employment_Staff_Member),
+                           Array_Varchar2(t_Contract_Employment_Freelancer,
+                                          t_Contract_Employment_Staff_Member));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- journal notification
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Post
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} posted $2{journal_type_name} journal',
+             User_Name(i_Company_Id, i_User_Id),
+             Journal_Type_Name(i_Company_Id, i_Journal_Type_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Unpost
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} unposted $2{journal_type_name} journal',
+             User_Name(i_Company_Id, i_User_Id),
+             Journal_Type_Name(i_Company_Id, i_Journal_Type_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Save
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} saved $2{journal_type_name} journal',
+             User_Name(i_Company_Id, i_User_Id),
+             Journal_Type_Name(i_Company_Id, i_Journal_Type_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Update
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} updated $2{journal_type_name} journal',
+             User_Name(i_Company_Id, i_User_Id),
+             Journal_Type_Name(i_Company_Id, i_Journal_Type_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Journal_Delete
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Journal_Type_Id number
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} deleted $2{journal_type_name} journal',
+             User_Name(i_Company_Id, i_User_Id),
+             Journal_Type_Name(i_Company_Id, i_Journal_Type_Id));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- application notification
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Application_Created
+  (
+    i_Company_Id          number,
+    i_User_Id             number,
+    i_Application_Type_Id number,
+    i_Application_Number  varchar2
+  ) return varchar2 is
+  begin
+    return t('$1{user_name} created an application for $2{application_type_name} $3{application_number}',
+             User_Name(i_Company_Id, i_User_Id),
+             Application_Type_Name(i_Company_Id, i_Application_Type_Id),
+             i_Application_Number);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Application_Status_Changed
+  (
+    i_Company_Id          number,
+    i_User_Id             number,
+    i_Application_Type_Id number,
+    i_Application_Number  varchar2,
+    i_Old_Status          varchar2,
+    i_New_Status          varchar2
+  ) return varchar2 is
+  begin
+    return t('$1{user_name} changed status of application for $2{application_type_name} $3{application_number} from $4{old_status_name} to $5{new_status_name}',
+             User_Name(i_Company_Id, i_User_Id),
+             Application_Type_Name(i_Company_Id, i_Application_Type_Id),
+             i_Application_Number,
+             t_Application_Status(i_Old_Status),
+             t_Application_Status(i_New_Status));
+  end;
+
+end Hpd_Util;
+/
+
+create or replace package Hper_Core is
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Part_Plus
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Amount        number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Part_Minus
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Amount        number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Eval_Fact
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Fact_Value    number,
+    i_Fact_Note     varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Clear_Fact
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Fix_Plan_Types;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Make_Dirty_Plan_Type
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Plan_Type_Id number
+  );
+  ----------------------------------------------------------------------------------------------------  
+  Function Plan_Date
+  (
+    i_Date             date,
+    i_Month_Begin_Date date,
+    i_Month_End_Date   date
+  ) return date;
+  ----------------------------------------------------------------------------------------------------  
+  Procedure Gen_Staff_Plans
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Page_Id          number,
+    i_Staff_Plan_Id    number,
+    i_Period           date,
+    i_Plan_Date        date,
+    i_Month_Begin_Date date,
+    i_Month_End_Date   date,
+    i_Trans_Robot      Hpd_Trans_Robots%rowtype
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Gen_Plans
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Plan_Id    number := null,
+    i_Date       date
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Generate_All;
+end Hper_Core;
+/
+create or replace package body Hper_Core is
+  ---------------------------------------------------------------------------------------------------- 
+  Function t
+  (
+    i_Message varchar2,
+    i_P1      varchar2 := null,
+    i_P2      varchar2 := null,
+    i_P3      varchar2 := null,
+    i_P4      varchar2 := null,
+    i_P5      varchar2 := null
+  ) return varchar2 is
+  begin
+    return b.Translate('HPER:' || i_Message, i_P1, i_P2, i_P3, i_P4, i_P5);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Part_Plus
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Amount        number
+  ) is
+  begin
+    z_Hper_Staff_Plan_Parts.Insert_One(i_Company_Id    => i_Company_Id,
+                                       i_Filial_Id     => i_Filial_Id,
+                                       i_Part_Id       => Hper_Next.Part_Id,
+                                       i_Staff_Plan_Id => i_Staff_Plan_Id,
+                                       i_Plan_Type_Id  => i_Plan_Type_Id,
+                                       i_Part_Date     => Htt_Util.Timestamp_To_Date(i_Timestamp => Current_Timestamp,
+                                                                                     i_Timezone  => null),
+                                       i_Amount        => i_Amount);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Part_Minus
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Amount        number
+  ) is
+    v_Amount number := i_Amount;
+  begin
+    for r in (select *
+                from Hper_Staff_Plan_Parts q
+               where q.Company_Id = i_Company_Id
+                 and q.Filial_Id = i_Filial_Id
+                 and q.Staff_Plan_Id = i_Staff_Plan_Id
+                 and q.Plan_Type_Id = i_Plan_Type_Id
+               order by q.Part_Date desc)
+    loop
+      if r.Amount > v_Amount then
+        r.Amount := r.Amount - v_Amount;
+      
+        v_Amount := 0;
+      
+        z_Hper_Staff_Plan_Parts.Update_Row(r);
+      else
+        v_Amount := v_Amount - r.Amount;
+        z_Hper_Staff_Plan_Parts.Delete_One(i_Company_Id => r.Company_Id,
+                                           i_Filial_Id  => r.Filial_Id,
+                                           i_Part_Id    => r.Part_Id);
+      end if;
+    
+      exit when v_Amount = 0;
+    end loop;
+  
+    if v_Amount > 0 then
+      Hper_Error.Raise_016(i_Staff_Plan_Id => i_Staff_Plan_Id,
+                           i_Plan_Type_Id  => i_Plan_Type_Id,
+                           i_Amount        => v_Amount);
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Eval_Fact
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number,
+    i_Fact_Value    number,
+    i_Fact_Note     varchar2
+  ) is
+    r_Item Hper_Staff_Plan_Items%rowtype;
+  begin
+    r_Item := z_Hper_Staff_Plan_Items.Load(i_Company_Id    => i_Company_Id,
+                                           i_Filial_Id     => i_Filial_Id,
+                                           i_Staff_Plan_Id => i_Staff_Plan_Id,
+                                           i_Plan_Type_Id  => i_Plan_Type_Id);
+  
+    r_Item.Fact_Value := Nvl(r_Item.Fact_Value, 0);
+  
+    if r_Item.Fact_Value < i_Fact_Value then
+      Staff_Plan_Part_Plus(i_Company_Id    => i_Company_Id,
+                           i_Filial_Id     => i_Filial_Id,
+                           i_Staff_Plan_Id => i_Staff_Plan_Id,
+                           i_Plan_Type_Id  => i_Plan_Type_Id,
+                           i_Amount        => i_Fact_Value - r_Item.Fact_Value);
+    elsif r_Item.Fact_Value > i_Fact_Value then
+      Staff_Plan_Part_Minus(i_Company_Id    => i_Company_Id,
+                            i_Filial_Id     => i_Filial_Id,
+                            i_Staff_Plan_Id => i_Staff_Plan_Id,
+                            i_Plan_Type_Id  => i_Plan_Type_Id,
+                            i_Amount        => r_Item.Fact_Value - i_Fact_Value);
+    end if;
+  
+    z_Hper_Staff_Plan_Items.Update_One(i_Company_Id    => i_Company_Id,
+                                       i_Filial_Id     => i_Filial_Id,
+                                       i_Staff_Plan_Id => i_Staff_Plan_Id,
+                                       i_Plan_Type_Id  => i_Plan_Type_Id,
+                                       i_Fact_Note     => Option_Varchar2(i_Fact_Note));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Staff_Plan_Clear_Fact
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Plan_Id number,
+    i_Plan_Type_Id  number
+  ) is
+  begin
+    delete Hper_Staff_Plan_Parts q
+     where q.Company_Id = i_Company_Id
+       and q.Staff_Plan_Id = i_Staff_Plan_Id
+       and q.Plan_Type_Id = i_Plan_Type_Id;
+  
+    z_Hper_Staff_Plan_Items.Update_One(i_Company_Id    => i_Company_Id,
+                                       i_Filial_Id     => i_Filial_Id,
+                                       i_Staff_Plan_Id => i_Staff_Plan_Id,
+                                       i_Plan_Type_Id  => i_Plan_Type_Id,
+                                       i_Fact_Value    => Option_Number(0),
+                                       i_Fact_Percent  => Option_Number(0),
+                                       i_Fact_Amount   => Option_Number(0));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Fix_Plan_Types is
+  begin
+    for r in (select q.*,
+                     Nvl((select 'Y'
+                           from Hper_Plan_Type_Divisions w
+                          where w.Company_Id = q.Company_Id
+                            and w.Filial_Id = q.Filial_Id
+                            and w.Plan_Type_Id = q.Plan_Type_Id
+                            and Rownum = 1),
+                         'N') c_Divisions_Exist
+                from Hper_Dirty_Plan_Types q)
+    loop
+      z_Hper_Plan_Types.Update_One(i_Company_Id        => r.Company_Id,
+                                   i_Filial_Id         => r.Filial_Id,
+                                   i_Plan_Type_Id      => r.Plan_Type_Id,
+                                   i_c_Divisions_Exist => Option_Varchar2(r.c_Divisions_Exist));
+    end loop;
+  
+    delete Hper_Dirty_Plan_Types;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Make_Dirty_Plan_Type
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Plan_Type_Id number
+  ) is
+    v_Dummy varchar2(1);
+  begin
+    select 'x'
+      into v_Dummy
+      from Hper_Dirty_Plan_Types q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Plan_Type_Id = i_Plan_Type_Id;
+  exception
+    when No_Data_Found then
+      insert into Hper_Dirty_Plan_Types
+        (Company_Id, Filial_Id, Plan_Type_Id)
+      values
+        (i_Company_Id, i_Filial_Id, i_Plan_Type_Id);
+    
+      b.Add_Post_Callback('begin hper_core.fix_plan_types; end;');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Plan_Date
+  (
+    i_Date             date,
+    i_Month_Begin_Date date,
+    i_Month_End_Date   date
+  ) return date is
+  begin
+    if i_Date between i_Month_Begin_Date and i_Month_End_Date then
+      return Trunc(i_Date, 'MON');
+    end if;
+  
+    return Add_Months(Trunc(i_Date, 'MON'), 1);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Gen_Staff_Plans
+  (
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Page_Id          number,
+    i_Staff_Plan_Id    number,
+    i_Period           date,
+    i_Plan_Date        date,
+    i_Month_Begin_Date date,
+    i_Month_End_Date   date,
+    i_Trans_Robot      Hpd_Trans_Robots%rowtype
+  ) is
+    r_Plan               Hper_Plans%rowtype;
+    r_Page               Hpd_Journal_Pages%rowtype;
+    r_Page_Robot         Hpd_Page_Robots%rowtype;
+    r_Robot              Mrf_Robots%rowtype;
+    v_Currency_Id        number;
+    v_Operation_Trans_Id number;
+    v_Staff_Plan_Id      number;
+    v_Main_Plan_Amount   number;
+    v_Extra_Plan_Amount  number;
+    v_Indicator_Id       number;
+  begin
+    r_Page := z_Hpd_Journal_Pages.Load(i_Company_Id => i_Company_Id,
+                                       i_Filial_Id  => i_Filial_Id,
+                                       i_Page_Id    => i_Page_Id);
+  
+    r_Plan := Hper_Util.Job_Plan(i_Company_Id      => r_Page.Company_Id,
+                                 i_Filial_Id       => r_Page.Filial_Id,
+                                 i_Journal_Page_Id => r_Page.Page_Id,
+                                 i_Plan_Date       => i_Plan_Date);
+  
+    if r_Plan.Company_Id is null then
+      return;
+    end if;
+  
+    r_Page_Robot := z_Hpd_Page_Robots.Load(i_Company_Id => r_Page.Company_Id,
+                                           i_Filial_Id  => r_Page.Filial_Id,
+                                           i_Page_Id    => r_Page.Page_Id);
+  
+    r_Robot := z_Mrf_Robots.Load(i_Company_Id => r_Page_Robot.Company_Id,
+                                 i_Filial_Id  => r_Page_Robot.Filial_Id,
+                                 i_Robot_Id   => r_Page_Robot.Robot_Id);
+  
+    v_Operation_Trans_Id := Hpd_Util.Trans_Id_By_Period(i_Company_Id => r_Plan.Company_Id,
+                                                        i_Filial_Id  => r_Plan.Filial_Id,
+                                                        i_Staff_Id   => r_Page.Staff_Id,
+                                                        i_Trans_Type => Hpd_Pref.c_Transaction_Type_Operation,
+                                                        i_Period     => i_Period);
+  
+    v_Currency_Id := Hpd_Util.Get_Closest_Currency_Id(i_Company_Id => r_Plan.Company_Id,
+                                                      i_Filial_Id  => r_Plan.Filial_Id,
+                                                      i_Staff_Id   => r_Page.Staff_Id,
+                                                      i_Period     => i_Month_End_Date);
+  
+    if r_Plan.Main_Calc_Type = Hper_Pref.c_Plan_Calc_Type_Weight then
+      v_Indicator_Id := Href_Util.Indicator_Id(i_Company_Id => r_Plan.Company_Id,
+                                               i_Pcode      => Href_Pref.c_Pcode_Indicator_Perf_Bonus);
+    
+      if i_Trans_Robot.Wage_Scale_Id is not null then
+        v_Main_Plan_Amount := Hrm_Util.Closest_Wage_Scale_Indicator_Value(i_Company_Id    => i_Company_Id,
+                                                                          i_Filial_Id     => i_Filial_Id,
+                                                                          i_Wage_Scale_Id => i_Trans_Robot.Wage_Scale_Id,
+                                                                          i_Indicator_Id  => v_Indicator_Id,
+                                                                          i_Period        => i_Period,
+                                                                          i_Rank_Id       => r_Page_Robot.Rank_Id);
+      end if;
+    
+      if v_Main_Plan_Amount is null then
+        select max(q.Indicator_Value)
+          into v_Main_Plan_Amount
+          from Hpd_Trans_Indicators q
+         where q.Company_Id = r_Plan.Company_Id
+           and q.Filial_Id = r_Plan.Filial_Id
+           and q.Trans_Id = v_Operation_Trans_Id
+           and q.Indicator_Id = v_Indicator_Id;
+      end if;
+    else
+      select sum(q.Plan_Value * q.Plan_Amount)
+        into v_Main_Plan_Amount
+        from Hper_Plan_Items q
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Id = r_Plan.Plan_Id
+         and q.Plan_Type = Hper_Pref.c_Plan_Type_Main;
+    
+      if v_Currency_Id is not null then
+        v_Main_Plan_Amount := Mk_Util.Calc_Amount(i_Company_Id  => i_Company_Id,
+                                                  i_Filial_Id   => i_Filial_Id,
+                                                  i_Currency_Id => v_Currency_Id,
+                                                  i_Rate_Date   => i_Month_End_Date,
+                                                  i_Amount_Base => v_Main_Plan_Amount);
+      end if;
+    end if;
+  
+    if r_Plan.Extra_Calc_Type = Hper_Pref.c_Plan_Calc_Type_Weight then
+      v_Indicator_Id := Href_Util.Indicator_Id(i_Company_Id => r_Plan.Company_Id,
+                                               i_Pcode      => Href_Pref.c_Pcode_Indicator_Perf_Extra_Bonus);
+    
+      if i_Trans_Robot.Wage_Scale_Id is not null then
+        v_Extra_Plan_Amount := Hrm_Util.Closest_Wage_Scale_Indicator_Value(i_Company_Id    => i_Company_Id,
+                                                                           i_Filial_Id     => i_Filial_Id,
+                                                                           i_Wage_Scale_Id => i_Trans_Robot.Wage_Scale_Id,
+                                                                           i_Indicator_Id  => v_Indicator_Id,
+                                                                           i_Period        => i_Period,
+                                                                           i_Rank_Id       => r_Page_Robot.Rank_Id);
+      end if;
+    
+      if v_Extra_Plan_Amount is null then
+        select max(q.Indicator_Value)
+          into v_Extra_Plan_Amount
+          from Hpd_Trans_Indicators q
+         where q.Company_Id = r_Plan.Company_Id
+           and q.Filial_Id = r_Plan.Filial_Id
+           and q.Trans_Id = v_Operation_Trans_Id
+           and q.Indicator_Id = v_Indicator_Id;
+      end if;
+    else
+      select sum(q.Plan_Value * q.Plan_Amount)
+        into v_Extra_Plan_Amount
+        from Hper_Plan_Items q
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Id = r_Plan.Plan_Id
+         and q.Plan_Type = Hper_Pref.c_Plan_Type_Extra;
+    
+      if v_Currency_Id is not null then
+        v_Extra_Plan_Amount := Mk_Util.Calc_Amount(i_Company_Id  => i_Company_Id,
+                                                   i_Filial_Id   => i_Filial_Id,
+                                                   i_Currency_Id => v_Currency_Id,
+                                                   i_Rate_Date   => i_Month_End_Date,
+                                                   i_Amount_Base => v_Extra_Plan_Amount);
+      end if;
+    end if;
+  
+    if i_Staff_Plan_Id is null then
+      v_Staff_Plan_Id := Hper_Next.Staff_Plan_Id;
+    else
+      v_Staff_Plan_Id := i_Staff_Plan_Id;
+    
+      delete Hper_Staff_Plan_Items q
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Staff_Plan_Id = v_Staff_Plan_Id;
+    end if;
+  
+    z_Hper_Staff_Plans.Save_One(i_Company_Id           => r_Plan.Company_Id,
+                                i_Filial_Id            => r_Plan.Filial_Id,
+                                i_Staff_Plan_Id        => v_Staff_Plan_Id,
+                                i_Staff_Id             => r_Page.Staff_Id,
+                                i_Plan_Date            => i_Plan_Date,
+                                i_Main_Calc_Type       => r_Plan.Main_Calc_Type,
+                                i_Extra_Calc_Type      => r_Plan.Extra_Calc_Type,
+                                i_Month_Begin_Date     => i_Month_Begin_Date,
+                                i_Month_End_Date       => i_Month_End_Date,
+                                i_Journal_Page_Id      => r_Page_Robot.Page_Id,
+                                i_Division_Id          => r_Robot.Division_Id,
+                                i_Job_Id               => r_Robot.Job_Id,
+                                i_Rank_Id              => r_Page_Robot.Rank_Id,
+                                i_Employment_Type      => r_Page_Robot.Employment_Type,
+                                i_Begin_Date           => i_Month_Begin_Date,
+                                i_End_Date             => i_Month_End_Date,
+                                i_Main_Plan_Amount     => Nvl(v_Main_Plan_Amount, 0), --TODO
+                                i_Extra_Plan_Amount    => Nvl(v_Extra_Plan_Amount, 0), --TODO
+                                i_Main_Fact_Amount     => 0,
+                                i_Extra_Fact_Amount    => 0,
+                                i_Main_Fact_Percent    => 0,
+                                i_Extra_Fact_Percent   => 0,
+                                i_c_Main_Fact_Percent  => 0,
+                                i_c_Extra_Fact_Percent => 0,
+                                i_Status               => Hper_Pref.c_Staff_Plan_Status_Draft,
+                                i_Note                 => t('autogenerated'));
+  
+    insert into Hper_Staff_Plan_Items
+      (Company_Id,
+       Filial_Id,
+       Staff_Plan_Id,
+       Plan_Type_Id,
+       Plan_Type,
+       Plan_Value,
+       Plan_Amount,
+       Calc_Kind,
+       Note,
+       Extra_Amount_Enabled,
+       Sale_Kind,
+       Extra_Amount)
+      select q.Company_Id,
+             q.Filial_Id,
+             v_Staff_Plan_Id,
+             q.Plan_Type_Id,
+             q.Plan_Type,
+             q.Plan_Value,
+             q.Plan_Amount,
+             s.Calc_Kind,
+             q.Note,
+             s.Extra_Amount_Enabled,
+             s.Sale_Kind,
+             0
+        from Hper_Plan_Items q
+        join Hper_Plan_Types s
+          on s.Company_Id = q.Company_Id
+         and s.Filial_Id = q.Filial_Id
+         and s.Plan_Type_Id = q.Plan_Type_Id
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Id = r_Plan.Plan_Id;
+  
+    insert into Hper_Staff_Plan_Rules
+      (Company_Id, Filial_Id, Staff_Plan_Id, Plan_Type_Id, From_Percent, To_Percent, Fact_Amount)
+      select q.Company_Id,
+             q.Filial_Id,
+             v_Staff_Plan_Id,
+             q.Plan_Type_Id,
+             q.From_Percent,
+             q.To_Percent,
+             q.Fact_Amount
+        from Hper_Plan_Rules q
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Id = r_Plan.Plan_Id;
+  
+    insert into Hper_Staff_Plan_Type_Rules
+      (Company_Id, Filial_Id, Staff_Plan_Id, Plan_Type_Id, From_Percent, To_Percent, Plan_Percent)
+      select q.Company_Id,
+             q.Filial_Id,
+             v_Staff_Plan_Id,
+             q.Plan_Type_Id,
+             q.From_Percent,
+             q.To_Percent,
+             q.Plan_Percent
+        from Hper_Plan_Type_Rules q
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Type_Id in (select w.Plan_Type_Id
+                                  from Hper_Plan_Items w
+                                 where w.Company_Id = r_Plan.Company_Id
+                                   and w.Filial_Id = r_Plan.Filial_Id
+                                   and w.Plan_Id = r_Plan.Plan_Id);
+  
+    insert into Hper_Staff_Plan_Task_Types
+      (Company_Id, Filial_Id, Staff_Plan_Id, Plan_Type_Id, Task_Type_Id)
+      select q.Company_Id, q.Filial_Id, v_Staff_Plan_Id, q.Plan_Type_Id, w.Task_Type_Id
+        from Hper_Plan_Items q
+        join Hper_Plan_Type_Task_Types w
+          on w.Company_Id = q.Company_Id
+         and w.Filial_Id = q.Filial_Id
+         and w.Plan_Type_Id = q.Plan_Type_Id
+       where q.Company_Id = r_Plan.Company_Id
+         and q.Filial_Id = r_Plan.Filial_Id
+         and q.Plan_Id = r_Plan.Plan_Id
+         and exists (select 1
+                from Hper_Plan_Types s
+               where s.Company_Id = q.Company_Id
+                 and s.Filial_Id = q.Filial_Id
+                 and s.Plan_Type_Id = q.Plan_Type_Id
+                 and s.Calc_Kind = Hper_Pref.c_Calc_Kind_Task);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Gen_Plans
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Plan_Id    number := null,
+    i_Date       date
+  ) is
+    v_Dates         Array_Date := Array_Date();
+    v_Pages         Array_Number := Array_Number();
+    v_Staff_Plan    Hper_Staff_Plans%rowtype;
+    r_Closest_Robot Hpd_Trans_Robots%rowtype;
+    r_Trans         Hpd_Transactions%rowtype;
+    r_Plan          Hper_Plans%rowtype;
+  
+    v_Month_Begin_Date date := Hper_Util.Month_Begin_Date(i_Company_Id => i_Company_Id,
+                                                          i_Filial_Id  => i_Filial_Id,
+                                                          i_Date       => i_Date);
+    v_Month_End_Date   date := Hper_Util.Month_End_Date(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Date       => i_Date);
+  
+    v_Plan_Date  date;
+    v_Robot_Page Hpd_Page_Robots%rowtype;
+    v_Robot      Mrf_Robots%rowtype;
+  begin
+    v_Plan_Date := Plan_Date(i_Date             => i_Date,
+                             i_Month_Begin_Date => v_Month_Begin_Date,
+                             i_Month_End_Date   => v_Month_End_Date);
+  
+    if i_Plan_Id is not null then
+      r_Plan := z_Hper_Plans.Load(i_Company_Id => i_Company_Id,
+                                  i_Filial_Id  => i_Filial_Id,
+                                  i_Plan_Id    => i_Plan_Id);
+    end if;
+  
+    for r in (select *
+                from Href_Staffs s
+               where s.Company_Id = i_Company_Id
+                 and s.Filial_Id = i_Filial_Id
+                 and (s.Dismissal_Date is null or s.Dismissal_Date >= v_Month_Begin_Date)
+                 and s.State = 'A')
+    loop
+      select distinct k.Begin_Date
+        bulk collect
+        into v_Dates
+        from Hpd_Transactions k
+       where k.Company_Id = r.Company_Id
+         and k.Filial_Id = r.Filial_Id
+         and k.Staff_Id = r.Staff_Id
+         and k.Trans_Type = Hpd_Pref.c_Transaction_Type_Robot
+         and k.Begin_Date between v_Month_Begin_Date and v_Month_End_Date
+         and exists (select 1
+                from Hpd_Agreements a
+               where a.Company_Id = k.Company_Id
+                 and a.Filial_Id = k.Filial_Id
+                 and a.Staff_Id = k.Staff_Id
+                 and a.Trans_Type = k.Trans_Type
+                 and a.Trans_Id = k.Trans_Id);
+    
+      if v_Month_Begin_Date not member of v_Dates then
+        Fazo.Push(v_Dates, v_Month_Begin_Date);
+      end if;
+    
+      if v_Month_End_Date not member of v_Dates then
+        Fazo.Push(v_Dates, v_Month_End_Date);
+      end if;
+    
+      v_Dates := Fazo.Sort(v_Dates);
+      v_Pages := Array_Number();
+    
+      for i in 1 .. v_Dates.Count
+      loop
+        r_Closest_Robot := Hpd_Util.Closest_Robot(i_Company_Id => r.Company_Id,
+                                                  i_Filial_Id  => r.Filial_Id,
+                                                  i_Staff_Id   => r.Staff_Id,
+                                                  i_Period     => v_Dates(i));
+      
+        continue when r_Closest_Robot.Company_Id is null;
+      
+        r_Trans := z_Hpd_Transactions.Load(i_Company_Id => r_Closest_Robot.Company_Id,
+                                           i_Filial_Id  => r_Closest_Robot.Filial_Id,
+                                           i_Trans_Id   => r_Closest_Robot.Trans_Id);
+      
+        if i_Plan_Id is not null then
+          v_Robot_Page := z_Hpd_Page_Robots.Load(i_Company_Id => r_Trans.Company_Id,
+                                                 i_Filial_Id  => r_Trans.Filial_Id,
+                                                 i_Page_Id    => r_Trans.Page_Id);
+        
+          v_Robot := z_Mrf_Robots.Load(i_Company_Id => v_Robot_Page.Company_Id,
+                                       i_Filial_Id  => v_Robot_Page.Filial_Id,
+                                       i_Robot_Id   => v_Robot_Page.Robot_Id);
+        
+          if not (r_Plan.Plan_Kind = Hper_Pref.c_Plan_Kind_Standard and
+              Fazo.Equal(r_Plan.Division_Id, v_Robot.Division_Id) and
+              Fazo.Equal(r_Plan.Job_Id, v_Robot.Job_Id) and
+              Fazo.Equal(r_Plan.Rank_Id, v_Robot_Page.Rank_Id) and
+              Fazo.Equal(r_Plan.Employment_Type, v_Robot_Page.Employment_Type) or
+              r_Plan.Plan_Kind = Hper_Pref.c_Plan_Kind_Contract and
+              Fazo.Equal(r_Plan.Journal_Page_Id, v_Robot_Page.Page_Id)) then
+            continue;
+          end if;
+        end if;
+      
+        if r_Trans.Page_Id not member of v_Pages then
+          Fazo.Push(v_Pages, r_Trans.Page_Id);
+        
+          v_Staff_Plan := Hper_Util.Staff_Plan(i_Company_Id => r_Trans.Company_Id,
+                                               i_Filial_Id  => r_Trans.Filial_Id,
+                                               i_Page_Id    => r_Trans.Page_Id,
+                                               i_Plan_Date  => v_Plan_Date);
+        
+          continue when v_Staff_Plan.Status != Hper_Pref.c_Staff_Plan_Status_Draft;
+        
+          Gen_Staff_Plans(i_Company_Id       => r_Trans.Company_Id,
+                          i_Filial_Id        => r_Trans.Filial_Id,
+                          i_Page_Id          => r_Trans.Page_Id,
+                          i_Staff_Plan_Id    => v_Staff_Plan.Staff_Plan_Id,
+                          i_Period           => v_Dates(i),
+                          i_Plan_Date        => v_Plan_Date,
+                          i_Month_Begin_Date => v_Month_Begin_Date,
+                          i_Month_End_Date   => v_Month_End_Date,
+                          i_Trans_Robot      => r_Closest_Robot);
+        
+        end if;
+      end loop;
+    end loop;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Generate_All is
+    v_Gen_Date date;
+  begin
+    Biruni_Route.Context_Begin;
+  
+    for r in (select *
+                from Md_Filials q
+               where q.State = 'A')
+    loop
+      -- TODO review
+      -- remove ui_auth from hper_core procedures
+      Ui_Auth.Logon_As_System(r.Company_Id);
+    
+      v_Gen_Date := Trunc(Htt_Util.Timestamp_To_Date(i_Timestamp => Current_Timestamp,
+                                                     i_Timezone  => Htt_Util.Load_Timezone(i_Company_Id => r.Company_Id,
+                                                                                           i_Filial_Id  => r.Filial_Id)) + 1);
+      Gen_Plans(i_Company_Id => r.Company_Id, --
+                i_Filial_Id  => r.Filial_Id,
+                i_Date       => v_Gen_Date);
+    end loop;
+  
+    Biruni_Route.Context_End;
+  end;
+
+end Hper_Core;
+/
+
+create or replace package Hpr_Util is
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Fact_New
+  (
+    o_Contract_Fact out Hpr_Pref.Cv_Contract_Fact_Rt,
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Fact_Id       number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Fact_Add_Item
+  (
+    o_Contract_Fact in out nocopy Hpr_Pref.Cv_Contract_Fact_Rt,
+    i_Fact_Item_Id  number,
+    i_Fact_Quantity number,
+    i_Fact_Amount   number,
+    i_Name          varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Penalty_New
+  (
+    o_Penalty     out Hpr_Pref.Penalty_Rt,
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Penalty_Id  number,
+    i_Month       date,
+    i_Name        varchar2 := null,
+    i_Division_Id number := null,
+    i_State       varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Penalty_Add_Policy
+  (
+    p_Penalty              in out nocopy Hpr_Pref.Penalty_Rt,
+    i_Penalty_Kind         varchar2,
+    i_Penalty_Type         varchar2,
+    i_From_Day             number,
+    i_To_Day               number := null,
+    i_From_Time            number,
+    i_To_Time              number := null,
+    i_Penalty_Coef         number := null,
+    i_Penalty_Per_Time     number := null,
+    i_Penalty_Amount       number := null,
+    i_Penalty_Time         number := null,
+    i_Calc_After_From_Time varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Nigthtime_Policy_New
+  (
+    o_Nigthtime_Policy    out Hpr_Pref.Nighttime_Policy_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Nigthtime_Policy_Id number,
+    i_Month               date,
+    i_Name                varchar2 := null,
+    i_Division_Id         number := null,
+    i_State               varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Nigthtime_Add_Rule
+  (
+    o_Nigthtime_Policy in out nocopy Hpr_Pref.Nighttime_Policy_Rt,
+    i_Begin_Time       number,
+    i_End_Time         number,
+    i_Nighttime_Coef   number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Wage_Sheet_New
+  (
+    o_Wage_Sheet   out Hpr_Pref.Wage_Sheet_Rt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Sheet_Id     number,
+    i_Sheet_Number varchar2,
+    i_Sheet_Date   date,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Period_Kind  varchar2,
+    i_Note         varchar2,
+    i_Sheet_Kind   varchar2,
+    i_Round_Value  varchar2 := null,
+    i_Staff_Ids    Array_Number := Array_Number(),
+    i_Division_Ids Array_Number := Array_Number(),
+    i_Sheet_Staffs Hpr_Pref.Sheet_Staff_Nt := Hpr_Pref.Sheet_Staff_Nt()
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Onetime_Sheet_Staff_Add
+  (
+    p_Staffs         in out nocopy Hpr_Pref.Sheet_Staff_Nt,
+    i_Staff_Id       number,
+    i_Accrual_Amount number,
+    i_Penalty_Amount number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sheet_Add_Part
+  (
+    p_Parts            in out nocopy Hpr_Pref.Sheet_Part_Nt,
+    i_Part_Begin       date,
+    i_Part_End         date,
+    i_Division_Id      number,
+    i_Job_Id           number,
+    i_Schedule_Id      number,
+    i_Fte_Id           number,
+    i_Monthly_Amount   number,
+    i_Plan_Amount      number,
+    i_Wage_Amount      number,
+    i_Overtime_Amount  number,
+    i_Nighttime_Amount number,
+    i_Late_Amount      number,
+    i_Early_Amount     number,
+    i_Lack_Amount      number,
+    i_Day_Skip_Amount  number,
+    i_Mark_Skip_Amount number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_New
+  (
+    o_Timebook        out Hpr_Pref.Timebook_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Timebook_Id     number,
+    i_Timebook_Number varchar2,
+    i_Timebook_Date   date,
+    i_Period_Begin    date,
+    i_Period_End      date,
+    i_Period_Kind     varchar2,
+    i_Division_Id     number,
+    i_Note            varchar2,
+    i_Staff_Ids       Array_Number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Oper_Type_New
+  (
+    o_Oper_Type              out Hpr_Pref.Oper_Type_Rt,
+    i_Company_Id             number,
+    i_Oper_Type_Id           number,
+    i_Oper_Group_Id          number,
+    i_Estimation_Type        varchar2,
+    i_Estimation_Formula     varchar2,
+    i_Operation_Kind         varchar2,
+    i_Name                   varchar2,
+    i_Short_Name             varchar2,
+    i_Accounting_Type        varchar2,
+    i_Corr_Coa_Id            number,
+    i_Corr_Ref_Set           varchar2,
+    i_Income_Tax_Exists      varchar2,
+    i_Income_Tax_Rate        number,
+    i_Pension_Payment_Exists varchar2,
+    i_Pension_Payment_Rate   number,
+    i_Social_Payment_Exists  varchar2,
+    i_Social_Payment_Rate    number,
+    i_Note                   varchar2,
+    i_State                  varchar2,
+    i_Code                   varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Book_New
+  (
+    o_Book         out Hpr_Pref.Book_Rt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Book_Id      number,
+    i_Book_Type_Id number,
+    i_Book_Number  varchar2,
+    i_Book_Date    date,
+    i_Book_Name    varchar2 := null,
+    i_Month        date := null,
+    i_Division_Id  number := null,
+    i_Currency_Id  number,
+    i_Note         varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Book_Add_Operation
+  (
+    p_Book                   in out nocopy Hpr_Pref.Book_Rt,
+    i_Operation_Id           number,
+    i_Staff_Id               number,
+    i_Oper_Type_Id           number,
+    i_Charge_Id              number,
+    i_Autofilled             varchar2,
+    i_Note                   varchar2,
+    i_Amount                 number,
+    i_Net_Amount             number,
+    i_Income_Tax_Amount      number := null,
+    i_Pension_Payment_Amount number := null,
+    i_Social_Payment_Amount  number := null,
+    i_Subfilial_Id           number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Charge_Document_New
+  (
+    o_Charge_Document out Hpr_Pref.Charge_Document_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Document_Id     number,
+    i_Document_Number varchar2,
+    i_Document_Date   date,
+    i_Document_Name   varchar2,
+    i_Month           date,
+    i_Oper_Type_Id    number,
+    i_Currency_Id     number,
+    i_Division_Id     number,
+    i_Document_Kind   varchar2
+  );
+  ---------------------------------------------------------------------------------------------------- 
+  Procedure Charge_Document_Add_Operation
+  (
+    o_Charge_Document in out Hpr_Pref.Charge_Document_Rt,
+    i_Operation_Id    number,
+    i_Staff_Id        number,
+    i_Charge_Id       number,
+    i_Oper_Type_Id    number,
+    i_Amount          number,
+    i_Note            varchar2
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Advance_New
+  (
+    o_Advance         out nocopy Hpr_Pref.Advance_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Payment_Id      number,
+    i_Payment_Number  varchar2,
+    i_Payment_Date    date,
+    i_Booked_Date     date,
+    i_Currency_Id     number,
+    i_Payment_Type    varchar2,
+    i_Days_Limit      number := null,
+    i_Limit_Kind      varchar2,
+    i_Division_Id     number := null,
+    i_Cashbox_Id      number := null,
+    i_Bank_Account_Id number := null,
+    i_Note            varchar2,
+    i_Souce_Table     varchar2,
+    i_Source_Id       number := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Advance_Add_Employee
+  (
+    p_Advance         in out nocopy Hpr_Pref.Advance_Rt,
+    i_Employee_Id     number,
+    i_Pay_Amount      number,
+    i_Bank_Account_Id number := null,
+    i_Paid_Date       date := null,
+    i_Paid            varchar2 := null,
+    i_Note            varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sales_Bonus_Payment_New
+  (
+    o_Sales_Bonus_Payment out nocopy Hpr_Pref.Sales_Bonus_Payment_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Payment_Id          number,
+    i_Payment_Number      varchar2,
+    i_Payment_Date        date,
+    i_Payment_Name        varchar2 := null,
+    i_Begin_Date          date,
+    i_End_Date            date,
+    i_Division_Id         number := null,
+    i_Job_Id              number := null,
+    i_Bonus_Type          varchar2 := null,
+    i_Payment_Type        varchar2,
+    i_Cashbox_Id          number := null,
+    i_Bank_Account_Id     number := null,
+    i_Note                varchar2 := null
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sales_Bonus_Payment_Add_Operation
+  (
+    p_Sales_Bonus_Payment in out nocopy Hpr_Pref.Sales_Bonus_Payment_Rt,
+    i_Operation_Id        number,
+    i_Staff_Id            number,
+    i_Period_Begin        date,
+    i_Period_End          date,
+    i_Bonus_Type          varchar2,
+    i_Job_Id              number,
+    i_Percentage          number,
+    i_Periods             Array_Date,
+    i_Sales_Amounts       Array_Number,
+    i_Amounts             Array_Number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Currency_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return Array_Number;
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Use_Subfilial_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Staff_Blocked
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Timebook_Id  number := null
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Staff_Sales_Bonus_Calced
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Bonus_Type   varchar2,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Payment_Id   number := null,
+    o_Period_Begin out date,
+    o_Period_End   out date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Jcode_Sales_Bonus_Payment(i_Payment_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Oper_Group_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Book_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Execute
+  (
+    i_Formula   varchar2,
+    i_Arguments Matrix_Varchar2
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Variables(i_Formula varchar2) return Array_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  -- this function only for system oper type formula when new company added
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Fix
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Indicators
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Validate
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return Array_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Overtime_Coef(i_Company_Id number) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Constant_Indicator
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Charge_Id    number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Wage_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Rate_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Hourly_Wage_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Plan_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Plan_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Working_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Working_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Fact_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Fact_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Bonus_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Extra_Bonus_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Penalty_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Extra_Penalty_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Average_Perf_Bonus
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Average_Perf_Extra_Bonus
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Sick_Leave_Coefficient_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Business_Trip_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Vacation_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Sick_Leave_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Mean_Working_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Overtime_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Overtime_Coef_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Additional_Nighttime_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Weighted_Turnout_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Late_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Early_Output_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Absence_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Day_Skip_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Mark_Skip_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Charge_Id    number,
+    i_Begin_Date   date,
+    i_End_Date     date,
+    i_Indicator_Id number
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Hourly_Wage
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Schedule_Id  number,
+    i_Part_Begin   date,
+    i_Part_End     date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Amount
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Amount_With_Indicators
+  (
+    o_Indicators   out Hpr_Pref.Daily_Indicators_Nt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Part_Begin   date,
+    i_Part_End     date,
+    i_Calc_Planned boolean := false,
+    i_Calc_Worked  boolean := false
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Amount
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Part_Begin   date,
+    i_Part_End     date,
+    i_Calc_Planned boolean := false,
+    i_Calc_Worked  boolean := false
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Amounts
+  (
+    i_Company_Id             number,
+    i_Filial_Id              number,
+    i_Currency_Id            number,
+    i_Date                   date,
+    i_Oper_Type_Id           number,
+    i_Amount                 number,
+    i_Is_Net_Amount          boolean,
+    o_Amount                 out number,
+    o_Net_Amount             out number,
+    o_Income_Tax_Amount      out number,
+    o_Pension_Payment_Amount out number,
+    o_Social_Payment_Amount  out number
+  );
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Penalty_Amount
+  (
+    o_Late_Amount      out number,
+    o_Early_Amount     out number,
+    o_Lack_Amount      out number,
+    o_Day_Skip_Amount  out number,
+    o_Mark_Skip_Amount out number,
+    o_Day_Amounts      out nocopy Matrix_Number,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Division_Id      number,
+    i_Hourly_Wage      number,
+    i_Period_Begin     date,
+    i_Period_End       date
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Daily_Penalty_Amounts
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Division_Id  number,
+    i_Hourly_Wage  number,
+    i_Period_Begin date,
+    i_Period_End   date
+  ) return Matrix_Number;
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Additional_Nighttime_Amount
+  (
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Staff_Id    number,
+    i_Division_Id number,
+    i_Begin_Date  date,
+    i_End_Date    date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Penalty_Amounts
+  (
+    o_Late_Amount      out number,
+    o_Early_Amount     out number,
+    o_Lack_Amount      out number,
+    o_Day_Skip_Amount  out number,
+    o_Mark_Skip_Amount out number,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Division_Id      number,
+    i_Hourly_Wage      number,
+    i_Period_Begin     date,
+    i_Period_End       date
+  );
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Staff_Parts
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Round_Model  Round_Model
+  ) return Hpr_Pref.Sheet_Part_Nt;
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Penalty_Id
+  (
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Division_Id number,
+    i_Period      date
+  ) return number;
+  ----------------------------------------------------------------------------------------------------
+  Function Jcode_Cv_Contract_Fact(i_Fact_Id number) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Timebook_Fill_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return Hashmap;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status(i_Charge_Status varchar2) return varchar2;
+  Function Charge_Statuses return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Estimation_Type(i_Estimation_Type varchar2) return varchar2;
+  Function Estimation_Types return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Advance_Limit_Kind(i_Advance_Limit_Kind varchar2) return varchar2;
+  Function Advance_Limit_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind(i_Period_Kind varchar2) return varchar2;
+  Function Period_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind(i_Penalty_Kind varchar2) return varchar2;
+  Function Penalty_Kinds return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Fact_Status(i_Status varchar2) return varchar2;
+  Function Cv_Fact_Statuses return Matrix_Varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Rule_Unit_Min return varchar2;
+  Function t_Penalty_Rule_Unit_Times return varchar2;
+  Function t_Penalty_Rule_Unit_Days return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Post
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Unpost
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Save
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Update
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Delete
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Post
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Unpost
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Save
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Update
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2;
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Delete
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2;
+end Hpr_Util;
+/
+create or replace package body Hpr_Util is
+  ----------------------------------------------------------------------------------------------------
+  g_Cache_Late_Amount      Fazo.Number_Code_Aat;
+  g_Cache_Early_Amount     Fazo.Number_Code_Aat;
+  g_Cache_Lack_Amount      Fazo.Number_Code_Aat;
+  g_Cache_Day_Skip_Amount  Fazo.Number_Code_Aat;
+  g_Cache_Mark_Skip_Amount Fazo.Number_Code_Aat;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t
+  (
+    i_Message varchar2,
+    i_P1      varchar2 := null,
+    i_P2      varchar2 := null,
+    i_P3      varchar2 := null,
+    i_P4      varchar2 := null,
+    i_P5      varchar2 := null
+  ) return varchar2 is
+  begin
+    return b.Translate('HPR:' || i_Message, i_P1, i_P2, i_P3, i_P4, i_P5);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Fact_New
+  (
+    o_Contract_Fact out Hpr_Pref.Cv_Contract_Fact_Rt,
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Fact_Id       number
+  ) is
+  begin
+    o_Contract_Fact.Company_Id := i_Company_Id;
+    o_Contract_Fact.Filial_Id  := i_Filial_Id;
+    o_Contract_Fact.Fact_Id    := i_Fact_Id;
+  
+    o_Contract_Fact.Items := Hpr_Pref.Cv_Contract_Fact_Item_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Cv_Contract_Fact_Add_Item
+  (
+    o_Contract_Fact in out nocopy Hpr_Pref.Cv_Contract_Fact_Rt,
+    i_Fact_Item_Id  number,
+    i_Fact_Quantity number,
+    i_Fact_Amount   number,
+    i_Name          varchar2
+  ) is
+    v_Fact_Item Hpr_Pref.Cv_Contract_Fact_Item_Rt;
+  begin
+    v_Fact_Item.Fact_Item_Id  := i_Fact_Item_Id;
+    v_Fact_Item.Fact_Quantity := i_Fact_Quantity;
+    v_Fact_Item.Fact_Amount   := i_Fact_Amount;
+    v_Fact_Item.Name          := i_Name;
+  
+    o_Contract_Fact.Items.Extend;
+    o_Contract_Fact.Items(o_Contract_Fact.Items.Count) := v_Fact_Item;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Penalty_New
+  (
+    o_Penalty     out Hpr_Pref.Penalty_Rt,
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Penalty_Id  number,
+    i_Month       date,
+    i_Name        varchar2 := null,
+    i_Division_Id number := null,
+    i_State       varchar2
+  ) is
+  begin
+    o_Penalty.Company_Id  := i_Company_Id;
+    o_Penalty.Filial_Id   := i_Filial_Id;
+    o_Penalty.Penalty_Id  := i_Penalty_Id;
+    o_Penalty.Month       := i_Month;
+    o_Penalty.Name        := i_Name;
+    o_Penalty.Division_Id := i_Division_Id;
+    o_Penalty.State       := i_State;
+  
+    o_Penalty.Policies := Hpr_Pref.Penalty_Policy_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Penalty_Add_Policy
+  (
+    p_Penalty              in out nocopy Hpr_Pref.Penalty_Rt,
+    i_Penalty_Kind         varchar2,
+    i_Penalty_Type         varchar2,
+    i_From_Day             number,
+    i_To_Day               number := null,
+    i_From_Time            number,
+    i_To_Time              number := null,
+    i_Penalty_Coef         number := null,
+    i_Penalty_Per_Time     number := null,
+    i_Penalty_Amount       number := null,
+    i_Penalty_Time         number := null,
+    i_Calc_After_From_Time varchar2 := null
+  ) is
+    v_Policy Hpr_Pref.Penalty_Policy_Rt;
+  begin
+    v_Policy.Penalty_Kind         := i_Penalty_Kind;
+    v_Policy.Penalty_Type         := i_Penalty_Type;
+    v_Policy.From_Day             := i_From_Day;
+    v_Policy.To_Day               := i_To_Day;
+    v_Policy.From_Time            := i_From_Time;
+    v_Policy.To_Time              := i_To_Time;
+    v_Policy.Penalty_Coef         := i_Penalty_Coef;
+    v_Policy.Penalty_Per_Time     := i_Penalty_Per_Time;
+    v_Policy.Penalty_Amount       := i_Penalty_Amount;
+    v_Policy.Penalty_Time         := i_Penalty_Time;
+    v_Policy.Calc_After_From_Time := i_Calc_After_From_Time;
+  
+    p_Penalty.Policies.Extend;
+    p_Penalty.Policies(p_Penalty.Policies.Count) := v_Policy;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Nigthtime_Policy_New
+  (
+    o_Nigthtime_Policy    out Hpr_Pref.Nighttime_Policy_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Nigthtime_Policy_Id number,
+    i_Month               date,
+    i_Name                varchar2 := null,
+    i_Division_Id         number := null,
+    i_State               varchar2
+  ) is
+  begin
+    o_Nigthtime_Policy.Company_Id           := i_Company_Id;
+    o_Nigthtime_Policy.Filial_Id            := i_Filial_Id;
+    o_Nigthtime_Policy.Nigthttime_Policy_Id := i_Nigthtime_Policy_Id;
+    o_Nigthtime_Policy.Month                := i_Month;
+    o_Nigthtime_Policy.Name                 := i_Name;
+    o_Nigthtime_Policy.Division_Id          := i_Division_Id;
+    o_Nigthtime_Policy.State                := i_State;
+  
+    o_Nigthtime_Policy.Rules := Hpr_Pref.Nighttime_Rule_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Nigthtime_Add_Rule
+  (
+    o_Nigthtime_Policy in out nocopy Hpr_Pref.Nighttime_Policy_Rt,
+    i_Begin_Time       number,
+    i_End_Time         number,
+    i_Nighttime_Coef   number
+  ) is
+    v_Rule     Hpr_Pref.Nighttime_Rule_Rt;
+    v_End_Time number := i_End_Time;
+  begin
+    if v_End_Time < i_Begin_Time then
+      v_End_Time := v_End_Time + 1440;
+    end if;
+  
+    v_Rule.Begin_Time     := i_Begin_Time;
+    v_Rule.End_Time       := v_End_Time;
+    v_Rule.Nighttime_Coef := i_Nighttime_Coef;
+  
+    o_Nigthtime_Policy.Rules.Extend;
+    o_Nigthtime_Policy.Rules(o_Nigthtime_Policy.Rules.Count) := v_Rule;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Wage_Sheet_New
+  (
+    o_Wage_Sheet   out Hpr_Pref.Wage_Sheet_Rt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Sheet_Id     number,
+    i_Sheet_Number varchar2,
+    i_Sheet_Date   date,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Period_Kind  varchar2,
+    i_Note         varchar2,
+    i_Sheet_Kind   varchar2,
+    i_Round_Value  varchar2 := null,
+    i_Staff_Ids    Array_Number := Array_Number(),
+    i_Division_Ids Array_Number := Array_Number(),
+    i_Sheet_Staffs Hpr_Pref.Sheet_Staff_Nt := Hpr_Pref.Sheet_Staff_Nt()
+  ) is
+  begin
+    o_Wage_Sheet.Company_Id   := i_Company_Id;
+    o_Wage_Sheet.Filial_Id    := i_Filial_Id;
+    o_Wage_Sheet.Sheet_Id     := i_Sheet_Id;
+    o_Wage_Sheet.Sheet_Number := i_Sheet_Number;
+    o_Wage_Sheet.Sheet_Date   := i_Sheet_Date;
+    o_Wage_Sheet.Period_Begin := i_Period_Begin;
+    o_Wage_Sheet.Period_End   := i_Period_End;
+    o_Wage_Sheet.Period_Kind  := i_Period_Kind;
+    o_Wage_Sheet.Note         := i_Note;
+    o_Wage_Sheet.Sheet_Kind   := i_Sheet_Kind;
+    o_Wage_Sheet.Round_Value  := i_Round_Value;
+    o_Wage_Sheet.Staff_Ids    := i_Staff_Ids;
+    o_Wage_Sheet.Division_Ids := i_Division_Ids;
+    o_Wage_Sheet.Sheet_Staffs := i_Sheet_Staffs;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Onetime_Sheet_Staff_Add
+  (
+    p_Staffs         in out nocopy Hpr_Pref.Sheet_Staff_Nt,
+    i_Staff_Id       number,
+    i_Accrual_Amount number,
+    i_Penalty_Amount number
+  ) is
+    v_Staff Hpr_Pref.Sheet_Staff_Rt;
+  begin
+    v_Staff.Staff_Id       := i_Staff_Id;
+    v_Staff.Accrual_Amount := i_Accrual_Amount;
+    v_Staff.Penalty_Amount := i_Penalty_Amount;
+  
+    p_Staffs.Extend;
+    p_Staffs(p_Staffs.Count) := v_Staff;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sheet_Add_Part
+  (
+    p_Parts            in out nocopy Hpr_Pref.Sheet_Part_Nt,
+    i_Part_Begin       date,
+    i_Part_End         date,
+    i_Division_Id      number,
+    i_Job_Id           number,
+    i_Schedule_Id      number,
+    i_Fte_Id           number,
+    i_Monthly_Amount   number,
+    i_Plan_Amount      number,
+    i_Wage_Amount      number,
+    i_Overtime_Amount  number,
+    i_Nighttime_Amount number,
+    i_Late_Amount      number,
+    i_Early_Amount     number,
+    i_Lack_Amount      number,
+    i_Day_Skip_Amount  number,
+    i_Mark_Skip_Amount number
+  ) is
+    v_Part Hpr_Pref.Sheet_Part_Rt;
+  begin
+    v_Part := Hpr_Pref.Sheet_Part_Rt(Part_Begin       => i_Part_Begin,
+                                     Part_End         => i_Part_End,
+                                     Division_Id      => i_Division_Id,
+                                     Job_Id           => i_Job_Id,
+                                     Schedule_Id      => i_Schedule_Id,
+                                     Fte_Id           => i_Fte_Id,
+                                     Monthly_Amount   => i_Monthly_Amount,
+                                     Plan_Amount      => i_Plan_Amount,
+                                     Wage_Amount      => i_Wage_Amount,
+                                     Overtime_Amount  => i_Overtime_Amount,
+                                     Nighttime_Amount => i_Nighttime_Amount,
+                                     Late_Amount      => i_Late_Amount,
+                                     Early_Amount     => i_Early_Amount,
+                                     Lack_Amount      => i_Lack_Amount,
+                                     Day_Skip_Amount  => i_Day_Skip_Amount,
+                                     Mark_Skip_Amount => i_Mark_Skip_Amount);
+  
+    p_Parts.Extend;
+    p_Parts(p_Parts.Count) := v_Part;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Timebook_New
+  (
+    o_Timebook        out Hpr_Pref.Timebook_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Timebook_Id     number,
+    i_Timebook_Number varchar2,
+    i_Timebook_Date   date,
+    i_Period_Begin    date,
+    i_Period_End      date,
+    i_Period_Kind     varchar2,
+    i_Division_Id     number,
+    i_Note            varchar2,
+    i_Staff_Ids       Array_Number
+  ) is
+  begin
+    o_Timebook.Company_Id      := i_Company_Id;
+    o_Timebook.Filial_Id       := i_Filial_Id;
+    o_Timebook.Timebook_Id     := i_Timebook_Id;
+    o_Timebook.Timebook_Number := i_Timebook_Number;
+    o_Timebook.Timebook_Date   := i_Timebook_Date;
+    o_Timebook.Period_Begin    := i_Period_Begin;
+    o_Timebook.Period_End      := i_Period_End;
+    o_Timebook.Period_Kind     := i_Period_Kind;
+    o_Timebook.Division_Id     := i_Division_Id;
+    o_Timebook.Note            := i_Note;
+    o_Timebook.Staff_Ids       := i_Staff_Ids;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Oper_Type_New
+  (
+    o_Oper_Type              out Hpr_Pref.Oper_Type_Rt,
+    i_Company_Id             number,
+    i_Oper_Type_Id           number,
+    i_Oper_Group_Id          number,
+    i_Estimation_Type        varchar2,
+    i_Estimation_Formula     varchar2,
+    i_Operation_Kind         varchar2,
+    i_Name                   varchar2,
+    i_Short_Name             varchar2,
+    i_Accounting_Type        varchar2,
+    i_Corr_Coa_Id            number,
+    i_Corr_Ref_Set           varchar2,
+    i_Income_Tax_Exists      varchar2,
+    i_Income_Tax_Rate        number,
+    i_Pension_Payment_Exists varchar2,
+    i_Pension_Payment_Rate   number,
+    i_Social_Payment_Exists  varchar2,
+    i_Social_Payment_Rate    number,
+    i_Note                   varchar2,
+    i_State                  varchar2,
+    i_Code                   varchar2
+  ) is
+  begin
+    o_Oper_Type.Oper_Type.Company_Id             := i_Company_Id;
+    o_Oper_Type.Oper_Type.Oper_Type_Id           := i_Oper_Type_Id;
+    o_Oper_Type.Oper_Type.Operation_Kind         := i_Operation_Kind;
+    o_Oper_Type.Oper_Type.Name                   := i_Name;
+    o_Oper_Type.Oper_Type.Short_Name             := i_Short_Name;
+    o_Oper_Type.Oper_Type.Accounting_Type        := i_Accounting_Type;
+    o_Oper_Type.Oper_Type.Corr_Coa_Id            := i_Corr_Coa_Id;
+    o_Oper_Type.Oper_Type.Corr_Ref_Set           := i_Corr_Ref_Set;
+    o_Oper_Type.Oper_Type.Income_Tax_Exists      := i_Income_Tax_Exists;
+    o_Oper_Type.Oper_Type.Income_Tax_Rate        := i_Income_Tax_Rate;
+    o_Oper_Type.Oper_Type.Pension_Payment_Exists := i_Pension_Payment_Exists;
+    o_Oper_Type.Oper_Type.Pension_Payment_Rate   := i_Pension_Payment_Rate;
+    o_Oper_Type.Oper_Type.Social_Payment_Exists  := i_Social_Payment_Exists;
+    o_Oper_Type.Oper_Type.Social_Payment_Rate    := i_Social_Payment_Rate;
+    o_Oper_Type.Oper_Type.Note                   := i_Note;
+    o_Oper_Type.Oper_Type.State                  := i_State;
+    o_Oper_Type.Oper_Type.Code                   := i_Code;
+    o_Oper_Type.Oper_Group_Id                    := i_Oper_Group_Id;
+    o_Oper_Type.Estimation_Type                  := i_Estimation_Type;
+    o_Oper_Type.Estimation_Formula               := i_Estimation_Formula;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Book_New
+  (
+    o_Book         out Hpr_Pref.Book_Rt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Book_Id      number,
+    i_Book_Type_Id number,
+    i_Book_Number  varchar2,
+    i_Book_Date    date,
+    i_Book_Name    varchar2 := null,
+    i_Month        date := null,
+    i_Division_Id  number := null,
+    i_Currency_Id  number,
+    i_Note         varchar2 := null
+  ) is
+    v_Book Mpr_Pref.Book_Rt;
+  begin
+    Mpr_Util.Book_New(o_Book        => v_Book,
+                      i_Company_Id  => i_Company_Id,
+                      i_Filial_Id   => i_Filial_Id,
+                      i_Book_Id     => i_Book_Id,
+                      i_Book_Number => i_Book_Number,
+                      i_Book_Date   => i_Book_Date,
+                      i_Book_Name   => i_Book_Name,
+                      i_Month       => i_Month,
+                      i_Division_Id => i_Division_Id,
+                      i_Currency_Id => i_Currency_Id,
+                      i_Note        => i_Note);
+  
+    o_Book.Book_Type_Id := i_Book_Type_Id;
+    o_Book.Book         := v_Book;
+    o_Book.Operations   := Hpr_Pref.Book_Opereration_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Book_Add_Operation
+  (
+    p_Book                   in out nocopy Hpr_Pref.Book_Rt,
+    i_Operation_Id           number,
+    i_Staff_Id               number,
+    i_Oper_Type_Id           number,
+    i_Charge_Id              number,
+    i_Autofilled             varchar2,
+    i_Note                   varchar2,
+    i_Amount                 number,
+    i_Net_Amount             number,
+    i_Income_Tax_Amount      number := null,
+    i_Pension_Payment_Amount number := null,
+    i_Social_Payment_Amount  number := null,
+    i_Subfilial_Id           number := null
+  ) is
+    r_Staff     Href_Staffs%rowtype;
+    v_Operation Hpr_Pref.Book_Operation_Rt;
+    v_Book      Mpr_Pref.Book_Rt := p_Book.Book;
+  begin
+    r_Staff := z_Href_Staffs.Load(i_Company_Id => v_Book.Company_Id,
+                                  i_Filial_Id  => v_Book.Filial_Id,
+                                  i_Staff_Id   => i_Staff_Id);
+  
+    Mpr_Util.Book_Add_Operation(p_Book                   => v_Book,
+                                i_Operation_Id           => i_Operation_Id,
+                                i_Employee_Id            => r_Staff.Employee_Id,
+                                i_Oper_Type_Id           => i_Oper_Type_Id,
+                                i_Amount                 => i_Amount,
+                                i_Net_Amount             => i_Net_Amount,
+                                i_Income_Tax_Amount      => i_Income_Tax_Amount,
+                                i_Pension_Payment_Amount => i_Pension_Payment_Amount,
+                                i_Social_Payment_Amount  => i_Social_Payment_Amount,
+                                i_Subfilial_Id           => i_Subfilial_Id,
+                                i_Note                   => i_Note);
+  
+    v_Operation.Operation_Id := i_Operation_Id;
+    v_Operation.Staff_Id     := i_Staff_Id;
+    v_Operation.Charge_Id    := i_Charge_Id;
+    v_Operation.Autofilled   := i_Autofilled;
+  
+    p_Book.Book := v_Book;
+    p_Book.Operations.Extend;
+    p_Book.Operations(p_Book.Operations.Count) := v_Operation;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Charge_Document_New
+  (
+    o_Charge_Document out Hpr_Pref.Charge_Document_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Document_Id     number,
+    i_Document_Number varchar2,
+    i_Document_Date   date,
+    i_Document_Name   varchar2,
+    i_Month           date,
+    i_Oper_Type_Id    number,
+    i_Currency_Id     number,
+    i_Division_Id     number,
+    i_Document_Kind   varchar2
+  ) is
+  begin
+    o_Charge_Document.Company_Id      := i_Company_Id;
+    o_Charge_Document.Filial_Id       := i_Filial_Id;
+    o_Charge_Document.Document_Id     := i_Document_Id;
+    o_Charge_Document.Document_Number := i_Document_Number;
+    o_Charge_Document.Document_Date   := i_Document_Date;
+    o_Charge_Document.Document_Name   := i_Document_Name;
+    o_Charge_Document.Month           := i_Month;
+    o_Charge_Document.Oper_Type_Id    := i_Oper_Type_Id;
+    o_Charge_Document.Currency_Id     := i_Currency_Id;
+    o_Charge_Document.Division_Id     := i_Division_Id;
+    o_Charge_Document.Document_Kind   := i_Document_Kind;
+    o_Charge_Document.Operations      := Hpr_Pref.Charge_Document_Operation_Nt();
+  end;
+
+  ---------------------------------------------------------------------------------------------------- 
+  Procedure Charge_Document_Add_Operation
+  (
+    o_Charge_Document in out Hpr_Pref.Charge_Document_Rt,
+    i_Operation_Id    number,
+    i_Staff_Id        number,
+    i_Charge_Id       number,
+    i_Oper_Type_Id    number,
+    i_Amount          number,
+    i_Note            varchar2
+  ) is
+    v_Operation Hpr_Pref.Charge_Document_Operation_Rt;
+  begin
+    v_Operation.Operation_Id := i_Operation_Id;
+    v_Operation.Staff_Id     := i_Staff_Id;
+    v_Operation.Charge_Id    := i_Charge_Id;
+    v_Operation.Oper_Type_Id := i_Oper_Type_Id;
+    v_Operation.Amount       := i_Amount;
+    v_Operation.Note         := i_Note;
+  
+    o_Charge_Document.Operations.Extend();
+    o_Charge_Document.Operations(o_Charge_Document.Operations.Count) := v_Operation;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Advance_New
+  (
+    o_Advance         out nocopy Hpr_Pref.Advance_Rt,
+    i_Company_Id      number,
+    i_Filial_Id       number,
+    i_Payment_Id      number,
+    i_Payment_Number  varchar2,
+    i_Payment_Date    date,
+    i_Booked_Date     date,
+    i_Currency_Id     number,
+    i_Payment_Type    varchar2,
+    i_Days_Limit      number := null,
+    i_Limit_Kind      varchar2,
+    i_Division_Id     number := null,
+    i_Cashbox_Id      number := null,
+    i_Bank_Account_Id number := null,
+    i_Note            varchar2,
+    i_Souce_Table     varchar2,
+    i_Source_Id       number := null
+  ) is
+    v_Payment Mpr_Pref.Payment_Rt;
+  begin
+    Mpr_Util.Payment_New(o_Payment         => v_Payment,
+                         i_Company_Id      => i_Company_Id,
+                         i_Filial_Id       => i_Filial_Id,
+                         i_Payment_Id      => i_Payment_Id,
+                         i_Payment_Kind    => Mpr_Pref.c_Pk_Advance,
+                         i_Payment_Number  => i_Payment_Number,
+                         i_Payment_Date    => i_Payment_Date,
+                         i_Booked_Date     => i_Booked_Date,
+                         i_Currency_Id     => i_Currency_Id,
+                         i_Payment_Type    => i_Payment_Type,
+                         i_Division_Id     => i_Division_Id,
+                         i_Cashbox_Id      => i_Cashbox_Id,
+                         i_Bank_Account_Id => i_Bank_Account_Id,
+                         i_Note            => i_Note,
+                         i_Souce_Table     => i_Souce_Table,
+                         i_Source_Id       => i_Source_Id);
+  
+    o_Advance.Payment      := v_Payment;
+    o_Advance.Limit_Kind   := i_Limit_Kind;
+    o_Advance.Days_Limit   := i_Days_Limit;
+    o_Advance.Employee_Ids := Array_Number();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Advance_Add_Employee
+  (
+    p_Advance         in out nocopy Hpr_Pref.Advance_Rt,
+    i_Employee_Id     number,
+    i_Pay_Amount      number,
+    i_Bank_Account_Id number := null,
+    i_Paid_Date       date := null,
+    i_Paid            varchar2 := null,
+    i_Note            varchar2 := null
+  ) is
+  begin
+    Mpr_Util.Payment_Add_Employee(p_Payment         => p_Advance.Payment,
+                                  i_Employee_Id     => i_Employee_Id,
+                                  i_Pay_Amount      => i_Pay_Amount,
+                                  i_Bank_Account_Id => i_Bank_Account_Id,
+                                  i_Paid_Date       => i_Paid_Date,
+                                  i_Paid            => i_Paid,
+                                  i_Note            => i_Note);
+  
+    Fazo.Push(p_Advance.Employee_Ids, i_Employee_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sales_Bonus_Payment_New
+  (
+    o_Sales_Bonus_Payment out nocopy Hpr_Pref.Sales_Bonus_Payment_Rt,
+    i_Company_Id          number,
+    i_Filial_Id           number,
+    i_Payment_Id          number,
+    i_Payment_Number      varchar2,
+    i_Payment_Date        date,
+    i_Payment_Name        varchar2 := null,
+    i_Begin_Date          date,
+    i_End_Date            date,
+    i_Division_Id         number := null,
+    i_Job_Id              number := null,
+    i_Bonus_Type          varchar2 := null,
+    i_Payment_Type        varchar2,
+    i_Cashbox_Id          number := null,
+    i_Bank_Account_Id     number := null,
+    i_Note                varchar2 := null
+  ) is
+  begin
+    o_Sales_Bonus_Payment.Company_Id      := i_Company_Id;
+    o_Sales_Bonus_Payment.Filial_Id       := i_Filial_Id;
+    o_Sales_Bonus_Payment.Payment_Id      := i_Payment_Id;
+    o_Sales_Bonus_Payment.Payment_Number  := i_Payment_Number;
+    o_Sales_Bonus_Payment.Payment_Date    := i_Payment_Date;
+    o_Sales_Bonus_Payment.Payment_Name    := i_Payment_Name;
+    o_Sales_Bonus_Payment.Begin_Date      := i_Begin_Date;
+    o_Sales_Bonus_Payment.End_Date        := i_End_Date;
+    o_Sales_Bonus_Payment.Division_Id     := i_Division_Id;
+    o_Sales_Bonus_Payment.Job_Id          := i_Job_Id;
+    o_Sales_Bonus_Payment.Bonus_Type      := i_Bonus_Type;
+    o_Sales_Bonus_Payment.Payment_Type    := i_Payment_Type;
+    o_Sales_Bonus_Payment.Cashbox_Id      := i_Cashbox_Id;
+    o_Sales_Bonus_Payment.Bank_Account_Id := i_Bank_Account_Id;
+    o_Sales_Bonus_Payment.Note            := i_Note;
+  
+    o_Sales_Bonus_Payment.Operations := Hpr_Pref.Sales_Bonus_Payment_Operation_Nt();
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Sales_Bonus_Payment_Add_Operation
+  (
+    p_Sales_Bonus_Payment in out nocopy Hpr_Pref.Sales_Bonus_Payment_Rt,
+    i_Operation_Id        number,
+    i_Staff_Id            number,
+    i_Period_Begin        date,
+    i_Period_End          date,
+    i_Bonus_Type          varchar2,
+    i_Job_Id              number,
+    i_Percentage          number,
+    i_Periods             Array_Date,
+    i_Sales_Amounts       Array_Number,
+    i_Amounts             Array_Number
+  ) is
+    v_Operation Hpr_Pref.Sales_Bonus_Payment_Operation_Rt;
+  begin
+    v_Operation.Operation_Id  := i_Operation_Id;
+    v_Operation.Staff_Id      := i_Staff_Id;
+    v_Operation.Period_Begin  := i_Period_Begin;
+    v_Operation.Period_End    := i_Period_End;
+    v_Operation.Bonus_Type    := i_Bonus_Type;
+    v_Operation.Job_Id        := i_Job_Id;
+    v_Operation.Percentage    := i_Percentage;
+    v_Operation.Periods       := i_Periods;
+    v_Operation.Sales_Amounts := i_Sales_Amounts;
+    v_Operation.Amounts       := i_Amounts;
+  
+    p_Sales_Bonus_Payment.Operations.Extend;
+    p_Sales_Bonus_Payment.Operations(p_Sales_Bonus_Payment.Operations.Count) := v_Operation;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Currency_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return Array_Number is
+    --------------------------------------------------
+    Function Load_Setting(i_Code varchar2) return Array_Number is
+      v_Ids varchar2(4000) := Md_Pref.Load(i_Company_Id => i_Company_Id,
+                                           i_Filial_Id  => i_Filial_Id,
+                                           i_Code       => i_Code);
+    begin
+      if v_Ids is null then
+        return Array_Number();
+      end if;
+    
+      return Fazo.To_Array_Number(Fazo.Split(v_Ids, Href_Pref.c_Settings_Separator));
+    end;
+  
+  begin
+    return Load_Setting(Hpr_Pref.c_Pref_Allow_Other_Currencies);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Use_Subfilial_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return varchar2 is
+  begin
+    return Nvl(Md_Pref.Load(i_Company_Id => i_Company_Id,
+                            i_Filial_Id  => i_Filial_Id,
+                            i_Code       => Hpr_Pref.c_Pref_Use_Subfilial_Settings),
+               'N');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Staff_Blocked
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Timebook_Id  number := null
+  ) return varchar2 is
+    v_Dummy varchar2(1);
+  begin
+    select 'x'
+      into v_Dummy
+      from Hpr_Timesheet_Locks w
+     where w.Company_Id = i_Company_Id
+       and w.Filial_Id = i_Filial_Id
+       and w.Staff_Id = i_Staff_Id
+       and w.Timesheet_Date >= i_Period_Begin
+       and w.Timesheet_Date <= i_Period_End
+       and (i_Timebook_Id is null or w.Timebook_Id <> i_Timebook_Id)
+       and Rownum = 1;
+  
+    return 'Y';
+  exception
+    when No_Data_Found then
+      return 'N';
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Is_Staff_Sales_Bonus_Calced
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Bonus_Type   varchar2,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Payment_Id   number := null,
+    o_Period_Begin out date,
+    o_Period_End   out date
+  ) return varchar2 is
+  begin
+    select Greatest(w.Period_Begin, i_Period_Begin), Least(w.Period_End, i_Period_End)
+      into o_Period_Begin, o_Period_End
+      from Hpr_Sales_Bonus_Payment_Operations w
+     where w.Company_Id = i_Company_Id
+       and w.Filial_Id = i_Filial_Id
+       and w.Staff_Id = i_Staff_Id
+       and Greatest(w.Period_Begin, i_Period_Begin) <= Least(w.Period_End, i_Period_End)
+       and (i_Payment_Id is null or w.Payment_Id <> i_Payment_Id)
+       and exists (select 1
+              from Hpr_Sales_Bonus_Payments p
+             where p.Company_Id = i_Company_Id
+               and p.Filial_Id = i_Filial_Id
+               and p.Payment_Id = w.Payment_Id
+               and p.Posted = 'Y')
+       and Rownum = 1;
+  
+    return 'Y';
+  exception
+    when No_Data_Found then
+      return 'N';
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Jcode_Sales_Bonus_Payment(i_Payment_Id number) return varchar2 is
+  begin
+    return Mkr_Util.Journal_Code(i_Source_Table => Zt.Hpr_Sales_Bonus_Payments,
+                                 i_Source_Id    => i_Payment_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Oper_Group_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number is
+    result number;
+  begin
+    select Oper_Group_Id
+      into result
+      from Hpr_Oper_Groups
+     where Company_Id = i_Company_Id
+       and Pcode = i_Pcode;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Book_Type_Id
+  (
+    i_Company_Id number,
+    i_Pcode      varchar2
+  ) return number is
+    result number;
+  begin
+    select Book_Type_Id
+      into result
+      from Hpr_Book_Types
+     where Company_Id = i_Company_Id
+       and Pcode = i_Pcode;
+  
+    return result;
+  end;
+
+  -- execution plan algorithm should be added and taken into account
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Execute
+  (
+    i_Formula   varchar2,
+    i_Arguments Matrix_Varchar2
+  ) return number is
+    v_Formula varchar2(32767) := i_Formula;
+    result    number;
+  begin
+    for i in 1 .. i_Arguments.Count
+    loop
+      v_Formula := Regexp_Replace(v_Formula,
+                                  '(\W|^)' || i_Arguments(i) (1) || '(\W|$)',
+                                  '\1to_number(' || i_Arguments(i) (2) || ')\2');
+    end loop;
+  
+    execute immediate 'begin :result := ' || v_Formula || '; end;'
+      using out result;
+  
+    return result;
+  exception
+    when others then
+      b.Raise_Error('execution error: ' || Fazo.Zip_Matrix(i_Arguments).Json);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Variables(i_Formula varchar2) return Array_Varchar2 is
+    v_Pattern varchar2(20) := '[^-+*\/() ]+';
+    result    Array_Varchar2 := Array_Varchar2();
+  begin
+    Result.Extend(Regexp_Count(i_Formula, v_Pattern));
+  
+    for i in 1 .. Result.Count
+    loop
+      result(i) := Regexp_Substr(i_Formula, v_Pattern, 1, i);
+    end loop;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- this function only for system oper type formula when new company added
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Fix
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return varchar2 is
+    v_Company_Head   number := Md_Pref.c_Company_Head;
+    v_Identifiers    Array_Varchar2;
+    v_New_Identifier Href_Indicators.Identifier%type;
+    result           Hpr_Oper_Types.Estimation_Formula%type := i_Formula;
+  begin
+    if i_Formula is null then
+      return null;
+    end if;
+  
+    v_Identifiers := Hpr_Util.Formula_Variables(result);
+  
+    Fazo.Sort_Desc(v_Identifiers);
+  
+    for i in 1 .. v_Identifiers.Count
+    loop
+      select q.Identifier
+        into v_New_Identifier
+        from Href_Indicators q
+       where q.Company_Id = i_Company_Id
+         and q.Pcode = (select w.Pcode
+                          from Href_Indicators w
+                         where w.Company_Id = v_Company_Head
+                           and w.Identifier = v_Identifiers(i));
+    
+      result := Regexp_Replace(result,
+                               '(\W|^)' || v_Identifiers(i) || '(\W|$)',
+                               '\1' || v_New_Identifier || '\2');
+    end loop;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Indicators
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return Matrix_Varchar2 is
+    v_Indicator_Id number;
+    v_Variables    Array_Varchar2;
+    result         Matrix_Varchar2 := Matrix_Varchar2();
+  begin
+    v_Variables := Formula_Variables(i_Formula);
+  
+    for i in 1 .. v_Variables.Count
+    loop
+      begin
+        select t.Indicator_Id
+          into v_Indicator_Id
+          from Href_Indicators t
+         where t.Company_Id = i_Company_Id
+           and t.Identifier = v_Variables(i);
+      
+        Fazo.Push(result, Array_Varchar2(v_Indicator_Id, v_Variables(i)));
+      exception
+        when No_Data_Found then
+          null;
+      end;
+    end loop;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Formula_Validate
+  (
+    i_Company_Id number,
+    i_Formula    varchar2
+  ) return Array_Varchar2 is
+    v_Dummy     varchar2(1);
+    v_Variables Array_Varchar2;
+    v_Arguments Matrix_Varchar2;
+    result      Array_Varchar2 := Array_Varchar2();
+  begin
+    v_Variables := Formula_Variables(i_Formula);
+  
+    for i in 1 .. v_Variables.Count
+    loop
+      begin
+        select 'x'
+          into v_Dummy
+          from Href_Indicators t
+         where t.Company_Id = i_Company_Id
+           and t.Identifier = v_Variables(i);
+      exception
+        when No_Data_Found then
+          if not Fazo.Is_Number(v_Variables(i)) then
+            Fazo.Push(result, t('could not find indicator by identifier $1', v_Variables(i)));
+          end if;
+      end;
+    end loop;
+  
+    -- sorting desc
+    select Array_Varchar2(Column_Value, 'null')
+      bulk collect
+      into v_Arguments
+      from table(v_Variables)
+     order by Length(Column_Value) desc;
+  
+    if Result.Count = 0 then
+      begin
+        v_Dummy := Formula_Execute(i_Formula => i_Formula, i_Arguments => v_Arguments);
+      exception
+        when others then
+          Fazo.Push(result, t('an error occurred while validating a formula calculation'));
+      end;
+    end if;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Overtime_Coef(i_Company_Id number) return number is
+  begin
+    return Nvl(Md_Pref.Load(i_Company_Id => i_Company_Id,
+                            i_Filial_Id  => Md_Pref.Filial_Head(i_Company_Id),
+                            i_Code       => Hpr_Pref.c_Overtime_Coef),
+               Hpr_Pref.c_Overtime_Coef_Default);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Constant_Indicator
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Charge_Id    number,
+    i_Indicator_Id number,
+    i_Period       date
+  ) return number is
+    r_Charge        Hpr_Charges%rowtype;
+    v_Wage_Scale_Id number;
+    v_Rank_Id       number;
+    result          number;
+  begin
+    if i_Charge_Id is not null then
+      r_Charge := z_Hpr_Charges.Take(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Charge_Id  => i_Charge_Id);
+    
+      v_Wage_Scale_Id := r_Charge.Wage_Scale_Id;
+      v_Rank_Id       := r_Charge.Rank_Id;
+    else
+      v_Wage_Scale_Id := Hpd_Util.Get_Closest_Wage_Scale_Id(i_Company_Id => i_Company_Id,
+                                                            i_Filial_Id  => i_Filial_Id,
+                                                            i_Staff_Id   => i_Staff_Id,
+                                                            i_Period     => i_Period);
+    
+      v_Rank_Id := Hpd_Util.Get_Closest_Rank_Id(i_Company_Id => i_Company_Id,
+                                                i_Filial_Id  => i_Filial_Id,
+                                                i_Staff_Id   => i_Staff_Id,
+                                                i_Period     => i_Period);
+    end if;
+  
+    if v_Wage_Scale_Id is not null then
+      result := Hrm_Util.Closest_Wage_Scale_Indicator_Value(i_Company_Id    => i_Company_Id,
+                                                            i_Filial_Id     => i_Filial_Id,
+                                                            i_Wage_Scale_Id => v_Wage_Scale_Id,
+                                                            i_Indicator_Id  => i_Indicator_Id,
+                                                            i_Period        => i_Period,
+                                                            i_Rank_Id       => v_Rank_Id);
+    end if;
+  
+    if result is null then
+      result := Hpd_Util.Get_Closest_Indicator_Value(i_Company_Id   => i_Company_Id,
+                                                     i_Filial_Id    => i_Filial_Id,
+                                                     i_Staff_Id     => i_Staff_Id,
+                                                     i_Indicator_Id => i_Indicator_Id,
+                                                     i_Period       => i_Period);
+    end if;
+  
+    return Nvl(result, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  -- calculate wage indicator by i_begin_date
+  -- as wage on vacation is calculated by first day
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Wage_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+  begin
+    return Calc_Constant_Indicator(i_Company_Id   => i_Company_Id,
+                                   i_Filial_Id    => i_Filial_Id,
+                                   i_Staff_Id     => i_Staff_Id,
+                                   i_Charge_Id    => i_Charge_Id,
+                                   i_Indicator_Id => Href_Util.Indicator_Id(i_Company_Id => i_Company_Id, --
+                                                                            i_Pcode      => Href_Pref.c_Pcode_Indicator_Wage),
+                                   i_Period       => i_Begin_Date);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Rate_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Closest_Robot Hpd_Trans_Robots%rowtype;
+  begin
+    r_Closest_Robot := Hpd_Util.Closest_Robot(i_Company_Id => i_Company_Id,
+                                              i_Filial_Id  => i_Filial_Id,
+                                              i_Staff_Id   => i_Staff_Id,
+                                              i_Period     => i_End_Date);
+  
+    return Nvl(r_Closest_Robot.Fte, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Hourly_Wage_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Charge Hpr_Charges%rowtype;
+  
+    v_Schedule_Id  number;
+    v_Oper_Type_Id number;
+  
+    result number;
+  begin
+    if i_Charge_Id is not null then
+      r_Charge := z_Hpr_Charges.Lock_Load(i_Company_Id => i_Company_Id,
+                                          i_Filial_Id  => i_Filial_Id,
+                                          i_Charge_Id  => i_Charge_Id);
+    
+      v_Schedule_Id := r_Charge.Schedule_Id;
+    else
+      v_Schedule_Id := Hpd_Util.Get_Closest_Schedule_Id(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Period     => i_End_Date);
+    end if;
+  
+    v_Oper_Type_Id := Hpd_Util.Get_Closest_Oper_Type_Id(i_Company_Id    => i_Company_Id,
+                                                        i_Filial_Id     => i_Filial_Id,
+                                                        i_Staff_Id      => i_Staff_Id,
+                                                        i_Oper_Group_Id => Oper_Group_Id(i_Company_Id => i_Company_Id,
+                                                                                         i_Pcode      => Hpr_Pref.c_Pcode_Operation_Group_Wage),
+                                                        i_Period        => i_End_Date);
+  
+    return Calc_Hourly_Wage(i_Company_Id   => i_Company_Id,
+                            i_Filial_Id    => i_Filial_Id,
+                            i_Staff_Id     => i_Staff_Id,
+                            i_Oper_Type_Id => v_Oper_Type_Id,
+                            i_Schedule_Id  => v_Schedule_Id,
+                            i_Part_Begin   => i_Begin_Date,
+                            i_Part_End     => i_End_Date);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Plan_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Closest_Schedule Hpd_Trans_Schedules%rowtype;
+    result             number;
+  begin
+    r_Closest_Schedule := Hpd_Util.Closest_Schedule(i_Company_Id => i_Company_Id,
+                                                    i_Filial_Id  => i_Filial_Id,
+                                                    i_Staff_Id   => i_Staff_Id,
+                                                    i_Period     => i_End_Date);
+  
+    return Htt_Util.Calc_Plan_Days(i_Company_Id  => i_Company_Id,
+                                   i_Filial_Id   => i_Filial_Id,
+                                   i_Staff_Id    => i_Staff_Id,
+                                   i_Schedule_Id => r_Closest_Schedule.Schedule_Id,
+                                   i_Period      => i_End_Date);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Plan_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Closest_Schedule Hpd_Trans_Schedules%rowtype;
+    result             number;
+  begin
+    r_Closest_Schedule := Hpd_Util.Closest_Schedule(i_Company_Id => i_Company_Id,
+                                                    i_Filial_Id  => i_Filial_Id,
+                                                    i_Staff_Id   => i_Staff_Id,
+                                                    i_Period     => i_End_Date);
+  
+    result := Htt_Util.Calc_Plan_Minutes(i_Company_Id  => i_Company_Id,
+                                         i_Filial_Id   => i_Filial_Id,
+                                         i_Staff_Id    => i_Staff_Id,
+                                         i_Schedule_Id => r_Closest_Schedule.Schedule_Id,
+                                         i_Period      => i_End_Date);
+  
+    return Nvl(Round(result / 60, 2), 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Working_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+  begin
+    return Htt_Util.Calc_Working_Days(i_Company_Id => i_Company_Id,
+                                      i_Filial_Id  => i_Filial_Id,
+                                      i_Staff_Id   => i_Staff_Id,
+                                      i_Begin_Date => i_Begin_Date,
+                                      i_End_Date   => i_End_Date);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Working_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    result number;
+  begin
+    result := Htt_Util.Calc_Working_Seconds(i_Company_Id => i_Company_Id,
+                                            i_Filial_Id  => i_Filial_Id,
+                                            i_Staff_Id   => i_Staff_Id,
+                                            i_Begin_Date => i_Begin_Date,
+                                            i_End_Date   => i_End_Date);
+  
+    return Nvl(Round(result / 3600, 2), 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Fact_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Time_Kind_Id number;
+    v_Seconds      number;
+    result         number;
+  begin
+    v_Time_Kind_Id := Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                            i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Turnout);
+  
+    Htt_Util.Calc_Time_Kind_Facts(o_Fact_Seconds => v_Seconds,
+                                  o_Fact_Days    => result,
+                                  i_Company_Id   => i_Company_Id,
+                                  i_Filial_Id    => i_Filial_Id,
+                                  i_Staff_Id     => i_Staff_Id,
+                                  i_Time_Kind_Id => v_Time_Kind_Id,
+                                  i_Begin_Date   => i_Begin_Date,
+                                  i_End_Date     => i_End_Date);
+  
+    return result;
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Fact_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Time_Kind_Id number;
+    result         number;
+    v_Days         number;
+  begin
+    v_Time_Kind_Id := Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                            i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Turnout);
+  
+    Htt_Util.Calc_Time_Kind_Facts(o_Fact_Seconds => result,
+                                  o_Fact_Days    => v_Days,
+                                  i_Company_Id   => i_Company_Id,
+                                  i_Filial_Id    => i_Filial_Id,
+                                  i_Staff_Id     => i_Staff_Id,
+                                  i_Time_Kind_Id => v_Time_Kind_Id,
+                                  i_Begin_Date   => i_Begin_Date,
+                                  i_End_Date     => i_End_Date);
+  
+    return Nvl(Round(result / 3600, 2), 0);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Performance_Data
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date
+  ) return Hper_Staff_Plans%rowtype is
+    r_Charge        Hpr_Charges%rowtype;
+    r_Staff_Plan    Hper_Staff_Plans%rowtype;
+    v_Staff_Plan_Id number;
+  
+    --------------------------------------------------
+    Function Get_Performance return Hper_Staff_Plans%rowtype is
+    begin
+      select q.*
+        into r_Staff_Plan
+        from Hper_Staff_Plans q
+       where q.Company_Id = i_Company_Id
+         and q.Filial_Id = i_Filial_Id
+         and q.Staff_Id = i_Staff_Id
+         and q.Month_Begin_Date = Trunc(i_Begin_Date, 'mon')
+       order by Nvl((select h.Hiring_Date
+                      from Hpd_Hirings h
+                     where h.Company_Id = q.Company_Id
+                       and h.Filial_Id = q.Filial_Id
+                       and h.Page_Id = q.Journal_Page_Id
+                       and h.Hiring_Date <= i_Begin_Date),
+                    (select h.Transfer_Begin
+                       from Hpd_Transfers h
+                      where h.Company_Id = q.Company_Id
+                        and h.Filial_Id = q.Filial_Id
+                        and h.Page_Id = q.Journal_Page_Id
+                        and h.Transfer_Begin <= i_Begin_Date)) desc nulls last
+       fetch first row only;
+    
+      return r_Staff_Plan;
+    exception
+      when No_Data_Found then
+        return null;
+    end;
+  begin
+    if i_Charge_Id is null then
+      return Get_Performance;
+    end if;
+  
+    r_Charge := z_Hpr_Charges.Lock_Load(i_Company_Id => i_Company_Id,
+                                        i_Filial_Id  => i_Filial_Id,
+                                        i_Charge_Id  => i_Charge_Id);
+  
+    select q.Staff_Plan_Id
+      into v_Staff_Plan_Id
+      from Hper_Staff_Plan_Intervals q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Interval_Id = r_Charge.Interval_Id;
+  
+    r_Staff_Plan := z_Hper_Staff_Plans.Lock_Load(i_Company_Id    => i_Company_Id,
+                                                 i_Filial_Id     => i_Filial_Id,
+                                                 i_Staff_Plan_Id => v_Staff_Plan_Id);
+  
+    return r_Staff_Plan;
+  exception
+    when No_Data_Found then
+      return null;
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Bonus_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Staff_Plan Hper_Staff_Plans%rowtype;
+  begin
+    r_Staff_Plan := Load_Performance_Data(i_Company_Id => i_Company_Id,
+                                          i_Filial_Id  => i_Filial_Id,
+                                          i_Staff_Id   => i_Staff_Id,
+                                          i_Charge_Id  => i_Charge_Id,
+                                          i_Begin_Date => i_Begin_Date);
+  
+    return Nvl(r_Staff_Plan.Main_Fact_Amount, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Extra_Bonus_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Staff_Plan Hper_Staff_Plans%rowtype;
+  begin
+    r_Staff_Plan := Load_Performance_Data(i_Company_Id => i_Company_Id,
+                                          i_Filial_Id  => i_Filial_Id,
+                                          i_Staff_Id   => i_Staff_Id,
+                                          i_Charge_Id  => i_Charge_Id,
+                                          i_Begin_Date => i_Begin_Date);
+  
+    return Nvl(r_Staff_Plan.Extra_Fact_Amount, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Penalty_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Staff_Plan Hper_Staff_Plans%rowtype;
+  begin
+    r_Staff_Plan := Load_Performance_Data(i_Company_Id => i_Company_Id,
+                                          i_Filial_Id  => i_Filial_Id,
+                                          i_Staff_Id   => i_Staff_Id,
+                                          i_Charge_Id  => i_Charge_Id,
+                                          i_Begin_Date => i_Begin_Date);
+  
+    return Nvl(-r_Staff_Plan.Main_Fact_Amount, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Perf_Extra_Penalty_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    r_Staff_Plan Hper_Staff_Plans%rowtype;
+  begin
+    r_Staff_Plan := Load_Performance_Data(i_Company_Id => i_Company_Id,
+                                          i_Filial_Id  => i_Filial_Id,
+                                          i_Staff_Id   => i_Staff_Id,
+                                          i_Charge_Id  => i_Charge_Id,
+                                          i_Begin_Date => i_Begin_Date);
+  
+    return Nvl(-r_Staff_Plan.Extra_Fact_Amount, 0);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Average_Perf
+  (
+    o_Main_Fact_Amount  out number,
+    o_Extra_Fact_Amount out number,
+    i_Company_Id        number,
+    i_Filial_Id         number,
+    i_Staff_Id          number,
+    i_Period            date
+  ) is
+    r_Staff      Href_Staffs%rowtype;
+    v_Begin_Date date;
+    v_End_Date   date;
+  begin
+    r_Staff := z_Href_Staffs.Load(i_Company_Id => i_Company_Id,
+                                  i_Filial_Id  => i_Filial_Id,
+                                  i_Staff_Id   => i_Staff_Id);
+  
+    v_End_Date   := i_Period;
+    v_Begin_Date := Add_Months(v_End_Date, -12);
+  
+    v_Begin_Date := Trunc(Greatest(v_Begin_Date, r_Staff.Hiring_Date), 'mon');
+    v_End_Date   := Trunc(Greatest(Least(v_End_Date, Nvl(r_Staff.Dismissal_Date, v_End_Date)),
+                                   r_Staff.Hiring_Date),
+                          'mon');
+  
+    select sum(q.Main_Fact_Amount), sum(q.Extra_Fact_Amount)
+      into o_Main_Fact_Amount, o_Extra_Fact_Amount
+      from Hper_Staff_Plans q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Staff_Id = i_Staff_Id
+       and q.Plan_Date between v_Begin_Date and v_End_Date
+       and q.Status = Hper_Pref.c_Staff_Plan_Status_Completed;
+  
+    o_Main_Fact_Amount  := o_Main_Fact_Amount / 12;
+    o_Extra_Fact_Amount := o_Extra_Fact_Amount / 12;
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Average_Perf_Bonus
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Dummy            number;
+    v_Main_Fact_Amount number;
+  begin
+    Calc_Average_Perf(o_Main_Fact_Amount  => v_Main_Fact_Amount,
+                      o_Extra_Fact_Amount => v_Dummy,
+                      i_Company_Id        => i_Company_Id,
+                      i_Filial_Id         => i_Filial_Id,
+                      i_Staff_Id          => i_Staff_Id,
+                      i_Period            => i_Begin_Date);
+  
+    return Nvl(v_Main_Fact_Amount, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Average_Perf_Extra_Bonus
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Dummy             number;
+    v_Extra_Fact_Amount number;
+  begin
+    Calc_Average_Perf(o_Main_Fact_Amount  => v_Dummy,
+                      o_Extra_Fact_Amount => v_Extra_Fact_Amount,
+                      i_Company_Id        => i_Company_Id,
+                      i_Filial_Id         => i_Filial_Id,
+                      i_Staff_Id          => i_Staff_Id,
+                      i_Period            => i_Begin_Date);
+  
+    return Nvl(v_Extra_Fact_Amount, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Sick_Leave_Coefficient_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Timeoff_Id number;
+    result       number;
+  begin
+    begin
+      select q.Timeoff_Id
+        into v_Timeoff_Id
+        from Hpd_Timeoff_Intervals q
+       where q.Company_Id = i_Company_Id
+         and q.Filial_Id = i_Filial_Id
+         and q.Interval_Id = (select w.Interval_Id
+                                from Hpr_Charges w
+                               where w.Company_Id = i_Company_Id
+                                 and w.Filial_Id = i_Filial_Id
+                                 and w.Charge_Id = i_Charge_Id);
+    exception
+      when No_Data_Found then
+        return 0;
+    end;
+  
+    result := z_Hpd_Sick_Leaves.Take( --
+              i_Company_Id => i_Company_Id, --
+              i_Filial_Id => i_Filial_Id, --
+              i_Timeoff_Id => v_Timeoff_Id).Coefficient;
+  
+    return Nvl(result, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Business_Trip_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Fact_Days number;
+  begin
+    v_Fact_Days := Htt_Util.Calc_Locked_Turnout_Days(i_Company_Id => i_Company_Id,
+                                                     i_Filial_Id  => i_Filial_Id,
+                                                     i_Staff_Id   => i_Staff_Id,
+                                                     i_Begin_Date => i_Begin_Date,
+                                                     i_End_Date   => i_End_Date);
+  
+    return Nvl((i_End_Date - i_Begin_Date + 1) - v_Fact_Days, 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Vacation_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+  begin
+    return Htt_Util.Calc_Vacation_Days(i_Company_Id => i_Company_Id,
+                                       i_Filial_Id  => i_Filial_Id,
+                                       i_Staff_Id   => i_Staff_Id,
+                                       i_Begin_Date => i_Begin_Date,
+                                       i_End_Date   => i_End_Date);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Sick_Leave_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Working_Days number;
+    v_Fact_Days    number;
+  begin
+    v_Working_Days := Calc_Working_Days_Indicator(i_Company_Id => i_Company_Id,
+                                                  i_Filial_Id  => i_Filial_Id,
+                                                  i_Staff_Id   => i_Staff_Id,
+                                                  i_Charge_Id  => i_Charge_Id,
+                                                  i_Begin_Date => i_Begin_Date,
+                                                  i_End_Date   => i_End_Date);
+  
+    v_Fact_Days := Htt_Util.Calc_Locked_Turnout_Days(i_Company_Id => i_Company_Id,
+                                                     i_Filial_Id  => i_Filial_Id,
+                                                     i_Staff_Id   => i_Staff_Id,
+                                                     i_Begin_Date => i_Begin_Date,
+                                                     i_End_Date   => i_End_Date);
+  
+    return v_Working_Days - v_Fact_Days;
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Mean_Working_Days_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_First_Day  date := Trunc(i_Begin_Date, 'y');
+    v_Last_Day   date := Add_Months(v_First_Day, 12) - 1;
+    v_Days_Count number := v_Last_Day - v_First_Day + 1;
+  
+    v_Default_Calendar_Id      number;
+    v_Official_Rest_Days_Count number;
+  begin
+    v_Default_Calendar_Id := Htt_Util.Default_Calendar_Id(i_Company_Id => i_Company_Id,
+                                                          i_Filial_Id  => i_Filial_Id);
+  
+    v_Official_Rest_Days_Count := Htt_Util.Official_Rest_Days_Count(i_Company_Id  => i_Company_Id,
+                                                                    i_Filial_Id   => i_Filial_Id,
+                                                                    i_Calendar_Id => v_Default_Calendar_Id,
+                                                                    i_Begin_Date  => v_First_Day,
+                                                                    i_End_Date    => v_Last_Day);
+  
+    return Nvl(Round((v_Days_Count - v_Official_Rest_Days_Count) / 12, 1), 0);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Overtime_Hours_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Fact_Seconds number;
+    v_Fact_Days    number;
+  begin
+    Htt_Util.Calc_Time_Kind_Facts(o_Fact_Seconds => v_Fact_Seconds,
+                                  o_Fact_Days    => v_Fact_Days,
+                                  i_Company_Id   => i_Company_Id,
+                                  i_Filial_Id    => i_Filial_Id,
+                                  i_Staff_Id     => i_Staff_Id,
+                                  i_Time_Kind_Id => Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                                                          i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Overtime),
+                                  i_Begin_Date   => i_Begin_Date,
+                                  i_End_Date     => i_End_Date);
+  
+    return Round(v_Fact_Seconds / 3600, 2);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Overtime_Coef_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+  begin
+    return Load_Overtime_Coef(i_Company_Id);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Additional_Nighttime_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Policy_Id   number;
+    v_Division_Id number;
+    result        number;
+  begin
+    v_Division_Id := Hpd_Util.Get_Closest_Division_Id(i_Company_Id => i_Company_Id,
+                                                      i_Filial_Id  => i_Filial_Id,
+                                                      i_Staff_Id   => i_Staff_Id,
+                                                      i_Period     => i_End_Date);
+  
+    return Round(Calc_Additional_Nighttime_Amount(i_Company_Id  => i_Company_Id,
+                                                  i_Filial_Id   => i_Filial_Id,
+                                                  i_Staff_Id    => i_Staff_Id,
+                                                  i_Division_Id => v_Division_Id,
+                                                  i_Begin_Date  => i_Begin_Date,
+                                                  i_End_Date    => i_End_Date) / 3600,
+                 2);
+  end;
+
+  -- Calc_Indicator_Value da oson foydalanish uchun keraksiz argumentlar input qilingan
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Weighted_Turnout_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+  begin
+    return Round(Htt_Util.Calc_Weighted_Turnout_Seconds(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Begin_Date => i_Begin_Date,
+                                                        i_End_Date   => i_End_Date) / 3600,
+                 2);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Code_Gen
+  (
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return varchar2 is
+  begin
+    if i_Charge_Id is not null then
+      return i_Charge_Id;
+    end if;
+  
+    return i_Staff_Id || --
+    Href_Pref.c_Settings_Separator || --
+    to_char(i_Begin_Date, Href_Pref.c_Date_Format_Day) || --
+    Href_Pref.c_Settings_Separator || --
+    to_char(i_End_Date, Href_Pref.c_Date_Format_Day);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_Indicators
+  (
+    i_Company_Id    number,
+    i_Filial_Id     number,
+    i_Staff_Id      number,
+    i_Charge_Id     number,
+    i_Begin_Date    date,
+    i_End_Date      date,
+    i_Penalty_Pcode varchar2
+  ) return number is
+    r_Charge      Hpr_Charges%rowtype;
+    v_Hourly_Wage number := 0;
+    v_Division_Id number;
+    v_Schedule_Id number;
+    v_Code        varchar(50);
+  
+    v_Oper_Type_Ids Array_Number;
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    if i_Charge_Id is not null then
+      r_Charge := z_Hpr_Charges.Load(i_Company_Id => i_Company_Id,
+                                     i_Filial_Id  => i_Filial_Id,
+                                     i_Charge_Id  => i_Charge_Id);
+    
+      v_Division_Id := r_Charge.Division_Id;
+      v_Schedule_Id := r_Charge.Schedule_Id;
+    else
+      v_Division_Id := Hpd_Util.Get_Closest_Division_Id(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Period     => i_End_Date);
+    
+      v_Schedule_Id := Hpd_Util.Get_Closest_Schedule_Id(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Period     => i_End_Date);
+    end if;
+  
+    v_Oper_Type_Ids := Hpd_Util.Get_Closest_Oper_Type_Ids(i_Company_Id    => i_Company_Id,
+                                                          i_Filial_Id     => i_Filial_Id,
+                                                          i_Staff_Id      => i_Staff_Id,
+                                                          i_Oper_Group_Id => Oper_Group_Id(i_Company_Id => i_Company_Id,
+                                                                                           i_Pcode      => Hpr_Pref.c_Pcode_Operation_Group_Wage),
+                                                          i_Period        => i_End_Date);
+  
+    for i in 1 .. v_Oper_Type_Ids.Count
+    loop
+      v_Hourly_Wage := v_Hourly_Wage +
+                       Calc_Hourly_Wage(i_Company_Id   => i_Company_Id,
+                                        i_Filial_Id    => i_Filial_Id,
+                                        i_Staff_Id     => i_Staff_Id,
+                                        i_Oper_Type_Id => v_Oper_Type_Ids(i),
+                                        i_Schedule_Id  => v_Schedule_Id,
+                                        i_Part_Begin   => i_Begin_Date,
+                                        i_Part_End     => i_End_Date);
+    end loop;
+  
+    Calc_Penalty_Amounts(o_Late_Amount      => g_Cache_Late_Amount(v_Code),
+                         o_Early_Amount     => g_Cache_Early_Amount(v_Code),
+                         o_Lack_Amount      => g_Cache_Lack_Amount(v_Code),
+                         o_Day_Skip_Amount  => g_Cache_Day_Skip_Amount(v_Code),
+                         o_Mark_Skip_Amount => g_Cache_Mark_Skip_Amount(v_Code),
+                         i_Company_Id       => i_Company_Id,
+                         i_Filial_Id        => i_Filial_Id,
+                         i_Staff_Id         => i_Staff_Id,
+                         i_Division_Id      => v_Division_Id,
+                         i_Hourly_Wage      => v_Hourly_Wage,
+                         i_Period_Begin     => i_Begin_Date,
+                         i_Period_End       => i_End_Date);
+  
+    case i_Penalty_Pcode
+      when Href_Pref.c_Pcode_Indicator_Penalty_For_Late then
+        return g_Cache_Late_Amount(v_Code);
+      when Href_Pref.c_Pcode_Indicator_Penalty_For_Early_Output then
+        return g_Cache_Early_Amount(v_Code);
+      when Href_Pref.c_Pcode_Indicator_Penalty_For_Absence then
+        return g_Cache_Lack_Amount(v_Code);
+      when Href_Pref.c_Pcode_Indicator_Penalty_For_Day_Skip then
+        return g_Cache_Day_Skip_Amount(v_Code);
+      when Href_Pref.c_Pcode_Indicator_Penalty_For_Mark_Skip then
+        return g_Cache_Mark_Skip_Amount(v_Code);
+      else
+        return null;
+    end case;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Late_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Code varchar(50);
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    return g_Cache_Late_Amount(v_Code);
+  
+  exception
+    when No_Data_Found then
+      return Calc_Penalty_Indicators(i_Company_Id    => i_Company_Id,
+                                     i_Filial_Id     => i_Filial_Id,
+                                     i_Staff_Id      => i_Staff_Id,
+                                     i_Charge_Id     => i_Charge_Id,
+                                     i_Begin_Date    => i_Begin_Date,
+                                     i_End_Date      => i_End_Date,
+                                     i_Penalty_Pcode => Href_Pref.c_Pcode_Indicator_Penalty_For_Late);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Early_Output_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Code varchar(50);
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    return g_Cache_Early_Amount(v_Code);
+  
+  exception
+    when No_Data_Found then
+      return Calc_Penalty_Indicators(i_Company_Id    => i_Company_Id,
+                                     i_Filial_Id     => i_Filial_Id,
+                                     i_Staff_Id      => i_Staff_Id,
+                                     i_Charge_Id     => i_Charge_Id,
+                                     i_Begin_Date    => i_Begin_Date,
+                                     i_End_Date      => i_End_Date,
+                                     i_Penalty_Pcode => Href_Pref.c_Pcode_Indicator_Penalty_For_Early_Output);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Absence_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Code varchar(50);
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    return g_Cache_Lack_Amount(v_Code);
+  
+  exception
+    when No_Data_Found then
+      return Calc_Penalty_Indicators(i_Company_Id    => i_Company_Id,
+                                     i_Filial_Id     => i_Filial_Id,
+                                     i_Staff_Id      => i_Staff_Id,
+                                     i_Charge_Id     => i_Charge_Id,
+                                     i_Begin_Date    => i_Begin_Date,
+                                     i_End_Date      => i_End_Date,
+                                     i_Penalty_Pcode => Href_Pref.c_Pcode_Indicator_Penalty_For_Absence);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Day_Skip_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Code varchar(50);
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    return g_Cache_Day_Skip_Amount(v_Code);
+  
+  exception
+    when No_Data_Found then
+      return Calc_Penalty_Indicators(i_Company_Id    => i_Company_Id,
+                                     i_Filial_Id     => i_Filial_Id,
+                                     i_Staff_Id      => i_Staff_Id,
+                                     i_Charge_Id     => i_Charge_Id,
+                                     i_Begin_Date    => i_Begin_Date,
+                                     i_End_Date      => i_End_Date,
+                                     i_Penalty_Pcode => Href_Pref.c_Pcode_Indicator_Penalty_For_Day_Skip);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Penalty_For_Mark_Skip_Indicator
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number,
+    i_Begin_Date date,
+    i_End_Date   date
+  ) return number is
+    v_Code varchar(50);
+  begin
+    v_Code := Code_Gen(i_Staff_Id   => i_Staff_Id,
+                       i_Charge_Id  => i_Charge_Id,
+                       i_Begin_Date => i_Begin_Date,
+                       i_End_Date   => i_End_Date);
+  
+    return g_Cache_Mark_Skip_Amount(v_Code);
+  
+  exception
+    when No_Data_Found then
+      return Calc_Penalty_Indicators(i_Company_Id    => i_Company_Id,
+                                     i_Filial_Id     => i_Filial_Id,
+                                     i_Staff_Id      => i_Staff_Id,
+                                     i_Charge_Id     => i_Charge_Id,
+                                     i_Begin_Date    => i_Begin_Date,
+                                     i_End_Date      => i_End_Date,
+                                     i_Penalty_Pcode => Href_Pref.c_Pcode_Indicator_Penalty_For_Mark_Skip);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Indicator_Procedures(i_Pcode varchar2) return varchar2 is
+  begin
+    return --
+    case i_Pcode --
+    when Href_Pref.c_Pcode_Indicator_Wage then 'hpr_util.calc_wage_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Rate then 'hpr_util.calc_rate_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Hourly_Wage then 'hpr_util.calc_hourly_wage_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Plan_Days then 'hpr_util.calc_plan_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Plan_Hours then 'hpr_util.calc_plan_hours_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Working_Days then 'hpr_util.calc_working_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Working_Hours then 'hpr_util.calc_working_hours_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Fact_Days then 'hpr_util.calc_fact_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Fact_Hours then 'hpr_util.calc_fact_hours_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Perf_Bonus then 'hpr_util.calc_perf_bonus_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Perf_Extra_Bonus then 'hpr_util.calc_perf_extra_bonus_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Sick_Leave_Coefficient then 'hpr_util.calc_sick_leave_coefficient_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Business_Trip_Days then 'hpr_util.calc_business_trip_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Vacation_Days then 'hpr_util.calc_vacation_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Mean_Working_Days then 'hpr_util.calc_mean_working_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Sick_Leave_Days then 'hpr_util.calc_sick_leave_days_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Overtime_Hours then 'hpr_util.calc_overtime_hours_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Overtime_Coef then 'hpr_util.calc_overtime_coef_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Penalty_For_Late then 'hpr_util.calc_penalty_for_late_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Penalty_For_Early_Output then 'hpr_util.calc_penalty_for_early_output_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Penalty_For_Absence then 'hpr_util.calc_penalty_for_absence_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Penalty_For_Day_Skip then 'hpr_util.calc_penalty_for_day_skip_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Penalty_For_Mark_Skip then 'hpr_util.calc_penalty_for_mark_skip_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Perf_Penalty then 'hpr_util.calc_perf_penalty_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Perf_Extra_Penalty then 'hpr_util.calc_perf_extra_penalty_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Additional_Nighttime then 'hpr_util.calc_additional_nighttime_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Weighted_Turnout then 'hpr_util.calc_weighted_turnout_indicator' --
+    when Href_Pref.c_Pcode_Indicator_Average_Perf_Bonus then 'hpr_util.calc_average_perf_bonus' --
+    when Href_Pref.c_Pcode_Indicator_Average_Perf_Extra_Bonus then 'hpr_util.calc_average_perf_extra_bonus' --
+    else null end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Indicator_Value
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Charge_Id    number,
+    i_Begin_Date   date,
+    i_End_Date     date,
+    i_Indicator_Id number
+  ) return number is
+    v_Proc      varchar2(100);
+    r_Indicator Href_Indicators%rowtype;
+    result      number;
+  
+    --------------------------------------------------
+    Function Convert_Indicator_Amount
+    (
+      i_Company_Id number,
+      i_Filial_Id  number,
+      i_Staff_Id   number,
+      i_Indicator  Href_Indicators%rowtype,
+      i_Period     date,
+      i_Amount     number
+    ) return number is
+      v_Currency_Id number;
+    begin
+      if i_Indicator.Used != Href_Pref.c_Indicator_Used_Constantly and
+         i_Indicator.Pcode not in
+         (Href_Pref.c_Pcode_Indicator_Perf_Penalty, Href_Pref.c_Pcode_Indicator_Perf_Extra_Penalty) then
+        return i_Amount;
+      end if;
+    
+      v_Currency_Id := Hpd_Util.Get_Closest_Currency_Id(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Period     => i_Period);
+    
+      if v_Currency_Id is null then
+        return i_Amount;
+      end if;
+    
+      return Mk_Util.Calc_Amount_Base(i_Company_Id  => i_Company_Id,
+                                      i_Filial_Id   => i_Filial_Id,
+                                      i_Currency_Id => v_Currency_Id,
+                                      i_Rate_Date   => i_Period,
+                                      i_Amount      => i_Amount);
+    end;
+  begin
+    r_Indicator := z_Href_Indicators.Load(i_Company_Id   => i_Company_Id, --
+                                          i_Indicator_Id => i_Indicator_Id);
+  
+    v_Proc := Indicator_Procedures(r_Indicator.Pcode);
+  
+    if v_Proc is not null then
+      execute immediate 'declare begin :result := ' || v_Proc ||
+                        '(:company_id, :filial_id, :staff_id, :charge_id, :begin_date, :end_date); end;'
+        using out result, i_Company_Id, i_Filial_Id, i_Staff_Id, i_Charge_Id, i_Begin_Date, i_End_Date;
+    else
+      result := Calc_Constant_Indicator(i_Company_Id   => i_Company_Id,
+                                        i_Filial_Id    => i_Filial_Id,
+                                        i_Staff_Id     => i_Staff_Id,
+                                        i_Charge_Id    => i_Charge_Id,
+                                        i_Indicator_Id => i_Indicator_Id,
+                                        i_Period       => i_End_Date);
+    end if;
+  
+    result := Convert_Indicator_Amount(i_Company_Id => i_Company_Id,
+                                       i_Filial_Id  => i_Filial_Id,
+                                       i_Staff_Id   => i_Staff_Id,
+                                       i_Indicator  => r_Indicator,
+                                       i_Period     => i_End_Date,
+                                       i_Amount     => result);
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Hourly_Wage
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Schedule_Id  number,
+    i_Part_Begin   date,
+    i_Part_End     date
+  ) return number is
+    v_Monthly_Amount  number;
+    v_Monthly_Minutes number;
+  begin
+    v_Monthly_Amount := Calc_Amount(i_Company_Id   => i_Company_Id,
+                                    i_Filial_Id    => i_Filial_Id,
+                                    i_Staff_Id     => i_Staff_Id,
+                                    i_Oper_Type_Id => i_Oper_Type_Id,
+                                    i_Part_Begin   => i_Part_Begin,
+                                    i_Part_End     => i_Part_End,
+                                    i_Calc_Planned => true);
+  
+    v_Monthly_Minutes := Htt_Util.Calc_Plan_Minutes(i_Company_Id  => i_Company_Id,
+                                                    i_Filial_Id   => i_Filial_Id,
+                                                    i_Staff_Id    => i_Staff_Id,
+                                                    i_Schedule_Id => i_Schedule_Id,
+                                                    i_Period      => i_Part_End);
+  
+    return v_Monthly_Amount / v_Monthly_Minutes * 60;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Amount
+  (
+    i_Company_Id number,
+    i_Filial_Id  number,
+    i_Staff_Id   number,
+    i_Charge_Id  number
+  ) return number is
+    r_Oper_Type Hpr_Oper_Types%rowtype;
+    r_Charge    Hpr_Charges%rowtype;
+    v_Arguments Matrix_Varchar2;
+  begin
+    r_Charge := z_Hpr_Charges.Load(i_Company_Id => i_Company_Id,
+                                   i_Filial_Id  => i_Filial_Id,
+                                   i_Charge_Id  => i_Charge_Id);
+  
+    r_Oper_Type := z_Hpr_Oper_Types.Load(i_Company_Id   => i_Company_Id,
+                                         i_Oper_Type_Id => r_Charge.Oper_Type_Id);
+  
+    if r_Oper_Type.Estimation_Type <> Hpr_Pref.c_Estimation_Type_Formula then
+      return 0;
+    end if;
+  
+    select Array_Varchar2(w.Identifier, q.Indicator_Value)
+      bulk collect
+      into v_Arguments
+      from Hpr_Charge_Indicators q
+      join Href_Indicators w
+        on w.Company_Id = q.Company_Id
+       and w.Indicator_Id = q.Indicator_Id
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Charge_Id = i_Charge_Id
+     order by Length(w.Identifier) desc;
+  
+    return Formula_Execute(i_Formula   => r_Oper_Type.Estimation_Formula, --
+                           i_Arguments => v_Arguments);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Amount_With_Indicators
+  (
+    o_Indicators   out Hpr_Pref.Daily_Indicators_Nt,
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Part_Begin   date,
+    i_Part_End     date,
+    i_Calc_Planned boolean := false,
+    i_Calc_Worked  boolean := false
+  ) return number is
+    r_Oper_Type Hpr_Oper_Types%rowtype;
+    v_Arguments Matrix_Varchar2 := Matrix_Varchar2();
+  
+    v_Indicator_Id    number;
+    v_Indicator_Value number;
+  
+    v_Fact_Hours_Id     number := -1;
+    v_Weighted_Hours_Id number := -1;
+    v_Fact_Days_Id      number := -1;
+    v_Plan_Hours_Id     number := -1;
+    v_Plan_Days_Id      number := -1;
+    v_Worked_Hours_Id   number := -1;
+    v_Worked_Days_Id    number := -1;
+  
+    --------------------------------------------------
+    Procedure Load_Indicator_Ids is
+    begin
+      v_Fact_Hours_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                i_Pcode      => Href_Pref.c_Pcode_Indicator_Fact_Hours);
+    
+      v_Weighted_Hours_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                    i_Pcode      => Href_Pref.c_Pcode_Indicator_Weighted_Turnout);
+    
+      v_Fact_Days_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                               i_Pcode      => Href_Pref.c_Pcode_Indicator_Fact_Days);
+    
+      if i_Calc_Planned then
+        v_Plan_Hours_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                  i_Pcode      => Href_Pref.c_Pcode_Indicator_Plan_Hours);
+      
+        v_Plan_Days_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                 i_Pcode      => Href_Pref.c_Pcode_Indicator_Plan_Days);
+      end if;
+    
+      if i_Calc_Worked then
+        v_Worked_Hours_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                    i_Pcode      => Href_Pref.c_Pcode_Indicator_Working_Hours);
+      
+        v_Worked_Days_Id := Href_Util.Indicator_Id(i_Company_Id => i_Company_Id,
+                                                   i_Pcode      => Href_Pref.c_Pcode_Indicator_Working_Days);
+      end if;
+    end;
+  
+    --------------------------------------------------
+    Function Replaced_Indicator_Id(i_Indicator_Id number) return number is
+    begin
+      case
+        when i_Indicator_Id = v_Fact_Hours_Id and i_Calc_Planned then
+          return v_Plan_Hours_Id;
+        when i_Indicator_Id = v_Weighted_Hours_Id and i_Calc_Planned then
+          return v_Plan_Hours_Id;
+        when i_Indicator_Id = v_Fact_Days_Id and i_Calc_Planned then
+          return v_Plan_Days_Id;
+        when i_Indicator_Id = v_Fact_Hours_Id and i_Calc_Worked then
+          return v_Worked_Hours_Id;
+        when i_Indicator_Id = v_Weighted_Hours_Id and i_Calc_Worked then
+          return v_Worked_Hours_Id;
+        when i_Indicator_Id = v_Fact_Days_Id and i_Calc_Worked then
+          return v_Worked_Days_Id;
+        else
+          null;
+      end case;
+    
+      return i_Indicator_Id;
+    end;
+  begin
+    if i_Oper_Type_Id is null then
+      return 0;
+    end if;
+  
+    r_Oper_Type := z_Hpr_Oper_Types.Load(i_Company_Id   => i_Company_Id,
+                                         i_Oper_Type_Id => i_Oper_Type_Id);
+  
+    if r_Oper_Type.Estimation_Type <> Hpr_Pref.c_Estimation_Type_Formula then
+      return 0;
+    end if;
+  
+    if i_Calc_Planned or i_Calc_Worked then
+      Load_Indicator_Ids;
+    end if;
+  
+    o_Indicators := Hpr_Pref.Daily_Indicators_Nt();
+  
+    for r in (select q.Indicator_Id, q.Identifier
+                from Hpr_Oper_Type_Indicators q
+               where q.Company_Id = i_Company_Id
+                 and q.Oper_Type_Id = i_Oper_Type_Id)
+    loop
+      v_Indicator_Id := r.Indicator_Id;
+    
+      if (i_Calc_Planned or i_Calc_Worked) and
+         v_Indicator_Id in (v_Fact_Hours_Id, v_Fact_Days_Id, v_Weighted_Hours_Id) then
+        v_Indicator_Id := Replaced_Indicator_Id(v_Indicator_Id);
+      end if;
+    
+      v_Indicator_Value := Calc_Indicator_Value(i_Company_Id   => i_Company_Id,
+                                                i_Filial_Id    => i_Filial_Id,
+                                                i_Staff_Id     => i_Staff_Id,
+                                                i_Charge_Id    => null,
+                                                i_Begin_Date   => i_Part_Begin,
+                                                i_End_Date     => i_Part_End,
+                                                i_Indicator_Id => v_Indicator_Id);
+    
+      Fazo.Push(v_Arguments, Array_Varchar2(r.Identifier, v_Indicator_Value));
+    
+      o_Indicators.Extend;
+      o_Indicators(o_Indicators.Count) := Hpr_Pref.Daily_Indicators_Rt(r.Indicator_Id,
+                                                                       v_Indicator_Value);
+    end loop;
+  
+    return Formula_Execute(i_Formula   => r_Oper_Type.Estimation_Formula, --
+                           i_Arguments => v_Arguments);
+  end;
+
+  ---------------------------------------------------------------------------------------------------- 
+  Function Calc_Amount
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Oper_Type_Id number,
+    i_Part_Begin   date,
+    i_Part_End     date,
+    i_Calc_Planned boolean := false,
+    i_Calc_Worked  boolean := false
+  ) return number is
+    v_Dummy Hpr_Pref.Daily_Indicators_Nt;
+  begin
+    return Calc_Amount_With_Indicators(o_Indicators   => v_Dummy,
+                                       i_Company_Id   => i_Company_Id,
+                                       i_Filial_Id    => i_Filial_Id,
+                                       i_Staff_Id     => i_Staff_Id,
+                                       i_Oper_Type_Id => i_Oper_Type_Id,
+                                       i_Part_Begin   => i_Part_Begin,
+                                       i_Part_End     => i_Part_End,
+                                       i_Calc_Planned => i_Calc_Planned,
+                                       i_Calc_Worked  => i_Calc_Worked);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Amounts
+  (
+    i_Company_Id             number,
+    i_Filial_Id              number,
+    i_Currency_Id            number,
+    i_Date                   date,
+    i_Oper_Type_Id           number,
+    i_Amount                 number,
+    i_Is_Net_Amount          boolean,
+    o_Amount                 out number,
+    o_Net_Amount             out number,
+    o_Income_Tax_Amount      out number,
+    o_Pension_Payment_Amount out number,
+    o_Social_Payment_Amount  out number
+  ) is
+    r_Oper_Type   Mpr_Oper_Types%rowtype;
+    r_Setting     Mpr_Settings%rowtype;
+    v_Currency_Id number := i_Currency_Id;
+    --------------------------------------------------
+    Function Round_Amount(i_Val number) return number is
+    begin
+      return Mk_Util.Round_Amount(i_Company_Id  => i_Company_Id,
+                                  i_Currency_Id => v_Currency_Id,
+                                  i_Amount      => i_Val);
+    end;
+    --------------------------------------------------
+    Function Calc_Base_Amount(i_Val number) return number is
+    begin
+      return Mk_Util.Calc_Amount_Base(i_Company_Id  => i_Company_Id,
+                                      i_Filial_Id   => i_Filial_Id,
+                                      i_Currency_Id => v_Currency_Id,
+                                      i_Rate_Date   => i_Date,
+                                      i_Amount      => i_Val);
+    end;
+  begin
+    r_Oper_Type := z_Mpr_Oper_Types.Load(i_Company_Id   => i_Company_Id,
+                                         i_Oper_Type_Id => i_Oper_Type_Id);
+  
+    r_Setting := z_Mpr_Settings.Load(i_Company_Id => i_Company_Id, --
+                                     i_Filial_Id  => i_Filial_Id);
+  
+    if i_Currency_Id is null then
+      v_Currency_Id := Mk_Pref.Base_Currency(i_Company_Id => i_Company_Id,
+                                             i_Filial_Id  => i_Filial_Id);
+    end if;
+  
+    o_Amount                 := Round_Amount(i_Amount);
+    o_Net_Amount             := Round_Amount(i_Amount);
+    o_Income_Tax_Amount      := 0;
+    o_Pension_Payment_Amount := 0;
+    o_Social_Payment_Amount  := 0;
+  
+    if r_Setting.Income_Tax_Exists = 'Y' and r_Oper_Type.Income_Tax_Exists = 'Y' then
+      if i_Is_Net_Amount then
+        o_Amount := Round_Amount(o_Net_Amount * 100 /
+                                 (100 - Nvl(r_Oper_Type.Income_Tax_Rate, r_Setting.Income_Tax_Rate)));
+      else
+        o_Net_Amount := o_Amount -
+                        Round_Amount(o_Amount *
+                                     Nvl(r_Oper_Type.Income_Tax_Rate, r_Setting.Income_Tax_Rate) / 100);
+      end if;
+    
+      o_Income_Tax_Amount := Round_Amount((o_Amount * Nvl(r_Oper_Type.Income_Tax_Rate,
+                                                          r_Setting.Income_Tax_Rate) / 100));
+    
+      if r_Setting.Pension_Payment_Exists = 'Y' and r_Oper_Type.Pension_Payment_Exists = 'Y' then
+        o_Pension_Payment_Amount := Round_Amount((o_Amount *
+                                                 Nvl(r_Oper_Type.Pension_Payment_Rate,
+                                                      r_Setting.Pension_Payment_Rate) / 100));
+      
+      end if;
+    end if;
+  
+    if r_Setting.Social_Payment_Exists = 'Y' and r_Oper_Type.Social_Payment_Exists = 'Y' then
+      o_Social_Payment_Amount := Round_Amount((o_Amount *
+                                              Nvl(r_Oper_Type.Social_Payment_Rate,
+                                                   r_Setting.Social_Payment_Rate) / 100));
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- calculates penalty for (begin, end) period
+  -- ignores policy changes between (begin, end)
+  -- takes policy closest to period_begin date
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Penalty_Amount
+  (
+    o_Late_Amount      out number,
+    o_Early_Amount     out number,
+    o_Lack_Amount      out number,
+    o_Day_Skip_Amount  out number,
+    o_Mark_Skip_Amount out number,
+    o_Day_Amounts      out nocopy Matrix_Number,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Division_Id      number,
+    i_Hourly_Wage      number,
+    i_Period_Begin     date,
+    i_Period_End       date
+  ) is
+    v_Late_Id        number;
+    v_Early_Id       number;
+    v_Lack_Id        number;
+    v_Time_Kind_Id   number;
+    v_Penalty_Id     number;
+    v_Days_Cnt       number;
+    v_Penalty_Amount number;
+    v_Policy         Hpr_Pref.Penalty_Policy_Rt;
+    v_Policies       Hpr_Pref.Penalty_Policy_Nt;
+  
+    v_Fact_Tk_Id    number;
+    v_Fact_Value    number;
+    v_Plan_Time     number;
+    v_Input_Time    date;
+    v_Output_Time   date;
+    v_Input_Times   Array_Date;
+    v_Output_Times  Array_Date;
+    v_Fact_Date     date;
+    v_Fact_Dates    Array_Date;
+    v_Mark_Dates    Array_Date;
+    v_Skipped_Marks Array_Number;
+    v_Facts         Matrix_Number;
+  
+    v_Wage_Per_Minute number := i_Hourly_Wage / 60;
+  
+    --------------------------------------------------
+    Procedure Init_Day_Amounts is
+      v_Count number;
+    begin
+      o_Day_Amounts := Matrix_Number();
+      v_Count       := i_Period_End - Trunc(i_Period_Begin, 'Mon') + 1;
+    
+      o_Day_Amounts.Extend(v_Count);
+    
+      for i in 1 .. v_Count
+      loop
+        o_Day_Amounts(i) := Array_Number(0, 0, 0, 0, 0);
+      end loop;
+    end;
+  
+    --------------------------------------------------
+    Function Day_Index(i_Date date) return number is
+    begin
+      return i_Date - Trunc(i_Period_Begin, 'Mon') + 1;
+    end;
+  
+    --------------------------------------------------
+    Function To_Minutes(i_Sec number) return number is
+    begin
+      return Round(i_Sec / 60, 2);
+    end;
+  
+    --------------------------------------------------
+    Function Get_Tk_Id(i_Penalty_Kind varchar2) return number is
+    begin
+      case i_Penalty_Kind
+        when Hpr_Pref.c_Penalty_Kind_Late then
+          return v_Late_Id;
+        when Hpr_Pref.c_Penalty_Kind_Early then
+          return v_Early_Id;
+        when Hpr_Pref.c_Penalty_Kind_Lack then
+          return v_Lack_Id;
+        when Hpr_Pref.c_Penalty_Kind_Day_Skip then
+          return v_Lack_Id;
+        else
+          b.Raise_Not_Implemented;
+      end case;
+    end;
+  
+    --------------------------------------------------
+    Function Calc_Amount
+    (
+      i_Policy          Hpr_Pref.Penalty_Policy_Rt,
+      i_Wage_Per_Minute number,
+      i_Facts_Value     number
+    ) return number is
+      v_Calc_After_From_Time boolean := Nvl(i_Policy.Calc_After_From_Time, 'N') = 'Y';
+    begin
+      case i_Policy.Penalty_Type
+        when Hpr_Pref.c_Penalty_Type_Coef then
+          if v_Calc_After_From_Time then
+            return i_Wage_Per_Minute * To_Minutes(i_Facts_Value - i_Policy.From_Time) * i_Policy.Penalty_Coef;
+          else
+            return i_Wage_Per_Minute * To_Minutes(i_Facts_Value) * i_Policy.Penalty_Coef;
+          end if;
+        when Hpr_Pref.c_Penalty_Type_Amount then
+          if i_Policy.Penalty_Per_Time is null then
+            return i_Policy.Penalty_Amount;
+          else
+            if v_Calc_After_From_Time then
+              return i_Policy.Penalty_Amount * Trunc(To_Minutes(i_Facts_Value - i_Policy.From_Time) /
+                                                     i_Policy.Penalty_Per_Time);
+            else
+              return i_Policy.Penalty_Amount * Trunc(To_Minutes(i_Facts_Value) /
+                                                     i_Policy.Penalty_Per_Time);
+            end if;
+          end if;
+        when Hpr_Pref.c_Penalty_Type_Time then
+          return i_Wage_Per_Minute * i_Policy.Penalty_Time;
+        else
+          b.Raise_Not_Implemented;
+      end case;
+    end;
+  
+    --------------------------------------------------
+    Procedure Add_Amounts
+    (
+      i_Policy          Hpr_Pref.Penalty_Policy_Rt,
+      i_Penalty_Amount  number,
+      i_Day_Index       number,
+      p_Late_Amount     in out number,
+      p_Early_Amount    in out number,
+      p_Lack_Amount     in out number,
+      p_Day_Skip_Amount in out number
+    ) is
+    begin
+      case i_Policy.Penalty_Kind
+        when Hpr_Pref.c_Penalty_Kind_Late then
+          p_Late_Amount := p_Late_Amount + i_Penalty_Amount;
+        
+          o_Day_Amounts(i_Day_Index)(1) := o_Day_Amounts(i_Day_Index) (1) + i_Penalty_Amount;
+        when Hpr_Pref.c_Penalty_Kind_Early then
+          p_Early_Amount := p_Early_Amount + i_Penalty_Amount;
+        
+          o_Day_Amounts(i_Day_Index)(2) := o_Day_Amounts(i_Day_Index) (2) + i_Penalty_Amount;
+        when Hpr_Pref.c_Penalty_Kind_Lack then
+          p_Lack_Amount := p_Lack_Amount + i_Penalty_Amount;
+        
+          o_Day_Amounts(i_Day_Index)(3) := o_Day_Amounts(i_Day_Index) (3) + i_Penalty_Amount;
+        when Hpr_Pref.c_Penalty_Kind_Day_Skip then
+          p_Day_Skip_Amount := p_Day_Skip_Amount + i_Penalty_Amount;
+        
+          o_Day_Amounts(i_Day_Index)(4) := o_Day_Amounts(i_Day_Index) (4) + i_Penalty_Amount;
+        else
+          b.Raise_Not_Implemented;
+      end case;
+    end;
+  
+    --------------------------------------------------
+    Procedure Add_Amounts
+    (
+      i_Penalty_Kind     varchar2,
+      i_Penalty_Amount   number,
+      i_Day_Index        number,
+      p_Mark_Skip_Amount in out number
+    ) is
+    begin
+      case i_Penalty_Kind
+        when Hpr_Pref.c_Penalty_Kind_Mark_Skip then
+          p_Mark_Skip_Amount := p_Mark_Skip_Amount + i_Penalty_Amount;
+        
+          o_Day_Amounts(i_Day_Index)(5) := o_Day_Amounts(i_Day_Index) (5) + i_Penalty_Amount;
+        else
+          b.Raise_Not_Implemented;
+      end case;
+    end;
+  begin
+    o_Late_Amount      := 0;
+    o_Early_Amount     := 0;
+    o_Lack_Amount      := 0;
+    o_Day_Skip_Amount  := 0;
+    o_Mark_Skip_Amount := 0;
+  
+    v_Late_Id := Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                       i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Late);
+  
+    v_Early_Id := Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                        i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Early);
+  
+    v_Lack_Id := Htt_Util.Time_Kind_Id(i_Company_Id => i_Company_Id,
+                                       i_Pcode      => Htt_Pref.c_Pcode_Time_Kind_Lack);
+  
+    v_Penalty_Id := Get_Closest_Penalty_Id(i_Company_Id  => i_Company_Id,
+                                           i_Filial_Id   => i_Filial_Id,
+                                           i_Division_Id => i_Division_Id,
+                                           i_Period      => i_Period_Begin);
+  
+    select Pp.Penalty_Kind,
+           case
+              when Pp.Penalty_Coef is not null then
+               Hpr_Pref.c_Penalty_Type_Coef
+              when Pp.Penalty_Amount is not null then
+               Hpr_Pref.c_Penalty_Type_Amount
+              when Pp.Penalty_Time is not null then
+               Hpr_Pref.c_Penalty_Type_Time
+            end case,
+           Pp.From_Day,
+           Pp.To_Day,
+           Pp.From_Time * case
+              when Pp.Penalty_Kind = Hpr_Pref.c_Penalty_Kind_Mark_Skip then
+               1 -- to times
+              else
+               60 -- to seconds
+            end,
+           Pp.To_Time * case
+              when Pp.Penalty_Kind = Hpr_Pref.c_Penalty_Kind_Mark_Skip then
+               1 -- to times
+              else
+               60 -- to seconds
+            end,
+           Pp.Penalty_Coef,
+           Pp.Penalty_Per_Time,
+           Pp.Penalty_Amount,
+           Pp.Penalty_Time,
+           Pp.Calc_After_From_Time
+      bulk collect
+      into v_Policies
+      from Hpr_Penalty_Policies Pp
+     where Pp.Company_Id = i_Company_Id
+       and Pp.Filial_Id = i_Filial_Id
+       and Pp.Penalty_Id = v_Penalty_Id;
+  
+    select p.Timesheet_Date, --
+           p.Input_Time, --
+           p.Output_Time, --
+           Array_Number(Tf.Time_Kind_Id, Tf.Fact_Value, p.Plan_Time)
+      bulk collect
+      into v_Fact_Dates, v_Input_Times, v_Output_Times, v_Facts
+      from Htt_Timesheets p
+      join Htt_Timesheet_Facts Tf
+        on Tf.Company_Id = p.Company_Id
+       and Tf.Filial_Id = p.Filial_Id
+       and Tf.Timesheet_Id = p.Timesheet_Id
+       and Tf.Time_Kind_Id in (v_Late_Id, v_Early_Id, v_Lack_Id)
+     where p.Company_Id = i_Company_Id
+       and p.Filial_Id = i_Filial_Id
+       and p.Staff_Id = i_Staff_Id
+       and p.Timesheet_Date between Trunc(i_Period_Begin, 'Mon') and i_Period_End
+     order by p.Timesheet_Date, Tf.Time_Kind_Id;
+  
+    select p.Planned_Marks - p.Done_Marks, p.Timesheet_Date
+      bulk collect
+      into v_Skipped_Marks, v_Mark_Dates
+      from Htt_Timesheets p
+     where p.Company_Id = i_Company_Id
+       and p.Filial_Id = i_Filial_Id
+       and p.Staff_Id = i_Staff_Id
+       and p.Timesheet_Date between i_Period_Begin and i_Period_End
+       and p.Day_Kind = Htt_Pref.c_Day_Kind_Work
+       and p.Planned_Marks > p.Done_Marks;
+  
+    Init_Day_Amounts;
+  
+    for i in 1 .. v_Policies.Count
+    loop
+      v_Policy := v_Policies(i);
+    
+      v_Days_Cnt := 0;
+    
+      if v_Policy.Penalty_Kind = Hpr_Pref.c_Penalty_Kind_Mark_Skip then
+        for j in 1 .. v_Skipped_Marks.Count
+        loop
+          if v_Skipped_Marks(j) > v_Policy.From_Time and --
+             v_Skipped_Marks(j) <= Nvl(v_Policy.To_Time, v_Skipped_Marks(j)) then
+            Add_Amounts(i_Penalty_Kind     => v_Policy.Penalty_Kind,
+                        i_Penalty_Amount   => v_Policy.Penalty_Amount,
+                        i_Day_Index        => Day_Index(v_Mark_Dates(j)),
+                        p_Mark_Skip_Amount => o_Mark_Skip_Amount);
+          end if;
+        end loop;
+      else
+        v_Time_Kind_Id := Get_Tk_Id(v_Policy.Penalty_Kind);
+      
+        for j in 1 .. v_Facts.Count
+        loop
+          v_Fact_Tk_Id  := v_Facts(j) (1);
+          v_Fact_Value  := v_Facts(j) (2);
+          v_Plan_Time   := v_Facts(j) (3);
+          v_Input_Time  := v_Input_Times(j);
+          v_Output_Time := v_Output_Times(j);
+          v_Fact_Date   := v_Fact_Dates(j);
+        
+          continue when v_Fact_Tk_Id <> v_Time_Kind_Id;
+          continue when v_Fact_Tk_Id = v_Lack_Id and v_Fact_Value = v_Plan_Time and v_Input_Time is not null and v_Output_Time is not null;
+        
+          continue when v_Fact_Tk_Id = v_Lack_Id and v_Fact_Value = v_Plan_Time and v_Policy.Penalty_Kind <> Hpr_Pref.c_Penalty_Kind_Day_Skip;
+          continue when v_Fact_Tk_Id = v_Lack_Id and v_Fact_Value <> v_Plan_Time and v_Policy.Penalty_Kind <> Hpr_Pref.c_Penalty_Kind_Lack;
+        
+          if v_Fact_Value > v_Policy.From_Time and
+             v_Fact_Value <= Nvl(v_Policy.To_Time, v_Fact_Value) then
+            v_Days_Cnt := v_Days_Cnt + 1;
+          
+            if v_Fact_Date between i_Period_Begin and i_Period_End then
+              v_Penalty_Amount := Calc_Amount(i_Policy          => v_Policy,
+                                              i_Wage_Per_Minute => v_Wage_Per_Minute,
+                                              i_Facts_Value     => v_Fact_Value);
+            
+              if v_Days_Cnt > v_Policy.From_Day and --
+                 v_Days_Cnt <= Nvl(v_Policy.To_Day, v_Days_Cnt) then
+                Add_Amounts(i_Policy          => v_Policy,
+                            i_Penalty_Amount  => v_Penalty_Amount,
+                            i_Day_Index       => Day_Index(v_Fact_Date),
+                            p_Late_Amount     => o_Late_Amount,
+                            p_Early_Amount    => o_Early_Amount,
+                            p_Lack_Amount     => o_Lack_Amount,
+                            p_Day_Skip_Amount => o_Day_Skip_Amount);
+              end if;
+            end if;
+          end if;
+        end loop;
+      end if;
+    end loop;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Daily_Penalty_Amounts
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Division_Id  number,
+    i_Hourly_Wage  number,
+    i_Period_Begin date,
+    i_Period_End   date
+  ) return Matrix_Number is
+    v_Dummy_Late      number;
+    v_Dummy_Early     number;
+    v_Dummy_Lack      number;
+    v_Dummy_Day_Skip  number;
+    v_Dummy_Mark_Skip number;
+    v_Daily_Amounts   Matrix_Number;
+  begin
+    Calc_Penalty_Amount(o_Late_Amount      => v_Dummy_Late,
+                        o_Early_Amount     => v_Dummy_Early,
+                        o_Lack_Amount      => v_Dummy_Lack,
+                        o_Day_Skip_Amount  => v_Dummy_Day_Skip,
+                        o_Mark_Skip_Amount => v_Dummy_Mark_Skip,
+                        o_Day_Amounts      => v_Daily_Amounts,
+                        i_Company_Id       => i_Company_Id,
+                        i_Filial_Id        => i_Filial_Id,
+                        i_Staff_Id         => i_Staff_Id,
+                        i_Division_Id      => i_Division_Id,
+                        i_Hourly_Wage      => i_Hourly_Wage,
+                        i_Period_Begin     => i_Period_Begin,
+                        i_Period_End       => i_Period_End);
+  
+    return v_Daily_Amounts;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Nighttime_Policy_Id
+  (
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Division_Id number,
+    i_Period      date
+  ) return number is
+    v_Policy_Id number;
+  begin
+    select q.Nighttime_Policy_Id
+      into v_Policy_Id
+      from Hpr_Nighttime_Policies q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Month = (select max(p.Month)
+                        from Hpr_Nighttime_Policies p
+                       where p.Company_Id = i_Company_Id
+                         and p.Filial_Id = i_Filial_Id
+                         and p.Month <= Trunc(i_Period, 'mon')
+                         and p.Division_Id = i_Division_Id
+                         and p.State = 'A')
+       and q.Division_Id = i_Division_Id
+       and q.State = 'A';
+  
+    return v_Policy_Id;
+  
+  exception
+    when No_Data_Found then
+      begin
+        select q.Nighttime_Policy_Id
+          into v_Policy_Id
+          from Hpr_Nighttime_Policies q
+         where q.Company_Id = i_Company_Id
+           and q.Filial_Id = i_Filial_Id
+           and q.Month = (select max(p.Month)
+                            from Hpr_Nighttime_Policies p
+                           where p.Company_Id = i_Company_Id
+                             and p.Filial_Id = i_Filial_Id
+                             and p.Month <= Trunc(i_Period, 'mon')
+                             and p.Division_Id is null
+                             and p.State = 'A')
+           and q.Division_Id is null
+           and q.State = 'A';
+      
+        return v_Policy_Id;
+      
+      exception
+        when No_Data_Found then
+          return null;
+      end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Additional_Nighttime_Amount
+  (
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Staff_Id    number,
+    i_Division_Id number,
+    i_Begin_Date  date,
+    i_End_Date    date
+  ) return number is
+    v_Policy_Id number;
+    result      number;
+  begin
+    v_Policy_Id := Get_Closest_Nighttime_Policy_Id(i_Company_Id  => i_Company_Id,
+                                                   i_Filial_Id   => i_Filial_Id,
+                                                   i_Division_Id => i_Division_Id,
+                                                   i_Period      => i_End_Date);
+  
+    select Nvl(sum((t.Nighttime_Coef - 1) *
+                   Round(86400 * (t.Intersection_End - t.Intersection_Begin), 2)),
+               0)
+      into result
+      from (select Nr.Nighttime_Coef,
+                   Least(i.Interval_End, t.Interval_Date + Numtodsinterval(Nr.End_Time, 'minute')) Intersection_End,
+                   Greatest(i.Interval_Begin,
+                            t.Interval_Date + Numtodsinterval(Nr.Begin_Time, 'minute')) Intersection_Begin
+              from Htt_Timesheets q
+              join Htt_Timesheet_Helpers t
+                on t.Company_Id = q.Company_Id
+               and t.Filial_Id = q.Filial_Id
+               and t.Timesheet_Id = q.Timesheet_Id
+              join Htt_Timesheet_Intervals i
+                on i.Company_Id = q.Company_Id
+               and i.Filial_Id = q.Filial_Id
+               and i.Timesheet_Id = q.Timesheet_Id
+              join Hpr_Nighttime_Rules Nr
+                on Nr.Company_Id = q.Company_Id
+               and Nr.Filial_Id = q.Filial_Id
+               and Nr.Nighttime_Policy_Id = v_Policy_Id
+               and Greatest(t.Interval_Date + Numtodsinterval(Nr.Begin_Time, 'minute'),
+                            i.Interval_Begin) <
+                   Least(t.Interval_Date + Numtodsinterval(Nr.End_Time, 'minute'), i.Interval_End)
+             where q.Company_Id = i_Company_Id
+               and q.Filial_Id = i_Filial_Id
+               and q.Staff_Id = i_Staff_Id
+               and q.Timesheet_Date between i_Begin_Date and i_End_Date) t;
+  
+    return result;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Procedure Calc_Penalty_Amounts
+  (
+    o_Late_Amount      out number,
+    o_Early_Amount     out number,
+    o_Lack_Amount      out number,
+    o_Day_Skip_Amount  out number,
+    o_Mark_Skip_Amount out number,
+    i_Company_Id       number,
+    i_Filial_Id        number,
+    i_Staff_Id         number,
+    i_Division_Id      number,
+    i_Hourly_Wage      number,
+    i_Period_Begin     date,
+    i_Period_End       date
+  ) is
+    v_Dummy_Amounts Matrix_Number;
+  begin
+    Calc_Penalty_Amount(o_Late_Amount      => o_Late_Amount,
+                        o_Early_Amount     => o_Early_Amount,
+                        o_Lack_Amount      => o_Lack_Amount,
+                        o_Day_Skip_Amount  => o_Day_Skip_Amount,
+                        o_Mark_Skip_Amount => o_Mark_Skip_Amount,
+                        o_Day_Amounts      => v_Dummy_Amounts,
+                        i_Company_Id       => i_Company_Id,
+                        i_Filial_Id        => i_Filial_Id,
+                        i_Staff_Id         => i_Staff_Id,
+                        i_Division_Id      => i_Division_Id,
+                        i_Hourly_Wage      => i_Hourly_Wage,
+                        i_Period_Begin     => i_Period_Begin,
+                        i_Period_End       => i_Period_End);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Calc_Staff_Parts
+  (
+    i_Company_Id   number,
+    i_Filial_Id    number,
+    i_Staff_Id     number,
+    i_Period_Begin date,
+    i_Period_End   date,
+    i_Round_Model  Round_Model
+  ) return Hpr_Pref.Sheet_Part_Nt is
+    v_Overtime_Type_Id  number;
+    v_Nighttime_Type_Id number;
+    v_Weighted_Type_Id  number;
+    v_Oper_Type_Id      number;
+    v_Oper_Group_Id     number;
+    v_Schedule_Id       number;
+    v_Monthly_Amount    number;
+    v_Plan_Amount       number;
+    v_Wage_Amount       number;
+    v_Overtime_Amount   number;
+    v_Nighttime_Amount  number;
+    v_Late_Amount       number;
+    v_Early_Amount      number;
+    v_Lack_Amount       number;
+    v_Day_Skip_Amount   number;
+    v_Mark_Skip_Amount  number;
+    v_Hourly_Wage       number;
+    r_Robot             Hpd_Trans_Robots%rowtype;
+    v_Trans_Parts       Hpd_Pref.Transaction_Part_Nt;
+    v_Sheet_Parts       Hpr_Pref.Sheet_Part_Nt := Hpr_Pref.Sheet_Part_Nt();
+  begin
+    v_Oper_Group_Id := Oper_Group_Id(i_Company_Id => i_Company_Id,
+                                     i_Pcode      => Hpr_Pref.c_Pcode_Operation_Group_Wage);
+  
+    v_Overtime_Type_Id := Mpr_Util.Oper_Type_Id(i_Company_Id => i_Company_Id,
+                                                i_Pcode      => Hpr_Pref.c_Pcode_Oper_Type_Overtime);
+  
+    v_Nighttime_Type_Id := Mpr_Util.Oper_Type_Id(i_Company_Id => i_Company_Id,
+                                                 i_Pcode      => Hpr_Pref.c_Pcode_Oper_Type_Nighttime);
+  
+    v_Trans_Parts := Hpd_Util.Get_Opened_Transaction_Dates(i_Company_Id      => i_Company_Id,
+                                                           i_Filial_Id       => i_Filial_Id,
+                                                           i_Staff_Id        => i_Staff_Id,
+                                                           i_Begin_Date      => i_Period_Begin,
+                                                           i_End_Date        => i_Period_End,
+                                                           i_Trans_Types     => Array_Varchar2(Hpd_Pref.c_Transaction_Type_Robot,
+                                                                                               Hpd_Pref.c_Transaction_Type_Operation,
+                                                                                               Hpd_Pref.c_Transaction_Type_Schedule),
+                                                           i_With_Wage_Scale => false);
+  
+    for i in 1 .. v_Trans_Parts.Count
+    loop
+      v_Oper_Type_Id := Hpd_Util.Get_Closest_Oper_Type_Id(i_Company_Id    => i_Company_Id,
+                                                          i_Filial_Id     => i_Filial_Id,
+                                                          i_Staff_Id      => i_Staff_Id,
+                                                          i_Oper_Group_Id => v_Oper_Group_Id,
+                                                          i_Period        => v_Trans_Parts(i).Part_Begin);
+    
+      continue when v_Oper_Type_Id is null;
+    
+      v_Schedule_Id := Hpd_Util.Get_Closest_Schedule_Id(i_Company_Id => i_Company_Id,
+                                                        i_Filial_Id  => i_Filial_Id,
+                                                        i_Staff_Id   => i_Staff_Id,
+                                                        i_Period     => v_Trans_Parts(i).Part_Begin);
+    
+      continue when v_Schedule_Id is null;
+    
+      continue when Htt_Util.Has_Undefined_Schedule(i_Company_Id  => i_Company_Id,
+                                                    i_Filial_Id   => i_Filial_Id,
+                                                    i_Staff_Id    => i_Staff_Id,
+                                                    i_Schedule_Id => v_Schedule_Id,
+                                                    i_Period      => v_Trans_Parts(i).Part_Begin);
+    
+      v_Monthly_Amount := Calc_Amount(i_Company_Id   => i_Company_Id,
+                                      i_Filial_Id    => i_Filial_Id,
+                                      i_Staff_Id     => i_Staff_Id,
+                                      i_Oper_Type_Id => v_Oper_Type_Id,
+                                      i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                      i_Part_End     => v_Trans_Parts(i).Part_End,
+                                      i_Calc_Planned => true);
+    
+      v_Plan_Amount := Calc_Amount(i_Company_Id   => i_Company_Id,
+                                   i_Filial_Id    => i_Filial_Id,
+                                   i_Staff_Id     => i_Staff_Id,
+                                   i_Oper_Type_Id => v_Oper_Type_Id,
+                                   i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                   i_Part_End     => v_Trans_Parts(i).Part_End,
+                                   i_Calc_Worked  => true);
+    
+      v_Wage_Amount := Calc_Amount(i_Company_Id   => i_Company_Id,
+                                   i_Filial_Id    => i_Filial_Id,
+                                   i_Staff_Id     => i_Staff_Id,
+                                   i_Oper_Type_Id => v_Oper_Type_Id,
+                                   i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                   i_Part_End     => v_Trans_Parts(i).Part_End);
+    
+      v_Overtime_Amount := Calc_Amount(i_Company_Id   => i_Company_Id,
+                                       i_Filial_Id    => i_Filial_Id,
+                                       i_Staff_Id     => i_Staff_Id,
+                                       i_Oper_Type_Id => v_Overtime_Type_Id,
+                                       i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                       i_Part_End     => v_Trans_Parts(i).Part_End);
+    
+      v_Nighttime_Amount := Hpr_Util.Calc_Amount(i_Company_Id   => i_Company_Id,
+                                                 i_Filial_Id    => i_Filial_Id,
+                                                 i_Staff_Id     => i_Staff_Id,
+                                                 i_Oper_Type_Id => v_Nighttime_Type_Id,
+                                                 i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                                 i_Part_End     => v_Trans_Parts(i).Part_End);
+    
+      v_Hourly_Wage := Calc_Hourly_Wage(i_Company_Id   => i_Company_Id,
+                                        i_Filial_Id    => i_Filial_Id,
+                                        i_Staff_Id     => i_Staff_Id,
+                                        i_Oper_Type_Id => v_Oper_Type_Id,
+                                        i_Schedule_Id  => v_Schedule_Id,
+                                        i_Part_Begin   => v_Trans_Parts(i).Part_Begin,
+                                        i_Part_End     => v_Trans_Parts(i).Part_End);
+    
+      r_Robot := Hpd_Util.Closest_Robot(i_Company_Id => i_Company_Id,
+                                        i_Filial_Id  => i_Filial_Id,
+                                        i_Staff_Id   => i_Staff_Id,
+                                        i_Period     => v_Trans_Parts(i).Part_Begin);
+    
+      Calc_Penalty_Amounts(o_Late_Amount      => v_Late_Amount,
+                           o_Early_Amount     => v_Early_Amount,
+                           o_Lack_Amount      => v_Lack_Amount,
+                           o_Day_Skip_Amount  => v_Day_Skip_Amount,
+                           o_Mark_Skip_Amount => v_Mark_Skip_Amount,
+                           i_Company_Id       => i_Company_Id,
+                           i_Filial_Id        => i_Filial_Id,
+                           i_Staff_Id         => i_Staff_Id,
+                           i_Division_Id      => r_Robot.Division_Id,
+                           i_Hourly_Wage      => v_Hourly_Wage,
+                           i_Period_Begin     => v_Trans_Parts(i).Part_Begin,
+                           i_Period_End       => v_Trans_Parts(i).Part_End);
+    
+      Sheet_Add_Part(p_Parts            => v_Sheet_Parts,
+                     i_Part_Begin       => v_Trans_Parts(i).Part_Begin,
+                     i_Part_End         => v_Trans_Parts(i).Part_End,
+                     i_Division_Id      => r_Robot.Division_Id,
+                     i_Job_Id           => r_Robot.Job_Id,
+                     i_Schedule_Id      => v_Schedule_Id,
+                     i_Fte_Id           => r_Robot.Fte_Id,
+                     i_Monthly_Amount   => i_Round_Model.Eval(v_Monthly_Amount),
+                     i_Plan_Amount      => i_Round_Model.Eval(v_Plan_Amount),
+                     i_Wage_Amount      => i_Round_Model.Eval(v_Wage_Amount),
+                     i_Overtime_Amount  => i_Round_Model.Eval(v_Overtime_Amount),
+                     i_Nighttime_Amount => i_Round_Model.Eval(v_Nighttime_Amount),
+                     i_Late_Amount      => i_Round_Model.Eval(v_Late_Amount),
+                     i_Early_Amount     => i_Round_Model.Eval(v_Early_Amount),
+                     i_Lack_Amount      => i_Round_Model.Eval(v_Lack_Amount),
+                     i_Day_Skip_Amount  => i_Round_Model.Eval(v_Day_Skip_Amount),
+                     i_Mark_Skip_Amount => i_Round_Model.Eval(v_Mark_Skip_Amount));
+    end loop;
+  
+    return v_Sheet_Parts;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Get_Closest_Penalty_Id
+  (
+    i_Company_Id  number,
+    i_Filial_Id   number,
+    i_Division_Id number,
+    i_Period      date
+  ) return number is
+    v_Penalty_Id number;
+  begin
+    select q.Penalty_Id
+      into v_Penalty_Id
+      from Hpr_Penalties q
+     where q.Company_Id = i_Company_Id
+       and q.Filial_Id = i_Filial_Id
+       and q.Month = (select max(p.Month)
+                        from Hpr_Penalties p
+                       where p.Company_Id = i_Company_Id
+                         and p.Filial_Id = i_Filial_Id
+                         and p.Month <= Trunc(i_Period, 'mon')
+                         and p.Division_Id = i_Division_Id
+                         and p.State = 'A')
+       and q.Division_Id = i_Division_Id
+       and q.State = 'A';
+  
+    return v_Penalty_Id;
+  
+  exception
+    when No_Data_Found then
+      begin
+        select q.Penalty_Id
+          into v_Penalty_Id
+          from Hpr_Penalties q
+         where q.Company_Id = i_Company_Id
+           and q.Filial_Id = i_Filial_Id
+           and q.Month = (select max(p.Month)
+                            from Hpr_Penalties p
+                           where p.Company_Id = i_Company_Id
+                             and p.Filial_Id = i_Filial_Id
+                             and p.Month <= Trunc(i_Period, 'mon')
+                             and p.Division_Id is null
+                             and p.State = 'A')
+           and q.Division_Id is null
+           and q.State = 'A';
+      
+        return v_Penalty_Id;
+      
+      exception
+        when No_Data_Found then
+          return null;
+      end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Jcode_Cv_Contract_Fact(i_Fact_Id number) return varchar2 is
+  begin
+    return Mkr_Util.Journal_Code(i_Source_Table => Zt.Hpr_Cv_Contract_Facts,
+                                 i_Source_Id    => i_Fact_Id);
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Load_Timebook_Fill_Settings
+  (
+    i_Company_Id number,
+    i_Filial_Id  number
+  ) return Hashmap is
+    v_Pref_Value varchar2(4000);
+  begin
+    v_Pref_Value := Md_Pref.Load(i_Company_Id => i_Company_Id,
+                                 i_Filial_Id  => i_Filial_Id,
+                                 i_Code       => Hpr_Pref.c_Pref_Timebook_Fill_Settings);
+  
+    if v_Pref_Value is null then
+      return Fazo.Zip_Map('by_plan_day',
+                          'Y',
+                          'by_plan_hour',
+                          'Y',
+                          'norm_hour',
+                          'Y',
+                          'norm_day',
+                          'Y');
+    else
+      return Fazo.Parse_Map(v_Pref_Value);
+    end if;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- charge status
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status_Draft return varchar2 is
+  begin
+    return t('charge_status:draft');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status_New return varchar2 is
+  begin
+    return t('charge_status:new');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status_Used return varchar2 is
+  begin
+    return t('charge_status:used');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status_Completed return varchar2 is
+  begin
+    return t('charge_status:completed');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Charge_Status(i_Charge_Status varchar2) return varchar2 is
+  begin
+    return --
+    case i_Charge_Status --
+    when Hpr_Pref.c_Charge_Status_Draft then t_Charge_Status_Draft --
+    when Hpr_Pref.c_Charge_Status_New then t_Charge_Status_New --
+    when Hpr_Pref.c_Charge_Status_Used then t_Charge_Status_Used --
+    when Hpr_Pref.c_Charge_Status_Completed then t_Charge_Status_Completed --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Charge_Statuses return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Charge_Status_Draft,
+                                          Hpr_Pref.c_Charge_Status_New,
+                                          Hpr_Pref.c_Charge_Status_Used,
+                                          Hpr_Pref.c_Charge_Status_Completed),
+                           Array_Varchar2(t_Charge_Status_Draft,
+                                          t_Charge_Status_New,
+                                          t_Charge_Status_Used,
+                                          t_Charge_Status_Completed));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- estimation type
+  ----------------------------------------------------------------------------------------------------
+  Function t_Estimation_Type_Formula return varchar2 is
+  begin
+    return t('estimation_type:formula');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Estimation_Type_Entered return varchar2 is
+  begin
+    return t('estimation_type:entered');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Estimation_Type(i_Estimation_Type varchar2) return varchar2 is
+  begin
+    return --
+    case i_Estimation_Type --
+    when Hpr_Pref.c_Estimation_Type_Formula then t_Estimation_Type_Formula --
+    when Hpr_Pref.c_Estimation_Type_Entered then t_Estimation_Type_Entered --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Estimation_Types return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Estimation_Type_Formula,
+                                          Hpr_Pref.c_Estimation_Type_Entered),
+                           Array_Varchar2(t_Estimation_Type_Formula, t_Estimation_Type_Entered));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- advance limit kind
+  ----------------------------------------------------------------------------------------------------
+  Function t_Advance_Limit_Turnout_Days return varchar2 is
+  begin
+    return t('advance_limit_kind:turnout');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Advance_Limit_Calendar_Days return varchar2 is
+  begin
+    return t('advance_limit_kind:calendar');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Advance_Limit_Kind(i_Advance_Limit_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Advance_Limit_Kind --
+    when Hpr_Pref.c_Advance_Limit_Turnout_Days then t_Advance_Limit_Turnout_Days --
+    when Hpr_Pref.c_Advance_Limit_Calendar_Days then t_Advance_Limit_Calendar_Days --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Advance_Limit_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Advance_Limit_Turnout_Days,
+                                          Hpr_Pref.c_Advance_Limit_Calendar_Days),
+                           Array_Varchar2(t_Advance_Limit_Turnout_Days,
+                                          t_Advance_Limit_Calendar_Days));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- period kinds
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind_Full_Month return varchar2 is
+  begin
+    return t('period kind: full month');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind_Month_First_Half return varchar2 is
+  begin
+    return t('period kind: month first half');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind_Month_Second_Half return varchar2 is
+  begin
+    return t('period kind: month second half');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind_Custom return varchar2 is
+  begin
+    return t('period kind: custom period');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Period_Kind(i_Period_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Period_Kind --
+    when Hpr_Pref.c_Period_Full_Month then t_Period_Kind_Full_Month --
+    when Hpr_Pref.c_Period_Month_First_Half then t_Period_Kind_Month_First_Half --
+    when Hpr_Pref.c_Period_Month_Second_Half then t_Period_Kind_Month_Second_Half --
+    when Hpr_Pref.c_Period_Custom then t_Period_Kind_Custom --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Period_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Period_Full_Month,
+                                          Hpr_Pref.c_Period_Month_First_Half,
+                                          Hpr_Pref.c_Period_Month_Second_Half,
+                                          Hpr_Pref.c_Period_Custom),
+                           Array_Varchar2(t_Period_Kind_Full_Month,
+                                          t_Period_Kind_Month_First_Half,
+                                          t_Period_Kind_Month_Second_Half,
+                                          t_Period_Kind_Custom));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  -- penaties
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind_Late return varchar2 is
+  begin
+    return t('penalty kind: late');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind_Early return varchar2 is
+  begin
+    return t('penalty kind: early');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind_Lack return varchar2 is
+  begin
+    return t('penalty kind: lack');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind_Day_Skip return varchar2 is
+  begin
+    return t('penalty kind: day skip');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind_Mark_Skip return varchar2 is
+  begin
+    return t('penalty kind: mark skip');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Kind(i_Penalty_Kind varchar2) return varchar2 is
+  begin
+    return --
+    case i_Penalty_Kind --
+    when Hpr_Pref.c_Penalty_Kind_Late then t_Penalty_Kind_Late --
+    when Hpr_Pref.c_Penalty_Kind_Early then t_Penalty_Kind_Early --
+    when Hpr_Pref.c_Penalty_Kind_Lack then t_Penalty_Kind_Lack --
+    when Hpr_Pref.c_Penalty_Kind_Day_Skip then t_Penalty_Kind_Day_Skip --
+    when Hpr_Pref.c_Penalty_Kind_Mark_Skip then t_Penalty_Kind_Mark_Skip --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Penalty_Kinds return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Penalty_Kind_Late,
+                                          Hpr_Pref.c_Penalty_Kind_Early,
+                                          Hpr_Pref.c_Penalty_Kind_Lack,
+                                          Hpr_Pref.c_Penalty_Kind_Day_Skip,
+                                          Hpr_Pref.c_Penalty_Kind_Mark_Skip),
+                           Array_Varchar2(t_Penalty_Kind_Late,
+                                          t_Penalty_Kind_Early,
+                                          t_Penalty_Kind_Lack,
+                                          t_Penalty_Kind_Day_Skip,
+                                          t_Penalty_Kind_Mark_Skip));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Fact_Status_New return varchar2 is
+  begin
+    return t('cv fact status: new');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Fact_Status_Complete return varchar2 is
+  begin
+    return t('cv fact status: complete');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Fact_Status_Accept return varchar2 is
+  begin
+    return t('cv fact status: accept');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Cv_Fact_Status(i_Status varchar2) return varchar2 is
+  begin
+    return --
+    case i_Status --
+    when Hpr_Pref.c_Cv_Contract_Fact_Status_New then t_Cv_Fact_Status_New --
+    when Hpr_Pref.c_Cv_Contract_Fact_Status_Complete then t_Cv_Fact_Status_Complete --
+    when Hpr_Pref.c_Cv_Contract_Fact_Status_Accept then t_Cv_Fact_Status_Accept --
+    end;
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function Cv_Fact_Statuses return Matrix_Varchar2 is
+  begin
+    return Matrix_Varchar2(Array_Varchar2(Hpr_Pref.c_Cv_Contract_Fact_Status_New,
+                                          Hpr_Pref.c_Cv_Contract_Fact_Status_Complete,
+                                          Hpr_Pref.c_Cv_Contract_Fact_Status_Accept),
+                           Array_Varchar2(t_Cv_Fact_Status_New,
+                                          t_Cv_Fact_Status_Complete,
+                                          t_Cv_Fact_Status_Accept));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Rule_Unit_Min return varchar2 is
+  begin
+    return t('penalty_rule:min');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Rule_Unit_Times return varchar2 is
+  begin
+    return t('penalty_rule:times');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Penalty_Rule_Unit_Days return varchar2 is
+  begin
+    return t('penalty_rule:days');
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Post
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} posted $2{timebook_number} timebook for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Timebook_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Unpost
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} unposted $2{timebook_number} timebook for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Timebook_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Save
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} saved $2{timebook_number} timebook for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Timebook_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Update
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} updated $2{timebook_number} timebook for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Timebook_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Timebook_Delete
+  (
+    i_Company_Id      number,
+    i_User_Id         number,
+    i_Timebook_Number varchar2,
+    i_Month           date
+  ) return varchar2 is
+  begin
+    return t('$1{person_name} deleted $2{timebook_number} timebook for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Timebook_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Post
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2 is
+  begin
+    return t('$1{peson_name} posted $2{book_number} for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Book_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Unpost
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2 is
+  begin
+    return t('$1{peson_name} unposted $2{book_number} for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Book_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Save
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2 is
+  begin
+    return t('$1{peson_name} saved $2{book_number} for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Book_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Update
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2 is
+  begin
+    return t('$1{peson_name} updated $2{book_number} for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Book_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+  ----------------------------------------------------------------------------------------------------
+  Function t_Notification_Title_Book_Delete
+  (
+    i_Company_Id  number,
+    i_User_Id     number,
+    i_Book_Number varchar2,
+    i_Month       date
+  ) return varchar2 is
+  begin
+    return t('$1{peson_name} deleted $2{book_number} for $3{month}',
+             z_Md_Users.Load(i_Company_Id => i_Company_Id, i_User_Id => i_User_Id).Name,
+             i_Book_Number,
+             to_char(i_Month, 'Month yyyy', Htt_Util.Get_Nls_Language));
+  end;
+
+end Hpr_Util;
+/
+

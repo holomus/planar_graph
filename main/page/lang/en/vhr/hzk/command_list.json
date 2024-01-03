@@ -1,0 +1,7 @@
+{
+ "table.command": "Command",
+ "table.device_id": "Device ID",
+ "table.device_name": "Device",
+ "table.state_changed_on": "Changed on",
+ "table.state_name": "Status"
+}

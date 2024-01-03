@@ -1,0 +1,13 @@
+{
+ "gps turned off": "GPS o'chirilgan",
+ "gps turned on": "GPS yoqilgan",
+ "job": "Lavozim",
+ "left from polygon": "Poligondan chiqdi",
+ "location types": "Joylashuv turlari",
+ "reload": "Qayta yuklash",
+ "search": "Qidiruv",
+ "filter": "Filtr",
+ "entered into <b>$1{location_name}</b> polygon": "<b>$1</b> poligonga kirildi",
+ "Close": "Yopish",
+ "divisions": "Bo'limlar"
+}

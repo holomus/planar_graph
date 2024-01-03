@@ -1,0 +1,19 @@
+{
+ "division": "Подразделение",
+ "job": "Должность",
+ "manager": "Руководитель",
+ "person info": "Информация о сотруднике",
+ "phone number": "Номер телефона",
+ "robot": "Позиция",
+ "application date": "Дата заявки",
+ "application number": "Номер",
+ "dismissal date": "Дата увольнения",
+ "dismissal reason name": "Причина увольнения",
+ "employee": "Сотрудник",
+ "note": "Примечание",
+ "reason name": "Название",
+ "reason type": "Тип основания",
+ "save": "Сохранить",
+ "staff name": "Сотрудник",
+ "staff number": "Табельный номер"
+}

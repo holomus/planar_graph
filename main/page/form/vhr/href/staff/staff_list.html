@@ -1,0 +1,133 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table').param(param);
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) {
+    t.filter('status', '=', 'W');
+  }
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  var pg = page.grid('table');
+
+  pg.asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+  var StatusClass = { 'W': 'success', 'D': 'danger', 'U': 'warning' };
+  pg.asHtml('status_html', 'status, status_name', row => {
+    return `<div class="alert alert-custom alert-light-${ StatusClass[row.status] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t, xparam) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function view(row) {
+    fi.view({ staff_id: row.staff_id });
+  }
+
+  function viewEmployee(row) {
+    fi.view_employee({ employee_id: row.employee_id });
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row): fi.view ? view(row) : fi.view_employee ? viewEmployee(row) : null;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  q.multiple_select = xparam.multiple_select;
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="staff_id, name, access_level, staff_number, employee_id, fte, robot_id" on-dblclick="onDblclick(row)" on-check="onCheck(checked)"
+          sort="name" search="staff_number, name, tin, code" searchable="staff_id, region_name, birthday, main_phone, iapa, npin, email"
+          extra-columns="staff_id, schedule_name, last_name, first_name, middle_name, gender_name, birthday, tin, region_name, main_phone, iapa, npin, email, legal_address,
+          address, key_person_name, employee_number, created_by_name, created_on, modified_by_name, modified_on, division_name,
+          job_name, dismissal_date, dismissal_reason_name, dismissal_note, code, access_level_name, staff_kind_name, fte_name, org_unit_name,
+          employment_type_name">
+    <b-row>
+      <b-col name="staff_number" size=2/>
+      <b-col name="name" as-html="person_html" size=6/>
+      <b-col name="manager_name" size=4/>
+      <b-col name="robot_name" size=4/>
+      <b-col name="rank_name" size=4/>
+      <b-col name="hiring_date" size=4/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="status_name" as-html="status_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="viewEmployee(row)" ng-if="fi.view_employee">{{ fi.view_employee.title }}</button>
+    </b-action>
+
+    <b-filter name="staff_id" directive="equal" extra/>
+    <b-filter name="staff_number"/>
+    <b-filter name="name"/>
+    <b-filter name="manager_id" decorate-with="manager_name"/>
+    <b-filter name="robot_id" decorate-with="robot_name"/>
+    <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+    <b-filter name="job_id" decorate-with="job_name"/>
+    <b-filter name="rank_id" decorate-with="rank_name"/>
+    <b-filter name="hiring_date"/>
+    <b-filter name="gender" decorate-with="gender_name"/>
+    <b-filter name="birthday"/>
+    <b-filter name="region_id" decorate-with="region_name"/>
+    <b-filter name="main_phone"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="fte_id" decorate-with="fte_name" extra/>
+    <b-filter name="schedule_id" decorate-with="schedule_name" extra/>
+    <b-filter name="org_unit_id" decorate-with="org_unit_name" tree-with-parent="parent_id" extra/>
+    <b-filter name="employment_type" decorate-with="employment_type_name" extra/>
+    <b-filter name="dismissal_date" extra/>
+    <b-filter name="dismissal_reason_id" decorate-with="dismissal_reason_name" extra/>
+    <b-filter name="last_name" extra/>
+    <b-filter name="first_name" extra/>
+    <b-filter name="middle_name" extra/>
+    <b-filter name="email" extra/>
+    <b-filter name="legal_address" extra/>
+    <b-filter name="key_person" decorate-with="key_person_name" extra/>
+    <b-filter name="employee_id" decorate-with="employee_number" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+    <b-filter name="access_level" decorate-with="access_level_name" extra/>
+    <b-filter name="staff_kind" decorate-with="staff_kind_name" extra/>
+  </b-grid>
+</form></div>

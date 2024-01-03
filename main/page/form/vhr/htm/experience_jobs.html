@@ -1,0 +1,96 @@
+<script biruni>
+page.init(function (param) {
+  page.query('table').param({ experience_id: param.experience_id, attached: 'Y' });
+});
+page.ctrl(function(scope, fi, param, t) {
+  var q = {},
+      table = page.query('table');
+
+  function fetchData() {
+    q.checked = {};
+    table.param({ experience_id: param.experience_id, attached: q.attachMode ? 'Y' : 'N' });
+    table.fetch();
+  }
+
+  function setMode(mode) {
+    q.attachMode = (mode != 'detached');
+    q.classAttach = q.attachMode ? 'btn-success' : 'btn-default';
+    q.classDetach = !q.attachMode ? 'btn-success' : 'btn-default';
+
+    fetchData();
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function doAction(message, action, job_id) {
+    page.confirm(message, function() {
+      action({
+        experience_id: param.experience_id,
+        job_id: job_id
+      }).then(fetchData, page.alert);
+    });
+  }
+
+  function onDblclick(row) {
+    q.attachMode ? scope.detachOne(row) : scope.attachOne(row);
+  }
+
+  function attachOne(row) {
+    doAction(t('attach job $1{job_name}?')(row.name), fi.attach, row.job_id);
+  }
+
+  function attachMany() {
+    doAction(t('attach $1{job_count} job(s)')(q.checked.size), fi.attach, _.pluck(q.checked.rows(), 'job_id'));
+  }
+
+  function detachOne(row) {
+    doAction(t('detach job $1{job_name}?')(row.name), fi.detach, row.job_id);
+  }
+
+  function detachMany() {
+    doAction(t('detach $1{job_count} job(s)')(q.checked.size), fi.detach, _.pluck(q.checked.rows(), 'job_id'));
+  }
+
+  setMode('attached');
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn" ng-class="q.classAttach" ng-click="setMode('attached')"><t>attached</t></button>
+      <button type="button" class="btn" ng-class="q.classDetach" ng-click="setMode('detached')"><t>detached</t></button>
+    </div>
+    <button  type="button" class="btn btn-danger" ng-click="detachMany()" ng-if="q.attachMode && fi.detach" ng-show="q.checked.has">
+      <t p1="q.checked.size">detach $1</t>
+    </button>
+    <button type="button" class="btn btn-primary" ng-click="attachMany()" ng-if="!q.attachMode && fi.attach" ng-show="q.checked.has">
+      <t p1="q.checked.size">attach $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" sort="name" required="job_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          search="name, code" extra-columns="job_id" searchable="job_id">
+    <b-row>
+      <b-col name="name" size=19/>
+      <b-col name="code" size=4/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="q.attachMode && fi.detach"><t>detach</t></button>
+      <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="!q.attachMode && fi.attach"><t>attach</t></button>
+    </b-action>
+
+    <b-filter name="job_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="code"/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,403 @@
+<script biruni>
+page.header(true);
+page.require("amcharts4",
+             "amcharts4-theme-animated");
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  let d = _.omit(model, 'references'),
+      q = model.references,
+      xy_chart,
+      bar_chart,
+      frame = page.$content.find('.report-frame')[0];
+
+  // area
+  function setArea(row) {
+    if (!row) return;
+    d.area_id = row.area_id;
+    d.area_name = row.name;
+
+    setDriver({});
+  }
+
+  // driver
+  function changeDriverQuery(query, value) {
+    query.param({ area_id: d.area_id });
+    query.searchValue(value);
+  }
+
+  function setDriver(row) {
+    d.driver_id = row.driver_id;
+    d.driver_name = row.name;
+  }
+
+  function xyChart() {
+    if (xy_chart) {
+      xy_chart.data = d.facts;
+      xy_chart.invalidateData();
+
+      return;
+    }
+
+    let elem = page.$content.find('.facts-xy-chart');
+
+    assert(elem.length, "facts xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+    chart.data = d.facts;
+
+    // Create category axis
+    var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+    dateAxis.events.on("dataitemsvalidated", function(ev) {
+      if (d.facts.length < 35) {
+        dateAxis.renderer.minGridDistance = 20;
+        dateAxis.renderer.labels.template.rotation = 25;
+      }
+      else {
+        dateAxis.renderer.minGridDistance = 50;
+        dateAxis.renderer.labels.template.rotation = 0;
+      }
+    });
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+
+      series.showOnInit = true;
+      series.dataFields.valueY = value;
+      series.dataFields.dateX = "fact_date";
+      series.strokeWidth = 2;
+      series.name = name;
+      series.tooltipText = "[bold]{valueY}[/]";
+      series.tooltip.getFillFromObject = false;
+      series.tooltip.background.fill = color;
+      series.tensionX = 0.8;
+      series.stroke = color;
+      series.hidden = hidden;
+      series.dataItems.template.locations.dateX = 0;
+
+      series.events.on("dataitemsvalidated", function(ev) {
+        series.hiddenInLegend = !(series.dataItem.values.valueY.count > 0);
+      });
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+    }
+
+    _.each(q.series, x => {
+      addLineSeries(x.name, x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.xAxis = dateAxis;
+    chart.cursor.behavior = "zoomY";
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    xy_chart = chart;
+  }
+
+  function barChart() {
+    if (bar_chart) {
+      bar_chart.data = d.facts;
+      bar_chart.invalidateData();
+      return;
+    }
+
+    let elem = page.$content.find('.facts-bar-chart');
+
+    assert(elem.length, "facts bar chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+    chart.data = d.facts;
+
+    // Create category axis
+    var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+    dateAxis.renderer.cellStartLocation = 0.2;
+    dateAxis.renderer.cellEndLocation = 0.8;
+    dateAxis.events.on("dataitemsvalidated", function(ev) {
+      if (d.facts.length < 35) {
+        dateAxis.renderer.minGridDistance = 20;
+        dateAxis.renderer.labels.template.rotation = 25;
+      }
+      else {
+        dateAxis.renderer.minGridDistance = 50;
+        dateAxis.renderer.labels.template.rotation = 0;
+      }
+    });
+    
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    function round(num) {
+      return Math.round((num + Number.EPSILON) * 100) / 100
+    }
+
+    function addBarSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.ColumnSeries());
+      
+      series.dataFields.valueY = value;
+      series.dataFields.dateX = "fact_date";
+      series.name = name;
+      series.columns.template.height = am4core.percent(100);
+      series.sequencedInterpolation = true;
+      series.hidden = hidden;
+
+      series.events.on("dataitemsvalidated", function(ev) {
+        series.hiddenInLegend = !(series.dataItem.values.valueY.count > 0);
+      });
+
+      if (value == q.actual_type) return;
+
+      // Add a bullet
+      let valueLabel = series.bullets.push(new am4charts.LabelBullet());
+
+      valueLabel.label.horizontalCenter = "left";
+      valueLabel.label.verticalCenter = "top";
+      valueLabel.label.dy = -20;
+      valueLabel.label.hideOversized = false;
+      valueLabel.label.fill = am4core.color("#000");
+      valueLabel.label.truncate = false;
+      valueLabel.label.hidden = true;
+
+      valueLabel.label.adapter.add("hidden", function(fill, target) {
+        if (!target.dataItem) {
+          return fill;
+        }
+        let fact = target.dataItem.dataContext[q.actual_type];  
+        return !!fact
+              ? false
+              : true;
+      });
+
+      valueLabel.label.adapter.add("text", function(fill, target) {
+        if (!target.dataItem) {
+          return fill;
+        }
+        let predict = target.dataItem.values.valueY.value;
+        let fact    = target.dataItem.dataContext[q.actual_type];
+        let diff    = round(Math.abs(predict - fact) / fact * 100);
+        return diff + "%";
+      });
+
+      // Add a triangle to act as am arrow
+      let arrow = valueLabel.createChild(am4core.Triangle);
+      arrow.horizontalCenter = "right";
+      arrow.verticalCenter = "top";
+      arrow.dy = -20;
+      arrow.stroke = am4core.color("#fff");
+      arrow.width = 12;
+      arrow.height = 12;
+      arrow.hidden = true;
+
+      arrow.adapter.add("hidden", function(fill, target) {
+        if (!target.dataItem) {
+          return fill;
+        }
+        let fact = target.dataItem.dataContext[q.actual_type];  
+        return !!fact
+              ? false
+              : true;
+      });
+
+      arrow.adapter.add("fill", function(fill, target) {
+        if (!target.dataItem) {
+          return fill;
+        }
+        let predict = target.dataItem.values.valueY.value;
+        let fact    = target.dataItem.dataContext[q.actual_type];  
+        return predict - fact >= 0
+          ? am4core.color("green")
+          : am4core.color("red");
+      });
+
+      arrow.adapter.add("direction", function(rotation, target) {
+      if (!target.dataItem) {
+          return rotation;
+        }
+        let predict = target.dataItem.values.valueY.value;
+        let fact    = target.dataItem.dataContext[q.actual_type];
+        return predict - fact >= 0
+          ? "top"
+          : "bottom";
+      });
+    }
+
+    _.each(q.series, x => {
+      addBarSeries(x.name, x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.xAxis = dateAxis;
+    chart.cursor.behavior = "zoomY";
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    bar_chart = chart;
+  }
+
+  function run(rt, data, form) {
+    if (form) {
+      frame.src = page.url('run', data);
+    } else {
+      window.open(page.url('run', data));
+    }
+  }
+
+  function prepareSeries() {
+    q.series = {};
+
+    _.chain([
+      [q.types_dict[q.actual_type], q.actual_type, "#E76F51", false],
+      [q.types_dict[q.weekly_type], q.weekly_type, "#2A9D8F", false],
+      [q.types_dict[q.monthly_type], q.monthly_type, "#264653", true],
+      [q.types_dict[q.quarterly_type], q.quarterly_type, "#A44A3F", true],
+      [q.types_dict[q.yearly_type], q.yearly_type, "#3A6EA5", true],
+    ])
+    .mapRows(['name', 'value', 'color', 'hidden'])
+    .each(x => {
+      x.state = !x.hidden;
+      q.series[x.value] = x;
+    });
+  }
+
+  function reloadCharts(result) {
+    d.facts = result;
+
+    _.each(d.facts, x => {
+      x.fact_date = moment(x.fact_date, 'DD.MM.YYYY').format('YYYY-MM-DD')
+      x.actual_value = x[q.actual_type];
+    });
+
+    prepareSeries();
+
+    xyChart();
+    barChart();
+  }
+
+  function runReport(rt, data, form) {
+    if (page.valid(scope.form)) {
+      let data = _.pick(d, 'object_id', 'area_id', 'driver_id', 'begin_date', 'end_date');
+
+      run(rt, data, form);
+    }
+  }
+
+  function reload() {
+    if (page.valid(scope.form)) {
+      let data = _.pick(d, 'object_id', 'area_id', 'driver_id', 'begin_date', 'end_date');
+
+      page.post(':filter', data)
+          .then(reloadCharts)
+          .catch(page.alert);
+      run('html', data, true);
+      toggleFilter();
+    }
+  }
+
+  function toggleFilter() {
+    page.$content.find('.filter-panel').animate({ width: !q.show_filter ? 330 : 0 });
+    q.show_filter = !q.show_filter
+  }
+
+  q.types_dict = _.object(q.plan_types);
+  q.plan_types = _.mapRows(q.plan_types, ['type', 'name']);
+
+  q.t_no_data_message = t('there is no data to show on this chart.')();
+
+  prepareSeries();
+
+  am4core.ready(function() {
+    am4core.useTheme(am4themes_animated);
+  });
+
+  reloadCharts([]);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <form name="form" class="form-horizontal">
+    <div class="form-row mt-4">
+      <div class="col-sm-18">
+        <div class="card card-custom card-custom">
+          <div class="card-body">
+            <div class="row">
+              <div class="facts-xy-chart" style="width: 100%; height: 300px;"></div>
+            </div>
+            <div class="row">
+              <div class="facts-bar-chart" style="width: 100%; height: 250px;"></div>
+            </div>
+            <div class="row">
+              <iframe class="report-frame" width="100%" frameborder="0"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="card card-custom gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h3 class="card-label"><t>filter</t></h3>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>date</t></label><br/>
+              <b-date-range-picker begin="d.begin_date" end="d.end_date" half-month/>
+            </div>
+            <div class="form-group">
+              <label><t>object</t><r/></label>
+              <b-input name="objects"
+                      model="d.object_name | name"
+                      model-key="d.object_id | object_id"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>area</t><r/></label>
+              <b-input name="areas"
+                      model="d.area_name | name"
+                      model-key="d.area_id | area_id"
+                      on-select="setArea(row)"
+                      on-delete="setArea({})"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>driver</t><r/></label>
+              <b-input name="drivers"
+                      model="d.driver_name | name"
+                      model-key="d.driver_id | driver_id"
+                      on-change="changeDriverQuery(query, value)"
+                      readonly="!d.area_id"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <button type="button" ng-click="reload()" class="btn btn-primary w-100"><t>reload</t></button>
+            </div>
+            <div class="form-group">
+              <button type="button" class="btn btn-light text-primary" ng-click="runReport('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="runReport('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="runReport('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="runReport('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

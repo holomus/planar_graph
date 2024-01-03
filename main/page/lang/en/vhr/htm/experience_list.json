@@ -1,0 +1,15 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{experience_count} experience(s)?": "Delete $1 experience?",
+ "delete experience $1{experience_name}?": "Delete $1?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.experience_id": "ID",
+ "table.job_count": "Qty of Jobs",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "State"
+}

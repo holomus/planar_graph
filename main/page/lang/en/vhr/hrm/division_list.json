@@ -1,0 +1,22 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1 division(s)?": "Do you really want to delete <b>$1</b> department(s)?",
+ "delete division $1?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "select $1": "Select $1",
+ "table.closed_date": "End Date",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.division_group_name": "Department Group",
+ "table.division_id": "Department ID",
+ "table.is_department_name": "Department Type",
+ "table.manager_name": "Manager",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.opened_date": "Start Date",
+ "table.schedule_name": "Schedule",
+ "table.state_name": "Status",
+ "table.subfilial_name": "Project"
+}

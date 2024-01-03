@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{reference_type_count} reference type(s)?": "Haqiqatan ham <b>$1</b>ta ma'lumotnoma turlarini oʻchirib tashlamoqchimisiz?",
+ "delete reference type $1{reference_type_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.name": "Nomi",
+ "table.reference_type_id": "ID",
+ "table.state_name": "Holat"
+}

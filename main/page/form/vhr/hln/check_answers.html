@@ -1,0 +1,94 @@
+<script biruni>
+page.ctrl(function(scope, model, param) {
+  var d = model,
+      q = {};
+ 
+  function finish() {
+    let data = _.pick(d, 'testing_id');
+    data.answers = [];
+
+    data.attestation_id = param.attestation_id;
+    _.each(d.answers, x => { data.answers.push({ question_id: x.question_id, correct: x.correct }) });
+    page.post(':finish', data).then(page.close, page.alert);
+  }
+
+  function showPhoto() {
+    if (d.photo_sha) {
+      page.previewFile({
+        sha: d.photo_sha,
+        name: d.person_name,
+        type: 'image'
+      });
+    }
+  }
+
+  if (!d.photo_sha) {
+    q.photo_src = 'page/resource/vhr/no_photo_' + (d.gender == q.pg_female ? 'fe' : '') + 'male.png';
+  } else {
+    q.photo_src = page.loadImageLarge(d.photo_sha);
+  }
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="finish()"><t>finish</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="symbol h-200px w-200px w-xxl-250px">
+              <img class="w-100 h-100 mw-100 cursor-pointer" ngf-src="q.photo_src" ng-click="showPhoto()"/>
+            </div><br/>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex">
+              <p class="h3"><strong>{{ d.person_name }}</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label">{{ d.exam_name }}</h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-pg-controller name="answers"/>
+            </div>
+          </div>
+          <b-pg-grid name="answers" local-data="d.answers" iterator="item" search="name, order_no, writing_hint, writing_answer">
+            <b-pg-row>
+              <b-pg-col name="name" size=9>
+                <div ng-bind-html="item.name"></div>
+              </b-pg-col>
+              <b-pg-col name="writing_hint" size=6/>
+              <b-pg-col name="writing_answer" size=6/>
+              <b-pg-col name="correct" size=3>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="item.correct"/>
+                    <span>
+                      <t ng-if="item.correct == 'Y'">correct</t>
+                      <t ng-if="item.correct == 'N'">not correct</t>
+                    </span>
+                  </label>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+            
+            <b-pg-extra-col name="order_no"/>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

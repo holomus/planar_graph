@@ -1,0 +1,10 @@
+{
+ "change days": "Детали",
+ "changes": "Основная информация",
+ "pg.change_days.before": "Старое значение",
+ "pg.change_days.current": "Новое значение",
+ "pg.change_days.field_name": "Поле",
+ "pg.changes.before": "Старое значение",
+ "pg.changes.current": "Новое значение",
+ "pg.changes.field_name": "Поле"
+}

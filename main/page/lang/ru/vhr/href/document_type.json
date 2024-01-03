@@ -1,0 +1,13 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another document type": "Код уже закреплен за другим типом документа",
+ "is required": "Документ при приеме",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "no": "Нет",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус",
+ "yes": "Да"
+}

@@ -1,0 +1,5 @@
+{
+ "pg.labor_function.before": "Старое значение",
+ "pg.labor_function.current": "Новое значение",
+ "pg.labor_function.field_name": "Поле"
+}

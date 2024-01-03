@@ -1,0 +1,14 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{vacancy_type_count} vacancy type(s)?": "$1 tur(lar) oʻchirilsinmi?",
+ "delete vacancy type $1{vacancy_type_name}?": "<b>$1</b> turi o'chirilsinmi?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.state_name": "Holat",
+ "table.vacancy_type_id": "ID"
+}

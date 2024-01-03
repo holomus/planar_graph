@@ -1,0 +1,22 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{operation_count} operation(s)?": "<b>$1</b> ta hisoblash(lar)ni o'chirmoqchimisiz?",
+ "delete operation $1{operation_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.accounting_type_name": "Buxgalteriya hisobi",
+ "table.code": "Kod",
+ "table.corr_coa_name": "Hisobvaraq",
+ "table.corr_ref_set": "Subkonto",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.estimation_formula": "Formula",
+ "table.estimation_type_name": "HIsoblash va ko'rsatkichlar",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.note": "Izoh",
+ "table.oper_group_name": "Hisoblash turkumi",
+ "table.oper_type_id": "ID",
+ "table.short_name": "Qisqa nom",
+ "table.state_name": "Holat"
+}

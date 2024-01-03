@@ -1,0 +1,13 @@
+{
+ "close": "Close",
+ "delete $1": "Delete $1",
+ "delete $1?": "Do you really want to delete <b>$1</b> user(s)?",
+ "migr": "Transfer",
+ "migr person": "User",
+ "name": "Full Name",
+ "person": "Natural Person",
+ "pin": "PIN",
+ "table.person_name": "Natural Person",
+ "table.person_role_name": "Role",
+ "table.pin": "PIN"
+}

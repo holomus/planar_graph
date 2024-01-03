@@ -1,0 +1,6 @@
+{
+ "table.device_id": "ИД устройства",
+ "table.device_type_name": "Тип устройства",
+ "table.name": "Название",
+ "table.serial_number": "Серийный номер"
+}

@@ -1,0 +1,23 @@
+{
+ "add": "Qo'shish",
+ "all items will be removed. continue?": "Bo'limni tahrirlash hujjatning ba'zi qismlarini o'chirishga olib keladi. Tahrirlash davom ettirilsinmi?",
+ "apply schedule to others?": "Ish jadvali boshqalarga qo'llanilsinmi?",
+ "begin date": "Boshlanish sanasi",
+ "delete $1": "O'chirish $1",
+ "division name": "Bo'lim",
+ "end date": "Tugash sanasi",
+ "journal date": "Hujjat sanasi",
+ "journal name": "Hujjat nomi",
+ "journal number": "Hujjat raqami",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.schedule": "Ish jadvali",
+ "pg.staffs.staffs": "Xodimlar",
+ "post": "O'tkazish",
+ "post?": "Hujjatni o'tkazilgan holda saqlamoqchimisiz?",
+ "save": "Saqlash",
+ "save?": "Hujjatni saqlamoqchimisiz?",
+ "select": "Tanlash",
+ "staff kind name": "Bandlik turi",
+ "staff name": "Xodim",
+ "staff number": "Xodim raqami"
+}

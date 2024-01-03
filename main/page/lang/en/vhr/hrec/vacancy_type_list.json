@@ -1,0 +1,15 @@
+{
+ "vacancy group name": "Vacancy Group",
+ "delete $1": "Delete $1",
+ "delete $1{vacancy_type_count} vacancy type(s)?": "Delete $1 type(s)?",
+ "delete vacancy type $1{vacancy_type_name}?": "Delete type <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.vacancy_type_id": "ID"
+}

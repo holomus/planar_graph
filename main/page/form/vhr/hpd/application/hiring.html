@@ -1,0 +1,232 @@
+<script biruni>
+page.ctrl(function(scope, model, fi) {
+  var d = _.omit(model, 'references');
+  var q = model.references;
+  
+  function save() {
+    if(!page.valid(scope.form)) return;
+    var data = _.pick(d, 'application_id', 'hiring_date', 'robot_id', 'note', 'first_name', 'last_name', 'middle_name', 'birthday', 'gender', 'phone', 'email', 'address', 'legal_address', 'region_id', 'passport_series', 'passport_number', 'npin', 'iapa', 'employment_type');
+    data.photo_sha = d.photo_sha || d.photo;
+    page.post(':save', data).then(page.close, page.alert);
+  }
+  
+  function getDefaultPhotoSrc(gender) {
+    var res = gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+  
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc(d.gender);
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    d.photo_sha = null;
+    d.photo = null;
+    setPhotoSrc();
+  }
+
+  function showPhoto() {
+    if (d.photo || d.photo_sha) {
+      page.previewFile(d.photo || {
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  // robot
+  function whereRobot() {
+    var where = [
+      'and',
+      [
+        ['opened_date', '<=', d.hiring_date],
+        ['closed_date', '=', [null]]
+      ]
+    ];
+    where = ['and', [['fte', '>', 0], where]];
+    return where;
+  }
+
+  function setRobot(row) {
+    if (!row) return;
+    d.robot_id = row.robot_id;
+    d.robot_name = row.name;
+  }
+
+  function addRobot(value) {
+    fi.add_robot(null, setRobot, { name: value });
+  }
+
+  function selectRobot() {
+    fi.select_robot(null, setRobot, { where: whereRobot() });
+  }
+
+  function changeRobotQuery(query, value) {
+    query.param({ hiring_date: d.hiring_date }).where(whereRobot()).searchValue(value);
+  }
+
+  q.genders = _.mapRows(q.genders, ['kind', 'name']);
+  q.employment_types = _.filter(_.mapMatrix(q.employment_types, ['key', 'title']), x => x.key != 'E');
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  setPhotoSrc();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-lg-20 col-xxl-14">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row form-group">
+              <div class="col-sm-12">
+                <label><t>application number</t></label>
+                <span class="form-view">{{ d.application_number }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>application date</t></label>
+                <span class="form-view">{{ d.application_date }}</span>
+              </div>
+            </div>
+            <div class="form-row form-group">
+              <div class="col-sm-12">
+                <label><t>hiring date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.hiring_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>robot</t><r/></label>
+                <b-input name="robots"
+                         model="d.robot_name | name"
+                         model-key="d.robot_id | robot_id"
+                         is-add="fi.add_robot"
+                         on-add="addRobot(value)"
+                         is-view="fi.select_robot"
+                         on-view="selectRobot()"
+                         on-change="changeRobotQuery(query, value)"
+                         readonly="!d.hiring_date"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div>
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <!---------------------------------------- person info ---------------------------------------->
+          <div class="card-header">
+            <div class="card-title">
+              <h3 class="card-label"><t>person info</t></h3>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="col-sm-8 col-md-6">
+                <div class="form-group pr-7">
+                  <div class="image-input image-input-outline bgi-position-center" style="max-width: 163px; max-height: 163px;">
+                    <div class="image-input-wrapper w-auto h-auto">
+                      <img class="mw-100 mh-100 cursor-pointer" ngf-src="d.photo || q.photo_src" ng-if="d.photo || q.photo_src" ng-click="showPhoto()">
+                    </div>
+                    <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" b-cropper="d.photo">
+                      <i class="fa fa-pen icon-sm text-muted"></i>
+                    </a>
+                    <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto()" ng-if="d.photo || d.photo_sha">
+                      <i class="fa fa-times icon-xs text-muted"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>gender</t></label><br/>
+                  <label class="radio" ng-repeat="gender in q.genders">
+                    <input type="radio" name="gender" value="{{ gender.kind }}" ng-model="d.gender" ng-change="setPhotoSrc()"/>
+                    <span>{{ gender.name }}</span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm">
+                <div class="form-group">
+                  <label><t>first name</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.first_name" b-maxlength="250" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>last name</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.last_name" b-maxlength="250" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>middle name</t><r ng-if="q.crs.middle_name == 'Y'"/></label>
+                  <input type="text" class="form-control" ng-model="d.middle_name" b-maxlength="250" ng-required="q.crs.middle_name == 'Y'"/>
+                </div>
+                <div class="form-group">
+                  <label><t>employment type</t><r/></label>
+                  <b-input local-data="q.employment_types"
+                           model="d.employment_type_name | title"
+                           model-key="d.employment_type | key"
+                           required-key>
+                     {{ row.title }}
+                  </b-input>
+                </div>
+              </div>
+            </div>
+            <div class="form-row mt-5">
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.passport == 'Y'">
+                <label><t>passport series and number</t><r/></label>
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="d.passport_series" b-maxlength="3" required/>
+                  <input type="text" class="form-control w-50" ng-model="d.passport_number" b-maxlength="10" required/>
+                </div>
+              </div>
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.npin == 'Y'">
+                <label><t>npin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.npin" b-maxlength="14" required/>
+              </div>
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.iapa == 'Y'">
+                <label><t>iapa</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.iapa" b-maxlength="20" required/>
+              </div>
+            </div>
+            <div class="form-row mt-5">
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.birthday == 'Y'">
+                <label><t>birthday</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.birthday" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.phone_number == 'Y'">
+                <label><t>phone</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.phone" b-maxlength="100" required/>
+              </div>
+              <div class="col-sm-12 col-md-8 form-group" ng-if="q.crs.email == 'Y'">
+                <label><t>email</t><r/></label>
+                <input type="email" class="form-control" ng-model="d.email" b-maxlength="300" required/>
+              </div>
+            </div>
+            <div class="form-row mt-5">
+              <div class="col-sm-12 form-group" ng-if="q.crs.address == 'Y'">
+                <label><t>address</t><r/></label>
+                <input class="form-control" ng-model="d.address" b-maxlength="500" required/>
+              </div>
+              <div class="col-sm-12 form-group" ng-if="q.crs.legal_address == 'Y'">
+                <label><t>legal address</t><r/></label>
+                <input class="form-control" ng-model="d.legal_address" b-maxlength="300" required/>
+              </div>
+              <div class="col-sm-12 form-group" ng-if="q.crs.region == 'Y'">
+                <label><t>region name</t><r/></label>
+                <b-tree-select origin="q.regions" id-key="region_id" model="d.region_id" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

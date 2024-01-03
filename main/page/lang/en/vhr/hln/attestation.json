@@ -1,0 +1,21 @@
+{
+ "add": "Add",
+ "attestation date": "Date",
+ "attestation number": "Number",
+ "begin time": "Start Time",
+ "begin time period begin": "Attestation period (begin date)",
+ "begin time period end": "Attestation period (end date)",
+ "delete $1": "Delete $1",
+ "examiner name": "Examiner",
+ "name": "Name",
+ "note": "Note",
+ "period begin must be less than period end": "Period begin date must be less than end date",
+ "pg.testings.exam_name": "Exam",
+ "pg.testings.person_name": "Participant",
+ "pg.testings.rownum": "№",
+ "rownum": "№",
+ "save": "Save",
+ "save?": "Save?",
+ "select": "Pick-up",
+ "set exam for all?": "Apply to empty fields?"
+}

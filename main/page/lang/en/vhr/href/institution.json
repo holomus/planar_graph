@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another institution": "The code is already assigned to another educational institutions",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

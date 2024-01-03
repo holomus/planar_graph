@@ -1,0 +1,14 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{subject_group_count} subject group(s)?": "Delete $1 Subject group(s)?",
+ "delete subject group $1{subject_group_name}?": "Delete Subject group $1?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.subject_group_id": ""
+}

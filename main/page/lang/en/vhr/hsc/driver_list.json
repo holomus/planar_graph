@@ -1,0 +1,14 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{drivers_count} driver(s)?": "Delete <b>$1</b> drivers?",
+ "delete driver $1{driver_name}?": "Delete driver <b>$1</b>?",
+ "select": "Pick-up",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.driver_id": "ID",
+ "table.measure_name": "Units of Measure",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

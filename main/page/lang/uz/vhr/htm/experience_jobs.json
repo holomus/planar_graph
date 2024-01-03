@@ -1,0 +1,15 @@
+{
+ "attach": "Biriktirish",
+ "attach $1": "Biriktirish $1",
+ "attach $1{job_count} job(s)": "$1 ta lavozim(lar)ni biriktirmoqchimisiz?",
+ "attach job $1{job_name}?": "$1ni biriktirmoqchimisiz?",
+ "attached": "Biriktirilganlar",
+ "detach": "Ajratish",
+ "detach $1": "Ajratish $1",
+ "detach $1{job_count} job(s)": "$1 ta lavozim(lar)ni ajratmoqchimisiz?",
+ "detach job $1{job_name}?": "$1ni ajratmoqchimisiz?",
+ "detached": "Mavjudlar",
+ "table.code": "Kod",
+ "table.job_id": "ID",
+ "table.name": "Nom"
+}

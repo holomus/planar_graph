@@ -1,0 +1,11 @@
+{
+ "download": "Загрузить",
+ "education": "Образование, квалификация",
+ "Languages": "Языки",
+ "pg.person_edu_stages.action": "Действия",
+ "pg.person_edu_stages.begin_date": "Начало обучения",
+ "pg.person_edu_stages.edu_stage_name": "Вид образования",
+ "pg.person_edu_stages.end_date": "Конец обучения",
+ "pg.person_edu_stages.file_names": "Название организации",
+ "pg.person_edu_stages.institution_name": "Учебное заведение"
+}

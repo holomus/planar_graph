@@ -1,0 +1,9 @@
+{
+ "select": "Выбрать",
+ "table.model_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.support_face_recognation_name": "Поддержка распознавания лица",
+ "table.support_fprint_name": "Поддержка отпечатка пальцев",
+ "table.support_rfid_card_name": "Поддержка RFID карты"
+}

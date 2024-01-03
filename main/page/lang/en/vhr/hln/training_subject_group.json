@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status",
+ "training subjects": "Subjects"
+}

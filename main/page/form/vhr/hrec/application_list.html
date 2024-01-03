@@ -1,0 +1,150 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table').param(param);
+
+  var pg = page.grid('table'),
+      statusClass = { D: 'secondary', W: 'warning', A: 'primary', C: 'danger', O: 'success' };
+
+  pg.asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, model, t, fi) {
+  var q = {},
+      p = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ application_id: row.application_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ application_id: row.application_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit && (row.status == 'D' || row.status == 'W') ? edit(row) : null;
+  }
+
+  function doAction(doFunc, doTrans, application_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ application_id: application_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans){
+    return function(row) { doAction(doFunc, doTrans(row.application_number), row.application_id); }
+  }
+
+  function prepActionMany(doFunc, doTrans, key) {
+    return function() { doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'application_id')); }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_delete', checked, x => x.status == 'D' || x.status == 'W');
+
+    _.map(q.actions, x => prepChecked(x.action_title, checked, x.filterFunc));
+    q.actions_exists = _.any(q.actions, x => q[x.action_title].has);
+  }
+
+  function deleteOne(row) {
+    prepActionOne(fi.delete, t('delete application, application number: $1{application_number}?'))(row);
+  }
+
+  function deleteMany() {
+    prepActionMany(fi.delete, t('delete $1{application_count} application(s)?'), 'to_delete')();
+  }
+
+  q.actions = _.chain([
+                [ fi.set_draft,    row => row.status == 'C', t('change status to draft, application number: $1{application_number}?'), t('change status $1{application_count} application(s) to draft?') , 'to_draft' ],
+                [ fi.set_waiting,  row => row.status == 'D', t('change status to waiting, application number: $1{application_number}?'), t('change status $1{application_count} application(s) to waiting?'), 'to_waiting'] ,
+                [ fi.set_approved, row => row.status == 'W', t('change status to approved, application number: $1{application_number}?'), t('change status $1{application_count} application(s) to approved?'), 'to_approved'] ,
+                [ fi.set_canceled, row => row.status == 'W', t('change status to cancele, application number: $1{application_number}?'), t('change status $1{application_count} application(s) to canceled?'), 'to_canceled' ],
+                [ fi.set_complete, row => row.status == 'A', t('change status to complete, application number: $1{application_number}?'), t('change status $1{application_count} application(s) to complete?'), 'to_complete' ]
+              ])
+              .mapRows(['grant', 'filterFunc', 'transOne', 'transMany', 'action_title'])
+              .reject(x => !x.grant)
+              .each(x => {
+                x.data = {};
+                x.funcOne = prepActionOne(x.grant, x.transOne);
+                x.funcMany = prepActionMany(x.grant, x.transMany, x.action_title);
+              })
+              .value();
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <div class="btn-group" ng-show="q.actions_exists">
+      <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>choose action</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcMany()" ng-if="action.grant && q[action.action_title].has">
+          {{ action.grant.title }} {{ q[action.action_title].size }}
+        </a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog()" ng-show="q.checked.has">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst() && !q.attestation_id">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="application_id, application_number, status" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          search="division_name, job_name" searchable="application_id" extra-columns="application_id, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="application_number" size=4/>
+      <b-col name="division_name" size=5/>
+      <b-col name="job_name" size=5/>
+      <b-col name="quantity" size=3/>
+      <b-col name="wage" format="amount" size=3/>
+      <b-col name="status_name" size=3 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && (row.status == 'D' || row.status == 'W')">{{ fi.edit.title }}</button>
+      <div class="btn-group" ng-if="q.actions.length > 0 && row.status != 'O'">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>choose action</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcOne(row)" ng-if="action.grant && action.filterFunc(row)">
+            {{ action.grant.title }}
+          </a>
+        </div>
+      </div>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && (row.status == 'D' || row.status == 'W')">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="application_id" directive="equal" extra/>
+    <b-filter name="application_number"/>
+    <b-filter name="division_id" decorate-with="division_name"/>
+    <b-filter name="job_id" decorate-with="job_name"/>
+    <b-filter name="quantity"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="wage" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

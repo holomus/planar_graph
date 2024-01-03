@@ -1,0 +1,128 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pg = page.grid('table'),
+      date = moment().startOf('month'),
+      statusClass = { N : 'primary', C: 'warning', A: 'success' };
+
+  page.query('table').filter('month', '=', date.format('MM.YYYY'), undefined, 'date', date.format('DD.MM.YYYY HH:mm:ss'), date.endOf('month').format('DD.MM.YYYY HH:mm:ss'));
+
+  pg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+
+  pg.asHtml('month_html', 'month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, $timeout, bFrame) {
+  var q = {};
+
+  function doAction(doFunc, doTrans, fact_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ fact_id: fact_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans) {
+    return function(row) {
+      doAction(doFunc, doTrans(row.fact_id), row.fact_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key) {
+    return function() {
+      doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'fact_id'));
+    }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {},
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_accepted', checked, x => x.status == 'C');
+    prepChecked('to_return_complete', checked, x => x.status == 'A');
+    prepChecked('to_new', checked, x => x.status == 'C');
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  function view(row) {
+    fi.view({ fact_id: row.fact_id });
+  }
+
+  function complete(row) {
+    fi.complete({fact_id : row.fact_id});
+  }
+
+  function transactions(row) {
+    window.open(page.url('transactions', {
+      rt: 'html',
+      fact_id: row.fact_id
+    }));
+  }
+
+  scope.q = q;
+  scope.acceptOne = prepActionOne(fi.accept, t('accept fact $1{fact_id}?'));
+  scope.acceptMany = prepActionMany(fi.accept, t('accept $1{facts_count} facts?'), 'to_accepted');
+  scope.returnCompleteOne = prepActionOne(fi.return_to_complete, t('return to complete fact $1{fact_id}?'));
+  scope.returnCompleteMany = prepActionMany(fi.return_to_complete, t('return to complete $1{facts_count} facts?'), 'to_return_complete');
+  scope.returnNewOne = prepActionOne(fi.return_to_new, t('return to new fact $1{fact_id}?'));
+  scope.returnNewMany = prepActionMany(fi.return_to_new, t('return to new $1{facts_count} facts?'), 'to_new');
+  });
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button class="btn btn-sm btn-success" ng-click="acceptMany()" ng-show="q.to_accepted.has" ng-if="fi.accept">
+      <t p1="q.to_accepted.size">accept $1 facts(s)</t>
+    </button>
+    <button class="btn btn-sm btn-primary" ng-click="returnCompleteMany()" ng-show="q.to_return_complete.has" ng-if="fi.return_to_complete">
+      <t p1="q.to_return_complete.size">return complete $1 facts(s)</t>
+    </button>
+    <button class="btn btn-sm btn-info" ng-click="returnNewMany()" ng-show="q.to_new.has" ng-if="fi.return_to_new">
+      <t p1="q.to_new.size">to new $1 facts(s)</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="fact_id, month, status" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-month" search="division_name, person_name" searchable="contract_number" extra-columns="total_amount">
+    <b-row>
+      <b-col name="contract_number" size=5/>
+      <b-col name="month" as-html="month_html" size=5/>
+      <b-col name="division_name" size=5/>
+      <b-col name="person_name" size=5/>
+      <b-col name="status_name" size=3 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default btn-sm" ng-click="view(row)" ng-if="fi.view && row.status != 'A'">{{fi.view.title}}</button>
+      <button type="button" class="btn btn-default btn-sm" ng-click="complete(row)" ng-if="fi.complete && row.status == 'N'">{{fi.complete.title}}</button>
+      <button type="button" class="btn btn-default btn-sm" ng-click="returnNewOne(row)" ng-if="fi.return_to_new && row.status == 'C'">{{fi.return_to_new.title}}</button>
+      <button type="button" class="btn btn-default btn-sm" ng-click="acceptOne(row)" ng-if="fi.accept && row.status == 'C'">{{fi.accept.title}}</button>
+      <button type="button" class="btn btn-default btn-sm" ng-click="returnCompleteOne(row)" ng-if="fi.return_to_complete && row.status == 'A'">{{fi.return_to_complete.title}}</button>
+      <button type="button" class="btn btn-default btn-sm" ng-click="transactions(row)" ng-if="row.status == 'A' && fi.transactions">{{fi.transactions.title}}</button>
+    </b-action>
+
+    <b-filter name="fact_id" directive="equal" extra/>
+    <b-filter name="contract_number"/>
+    <b-filter name="month" date-level="month" directive="equal"/>
+    <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+    <b-filter name="person_id" decorate-with="person_name"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="total_amount"/>
+  </b-grid>
+</form></div>

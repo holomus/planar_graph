@@ -1,0 +1,11 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{dismissal_reason_count} dismissal reason(s)?": "Do you really want to delete <b>$1</b> dismissal reason(s)?",
+ "delete dismissal reason $1{dismissal_reason_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "select $1": "Select $1",
+ "table.description": "Description",
+ "table.dismissal_reason_id": "ID",
+ "table.name": "Name",
+ "table.reason_type_name": "Reason Type"
+}

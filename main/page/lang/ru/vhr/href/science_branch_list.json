@@ -1,0 +1,10 @@
+{
+ "delete $1{science_branch_count} science branch(s)?": "Удалить отрасли наук в количестве <b>$1</b>?",
+ "delete science branch $1{science_branch_name}?": "Удалить отрасль наук <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.name": "Название",
+ "table.science_branch_id": "ИД",
+ "table.state_name": "Статус",
+ "delete $1": "Удалить $1"
+}

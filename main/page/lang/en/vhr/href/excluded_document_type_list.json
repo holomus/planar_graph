@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete excluded document types in $1{division jobs} division jobs?": "Do you really want to delete $1 exception(s)?",
+ "delete excluded document types of $1{job_name} in $2{division_name}?": "Do you really want to delete exception for <b>$1</b> in <b>$2</b>?",
+ "table.division_id": "Department ID",
+ "table.division_name": "Department",
+ "table.excluded_document_types_count": "Excluded Document Type Qty",
+ "table.job_id": "Job ID",
+ "table.job_name": "Job"
+}

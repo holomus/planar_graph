@@ -1,0 +1,17 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{wage_scale_count} wage scale(s)?": "Do you really want to delete <b>$1</b> group(s)?",
+ "delete wage scale $1{wage_scale_name}?": "Do you really want to delete  <b>$1</b>?",
+ "info": "View",
+ "list": "Approvals",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.full_name": "Full Name",
+ "table.last_changed_date": "Last Modified",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.wage_scale_id": "ID"
+}

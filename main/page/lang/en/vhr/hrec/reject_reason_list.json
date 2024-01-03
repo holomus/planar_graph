@@ -1,0 +1,15 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{reject_reason_count} reject reason(s)?": "Do you really want to delete <b>$1</b> reason(s)?",
+ "delete reject reason $1{reject_reason_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.order_no": "No.",
+ "table.reject_reason_id": "ID",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,579 @@
+<script biruni>
+page.require("amcharts4",
+             "amcharts4-theme-animated");
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, ['divisions', 'division_dismissals', 'job_dismissals', 'hiring_sources', 'dismissal_info']),
+      q = {};
+
+  d.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  d.division_dismissals = _.mapRows(model.division_dismissals, ['name', 'division_id', 'quantity']);
+  d.job_dismissals = _.mapRows(model.job_dismissals, ['name', 'job_id', 'quantity']);
+  d.hiring_sources = _.mapRows(model.hiring_sources, ['source_id', 'name', 'quantity']);
+  d.dismissal_info = _.mapRows(model.dismissal_info, ['reason', 'source', 'quantity']);
+
+  q.left_company = t('left the company')();
+  q.key_person = t('key person')();
+  q.not_key_person = t('not key person')();
+  q.wage_short = t('below')();
+  q.wage_average = t('market level')();
+  q.wage_high = t('above')();
+  q.division = t('division')();
+  q.job = t('job')();
+  q.no_info = t('no info')();
+
+  function fillDismissal(data) {
+    var dismissal = am4core.create("dismissal", am4charts.SankeyDiagram);
+    dismissal.hiddenState.properties.opacity = 0; // this creates initial fade-in
+
+    dismissal.data = [];
+    dismissal.nodePadding = 5;
+    dismissal.paddingRight = 0;
+
+    _.each(data, x=> {
+      let data = {
+        from: x.reason,
+        to: x.source ? x.source : q.no_info,
+        value: x.quantity
+      };
+
+      dismissal.data.push(data);
+    })
+
+    var template = dismissal.nodes.template;
+    template.nameLabel.adapter.add('locationX', function(loc, target) {
+      switch (target.parent.level) {
+        case 1:
+          let d = target.element.node?.getClientRects()[0] || {};
+          return -(d.width / 10 || 0) - 1;
+        default:
+          return 1;
+      }
+    })
+
+    template.nameLabel.label.truncate = false;
+    template.nameLabel.label.wrap = true;
+
+    let dismissalState = dismissal.links.template.states.create("hover");
+    dismissalState.properties.fillOpacity = 0.6;
+
+    dismissal.dataFields.fromName = "from";
+    dismissal.dataFields.toName = "to";
+    dismissal.dataFields.value = "value";
+  }
+
+  fillDismissal(d.dismissal_info);
+
+  function fillComeFrom(data) {
+    var comeFrom = am4core.create("comeFrom", am4charts.SankeyDiagram);
+    comeFrom.hiddenState.properties.opacity = 0; // this creates initial fade-in
+
+    comeFrom.data = [];
+    comeFrom.nodePadding = 5;
+    comeFrom.paddingRight = 0;
+
+    _.each(data, x=> {
+      let data = {}
+      data.from = x.name,
+      data.to = q.left_company,
+      data.value = x.quantity
+      comeFrom.data.push(data);
+    });
+
+    var template = comeFrom.nodes.template;
+    template.nameLabel.adapter.add('locationX', function(loc, target) {
+      switch (target.parent.level) {
+        case 1:
+          let d = target.element.node?.getClientRects()[0] || {};
+          return -(d.width / 10 || 0) - 1;
+        default:
+          return 1;
+      }
+    })
+
+    let comeFromState = comeFrom.links.template.states.create("hover");
+    comeFromState.properties.fillOpacity = 0.6;
+
+    comeFrom.dataFields.fromName = "from";
+    comeFrom.dataFields.toName = "to";
+    comeFrom.dataFields.value = "value";
+  }
+
+  fillComeFrom(d.hiring_sources);
+
+  var divisionDismissals = am4core.create("divisionDismissals", am4charts.XYChart);
+
+  divisionDismissals.data = d.division_dismissals;
+
+  // Create axes
+  var categoryAxis = divisionDismissals.yAxes.push(new am4charts.CategoryAxis());
+  categoryAxis.dataFields.category = "name";
+  categoryAxis.numberFormatter.numberFormat = "#";
+  categoryAxis.renderer.inversed = true;
+  categoryAxis.renderer.grid.template.disabled = true;
+  categoryAxis.renderer.labels.template.disabled = false;
+  categoryAxis.renderer.labels.template.align = "left";
+
+  var valueAxis = divisionDismissals.xAxes.push(new am4charts.ValueAxis());
+  valueAxis.renderer.opposite = true;
+  valueAxis.renderer.grid.template.disabled = true;
+  valueAxis.renderer.labels.template.disabled = true;
+
+  // Create series
+  var series = divisionDismissals.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueX = "quantity";
+  series.dataFields.categoryY = "name";
+  series.columns.template.tooltipText = "{name}: [bold]{valueX}[/]";
+  series.columns.template.width = am4core.percent(100);
+
+  var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+  valueLabel.label.text = "{valueX}";
+  valueLabel.label.fontSize = 16;
+  valueLabel.label.dx = 10;
+
+  var jobDismissals = am4core.create("jobDismissals", am4charts.XYChart);
+
+  jobDismissals.data = d.job_dismissals;
+
+  // Create axes
+  var catAxis = jobDismissals.yAxes.push(new am4charts.CategoryAxis());
+  catAxis.dataFields.category = "name";
+  catAxis.numberFormatter.numberFormat = "#";
+  catAxis.renderer.inversed = true;
+  catAxis.renderer.grid.template.disabled = true;
+  catAxis.renderer.labels.template.align = "left";
+
+  var valAxis = jobDismissals.xAxes.push(new am4charts.ValueAxis());
+  valAxis.renderer.opposite = true;
+  valAxis.renderer.grid.template.disabled = true;
+  valAxis.renderer.labels.template.disabled = true;
+
+  // Create series
+  var series = jobDismissals.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueX = "quantity";
+  series.dataFields.categoryY = "name";
+  series.columns.template.tooltipText = "{name}: [bold]{valueX}[/]";
+  series.columns.template.width = am4core.percent(100);
+
+  var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+  valueLabel.label.text = "{valueX}";
+  valueLabel.label.fontSize = 16;
+  valueLabel.label.dx = 10;
+
+  var worth = am4core.create("worth", am4charts.XYChart);
+
+  function fillWorth(key_persons, not_key_persons) {
+    worth.data = [];
+    worth.data = [{
+      "name": q.key_person,
+      "count": key_persons,
+      "color": "#34C6BB"
+    }, {
+      "name": q.not_key_person,
+      "count": not_key_persons,
+      "color":  "#89D4EB"
+    } ];
+  }
+
+  worth.paddingTop = 0;
+  worth.paddingBottom = 0;
+  worth.paddingLeft = 0;
+  worth.paddingRight = 0;
+
+  // Create axes
+  var worthAxis = worth.xAxes.push(new am4charts.CategoryAxis());
+  worthAxis.dataFields.category = "name";
+  worthAxis.renderer.grid.template.disabled = true;
+
+  var valueAxis = worth.yAxes.push(new am4charts.ValueAxis());
+  valueAxis.renderer.grid.template.disabled = true;
+  valueAxis.renderer.labels.template.disabled = true;
+
+  // Create series
+  var series = worth.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueY = "count";
+  series.dataFields.categoryX = "name";
+  series.columns.template.tooltipText = "{categoryX}: [bold]{valueY}[/]";
+  series.columns.template.adapter.add("fill", function (fill, target) {
+    return target.dataItem.dataContext["color"];
+  });
+  series.columns.template.width = am4core.percent(90);
+
+  var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+  valueLabel.label.text = "{count}";
+  valueLabel.label.align = "center";
+  valueLabel.label.fontSize = 24;
+  valueLabel.label.verticalCenter = "bottom";
+
+  fillWorth(d.key_persons, d.not_key_persons);
+
+  var salary = am4core.create("salary", am4charts.XYChart);
+
+  function fillSalary(short, average, high) {
+    salary.data = [ {
+      "name": q.wage_short,
+      "count": short,
+      "color": "#FD817F"
+    }, {
+      "name": q.wage_average,
+      "count": average,
+      "color": "#89D4EB"
+    },{
+      "name": q.wage_high,
+      "count": high,
+      "color": "#35C6BB"
+    } ];
+  }
+
+  salary.paddingTop = 0;
+  salary.paddingBottom = 0;
+  salary.paddingLeft = 0;
+  salary.paddingRight = 0;
+
+  // Create axes
+  var salaryAxis = salary.xAxes.push(new am4charts.CategoryAxis());
+  salaryAxis.dataFields.category = "name";
+  salaryAxis.renderer.grid.template.disabled = true;
+
+  var  salaryValue = salary.yAxes.push(new am4charts.ValueAxis());
+  salaryValue.renderer.grid.template.disabled = true;
+  salaryValue.renderer.labels.template.disabled = true;
+
+  // Create series
+  var series = salary.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueY = "count";
+  series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";
+  series.dataFields.categoryX = "name";
+  series.columns.template.adapter.add("fill", function (fill, target) {
+    return target.dataItem.dataContext["color"];
+  });
+  series.columns.template.width = am4core.percent(90);
+
+  var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+  valueLabel.label.text = "{count}";
+  valueLabel.label.align = "center";
+  valueLabel.label.fontSize = 24;
+  valueLabel.label.verticalCenter = "bottom";
+
+  var experience = am4core.create("experience", am4charts.XYChart);
+
+  fillSalary(d.wage_short, d.wage_average, d.wage_high);
+
+  function fillExperience(exp_1, exp_2, exp_3, exp_4, exp_5, exp_6) {
+    experience.data = [ {
+      "name": "<1",
+      "count": exp_1
+    },{
+      "name": "1-2",
+      "count": exp_2
+    },{
+      "name": "2-3",
+      "count": exp_3
+    },{
+      "name": "3-4",
+      "count": exp_4
+    },{
+      "name": "4-5",
+      "count": exp_5
+    },{
+      "name": "5+",
+      "count": exp_6
+    } ];
+  }
+
+  experience.paddingTop = 0;
+  experience.paddingBottom = 0;
+  experience.paddingLeft = 0;
+  experience.paddingRight = 0;
+
+  // Create axes
+  var experienceAxis = experience.xAxes.push(new am4charts.CategoryAxis());
+  experienceAxis.dataFields.category = "name";
+  experienceAxis.renderer.minGridDistance = 20;
+  experienceAxis.renderer.grid.template.disabled = true;
+
+  var experienceValue = experience.yAxes.push(new am4charts.ValueAxis());
+  experienceValue.renderer.grid.template.disabled = true;
+  experienceValue.renderer.labels.template.disabled = true;
+
+  var series = experience.series.push(new am4charts.ColumnSeries());
+  series.dataFields.valueY = "count";
+  series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";
+  series.dataFields.categoryX = "name";
+
+  var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+  valueLabel.label.text = "{count}";
+  valueLabel.label.fontSize = 20;
+  valueLabel.label.verticalCenter = "bottom";
+
+  fillExperience(d.exp_1, d.exp_2, d.exp_3, d.exp_4, d.exp_5, d.exp_6);
+
+  function fillRecords(result) {
+    _.extend(d, result);
+    
+    d.period_type = result.period_type;
+    d.date = moment(result.date, 'DD.MM.YYYY').format(q.formats[d.period_type]);
+    
+    d.division_dismissals = _.mapRows(result.division_dismissals, ['name', 'division_id', 'quantity']);
+    d.job_dismissals = _.mapRows(result.job_dismissals, ['name', 'job_id', 'quantity']);
+    d.hiring_sources = _.mapRows(result.hiring_sources, ['source_id', 'name', 'quantity']);
+    d.dismissal_info = _.mapRows(result.dismissal_info, ['reason', 'source', 'quantity']);
+
+    divisionDismissals.data = d.division_dismissals;
+    jobDismissals.data = d.job_dismissals;
+
+    fillWorth(d.key_persons, d.not_key_persons);
+    fillSalary(d.wage_short, d.wage_average, d.wage_high);
+    fillExperience(d.exp_1, d.exp_2, d.exp_3, d.exp_4, d.exp_5, d.exp_6);
+    fillComeFrom(d.hiring_sources);
+    fillDismissal(d.dismissal_info);
+  }
+
+  function changePeriodType() {
+    d.date = moment().format(q.formats[d.period_type]);
+    q.quarter = {};
+  }
+
+  function initFilterData() {
+    q.quarters = _.map([t('Q1')(), t('Q2')(), t('Q3')(), t('Q4')()], (x, index) => { return { index: index + 1, name: x }; } );
+    q.formats = { 'Y': 'YYYY', 'Q': 'YYYY', 'M': 'MMMM.YYYY' };
+    d.period_type = 'Y';
+
+    changePeriodType();
+  }
+
+  function applyDate() {
+    q.dateMoment = moment(d.date, q.formats[d.period_type]);
+
+    if (d.period_type == 'Q') {
+      q.dateMoment.quarter(q.quarter.index);
+    }
+  }
+
+  function reload() {
+    applyDate();
+    
+    let data = {
+      division_ids: [],
+      job_ids: [],
+      date: q.dateMoment.format('MM.YYYY'),
+      period_type: d.period_type,
+      key_person: d.key_person
+    }
+    _.each(d.division_ids, x => {data.division_ids.push(x)});
+    _.each(d.jobs, x => { data.job_ids.push(x.job_id)});
+
+    page.post(':filter', data).then(fillRecords, page.alert);
+    toggleFilter();
+  }
+
+  function toggleFilter() {
+    page.$content.find('.filter-panel').animate({ width: !q.show_filter ? 330 : 0 });
+    q.show_filter = !q.show_filter
+  }
+
+  initFilterData();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form" class="form-horizontal">
+  <div class="position-relative">
+    <div class="card card-custom card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>dismissals total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.dismissals }}</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>experience total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.experience }}</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>average age total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.average_age }}</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>average salary total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.average_wage }}</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-24 col-md-6 mt-4 mb-8">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>number of dismissals</t></h3>
+            </div>
+            <div id="divisionDismissals" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md-6 mt-4 mb-8">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>come from</t></h3>
+            </div>
+            <div id="comeFrom" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md mt-4 mb-8">
+            <div class="form-row">
+              <div class="mb-4 col-sm-12 col-md-12">
+                <h3 class="font-weight-bolder"><t>dismissal reasons</t></h3>
+              </div>
+              <div class="mb-4 col-sm-12 col-md-12 text-right">
+                <h3 class="font-weight-bolder"><t>where gone</t></h3>
+              </div>
+            </div>
+            <div id="dismissal" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-24 col-md mb-4">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>number of dismissals</t></h3>
+            </div>
+            <div id="jobDismissals" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md mb-4">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>worth</t></h3>
+            </div>
+            <div id="worth" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md mb-4">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>salary level</t></h3>
+            </div>
+            <div id="salary" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md mb-4">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>work experience</t></h3>
+            </div>
+            <div id="experience" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-panel position-absolute top-0 right-0 h-100 overflow-hidden" style="width: 0; padding-left: 30px;">
+      <button type="button" class="btn btn-icon position-absolute border-right-0 rounded-right-0 mt-4 left-0" ng-class="q.show_filter ? 'btn-secondary' : 'btn-warning'" ng-click="toggleFilter()">
+        <i ng-class="q.show_filter ? 'fa fa-times' : 'fa fa-filter'"></i>
+      </button>
+      <div class="card card-custom w-300px h-100 shadow-sm">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>filter</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          
+          <div class="form-group">
+            <label><t>period type</t></label><br>
+            <div class="col-sm row">
+              <label class="radio">
+                <input type="radio" name="period_type" value="Y" ng-change="changePeriodType()" ng-model="d.period_type"/>
+                <span><t>year</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="period_type" value="Q" ng-change="changePeriodType()" ng-model="d.period_type"/>
+                <span><t>quarter</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="period_type" value="M" ng-change="changePeriodType()" ng-model="d.period_type"/>
+                <span><t>month</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.period_type == 'Y' || d.period_type == 'Q'">
+            <label><t>year</t></label>
+            <input type="text"
+                    class="form-control"
+                    b-date-picker="YYYY"
+                    ng-model="d.date"/>
+          </div>
+          <div class="form-group" ng-if="d.period_type == 'M'">
+            <label><t>month</t></label>
+            <input type="text"
+                    class="form-control"
+                    b-date-picker="MMMM.YYYY"
+                    ng-model="d.date"/>
+          </div>
+          <div class="form-group" ng-if="d.period_type == 'Q'">
+            <label><t>quarter</t></label><br/>
+            <style>
+              .dropdown>.ui-select-dropdown.dropdown-menu {
+                top: 26px !important;
+              }
+            </style>
+            <ui-select ng-model="q.quarter">
+              <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+              <ui-select-choices repeat="quarter in q.quarters | filter: $select.search">
+                {{ quarter.name }}
+              </ui-select-choices>
+            </ui-select>
+          </div>
+
+          <div class="form-group">
+            <div class="divisions">
+              <label><t>divisions</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                model="d.division_ids"
+                parent-key="parent_id"
+                hide-limit="5"
+                option-check-childs/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>jobs</t></label>
+            <div class="jobs">
+              <b-input
+                multiple
+                name="jobs"
+                model="d.jobs"
+                model-key="job_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>worths</t></label><br>
+            <div class="col-sm row">
+              <label class="radio">
+                <input type="radio" name="key_person" value="Y" ng-model="d.key_person"/>
+                <span><t>key persons</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="key_person" value="N" ng-model="d.key_person"/>
+                <span><t>not key persons</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="key_person" value="A" ng-model="d.key_person"/>
+                <span><t>all persons</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <button type="button" ng-click="reload()" class="btn btn-primary w-100"><t>reload</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>

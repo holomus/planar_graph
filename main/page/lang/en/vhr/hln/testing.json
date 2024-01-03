@@ -1,0 +1,13 @@
+{
+ "begin time": "Time",
+ "begin time period begin": "Start period (from)",
+ "begin time period end": "Start period (until)",
+ "candidate name": "Participant",
+ "exam name": "Exam",
+ "examiner name": "Examiner",
+ "note": "Note",
+ "period begin must be less than period end": "Opening time of the period must be less than the closing time",
+ "save": "Save",
+ "testing date": "Date",
+ "testing number": "Number"
+}

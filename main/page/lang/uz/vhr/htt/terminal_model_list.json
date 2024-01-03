@@ -1,0 +1,9 @@
+{
+ "select": "Tanlash",
+ "table.model_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat",
+ "table.support_face_recognation_name": "Yuz tanishni qo'llab-quvvatlash",
+ "table.support_fprint_name": "Barmoq izi qo'llab-quvvatlash",
+ "table.support_rfid_card_name": "RFID kartasini qo'llab-quvvatlash"
+}

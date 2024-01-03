@@ -1,0 +1,23 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{question_group_count} question_group(s)?": "Haqiqatan ham <b>$1</b>ta savollarni oʻchirib tashlamoqchimisiz?",
+ "delete question group $1{name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "select $1": "Tanlash $1",
+ "table.answer_type": "Javob turi",
+ "table.answer_type_name": "Nomi",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.group_name1": "1-guruh",
+ "table.group_name2": "2-guruh",
+ "table.group_name3": "3-guruh",
+ "table.group_name4": "4-guruh",
+ "table.group_name5": "5-guruh",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.question_id": "Savollar ID",
+ "table.state_name": "Holat",
+ "table.writing_hint": "Yordam"
+}

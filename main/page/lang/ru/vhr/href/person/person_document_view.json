@@ -1,0 +1,9 @@
+{
+ "pg.person_documents.action": "Действия",
+ "pg.person_documents.doc_number": "Номер документа",
+ "pg.person_documents.doc_series": "Серия документа",
+ "pg.person_documents.doc_type_name": "Тип документа",
+ "pg.person_documents.issued_by": "Кем выдан",
+ "files are not fully uploaded yet": "Файлы еще не загружены",
+ "pg.person_documents.file_names": "Название документа"
+}

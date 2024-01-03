@@ -1,0 +1,21 @@
+{
+ "data": "Данные",
+ "do you want to import file?": "Загрузить выбранный файл?",
+ "errors": "Ошибки",
+ "file": "Файл",
+ "import": "Загрузить",
+ "import succeeded!": "Файл успешно загружен!",
+ "pg.error_messages.error": "Ошибка",
+ "pg.error_messages.row_id": "Строка",
+ "pg.staffs.actions": "Действия",
+ "pg.staffs.division": "Подразделение",
+ "pg.staffs.employee_name": "Сотрудник",
+ "pg.staffs.hiring_date": "Дата приема на работу",
+ "pg.staffs.job": "Должность",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.schedule": "График работы",
+ "pg.staffs.staff_id": "ИД",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "template": "Шаблон"
+}

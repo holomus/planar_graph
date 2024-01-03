@@ -1,0 +1,20 @@
+{
+ "audit": "O'zgarishlar tarixi",
+ "code": "Kod",
+ "created by": "Yaratdi",
+ "created on": "Yaratilgan sana",
+ "description": "Tavsif",
+ "details": "Tafsilotlar",
+ "main": "Asosiy ma'lumotlar",
+ "modified by": "Tahrirladi",
+ "modified on": "Tahrirlangan sana",
+ "table_audit.code": "Kod",
+ "table_audit.name": "Nomi",
+ "table_audit.t_audit_id": "O'zgarish tarixi ID",
+ "table_audit.t_date": "Hodisa sanasi",
+ "table_audit.t_event_name": "Hodisa",
+ "table_audit.t_source_project_name": "Loyiha",
+ "table_audit.t_timestamp": "Hodisa sanasi va vaqti",
+ "table_audit.t_user_id": "Foydalanuvchi ID",
+ "table_audit.t_user_name": "Foydalanuvchi"
+}

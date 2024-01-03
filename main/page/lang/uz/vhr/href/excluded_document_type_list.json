@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete excluded document types in $1{division jobs} division jobs?": "Haqiqatan ham $1 istisno(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete excluded document types of $1{job_name} in $2{division_name}?": "Haqiqatan ham <b>$2</b>dagi <b>$1</b> istisnosini oʻchirib tashlamoqchimisiz?",
+ "table.division_id": "Bo'lim ID",
+ "table.division_name": "Bo'lim",
+ "table.excluded_document_types_count": "Istisno hujjatlar turi soni",
+ "table.job_id": "Lavozim ID",
+ "table.job_name": "Lavozim"
+}

@@ -1,0 +1,21 @@
+{
+ "add": "Добавить",
+ "attestation date": "Дата",
+ "attestation number": "Номер",
+ "begin time": "Дата и время начала",
+ "begin time period begin": "Период тестирования (начало)",
+ "begin time period end": "Период тестирования (конец)",
+ "delete $1": "Удалить $1",
+ "examiner name": "Экзаменатор",
+ "name": "Название",
+ "note": "Примечание",
+ "period begin must be less than period end": "Время начала периода должно быть меньше конца",
+ "pg.testings.exam_name": "Экзамен",
+ "pg.testings.person_name": "Участник",
+ "pg.testings.rownum": "№",
+ "rownum": "№",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "select": "Подбор",
+ "set exam for all?": "Применить к пустым полям?"
+}

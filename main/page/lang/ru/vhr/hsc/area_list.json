@@ -1,0 +1,13 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{areas_count} area(s)?": "Удалить зоны в количестве <b>$1</b>?",
+ "delete area $1{area_name}?": "Удалить зону <b>$1</b>?",
+ "select": "Выбрать",
+ "table.area_id": "ИД",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

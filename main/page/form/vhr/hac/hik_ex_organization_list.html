@@ -1,0 +1,92 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+});
+page.ctrl(function(scope, $timeout, fi, t, param, bAlert) {
+  let q = {
+    is_subpage: scope.bPage.pageType() == 'subpage',
+  };
+
+  function deleteAction(message, organization_code) {
+    page.confirm(message, function() {
+      fi.delete({ organization_code: organization_code, server_id: param.server_id })
+        .then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete organization $1{organization_name}?')(row.organization_name), row.organization_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{organization_count} organization(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'organization_code'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  async function getOrganizations() {
+    let data = { 
+      server_id: param.server_id,
+      pageNo: 1,
+    };
+    try {
+      let result = { item_count: 1, };
+      while (result.item_count > 0) {
+        result = await page.post(':get_organizations', data);
+        data.pageNo += 1;
+      }
+      page.reload();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="getOrganizations()">get organizations from HCP</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-12">
+        <button type="button" class="btn btn-primary" ng-click="getOrganizations()"><t>get organizations from HCP</t></button>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table"
+            required="organization_code, organization_name"
+            on-check="onCheck(checked)"
+            sort="-modified_on"
+            search="organization_name"
+            searchable="organization_code"
+            extra-columns="created_on">
+      <b-row>
+        <b-col name="organization_code" size=10/>
+        <b-col name="organization_name" size=10/>
+        <b-col name="modified_on" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+    </b-grid>
+  </div>
+</div>

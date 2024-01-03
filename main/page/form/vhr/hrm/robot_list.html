@@ -1,0 +1,359 @@
+<script biruni>
+page.init(function(param, scope, xparam, t, $filter) {
+  var table = page.query('table').param(param),
+      pg = page.grid('table'),
+      t_no_access = t('no access to wage')(),
+      formatNumber = $filter('bNumber');
+
+  if (xparam.where) table.where(xparam.where);
+  else if (param.where) table.where(param.where)
+  else if (scope.bPage.pageType() != 'subpage' && page.isInit()) table.filter('closed_date', '>', moment().format('DD.MM.YYYY'), '=');
+
+  if (page.isInit()) table.filter('state', '=', 'A');
+
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+
+  pg.asHtml('wage_html', 'wage', row => {
+    return row.wage == '-1' ? t_no_access : formatNumber(row.wage);
+  });
+
+  pg.asHtml('staff_wage_html', 'staff_wage', row => {
+    return `<div class="alert-text b-right">${ row.staff_wage == '-1' ? t_no_access : formatNumber(row.staff_wage) }</div>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, param, xparam) {
+  var q = model,
+      p = {};
+
+  q.by_application = xparam.by_application;
+
+  function deleteAction(message, robot_id) {
+    page.confirm(message, function() {
+      fi.delete({ robot_id: robot_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete robot $1{robot_name}?')(row.name), row.robot_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{robot_count} robot(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'robot_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog() && q.allow_action) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ robot_id: row.robot_id }, closeIfDialog);
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.set_closed_date) prepareChecked('to_set_closed_date', checked, x => _.isEmpty(x.closed_date) && _.isEmpty(x.employee_ids));
+    if (fi.delete) prepareChecked('to_delete', checked, null);
+  }
+
+  function onDblclick(row) {
+    if(q.allow_action) page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(row) {
+    p.data = _.pick(row, 'robot_id', 'name', 'division_id', 'job_id', 'job_name', 'rank_id', 'rank_name');
+
+    p.data.inited = false;
+    p.keep_old_name ??= true;
+
+    page.untouch(scope.modal);
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // modal set closed date
+  var closedDateModal = page.$content.find("form[name='setClosedDateModal']>.modal");
+
+  function showClosedDateModal() {
+    p.data = {};
+    closedDateModal.modal('show');
+  }
+
+  function setClosedDate() {
+    if (page.valid(scope.setClosedDateModal)) {
+      fi.set_closed_date({
+        closed_date: p.data.closed_date,
+        robot_id: _.pluck(q.to_set_closed_date.rows, 'robot_id')
+      }).then(() => {
+        page.grid('table').fetch();
+        closedDateModal.modal('hide')
+
+        q.to_delete = {};
+        q.to_set_closed_date = {};
+      }, page.alert);
+    }
+  }
+
+  // job
+  function changeQueryJob(query, value) {
+    query.param({ division_id: p.data.division_id }).searchValue(value);
+  }
+
+  function setJob(row) {
+    if (!row) return;
+
+    p.data.job_id = row.job_id;
+    p.data.job_name = row.name;
+
+    genName();
+  }
+
+  function selectJob() {
+    fi.select_job({ division_id: p.data.division_id }, setJob, { where: ['state', '=', 'A'] });
+  }
+
+  function addJob(value) {
+    fi.add_job(null, setJob, { name: value, division_ids: [p.data.division_id] });
+  }
+
+  function changeDivision() {
+    p.data.inited ? genName() : p.data.inited = true;
+  }
+
+  function genName() {
+    if (p.keep_old_name) return;
+    let name = '';
+    if (p.data.job_id) name += p.data.job_name;
+    if (p.data.rank_id) name += `, ${p.data.rank_name}`;
+    if (p.data.division_id) name += `/${_.findWhere(q.divisions, { division_id : p.data.division_id }).name}/`;
+    name += `(${p.data.robot_id})`;
+    p.data.name = name;
+  }
+
+  function fixPositionOrgStructure() {
+    if (!fi.fix_position_org_structure) return;
+    let data = _.pick(p.data, 'robot_id', 'division_id', 'job_id');
+    data.name = p.keep_old_name ? null : p.data.name;
+    fi.fix_position_org_structure(data)
+      .then(function() {
+        page.grid('table').fetch();
+        hideModal();
+      })
+      .catch(page.alert);
+  }
+
+  function view(row) {
+    fi.view({ robot_id: row.robot_id });
+  }
+
+  var sc = [ // success
+    { grant: fi.add, fn: add, title: fi.add.title },
+    { grant: fi.robot_migr && q.migr_robot_exists == 'Y', fn: fi.robot_migr, title: fi.robot_migr.title }
+  ];
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.firstGr = q.sc.acc[0].grant;
+    q.sc.firstTt = q.sc.acc[0].title;
+  }
+  q.to_set_closed_date = {};
+  q.to_delete = {};
+
+  q.allow_action = !(xparam.allow_action == false);
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.sc.length && !q.by_application">
+      <button type="button" class="btn btn-sm btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.firstGr && q.allow_action" b-hotkey="add">{{ q.sc.firstTt }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1 && q.allow_action" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)"   ng-click="acc.fn()" ng-if="acc.grant">{{ acc.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-default" ng-click="showClosedDateModal()" ng-if="fi.set_closed_date" ng-show="q.to_set_closed_date.has"><t p1="q.to_set_closed_date.size">set closed date $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.allow_action" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="robot_id, division_id, job_id, job_name, rank_id, rank_name, name, fte, employee_names, employee_ids, closed_date" on-check="onCheck(checked)"
+            on-dblclick="onDblclick(row)" sort="name" search="name, employee_names" searchable="robot_id, code"
+            extra-columns="robot_id, robot_group_name, manager_name, schedule_name, rank_name, labor_function_name, description, hiring_condition, closed_date,
+            contractual_wage_name, wage_scale_name, fte, planned_fte, application_number, application_id2, code, org_unit_name, staff_rank_name, oper_type_names, created_on, modified_on, created_by_name, modified_by_name,
+            position_employment_kind_name, currency_name, joining_date">
+      <b-row>
+        <b-col name="name" size=5/>
+        <b-col name="employee_names" size=5/>
+        <b-col name="opened_date" size=3/>
+        <b-col name="division_name" size=5/>
+        <b-col name="job_name" size=5/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="state_name" as-html="state_html"/>
+        <b-col name="wage" as-html="wage_html"/>
+        <b-col name="staff_wage" as-html="staff_wage_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog() && q.allow_action"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view && q.allow_action">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && q.allow_action">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showModal(row)" ng-if="fi.fix_position_org_structure && q.position_fixing_enabled == 'Y' && q.allow_action">{{ fi.fix_position_org_structure.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && q.allow_action">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="robot_id" directive="equal" extra/>
+      <b-filter name="name"/>
+      <b-filter name="opened_date"/>
+      <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="employee_ids" decorate-with="employee_names"/>
+      <b-filter name="state" decorate-with="state_name"/>
+      <b-filter name="robot_group_id" decorate-with="robot_group_name" extra/>
+      <b-filter name="manager_id" decorate-with="manager_name" extra/>
+      <b-filter name="schedule_id" decorate-with="schedule_name" extra/>
+      <b-filter name="rank_id" decorate-with="rank_name" extra/>
+      <b-filter name="staff_rank_id" decorate-with="staff_rank_name" extra/>
+      <b-filter name="labor_function_id" decorate-with="labor_function_name" extra/>
+      <b-filter name="org_unit_id" decorate-with="org_unit_name" tree-with-parent="parent_id" extra/>
+      <b-filter name="closed_date" extra/>
+      <b-filter name="planned_fte" extra/>
+      <b-filter name="position_employment_kind" decorate-with="position_employment_kind_name" extra/>
+      <b-filter name="contractual_wage" decorate-with="contractual_wage_name" extra/>
+      <b-filter name="oper_type_ids" decorate-with="oper_type_names" extra/>
+      <b-filter name="wage_scale_id" decorate-with="wage_scale_name" extra/>
+      <b-filter name="code" extra/>
+      <b-filter name="currency_id" decorate-with="currency_name" extra/>
+      <b-filter name="application_id" decorate-with="application_number" extra/>
+      <b-filter name="application_id2" extra/>
+      <b-filter name="joining_date" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>Fixing position org structure</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="col-sm-22 h4 mt-2"><b><t>changing division or job will affect these places:</t></b></div>
+            <ul>
+              <li><t>all journals with selected robot will have changed division/job</t></li>
+              <li><t>all employees with selected robot will have changed division/job</t></li>
+              <li><t>all employees with selected robot will change location according to new division</t></li>
+            </ul>
+            <div class="col-sm-22 h4 mt-2"><b><t>changing division or job will NOT affect these and other places:</t></b></div>
+            <ul>
+              <li><t>all timebooks with selected robot will not change</t></li>
+              <li><t>all staff plans with selected robot will not change</t></li>
+              <li><t>all charges with selected robot will not change</t></li>
+              <li><t>any documents that used division for filtering will not change</t></li>
+            </ul>
+            <div class="form-group">
+              <label><t>division name</t><r></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="p.data.division_id"
+                  on-change="changeDivision()"
+                  required/>
+            </div>
+            <div class="form-group">
+              <label><t>job name</t><r></label>
+              <b-input name="jobs"
+                       model="p.data.job_name | name"
+                       model-key="p.data.job_id | job_id"
+                       on-change="changeQueryJob(query, value)"
+                       on-select="setJob(row)"
+                       on-delete="setJob({})"
+                       is-add="fi.add_job"
+                       is-view="fi.select_job"
+                       on-add="addJob(value)"
+                       on-view="selectJob()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">
+                    <label class="checkbox" style="margin: 0;">
+                      <input type="checkbox" ng-model="p.keep_old_name" ng-change="genName()"/>
+                      <span><t>keep old name</t></span>
+                    </label>
+                  </div>
+                </div>
+                <input type="text" class="form-control" ng-model="p.data.name" b-maxlength="200" ng-disabled="p.keep_old_name" ng-required="!p.keep_old_name"/>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.fix_position_org_structure" ng-click="fixPositionOrgStructure()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="setClosedDateModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>set closed date</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <label><t>closed date</t><r/></label>
+            <input type="text" class="form-control" ng-model="p.data.closed_date" b-date-picker required/>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.set_closed_date" ng-click="setClosedDate()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

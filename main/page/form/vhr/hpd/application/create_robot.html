@@ -1,0 +1,84 @@
+<script biruni>
+page.ctrl(function(scope, model, fi) {
+  var d = model || {}, q = model.references;
+
+  function save() {
+    if(!page.valid(scope.form)) return;
+    var data = _.pick(d, 'application_id', 'name', 'opened_date', 'division_id', 'job_id', 'quantity', 'note');
+    page.post(':save', data).then(page.close, page.alert);
+  }
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>application number</t></label>
+                <span class="form-view">{{ d.application_number }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>application date</t></label>
+                <span class="form-view">{{ d.application_date }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="200" required/>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>division</t><r/></label>
+                <b-tree-select origin="q.divisions"
+                               id-key="division_id"
+                               model="d.division_id"
+                               required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>job</t><r/></label>
+                <b-input name="jobs"
+                         model="d.job_name | name"
+                         model-key="d.job_id | job_id"
+                         is-view="fi.select_job"
+                         on-view="selectJob()"
+                         on-change="changeJobQuery(query, value)"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>opened date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.opened_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>quantity</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.quantity" b-number required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,30 @@
+<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffffff; font-family: Arial, sans-serif;">
+    <div style="display: flex; border-radius: 1em; background-color: #326930;">
+        <div style="width: 55%;">
+            <div style="height: 50%; padding: 50px 0 0 30px; font-size: 2.2em; font-weight: 900; word-wrap: break-word; line-height: 90%;">
+                {{ employee_name }}
+            </div>
+            <div style="height: 50%;">
+                <span style="padding: 5px 10px 5px 30px; background-color: #ffffff; border-top-right-radius: 7px; border-bottom-right-radius: 7px; color: #326930; font-size: 1.6em; font-weight: bolder; font-style: italic;">
+                    {{ employee_job }}
+                </span>
+                <div style="margin: 10px 0 20px 0; padding-left: 30px; font-size: 1.2em; font-weight: bolder; line-height: 90%;">
+                    {{ employee_rank }}
+                </div>
+            </div>
+        </div>
+        <div style="width: 45%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <div style="width: 100%;">
+                <div style="float: right; padding: 10px 15px 0 0; font-size: 1.1em; font-weight: bolder; text-align: right;">
+                    {{ employee_division }}
+                </div>
+            </div>
+            <div style="box-sizing: content-box; height: auto; width: 85%; background-color: #ffffff; margin: 10px 10px 50px 10px; padding: 4px; border-radius: 100%;">
+                <img src="{{ employee_photo }}" style="height: auto; width: 100%; border-radius: 100%" />
+            </div>
+        </div>
+    </div>
+    <div style="height: auto; width: 25%; border-radius: 15px; transform: translateY(-60%);">
+        <img src="{{ filial_logo }}" style="height: auto; width: 100%; border-radius: 15px;" />
+    </div>
+</div>

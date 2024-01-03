@@ -1,0 +1,581 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, fi, t, bUtil, $timeout) {
+  var d = _.isUndefined(model.template_id) ? _.extend(model, xparam) : model,
+      q = {},
+      p = {},
+      oneDay = 1000 * 60 * 60 * 24;
+
+  // utility functions
+  function pF(val) {
+    return parseFloat(parseFloat(val || 0).toFixed(1));
+  }
+
+  // prepare order no
+  function prepareOrderNo() {
+    var order_no = 1;
+    var len = parseInt((d.schedule_days.length + 1) / 2);
+    for (var i = 0; i < len; i ++) {
+      d.schedule_days[i].order_no = order_no ++;
+      if (i + len < d.schedule_days.length) d.schedule_days[i + len].order_no = order_no ++;
+    }
+  }
+
+  // periodicity change
+  function periodicityChange() {
+    d.schedule_days = [];
+    for (let i = 0; i < d.count_days; i++) {
+      let day = angular.copy(q.pattern_day);
+          day.break_enabled = 'Y';
+          day.day_no = i + 1;
+          day.day_kind = 'W';
+      d.schedule_days.push(day);
+    }
+    prepareOrderNo();
+  }
+
+  // schedule kind change
+  function scheduleKindChange() {
+    if (d.schedule_kind == 'W') {
+      d.schedule_days = [];
+      d.count_days = q.week_days.length;
+      _.each(q.week_days, function (week_day, i) {
+      let day = angular.copy(q.pattern_day);
+          day.break_enabled = 'Y';
+          day.day_no = i + 1;
+          day.day_kind = week_day.working ? 'W' : 'R';
+        d.schedule_days.push(day);
+      });
+      prepareOrderNo();
+    } else {
+      periodicityChange();
+    }
+  }
+
+  function dayName(index) {
+    return d.schedule_kind == 'W' ? q.week_days[index].name : t('$1 day')(index + 1);
+  }
+
+  function dayKindChange(day) {
+    day = angular.copy(q.pattern_day);
+    day.break_enabled = 'Y';
+  }
+
+  // calculating day
+  function calcDay(day) {
+    let end_time = bUtil.timeToMinutes(day.end_time);
+    let begin_time = bUtil.timeToMinutes(day.begin_time);
+    let break_begin_time = bUtil.timeToMinutes(day.break_begin_time);
+    let break_end_time = bUtil.timeToMinutes(day.break_end_time);
+    let break_time = 0;
+    let full_time = 0;
+
+    if (day.break_enabled == 'Y') {
+      if (break_end_time > break_begin_time) {
+        break_time = (break_end_time - break_begin_time) / 60;
+      } else {
+        break_time = (break_end_time - break_begin_time + 1440) / 60;
+      }
+    }
+
+    if (end_time > begin_time) {
+      full_time = (end_time - begin_time) / 60;
+    } else {
+      full_time = (end_time - begin_time + 1440) / 60;
+    }
+
+    day.plan_time = bUtil.minutesToTime((full_time - break_time) * 60);
+  }
+
+  // advanced settings
+  function checkHour(key, maxvalue) {
+    var hour = `${key}_hour`;
+      if (q[hour] > maxvalue)
+          q[hour] = maxvalue;
+  }
+
+  function checkMinute(key, maxvalue) {
+    var minute = `${key}_minute`,
+        hour = `${key}_hour`;
+
+    if (q[minute] > 59) {
+        q[hour] = q[hour] * 1 + Math.floor(q[minute] / 60);
+        q[minute] = q[minute] % 60;
+    }
+
+    checkHour(key, maxvalue);
+
+    if (q[hour] == 24) {
+      q[minute] = 0;
+    }
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.form)) {
+      d.input_acceptance = q.input_acceptance_hour * 60 + q.input_acceptance_minute * 1;
+      d.output_acceptance = q.output_acceptance_hour * 60 + q.output_acceptance_minute * 1;
+      d.track_duration = q.track_duration_hour * 60 + q.track_duration_minute * 1;
+
+      var data = _.pick(d, 'template_id', 'name', 'description', 'schedule_kind', 'all_days_equal', 'count_days','order_no', 'code', 'state', 'shift',
+                           'input_acceptance', 'output_acceptance', 'track_duration', 'count_late', 'count_early', 'count_lack', 'take_holidays',
+                           'take_nonworking', 'take_additional_rest_days');
+
+      if (d.use_calendar == 'N') {
+        data.take_holidays = 'N';
+        data.take_nonworking = 'N';
+        data.take_additional_rest_days = 'N';
+      }
+
+      data.shift = bUtil.timeToMinutes(data.shift);
+
+      var pattern = {};
+          pattern.days = [];
+
+      _.each(d.schedule_days, function(schedule_day) {
+        let day = _.omit(schedule_day, 'order_no');
+
+        day.begin_time = bUtil.timeToMinutes(q.pattern_day.begin_time);
+        day.end_time = bUtil.timeToMinutes(q.pattern_day.end_time);
+        day.break_begin_time = bUtil.timeToMinutes(q.pattern_day.break_begin_time);
+        day.break_end_time = bUtil.timeToMinutes(q.pattern_day.break_end_time);
+        day.plan_time = bUtil.timeToMinutes(q.pattern_day.plan_time);
+
+        if (day.day_kind == 'R') day.plan_time = 0;
+
+        day.marks = _.chain(d.all_days_equal == 'Y' ? q.pattern_day.marks : day.marks)
+                      .reject(x => { return !x.begin_time || !x.end_time})
+                      .map(x => {
+                        return {
+                          begin_time: bUtil.timeToMinutes(x.begin_time),
+                          end_time: bUtil.timeToMinutes(x.end_time),
+                        };
+                      })
+                      .value();
+
+        if (d.use_marks == 'N' || day.day_kind == 'R') day.marks = [];
+
+        pattern.days.push(day);
+      });
+
+      data.pattern = pattern;
+
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  function addMarkItem(marks) {
+    marks.push({});
+  }
+
+  function removeMarkItem(marks, marks_key) {
+    _.each(q.checked[marks_key].rows(), function(row) {
+      let index = _.findIndex(marks, row);
+      marks.splice(index, 1);
+    });
+    q.checked[marks_key] = {};
+  }
+
+  function onCheck(checked, marks_key) {
+    q.checked[marks_key] = checked;
+  }
+
+  q.pattern_day = d.template_id && d.all_days_equal ?
+    _.find(d.schedule_days, x => {
+      return x.day_kind == 'W';
+    }) : {
+    begin_time: '09:00',
+    end_time: '18:00',
+    break_enabled: 'Y',
+    break_begin_time: '13:00',
+    break_end_time: '14:00',
+    plan_time: '08:00',
+    marks: [],
+  };
+
+  let date = moment();
+  date.day(1);
+
+  q.week_days = [];
+  for (let i = 1; i <= 7; i ++) {
+    let name = date.format('dddd');
+        name = name[0].toUpperCase() + name.slice(1);
+    q.week_days.push({ name, working: i < 6 });
+    date.add({ day: 1 });
+  }
+
+  d.shift = d.shift || 0;
+  d.input_acceptance = d.input_acceptance || 0;
+  d.output_acceptance = d.output_acceptance || 0;
+  d.track_duration = d.track_duration || 1440;
+  q.input_acceptance_hour = Math.floor(d.input_acceptance / 60);
+  q.input_acceptance_minute = d.input_acceptance % 60;
+  q.output_acceptance_hour = Math.floor(d.output_acceptance / 60);
+  q.output_acceptance_minute = d.output_acceptance % 60;;
+  q.track_duration_hour = Math.floor(d.track_duration / 60);
+  q.track_duration_minute = d.track_duration % 60;
+  q.checked = {};
+  q.t_hour = t('hour')();
+  q.t_minute = t('minute')();
+
+  bUtil.minutesToTime(d, ['shift', 'input_acceptance', 'output_acceptance', 'track_duration']);
+
+  if (d.template_id) {
+    prepareOrderNo();
+    _.each(d.schedule_days, day => {
+      bUtil.minutesToTime(day, ['begin_time', 'end_time', 'break_begin_time', 'break_end_time', 'plan_time']);
+
+      day.marks = _.chain(day.marks)
+                    .mapRows(['begin_time', 'end_time'])
+                    .map(x => {
+                      return {
+                        begin_time: bUtil.minutesToTime(x.begin_time),
+                        end_time: bUtil.minutesToTime(x.end_time)
+                      };
+                    })
+                    .value();
+    });
+
+    d.count_days = d.schedule_days.length;
+  } else {
+    scheduleKindChange();
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="form-row">
+        <div class="col-sm-12">
+          <div class="form-group mr-4">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group mr-4">
+            <label><t>description</t></label>
+            <b-editor model="d.description" height="800"/>
+          </div>
+          <div class="form-row mr-2">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>code</t></label>
+                <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>order no</t></label>
+                <input type="text" class="form-control" ng-model="d.order_no" b-number scale="0" precision="6"/>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group mt-6">
+            <label class="checkbox">
+              <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.use_calendar"/>
+              <span><t>use calendar</t></span>
+            </label>
+          </div>
+          <div class="form-group row" ng-if="d.use_calendar == 'Y'">
+            <div class="col-sm-12">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_holidays"/>
+                <span><t>take holidays</t></span>
+              </label>
+            </div>
+            <div class="col-sm-12">
+              <label class="checkbox" ng-if="d.use_calendar == 'Y'">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_nonworking"/>
+                <span><t>take nonworking</t></span>
+              </label>
+            </div>
+            <div class="col-sm-12">
+              <label class="checkbox" ng-if="d.use_calendar == 'Y'">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_additional_rest_days"/>
+                <span><t>take additional rest days</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-6">
+              <label><t>shift time</t>
+              </label>
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.shift"/>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-6">
+              <label><t>input acceptance</t></label>
+              <div class="input-group">
+                <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-blur="checkHour('input_acceptance', 36)" ng-model="q.input_acceptance_hour" b-number scale="0" maxlength="2"/>
+                <div class="input-group-prepend input-group-append">
+                  <span class="input-group-text">:</span>
+                </div>
+                <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-blur="checkMinute('input_acceptance', 36)" ng-model="q.input_acceptance_minute" b-number scale="0" maxlength="2"/>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label><t>output acceptance</t>
+              </label>
+              <div class="input-group">
+                <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-blur="checkHour('output_acceptance', 36)" ng-model="q.output_acceptance_hour" b-number scale="0" maxlength="2"/>
+                <div class="input-group-prepend input-group-append">
+                  <span class="input-group-text">:</span>
+                </div>
+                <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-blur="checkMinute('output_acceptance', 36)" ng-model="q.output_acceptance_minute" b-number scale="0" maxlength="2"/>
+              </div>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-6">
+              <label><t>track duration</t>
+              </label>
+              <div class="input-group">
+                <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-blur="checkHour('track_duration', 72)" ng-model="q.track_duration_hour" b-number scale="0" maxlength="2"/>
+                <div class="input-group-prepend input-group-append">
+                  <span class="input-group-text">:</span>
+                </div>
+                <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-blur="checkMinute('track_duration', 72)" ng-model="q.track_duration_minute" b-number scale="0" maxlength="2"/>
+              </div>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-6">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.use_marks"/>
+                <span><t>use marks</t></span>
+              </label>
+            </div>
+            <div class="col-sm-6">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.count_late"/>
+                <span><t>count late</t></span>
+              </label>
+            </div>
+            <div class="col-sm-6">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.count_early"/>
+                <span><t>count early</t></span>
+              </label>
+            </div>
+            <div class="col-sm-6">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.count_lack"/>
+                <span><t>count lack</t></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card card-custom mt-4">
+    <div class="card-body">
+      <div class="form-row">
+        <div class="col-sm-24">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <div class="row">
+                <div class="col-sm">
+                  <div class="form-group">
+                    <label><t>schedule kind</t></label><br/>
+                    <label class="radio">
+                      <input type="radio" name="schedule_kind" value="W" ng-model="d.schedule_kind" ng-change="scheduleKindChange()"/>
+                      <span><t>weekly</t></span>
+                    </label>
+                    <label class="radio">
+                      <input type="radio" name="schedule_kind" value="P" ng-model="d.schedule_kind" ng-change="scheduleKindChange()"/>
+                      <span><t>periodic</t></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="col-sm" ng-if="d.schedule_kind == 'P'">
+                  <div class="form-group">
+                    <label><t>count_days</t><r/></label>
+                    <input type="text" class="form-control" min="1" ng-model="d.count_days" ng-change="periodicityChange()" b-number scale="0" required/>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.all_days_equal"/>
+                  <span><t>all days equal</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-24">
+          <div ng-repeat="day in d.schedule_days" ng-if="d.all_days_equal == 'N'">
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-sm-6" style="display: flex; align-items: center;">
+                  <label>&nbsp;</label>
+                  <label class="checkbox" ng-class="{ 'font-weight-bolder': day.day_kind == 'W' }">
+                    <input type="checkbox" ng-model="day.day_kind" ng-true-value="'W'" ng-false-value="'R'" ng-change="dayKindChange(day)"/>&emsp;<span>{{ dayName($index) }}</span>
+                  </label>
+                </div>
+                <div class="col-sm-8">
+                  <div class="form-row">
+                    <div class="col-sm-12">
+                      <div class="form-group">
+                        <label><t>begin time</t><r/></label>
+                        <input type="text" class="form-control" ng-change="calcDay(d.schedule_days[$index])" ng-model="day.begin_time" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                      </div>
+                    </div>
+                    <div class="col-sm-12">
+                      <label><t>end time</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(d.schedule_days[$index])" ng-model="day.end_time" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                    </div>
+                    <div class="col-sm-12">
+                      <label><t>plan time</t><r/></label>
+                      <input type="text" class="form-control" ng-model="day.plan_time" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-sm-2">
+                  <label>&nbsp;</label>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="day.break_enabled" ng-true-value="'Y'" ng-false-value="'N'" ng-change="calcDay(d.schedule_days[$index])" ng-disabled="day.day_kind == 'R'"/>
+                    <span><t>break enable</t></span>
+                  </label>
+                </div>
+                <div class="col-sm-8" ng-if="day.break_enabled == 'Y'">
+                  <div class="form-row">
+                    <div class="col-12">
+                      <label><t>break begin</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(d.schedule_days[$index])" ng-model="day.break_begin_time" b-date-picker="HH:mm"
+                            ng-disabled="day.day_kind == 'R' || day.break_enabled == 'N'" ng-required="day.day_kind == 'W' && day.break_enabled == 'Y'"/>
+                    </div>
+                    <div class="col-12">
+                      <label><t>break end</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(d.schedule_days[$index])" ng-model="day.break_end_time" b-date-picker="HH:mm"
+                            ng-disabled="day.day_kind == 'R' || day.break_enabled == 'N'" ng-required="day.day_kind == 'W' && day.break_enabled == 'Y'"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div ng-if="d.use_marks == 'Y' && day.day_kind == 'W'">
+                <div class="form-row">
+                  <div class="col-sm-14 mb-2">
+                    <button type="button" class="btn btn-default" ng-click="addMarkItem(day.marks)"><t>add</t></button>
+                    <button type="button" class="btn btn-danger" ng-click="removeMarkItem(day.marks, day.day_no)" ng-show="q.checked[day.day_no].has">
+                      <t p1="q.checked[day.day_no].size">delete $1</t>
+                    </button>
+                  </div>
+                  <div class="col-sm-10 mb-2">
+                    <b-pg-controller name="{{ 'marks' + $index }}"/>
+                  </div>
+                </div>
+                <b-pg-grid name="{{ 'marks' + $index }}" local-data="day.marks" iterator="item" on-check="onCheck(checked, day.day_no)" limit="50">
+                  <b-pg-header name="begin_time"><t>mark begin time</t></b-pg-header>
+                  <b-pg-header name="end_time"><t>mark end time</t></b-pg-header>
+                  <b-pg-row>
+                    <b-pg-col name="begin_time" size="11">
+                      <input type="text" class="form-control" ng-model="item.begin_time" b-date-picker="HH:mm" required/>
+                    </b-pg-col>
+                    <b-pg-col name="end_time" size="11">
+                      <input type="text" class="form-control" ng-model="item.end_time" b-date-picker="HH:mm" required/>
+                    </b-pg-col>
+                  </b-pg-row>
+                </b-pg-grid>
+              </div>
+            </div>
+            <div class="separator separator-solid my-6" ng-if="!$last"></div>
+          </div>
+          <div class="form-group" ng-if="d.all_days_equal == 'Y'">
+            <div class="form-row">
+              <div class="col-sm-12 ">
+                <h5 class="font-weight-bolder"><t>schedule days</t></h5><br>
+                <div class="form-group row">
+                  <div class="col-sm-12 mb-4" ng-repeat="day in d.schedule_days | orderBy: 'order_no'" style="display: flex; align-items: center;">
+                    <label class="checkbox" ng-class="{ 'font-weight-bolder': day.day_kind == 'W' }">
+                      <input type="checkbox" ng-model="day.day_kind" ng-true-value="'W'" ng-false-value="'R'" ng-change="dayKindChange(day)"/>&emsp;<span>{{ dayName(day.day_no - 1) }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <h5 class="font-weight-bolder"><t>schedule time</t></h5>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>begin time</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.begin_time" b-date-picker="HH:mm" required/>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>end time</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.end_time" b-date-picker="HH:mm" required/>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="switch">
+                    <input type="checkbox" ng-model="q.pattern_day.break_enabled" ng-change="calcDay(q.pattern_day)" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>break enable</t></span>
+                  </label>
+                </div>
+                <div class="form-row mb-4" ng-if="q.pattern_day.break_enabled == 'Y'">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>break begin</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.break_begin_time" b-date-picker="HH:mm" ng-required="q.pattern_day.break_enabled == 'Y'"/>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>break end</t><r/> </label>
+                    <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.break_end_time" b-date-picker="HH:mm" ng-required="q.pattern_day.break_enabled == 'Y'"/>
+                  </div>
+                </div>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>plan time</t></label>
+                    <input type="text" class="form-control" ng-model="q.pattern_day.plan_time" b-date-picker="HH:mm"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div ng-if="d.use_marks == 'Y'">
+              <div class="form-row">
+                <div class="col-sm-14 mb-2">
+                  <button type="button" class="btn btn-default" ng-click="addMarkItem(q.pattern_day.marks)"><t>add</t></button>
+                  <button type="button" class="btn btn-danger" ng-click="removeMarkItem(q.pattern_day.marks, 'pattern_marks')" ng-show="q.checked['pattern_marks'].has">
+                    <t p1="q.checked['pattern_marks'].size">delete $1</t>
+                  </button>
+                </div>
+                <div class="col-sm-10 mb-2">
+                  <b-pg-controller name="pattern_marks"/>
+                </div>
+              </div>
+              <b-pg-grid name="pattern_marks" local-data="q.pattern_day.marks" iterator="item" on-check="onCheck(checked, 'pattern_marks')" limit="50">
+                <b-pg-row>
+                  <b-pg-col name="begin_time" size="11">
+                    <input type="text" class="form-control" ng-model="item.begin_time" b-date-picker="HH:mm" required/>
+                  </b-pg-col>
+                  <b-pg-col name="end_time" size="11">
+                    <input type="text" class="form-control" ng-model="item.end_time" b-date-picker="HH:mm" required/>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

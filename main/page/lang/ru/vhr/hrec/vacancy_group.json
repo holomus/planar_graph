@@ -1,0 +1,12 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another vacancy group": "Код уже используется другим Справочником для вакансий",
+ "is required": "Обязательный",
+ "name": "Название",
+ "name should be unique": "Название должно быть уникальным",
+ "order no": "Порядковый номер",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

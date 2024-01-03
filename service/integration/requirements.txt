@@ -1,0 +1,6 @@
+requests==2.27.1
+Flask==2.0.3
+APScheduler==3.9.1
+dicttoxml==1.7.4
+waitress==2.0.0
+Pillow

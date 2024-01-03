@@ -1,0 +1,22 @@
+{
+ "persons.passed_subjects_count": "Passed subjects",
+ "subject group name": "Subject Group",
+ "address": "Address",
+ "all persons count": "Participants Qty",
+ "begin date": "Start Date",
+ "created by": "Created by",
+ "created on": "Created on",
+ "main info": "General Information",
+ "mentor name": "Mentor",
+ "modified by": "Modified by",
+ "modified on": "Modified on",
+ "not passed persons count": "Failed Participants Qty",
+ "passed percent": "Passed Participants %",
+ "passed persons count": "Passed Participants Qty",
+ "persons": "Participants",
+ "persons.passed_name": "Passed",
+ "persons.person_name": "Participant",
+ "subject name": "Subject",
+ "training info": "General Information",
+ "training number": "Training Number"
+}

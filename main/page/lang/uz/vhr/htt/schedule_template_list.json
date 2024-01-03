@@ -1,0 +1,16 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{schedule_template_count} schedule_template(s)?": "<b>$1</b> ta ish jadvali andoza(lar)ini oʻchirmoqchimisiz?",
+ "delete schedule_template $1{schedule_template_name}?": "<b>$1</b>ni oʻchirmoqchimisiz?",
+ "table.count_early_name": "Erta ketish",
+ "table.count_lack_name": "Yo'qlik",
+ "table.count_late_name": "Kech kelish",
+ "table.description": "Tavsif",
+ "table.input_acceptance_time": "Kengaytirilgan kirish qaydi",
+ "table.name": "Nom",
+ "table.output_acceptance_time": "Kengaytirilgan chiqish qaydi",
+ "table.shift_time": "Siljish vaqti",
+ "table.state_name": "Holat",
+ "table.template_id": "ID",
+ "table.track_duration_time": "Qayd davomiyligi"
+}

@@ -1,0 +1,217 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var postedClass = {
+    Y: 'primary',
+    N: 'secondary'
+  };
+
+  _.each(['accrual', 'deduction'], x => {
+    var pg = page.grid(x + '_table');
+    pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+      return `<span class="badge badge-${postedClass[row.posted]}">${row.posted_name}</span>`;
+    });
+    pg.asHtml('month_html', 'month', function(row) {
+      return row.month ? `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>` : null;
+    });
+  });
+});
+page.ctrl(function(model, scope, fi, t, bFrame, bStorage, AppSession) {
+  var q = model;
+
+  function setActiveTab(active_tab) {
+    if (q.active_tab == active_tab) return;
+    bStorage.json(storage_key, { active_tab: active_tab });
+    q.active_tab = active_tab;
+    q.checked = {};
+    onCheck({ rows: function() { return [] } });
+  }
+
+  function add(document_kind) {
+    fi.add({ document_kind: document_kind });
+  }
+
+  function doAction(doFunc, doTrans, document_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ document_id: document_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post document No. $1{document_number} of $2{document_date}?')(row.document_number, row.document_date), row.document_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1 document(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'document_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost document No. $1{document_number} of $2{document_date}?')(row.document_number, row.document_date), row.document_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1 document(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'document_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete document No. $1{document_number} of $2{document_date}?')(row.document_number, row.document_date), row.document_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{document_count} document(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'document_id'));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N');
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y');
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N');
+  }
+
+  function edit(row) {
+    fi.edit({ document_id: row.document_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  function openReportSetting(tmp) {
+    page.openDialog(tmp.setting_form, {
+      template_id: tmp.template_id
+    });
+  }
+
+  function runReport(tmp, row) {
+    bFrame.openWindow(tmp.uri, {
+      document_id: row.document_id,
+      template_id: tmp.template_id
+    });
+  }
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  q.active_tab = storage.active_tab || 'accrual';
+
+  q.report_actions = _.mapRows(model.templates, ['uri', 'template_id', 'name', 'setting_form']);
+
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'accrual' }" data-toggle="tab" ng-click="setActiveTab('accrual')" role="tab">
+            <span><t>accrual</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'deduction' }" data-toggle="tab" ng-click="setActiveTab('deduction')" role="tab">
+            <span><t>deduction</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4">
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'accrual' }">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-success" ng-click="add('A')" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+              <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+              <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-10 b-right mb-2">
+              <b-grid-controller name="accrual_table"/>
+            </div>
+          </div>
+          <b-grid name="accrual_table" required="document_id, posted, document_number, document_date" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+                  sort="-document_date, -created_on" search="document_number" searchable="document_id, document_name" extra-columns="division_name, created_by_name, modified_by_name, created_on, modified_on">
+            <b-row>
+              <b-col name="month" size=4 as-html="month_html"/>
+              <b-col name="document_date" size=4/>
+              <b-col name="document_number" size=4/>
+              <b-col name="currency_name" size=4/>
+              <b-col name="document_name" size=5/>
+              <b-col name="posted_name" as-html="posted_html" size=2/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+              <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'"><t>post</t></button>
+              <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'"><t>unpost</t></button>
+              <div class="btn-group" ng-if="q.report_actions.length && row.posted == 'Y'">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>print</t></button>
+                <ul class="dropdown-menu">
+                  <li ng-repeat="action in q.report_actions">
+                    <a href class="dropdown-item py-1">
+                      <button type="button" class="btn btn-xs btn-icon btn-default" ng-if="action.setting_form" ng-click="openReportSetting(action)">
+                        <i class="fa fa-cog"></i>
+                      </button>&nbsp;
+                      <span class="my-auto" ng-click="runReport(action, row)">{{ action.name }}</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+            </b-action>
+
+            <b-filter name="document_date"/>
+            <b-filter name="document_number"/>
+            <b-filter name="document_id" directive="equal" extra/>
+            <b-filter name="document_name"/>
+            <b-filter name="currency_id" decorate-with="currency_name"/>
+            <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id" extra/>
+          </b-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'deduction' }">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-success" ng-click="add('D')" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+              <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+              <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-10 b-right mb-2">
+              <b-grid-controller name="deduction_table"/>
+            </div>
+          </div>
+          <b-grid name="deduction_table" required="document_id, posted, document_number, document_date" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+                  sort="-document_date, -month" search="document_number" searchable="document_id, document_name" extra-columns="division_name, created_by_name, modified_by_name, created_on, modified_on">
+            <b-row>
+              <b-col name="month" size=4 as-html="month_html"/>
+              <b-col name="document_date" size=4/>
+              <b-col name="document_number" size=4/>
+              <b-col name="currency_name" size=4/>
+              <b-col name="document_name" size=5/>
+              <b-col name="posted_name" as-html="posted_html" size=2/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+              <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'"><t>post</t></button>
+              <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'"><t>unpost</t></button>
+              <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+            </b-action>
+
+            <b-filter name="document_date"/>
+            <b-filter name="document_number"/>
+            <b-filter name="document_id" directive="equal" extra/>
+            <b-filter name="document_name"/>
+            <b-filter name="currency_id" decorate-with="currency_name"/>
+            <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

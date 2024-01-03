@@ -1,0 +1,11 @@
+{
+ "family members": "Состав семьи",
+ "marital statuses": "состояние в браке",
+ "pg.person_family_members.birthday": "Дата рождения",
+ "pg.person_family_members.is_dependent_name": "На иждивении",
+ "pg.person_family_members.is_private_name": "Скрыть данные",
+ "pg.person_family_members.name": "ФИО",
+ "pg.person_family_members.relation_degree_name": "Степень родства",
+ "pg.person_marital_statuses.marital_status_name": "Состояние в браке",
+ "pg.person_marital_statuses.start_date": "Сведения действуют с"
+}

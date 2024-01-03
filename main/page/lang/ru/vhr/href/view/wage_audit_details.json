@@ -1,0 +1,5 @@
+{
+ "pg.wage.before": "Старое значение",
+ "pg.wage.current": "Новое значение",
+ "pg.wage.field_name": "Поле"
+}

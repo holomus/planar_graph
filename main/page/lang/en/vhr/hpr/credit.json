@@ -1,0 +1,21 @@
+{
+ "bank account": "Current Account",
+ "begin month": "From",
+ "book": "Pre-schedule",
+ "book?": "Do you want to pre-schedule the loan?",
+ "booked date": "Pre-scheduled Date",
+ "cashbox": "Cash Register",
+ "complete": "Complete",
+ "complete?": "Complete?",
+ "credit amount": "Amount",
+ "credit date": "Loan Date",
+ "credit number": "Loan Number",
+ "currency name": "Currency",
+ "employee": "Employee",
+ "end month": "Before",
+ "note": "Note",
+ "payment type": "Payment Type",
+ "save": "Save",
+ "save?": "Do you want to save loan?",
+ "wage": "Salary"
+}

@@ -1,0 +1,167 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pq = page.query('table').param(param);
+  
+  if (xparam.where) pq.where(xparam.where);
+  else if (param.where) pq.where(param.where);
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  var pg = page.grid('table');
+  var CandidateKindClass = { 'N': 'primary', 'U': 'warning', 'W': 'success', 'D': 'danger' };
+
+  pg.asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+  pg.asHtml('kind_html', 'candidate_kind, candidate_kind_name', function(row) {
+    return `<span class="badge badge-${ CandidateKindClass[row.candidate_kind] }">${ row.candidate_kind_name }</span>`;
+  });
+  pg.asHtml('reason_html', 'reason_type, reason_name', function(row) {
+    return row.reason_type ? `<span class="badge badge-${ row.reason_type == 'P' ? 'primary' : 'danger' }">${ row.reason_name }</span>` : '';
+  });
+});
+page.ctrl(function(scope, fi, t, xparam) {
+  var q = {};
+  
+  q.multiple_select = xparam.multiple_select;
+
+  function doAction(action, message, candidate_id) {
+    page.confirm(message, function() {
+      action({ candidate_id }).then(() => {
+        page.query('table').fetch();
+        q.to_delete = {};
+        q.to_create_employee = {};
+        q.to_select = {};
+      }, page.alert);
+    });
+  }
+
+  function doActionOne(action, confirmFunc) {
+    return function(row) {
+      doAction(action, confirmFunc(row.name), row.candidate_id);
+    };
+  }
+
+  function doActionMany(action, confirmFunc, key) {
+    return function() {
+      doAction(action, confirmFunc(q[key].size), _.pluck(q[key].rows, 'candidate_id'));
+    };
+  }
+
+  // check
+  function prepareChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepareChecked('to_delete', checked, x => true);
+    prepareChecked('to_create_employee', checked, x => x.candidate_kind == 'N');
+    prepareChecked('to_select', checked, null);
+  }
+
+  function selectMany() {
+    page.close(q.to_select.rows);
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : fi.edit ? edit(row) : null;
+  }
+
+  function closeIfDialog(row) {
+    if (page.isDialog()) selectOne(row);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ person_id: row.candidate_id }, closeIfDialog);
+  }
+
+  function viewEmployee(row) {
+    fi.view_employee({ employee_id: row.candidate_id }, closeIfDialog);
+  }
+
+  scope.q = q;
+
+  scope.deleteOne = doActionOne(fi.delete, t('delete $1{candidate_name}?'));
+  scope.deleteMany = doActionMany(fi.delete, t('delete $1{candidate_count} candidate(s)?'), 'to_delete');
+
+  scope.createEmployeeOne = doActionOne(fi.create_employee, t('create employee for $1{candidate_name}?'));
+  scope.createEmployeeMany = doActionMany(fi.create_employee, t('create employee(s) for $1{candidate_count} candidate(s)?'), 'to_create_employee');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.to_select.has">
+      <t p1="q.to_select.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-primary" ng-click="createEmployeeMany()" ng-if="fi.create_employee" ng-show="q.to_create_employee.has">
+      <t p1="q.to_create_employee.size">create employee $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>    
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()" b-hotkey="close">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="candidate_id, name, candidate_kind" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name" extra-columns="candidate_id, gender_name, source_name, wage_expectation, job_names, note, email,
+          legal_address, reason_name, dismissal_date, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="name" as-html="person_html" size=6/>
+      <b-col name="person_type_name" size=3/>
+      <b-col name="birthday" size=2/>
+      <b-col name="main_phone" size=2/>
+      <b-col name="region_name" size=3/>
+      <b-col name="address" size=5/>
+      <b-col name="candidate_kind_name" as-html="kind_html" size=2/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="reason_name" as-html="reason_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="createEmployeeOne(row)" ng-if="fi.create_employee && row.candidate_kind == 'N'">{{ fi.create_employee.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="viewEmployee(row)" ng-if="fi.view_employee && row.candidate_kind != 'N'">{{ fi.view_employee.title }}</button>
+    </b-action>
+
+    <b-filter name="candidate_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="person_type_id" decorate-with="person_type_name"/>
+    <b-filter name="birthday"/>
+    <b-filter name="main_phone"/>
+    <b-filter name="region_id" decorate-with="region_name" tree-with-parent="parent_id"/>
+    <b-filter name="address"/>
+    <b-filter name="candidate_kind" decorate-with="candidate_kind_name"/>
+    <b-filter name="gender" decorate-with="gender_name" extra/>
+    <b-filter name="source_id" decorate-with="source_name" extra/>
+    <b-filter name="wage_expectation" extra/>
+    <b-filter name="job_ids" decorate-with="job_names" extra/>
+    <b-filter name="email" extra/>
+    <b-filter name="legal_address" extra/>
+    <b-filter name="reason_id" decorate-with="reason_name" extra/>
+    <b-filter name="reason_type" decorate-with="reason_type_name" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

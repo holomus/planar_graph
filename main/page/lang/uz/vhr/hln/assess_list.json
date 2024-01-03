@@ -1,0 +1,21 @@
+{
+ "assess list": "Baholash kerak bo'lgan mavzular ro'yxati",
+ "pg.persons.subject1": "Mavzu 1",
+ "pg.persons.subject10": "Mavzu 10",
+ "pg.persons.subject2": "Mavzu 2",
+ "pg.persons.subject3": "Mavzu 3",
+ "pg.persons.subject4": "Mavzu 4",
+ "pg.persons.subject5": "Mavzu 5",
+ "pg.persons.subject6": "Mavzu 6",
+ "pg.persons.subject7": "Mavzu 7",
+ "pg.persons.subject8": "Mavzu 8",
+ "pg.persons.subject9": "Mavzu 9",
+ "subject group name: $1": "Mavzular guruhi: $1",
+ "total": "Jami",
+ "not passed": "O'tmagan",
+ "pass all?": "Hammasini o'tish?",
+ "passed": "O'tdi",
+ "pg.persons.name": "F.I.Sh.",
+ "pg.persons.passed": "O'tdi",
+ "save": "Saqlash"
+}

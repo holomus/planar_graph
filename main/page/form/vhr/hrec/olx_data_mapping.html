@@ -1,0 +1,242 @@
+<script biruni>
+page.ctrl(function(scope, model, blockUI, fi, t, $timeout) {
+  var d = model,
+      q = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (section == 'save_credentials') {
+      page.subpage(section).run(fi[section].uri, null);
+    }
+  }
+
+  function addIntegrateRegion() {
+    d.integrate_regions.push({});
+  }
+
+  function removeIntegrateRegion(item) {
+    let index = _.findIndex(d.integrate_regions, item);
+    d.integrate_regions.splice(index, 1);
+  }
+
+  // Region
+  function setOlxRegion(item, row) {
+    if (!row) return;
+    item.olx_city_code = row.city_code;
+    item.olx_city_name = row.name;
+    item.has_district = row.has_district;
+  }
+
+  function whereOlxRegion() {
+    let codes = _.chain(d.integrate_regions).pluck('olx_city_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['city_code', '<>', codes];
+  }
+
+  function changeOlxRegionQuery(query, value) {
+    query.where(whereOlxRegion()).searchValue(value);
+  }
+
+  function setOlxDistrict(item, row) {
+    if (!row) return;
+    item.olx_district_code = row.district_code;
+    item.olx_district_name = row.name
+  }
+
+  function changeOlxDistrictQuery(query, value, item) {
+    query.param({ city_code: item.olx_city_code });
+  }
+
+  async function sync() {
+    let message = q.need_sync ? t('sync with olx?')() : t('all data wil be removed, do you agree?')();
+    page.confirm(message, async () => {
+      blockUI.start();
+
+      try {
+        let sync_regions = await fi.sync_regions();
+        let sync_cities = await fi.sync_cities();
+        let sync_districts = await fi.sync_districts();
+        let sync_categories = await fi.sync_categories();
+        for (let item of sync_categories.category_codes) {
+          let sync_attribute = await fi.sync_attribute({ category_code: item });
+        }
+      } catch (err) {
+        page.alert(err);
+      }
+
+      $timeout(function() {
+        blockUI.stop();
+      });
+    });
+  }
+
+  function saveDataMap() {
+    if (page.valid(scope.data_map)) {
+      page.confirm(t('save?')(), () => {
+        let data = _.pick(d, ['integrate_regions']);
+        fi.save_data_map(data).then(notify(t('information successfully saved')()), page.alert);
+      });
+    }
+  }
+
+  function authOlx() {
+    let auth_window = window.open('about:blank', 'olx_window');
+    fi.auth_olx().then(result => { auth_window.location = result.auth_url; }).catch(page.alert);
+  }
+
+  d.olx_categories = _.mapRows(d.olx_categories, ['category_code', 'name']);
+  d.integrate_regions = _.mapRows(d.integrate_regions, ['system_region_id', 'system_region_name', 'olx_city_code', 'olx_city_name', 'olx_district_code', 'olx_district_name']);
+  q.activeSection = fi.auth_olx ? 'sign' : 'auth';
+  q.need_sync = d.olx_city_count == 0 || d.olx_categories.length == 0;
+  q.tConfirmDelete = t('delete this item?');
+  q.system_regions = _.mapRows(d.system_regions, ['region_id', 'name', 'parent_id']);
+
+  changeSection(q.activeSection);
+
+  if (_.isEmpty(d.integrate_regions)) addIntegrateRegion();
+  else { _.each(d.integrate_regions, x=> { x.has_district = x.olx_district_code ? 'Y' : 'N' }); }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch">
+        <div class="card-body pt-4">
+          <div class="navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'sign' }" ng-click="changeSection('sign')" ng-if="fi.auth_olx">
+                <span class="navi-icon mr-2"><i class="fas fa-user-check"></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>sign</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'data_map' }" ng-click="changeSection('data_map')">
+                <span class="navi-icon mr-2"><i class="fas fa-exchange-alt"></i></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>data mapping</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'auth' }" ng-if="fi.save_credentials" ng-click="changeSection('save_credentials')">
+                <span class="navi-icon mr-2"><i class="fas fa-key"></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>auth</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.auth_olx" ng-show="q.activeSection == 'sign'">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="card card-custom card-stretch">
+            <div class="card-body">
+              <div class="form-group d-flex justify-content-between">
+                <span><t style="line-height: 2.5;">to use OLX.uz you must first authenticate</t></span>
+                <button type="button" class="btn btn-success float-right" ng-click="authOlx()"><t>auth in OLX.uz</t></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'data_map'">
+      <div class="card card-custom card-stretch">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>data mapping</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <form name="data_map">
+            <div class="d-flex justify-content-between">
+              <div class="form-group">
+                <button type="button" class="btn btn-primary" ng-if="fi.save_data_map && !q.need_sync" ng-click="saveDataMap()">{{ fi.save_data_map.title }}</button>
+                <button type="button" class="btn btn-primary" ng-if="fi.sync" ng-click="sync()">{{ fi.sync.title }}</button>
+              </div>
+            </div>
+            <label ng-if="q.need_sync"><t>first need sync with head hunter</t></label>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>regions</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Regions</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Olx Regions</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_regions">
+                  <div class="col-sm-10">
+                    <b-tree-select
+                      origin="q.system_regions"
+                      id-key="region_id"
+                      model="item.system_region_id"/>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm">
+                    <b-input name="olx_regions"
+                             model="item.olx_city_name | name"
+                             model-key="item.olx_city_code | city_code"
+                             column="region_name, has_district"
+                             sort="region_name"
+                             on-change="changeOlxRegionQuery(query, value)"
+                             on-select="setOlxRegion(item, row)"
+                             on-delete="setOlxRegion(item, {})">
+                      <div class="col-sm-12">{{ row.region_name }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                    </b-input>
+                  </div>
+                  <div class="col-sm" ng-if="item.has_district == 'Y'">
+                    <b-input name="olx_districts"
+                             model="item.olx_district_name | name"
+                             model-key="item.olx_district_code | district_code"
+                             on-change="changeOlxDistrictQuery(query, value, item)"
+                             on-select="setOlxDistrict(item, row)"
+                             on-delete="setOlxDistrict(item, {})">
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateRegion()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateRegion(item)"
+                              ng-disabled="d.integrate_regions.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>job categories</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="form-group" ng-repeat="item in d.olx_categories">
+                  <span>{{ item.name }}</span>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'save_credentials'">
+      <b-subpage name="save_credentials"/>
+    </div>
+  </div>
+</div>

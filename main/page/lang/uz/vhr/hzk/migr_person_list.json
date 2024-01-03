@@ -1,0 +1,13 @@
+{
+ "close": "Yopish",
+ "delete $1": "O'chirish $1",
+ "delete $1?": "Haqiqatan ham <b>$1</b> foydalanuvchi(lar)ni oʻchirib tashlamoqchimisiz?",
+ "migr": "O'tkazish",
+ "migr person": "Qurilma foydalanuvchisi",
+ "name": "F.I.Sh.",
+ "person": "Jismoniy shaxs",
+ "pin": "PIN",
+ "table.person_name": "Jismoniy shaxs",
+ "table.person_role_name": "Rol",
+ "table.pin": "PIN"
+}

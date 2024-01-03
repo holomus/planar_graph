@@ -1,0 +1,21 @@
+{
+ "table.for_recruitment_name": "Used for Recruitment",
+ "delete $1": "Delete $1",
+ "delete $1{exam_count} exam(s)?": "Do you really want to delete <b>$1</b> exam(s)?",
+ "delete exam $1{ name }?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.duration": "Duration",
+ "table.exam_id": "ID",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.passing_percentage": "Passing Percentage",
+ "table.passing_score": "Passing Score",
+ "table.pick_kind_name": "Select type",
+ "table.question_count": "Questions Qty",
+ "table.randomize_options_name": "Random Answers",
+ "table.randomize_questions_name": "Random Questions",
+ "table.state_name": "Status"
+}

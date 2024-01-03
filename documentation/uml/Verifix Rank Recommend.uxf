@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.0.0">
+  <zoom_level>9</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>855</x>
+      <y>9</y>
+      <w>189</w>
+      <h>171</h>
+    </coordinates>
+    <panel_attributes>HTM_EXPERIENCES
+--
+**company_id**
+**filial_id**
+**experience_id**
+name
+order_no
+state
+code
+created_by
+created_on
+modified_by
+modified_on</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>855</x>
+      <y>279</y>
+      <w>189</w>
+      <h>117</h>
+    </coordinates>
+    <panel_attributes>HTM_EXPERIENCE_PERIODS
+--
+**company_id**
+**filial_id**
+**experience_id**
+**from_rank_id**
+to_rank_id
+order_no</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>153</x>
+      <y>225</y>
+      <w>270</w>
+      <h>135</h>
+    </coordinates>
+    <panel_attributes>*_/NEW/_*
+--
+HTM_EXPERIENCE_PERIOD_INDICATORS
+--
+**company_id**
+**filial_id**
+**experience_id**
+**from_rank_id**
+**attempt_no**
+**indicator_id**</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>153</x>
+      <y>432</y>
+      <w>270</w>
+      <h>135</h>
+    </coordinates>
+    <panel_attributes>*_/NEW/_*
+--
+HTM_EXPERIENCE_TRAINING_SUBJECTS
+--
+**company_id**
+**filial_id**
+**experience_id**
+**from_rank_id**
+**attempt_no**
+**subject_id**</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1107</x>
+      <y>306</y>
+      <w>270</w>
+      <h>99</h>
+    </coordinates>
+    <panel_attributes>HTM_EXPERIENCE_JOBS
+--
+**company_id**
+**filial_id**
+**experience_id**
+**job_id**</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1449</x>
+      <y>270</y>
+      <w>270</w>
+      <h>117</h>
+    </coordinates>
+    <panel_attributes>HTM_EXPERIENCE_JOB_RANKS
+--
+**company_id**
+**filial_id**
+**job_id**
+**from_rank_id**
+to_rank_id
+experience_id</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1260</x>
+      <y>774</y>
+      <w>288</w>
+      <h>216</h>
+    </coordinates>
+    <panel_attributes>HTM_RECOMMENDED_RANK_DOCUMENTS
+--
+**company_id**
+**filial_id**
+**document_id**
+document_number
+document_date
+division_id
+note
+status
+journal_id
+created_by
+created_on
+modified_by
+modified_on</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>900</x>
+      <y>774</y>
+      <w>288</w>
+      <h>405</h>
+    </coordinates>
+    <panel_attributes>HTM_RECOMMENDED_RANK_STAFFS
+--
+**company_id**
+**filial_id**
+**document_id**
+**staff_id**
+robot_id
+from_rank_id
+last_change_date
+to_rank_id
+new_change_date
+period
+nearest
+
+*_/CHANGED/_*
+increment_status
+*_/CHANGED/_*
+
+*_/NEW/_*
+attempt_no
+penalty_period
+exam_id
+success_score
+ignore_score
+recommend_failure
+*_/NEW/_*
+
+note</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>468</x>
+      <y>765</y>
+      <w>324</w>
+      <h>135</h>
+    </coordinates>
+    <panel_attributes>*_/NEW/_*
+--
+HTM_RECOMMENDED_RANK_STAFF_INDICATORS
+--
+**company_id**
+**filial_id**
+**document_id**
+**staff_id**
+**indicator_id**
+indicator_value</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>486</x>
+      <y>927</y>
+      <w>306</w>
+      <h>126</h>
+    </coordinates>
+    <panel_attributes>*_/NEW/_*
+--
+HTM_RECOMMENDED_RANK_STAFF_SUBJECTS
+--
+**company_id**
+**filial_id**
+**document_id**
+**staff_id**
+**subject_id**</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>936</x>
+      <y>171</y>
+      <w>27</w>
+      <h>126</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;120.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>414</x>
+      <y>306</y>
+      <w>153</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>150.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>414</x>
+      <y>459</y>
+      <w>153</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>150.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1035</x>
+      <y>333</y>
+      <w>90</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1368</x>
+      <y>333</y>
+      <w>99</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;90.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>783</x>
+      <y>819</y>
+      <w>135</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>783</x>
+      <y>954</y>
+      <w>135</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1179</x>
+      <y>819</y>
+      <w>99</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>90.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1035</x>
+      <y>288</y>
+      <w>432</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;460.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>549</x>
+      <y>243</y>
+      <w>189</w>
+      <h>324</h>
+    </coordinates>
+    <panel_attributes>*_/NEW/_*
+--
+HTM_EXPERIENCE_PERIODS_ATTEMPTS
+--
+**company_id**
+**filial_id**
+**experience_id**
+**from_rank_id**
+
+*_/NEW/_*
+**attempt_no**
+*_/NEW/_*
+
+period
+nearest
+
+*_/NEW/_*
+penalty_period
+exam_id
+success_score
+ignore_score
+recommend_failure
+*_/NEW/_*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>729</x>
+      <y>324</y>
+      <w>144</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>140.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+</diagram>

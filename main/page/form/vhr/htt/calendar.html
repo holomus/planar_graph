@@ -1,0 +1,451 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, fi, t, bUtil) {
+  var d = _.isUndefined(model.data.calendar_id) ? _.extend(model.data, xparam) : model.data,
+      q = model.references,
+      day_map_row = ['calendar_date', 'name', 'day_kind', 'day_kind_name', 'swapped_date'];
+
+  // day type
+  function setDayType(day, row) {
+    if (!row) return;
+    day.day_kind = row.type;
+    day.day_kind_name = row.name;
+
+    if (day.day_kind != q.dt_swapped) day.swapped_date = '';
+  }
+
+  // fix year
+  function fixYear() {
+    q.year = d.year;
+    q.year_begin = "01.01." + q.year; // DD.MM.YYYY
+    q.year_end = "31.12." + q.year; // DD.MM.YYYY
+    
+    $(document).ready(function() {
+      q.days = angular.copy(d.days);
+    });
+  }
+
+  // page alert
+  function pageAlert(error) {
+    d.year = q.year;
+    page.alert(error);
+  }
+
+  // load dates
+  function loadDates() {
+    if (!d.calendar_id) {
+      d.days = [];
+      fixYear();
+      return;
+    }
+
+    page.post(':load_dates', _.pick(d, ['calendar_id', 'year'])).then(function(result) {
+      d.days = _.mapRows(result, day_map_row);
+      fixYear();
+    }, pageAlert);
+  }
+
+  // change year
+  function changeYear() {
+    if (!d.year || q.year == d.year) return;
+    if (angular.equals(q.days, d.days)) loadDates();
+    else {
+      if (d.calendar_id){
+        // when edit calendar
+        page.confirm(t('there are changes in dates, save changes?')(), function() {
+          if (page.valid(scope.form)) {
+            let data = getSaveData();
+                data.year = q.year;
+            page.post(':save', data).then(loadDates, pageAlert);
+          } else d.year = q.year;
+        }, loadDates);
+      } else {
+        // when add calendar
+        if (fi.edit){
+          page.confirm(t('there are new dates, save and go to edit?')(), function() {
+            if (page.valid(scope.form)) {
+              let data = getSaveData();
+                  data.year = q.year;
+              page.post(':save', data).then(function(result) {
+                result.year = d.year;
+                fi.edit(result);
+              }, pageAlert);
+            } else d.year = q.year;
+          }, loadDates);
+        } else loadDates();
+      }
+    }
+  }
+
+  // days
+  function addDay() {
+    d.days.push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), day => {
+      let index = _.findIndex(d.days, day);
+      d.days.splice(index, 1);
+    }); 
+    q.checked = {};
+  }
+
+  // save
+  function getSaveData() {
+    let data = angular.copy(_.omit(d, 'rest_days'));
+        data.rest_days = _.pluck(d.rest_days, 'day_no');
+        data.plan_time = bUtil.timeToMinutes(d.plan_time);
+        data.preholiday_hour = bUtil.timeToMinutes(d.preholiday_hour);
+        data.preweekend_hour = bUtil.timeToMinutes(d.preweekend_hour);
+      
+    return data;
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', getSaveData()).then(page.close, page.alert);
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function makeWeekDay(days) {
+    let data = [];
+    _.each(days, day_no => {
+      let name = moment().day(day_no).format('dddd');
+          name = name[0].toUpperCase() + name.slice(1);
+
+      data.push({ day_no: day_no, name: name });
+    });
+
+    return data;
+  }
+
+  // We use it when we use a separate plan time for each day of the week
+  // function isRest(day_no) {
+  //   return _.contains(d.rest_days, day_no);
+  // }
+
+  function calculateMonthlyDetails() {
+    var data = {
+      begin_date: q.year_begin,
+      end_date: q.year_end,
+      preholiday_hour: bUtil.timeToMinutes(d.preholiday_hour),
+      preweekend_hour: bUtil.timeToMinutes(d.preweekend_hour),
+      plan_time: bUtil.timeToMinutes(d.plan_time)
+    }
+    
+    data.calendar_days = d.days;
+    data.rest_week_day_no = _.pluck(d.rest_days, 'day_no');
+    q.detail_available = true;
+
+    page.post(':calculate_monthly_details', data).then(function (result) {
+      d.monthly_details = _.chain(result.monthly_details)
+                           .mapRows(['month', 'days', 'hours'])
+                           .map(x => {
+                              let month_no = moment(x.month, 'DD.MM.YYYY').month();
+                              x[month_no] = { days: x.days, hours: +x.hours }; 
+                              x.name = moment().month(month_no).format("MMMM");
+    
+                              return x;
+                           })
+                           .value();
+      
+      d.monthly_details.quarter_1 = { days: +d.monthly_details[0].days + +d.monthly_details[1].days + +d.monthly_details[2].days,  
+                                      hours: +d.monthly_details[0].hours + +d.monthly_details[1].hours + +d.monthly_details[2].hours};
+      d.monthly_details.quarter_2 = { days: +d.monthly_details[3].days + +d.monthly_details[4].days + +d.monthly_details[5].days,  
+                                      hours: +d.monthly_details[3].hours + +d.monthly_details[4].hours + +d.monthly_details[5].hours};
+      d.monthly_details.quarter_3 = { days: +d.monthly_details[6].days + +d.monthly_details[7].days + +d.monthly_details[8].days,  
+                                      hours: +d.monthly_details[6].hours + +d.monthly_details[7].hours + +d.monthly_details[8].hours};
+      d.monthly_details.quarter_4 = { days: +d.monthly_details[9].days + +d.monthly_details[10].days + +d.monthly_details[11].days,  
+                                      hours: +d.monthly_details[9].hours + +d.monthly_details[10].hours + +d.monthly_details[11].hours};
+      d.monthly_details.half_year_1 = { days: +d.monthly_details.quarter_1.days + +d.monthly_details.quarter_2.days,
+                                        hours: +d.monthly_details.quarter_1.hours + +d.monthly_details.quarter_2.hours};
+      d.monthly_details.half_year_2 = { days: +d.monthly_details.quarter_3.days + +d.monthly_details.quarter_4.days,
+                                        hours: +d.monthly_details.quarter_3.hours + +d.monthly_details.quarter_4.hours};
+    }, page.alert);
+  }
+
+  q.day_kinds = _.mapRows(q.day_kinds, ['type', 'name']);
+  q.week_days = makeWeekDay(['1', '2', '3', '4', '5', '6', '7']);
+  q.week_day_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  q.rest_days = angular.copy(q.week_days);
+  q.detail_available = !(d.plan_time == 0 || d.plan_time == null); 
+
+  d.preholiday_hour = bUtil.minutesToTime(d.preholiday_hour);
+  d.preweekend_hour = bUtil.minutesToTime(d.preweekend_hour);
+  d.plan_time = bUtil.minutesToTime(d.plan_time || 480);
+  d.days = _.mapRows(d.days, day_map_row);
+  d.rest_day = d.rest_days || [];
+  d.rest_days = _.filter(q.rest_days, day => _.contains(d.rest_days, day.day_no));
+
+  fixYear();
+  
+  if (q.detail_available)
+    calculateMonthlyDetails();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom card-stretch  gutter-b">
+        <div class="card-body">
+          <h5 class="text-dark"><t>main info</t></h5>
+          <div class="separator separator-solid my-4"></div>
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>code</t></label>
+              <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>year</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="YYYY" ng-change="changeYear()" ng-model="d.year" required/>
+            </div>
+          </div>
+
+          <h5 class="text-dark mt-4"><t>weekly facts</t></h5>
+          <div class="separator separator-solid my-4"></div>
+          <div class="form-group">
+            <label><t>rest days</t></label>
+            <b-input local-data="q.rest_days"
+                     multiple
+                     label="name"
+                     model="d.rest_days"
+                     model-key="day_no">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <!-- We use it when we use a separate plan time for each day of the week -->
+          <!-- <b-pg-grid name="calendar_week_days" local-data="d.calendar_week_days" sort="order_no" iterator="week_day" min-width="500">
+              <b-pg-header name="info"><t>week day</t></b-pg-header>
+              <b-pg-header name="monday">{{ q.week_days[0].name }}</b-pg-header>
+              <b-pg-header name="tuesday">{{ q.week_days[1].name }}</b-pg-header>
+              <b-pg-header name="wednesday">{{ q.week_days[2].name }}</b-pg-header>
+              <b-pg-header name="thursday">{{ q.week_days[3].name }}</b-pg-header>
+              <b-pg-header name="friday">{{ q.week_days[4].name }}</b-pg-header>
+              <b-pg-header name="saturday">{{ q.week_days[5].name }}</b-pg-header>
+              <b-pg-header name="sunday">{{ q.week_days[6].name }}</b-pg-header>
+            <b-pg-col name="info" size="3"/>
+            <b-pg-col name="monday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.monday" ng-if="!isRest(1)"/>
+              <span ng-if="isRest(1)"><t>rest day</t></span>
+            </b-pg-col>
+            <b-pg-col name="tuesday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.tuesday"/>
+            </b-pg-col>
+            <b-pg-col name="wednesday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.wednesday"/>
+            </b-pg-col>
+            <b-pg-col name="thursday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.thursday"/>
+            </b-pg-col>
+            <b-pg-col name="friday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.friday"/>
+            </b-pg-col>
+            <b-pg-col name="saturday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.saturday"/>
+            </b-pg-col>
+            <b-pg-col name="sunday" size="3">
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="week_day.sunday"/>
+            </b-pg-col>
+          </b-pg-grid> -->
+          
+          <div class="form-row mt-4">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>preholiday hour</t></label>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.preholiday_hour"/>
+              </div>
+              <div class="form-group">
+                <label><t>daily plan time</t></label>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.plan_time"/>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.monthly_limit" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>monthly limit</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.daily_limit" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>daily limit</t></span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>preweekend hour</t></label>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.preweekend_hour"/>
+              </div>
+            </div>
+          </div>
+          <h5 class="text-dark mt-4"><t>calendar days</t></h5>
+          <div class="separator separator-solid my-4"></div>
+          <div class="form-row">
+            <div class="col-sm-10 mb-4">
+              <button type="button" class="btn btn-default" ng-click="addDay()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-14" ng-if="d.days.length > 10">
+              <b-pg-controller name="days"/>
+            </div>
+          </div>
+          <b-pg-grid name="days" local-data="d.days" on-check="onCheck(checked)" search="name" searchable="calendar_date, day_kind, swapped_date" sort="calendar_date" iterator="day" min-width="500">
+            <b-pg-row>
+              <b-pg-col name="calendar_date" size=5>
+                <input type="text" class="form-control" b-date-picker min-date="q.year_begin" max-date="q.year_end" ng-model="day.calendar_date" required/>
+              </b-pg-col>
+              <b-pg-col name="day_kind" size=5>
+                <b-input local-data="q.day_kinds"
+                        model="day.day_kind_name | name"
+                        model-key="day.day_kind | type"
+                        on-select="setDayType(day, row)"
+                        on-delete="setDayType(day, {})"
+                        required-key>
+                  {{ row.name }}
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="name" size=8>
+                <input type="text" class="form-control" ng-model="day.name" b-maxlength="100" required/>
+              </b-pg-col>
+              <b-pg-col name="swapped_date" size=5>
+                <input type="text" class="form-control" b-date-picker ng-model="day.swapped_date" ng-if="day.day_kind == q.dt_swapped" ng-required="day.day_kind == q.dt_swapped"/>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-12">
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <label><t>summary details</t></label>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <button type="button" class="btn btn-default" ng-click="calculateMonthlyDetails()"><t>recalc</t></button>
+            </div>
+          </div>
+          <div ng-if="q.detail_available">
+            <table class="table table-bordered mt-4">
+              <thead class="thead-light unselectable">
+                <tr>
+                  <th scope="col"><t>month</t></th>
+                  <th scope="col"><t>work day</t></th>
+                  <th scope="col"><t>work hours</t></th>
+                  <th scope="col"><t>by quarters days</t></th>
+                  <th scope="col"><t>by quarters hours</t></th>
+                  <th scope="col"><t>half-year days</t></th>
+                  <th scope="col"><t>half-year hours</t></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th score="row">{{ d.monthly_details[0].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[0].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[0].hours }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_1.days }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_1.hours }}</td>
+                  <td rowspan="6" class="text-center align-middle">{{ d.monthly_details.half_year_1.days }}</td>
+                  <td rowspan="6" class="text-center align-middle">{{ d.monthly_details.half_year_1.hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[1].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[1].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[1].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[2].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[2].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[2].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[3].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[3].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[3].hours }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_2.days }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_2.hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[4].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[4].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[4].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[5].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[5].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[5].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[6].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[6].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[6].hours }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_3.days }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_3.hours }}</td>
+                  <td rowspan="6" class="text-center align-middle">{{ d.monthly_details.half_year_2.days }}</td>
+                  <td rowspan="6" class="text-center align-middle">{{ d.monthly_details.half_year_2.hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[7].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[7].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[7].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[8].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[8].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[8].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[9].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[9].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[9].hours }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_4.days }}</td>
+                  <td rowspan="3" class="text-center align-middle">{{ d.monthly_details.quarter_4.hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[10].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[10].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[10].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row">{{ d.monthly_details[11].name }}</th>
+                  <td class="text-center align-middle">{{ d.monthly_details[11].days }}</td>
+                  <td class="text-center align-middle">{{ d.monthly_details[11].hours }}</td>
+                </tr>
+                <tr>
+                  <th score="row" class="text-right" style="background-color: #f3f6f9" colspan="5"><div><t>total</t></div></th>
+                  <td class="text-center align-middle">{{ +d.monthly_details.half_year_1.days + +d.monthly_details.half_year_2.days }}</td>
+                  <td class="text-center align-middle">{{ +d.monthly_details.half_year_1.hours + +d.monthly_details.half_year_2.hours }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div ng-if="!q.detail_available">
+            <div class="text-center mt-8 mb-12">
+              <span class="fas fa-table"></span><br/>
+              <t>you can show summary details here</t>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

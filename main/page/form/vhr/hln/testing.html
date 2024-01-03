@@ -1,0 +1,169 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, bUtil, t) {
+  var d = model || {},
+      q = {};
+
+  function wherePerson(person_id) {
+    let where = ['state', '=', 'A'];
+    if (person_id) {
+      where = ['and', [where, ['person_id', '<>', person_id]]];
+    }
+
+    return where;
+  }
+
+  function changePersonQuery(query, value, person_id) {
+    query.where(person_id ? ['person_id', '<>', person_id] : null).searchValue(value);
+  }
+
+  function setPerson(row) {
+    if (!row) return;
+    d.person_id = row.person_id;
+    d.person_name = row.name;
+  }
+
+  function addPerson(value) {
+    fi.add_person(null, setPerson, { name: value });
+  }
+
+  function selectPerson(examiner_id) {
+    fi.select_person(null, setPerson, { where: wherePerson(examiner_id) });
+  }
+
+  function setExaminer(row) {
+    if (!row) return;
+    d.examiner_id = row.person_id;
+    d.examiner_name = row.name;
+  }
+
+  function addExaminer(value) {
+    fi.add_person(null, setExaminer, { name: value });
+  }
+
+  function selectExaminer(person_id) {
+    fi.select_person(null, setExaminer, { where: wherePerson(person_id) });
+  }
+
+  function setExam(result) {
+    if (result) {
+      d.exam_id = result.exam_id;
+      d.exam_name = result.name;
+    }
+  }
+
+  function addExam(value) {
+    fi.add_exam(null, setExam, { name: value });
+  }
+
+  function selectExam() {
+    fi.select_exam(null, setExam, { where: ['state', '=', 'A'] });
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      let data = _.omit(d, 'person_name', 'exam_name', 'examiner_name');
+      data.begin_time_period_begin = bUtil.timeToMinutes(data.begin_time_period_begin);
+      data.begin_time_period_end = d.is_period == 'Y' ? bUtil.timeToMinutes(data.begin_time_period_end) : null;
+
+      if (d.is_period == 'Y' && data.begin_time_period_begin > data.begin_time_period_end) {
+        q.period_valid = false;
+        return;
+      } else q.period_valid = true;
+
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  q.period_valid = true;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm mb-4 mb-sm-0">
+              <label><t>testing number</t></label>
+              <input class="form-control" ng-model="d.testing_number" b-maxlength="50"/>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>testing date</t><r/></label>
+              <input class="form-control" ng-model="d.testing_date" b-date-picker="DD.MM.YYYY" required/>
+            </div>
+          </div>
+          <div class="form-row" ng-if="d.is_period == 'N'">
+            <div class="col-sm mb-4 offset-md-12">
+            <label><t>begin time</t></label>
+              <input class="form-control" ng-model="d.begin_time_period_begin" b-date-picker="HH:mm"/>
+            </div>
+          </div>
+          <div class="form-row mb-4" ng-if="d.is_period == 'Y'">
+            <div class="col-sm-12">
+              <label><t>begin time period begin</t><r ng-if="d.begin_time_period_end"/></label>
+              <input class="form-control" ng-model="d.begin_time_period_begin" b-date-picker="HH:mm" ng-required="d.begin_time_period_end"/>
+            </div>
+            <div class="col-sm-12">
+              <label><t>begin time period end</t><r ng-if="d.begin_time_period_begin"/></label>
+              <input class="form-control" ng-model="d.begin_time_period_end" b-date-picker="HH:mm" ng-required="d.begin_time_period_begin"/>
+            </div>
+            <div class="col-sm">
+              <span class="text-danger" ng-hide="q.period_valid"><t>period begin must be less than period end</t></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>candidate name</t><r/></label>
+            <b-input name="persons"
+                     model="d.person_name | name"
+                     model-key="d.person_id | person_id"
+                     on-change="changePersonQuery(query, value, d.examiner_id)"
+                     is-add="fi.add_person"
+                     on-add="addPerson(value)"
+                     is-view="fi.select_person"
+                     on-view="selectPerson(d.examiner_id)"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>exam name</t><r/></label>
+            <b-input name="exams"
+                     model="d.exam_name | name"
+                     model-key="d.exam_id | exam_id"
+                     is-add="fi.add_exam"
+                     on-add="addExam(value)"
+                     is-view="fi.select_exam"
+                     on-view="selectExam()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>examiner name</t></label>
+            <b-input name="examiners"
+                     model="d.examiner_name | name"
+                     model-key="d.examiner_id | person_id"
+                     on-change="changePersonQuery(query, value, d.person_id)"
+                     is-add="fi.add_person"
+                     on-add="addExaminer(value)"
+                     is-view="fi.select_person"
+                     on-view="selectExaminer(d.person_id)">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows="4" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

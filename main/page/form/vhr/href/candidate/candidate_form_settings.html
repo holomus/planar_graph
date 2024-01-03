@@ -1,0 +1,169 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      d.lang_ids = _.chain(d.langs).pluck('lang_id').compact().value();
+      d.edu_stage_ids = _.chain(d.edu_stages).pluck('edu_stage_id').compact().value();
+
+      page.post(':save', d).then(page.reload, page.alert);
+    }
+  }
+
+  function whereLang(item) {
+    let lang_ids = _.chain(d.langs).pluck('lang_id').compact().value();
+    return _.isEmpty(lang_ids) ? null : ['lang_id', '<>', lang_ids];
+  }
+
+  function whereEduStage(item) {
+    let edu_stage_ids = _.chain(d.edu_stages).pluck('edu_stage_id').compact().value();
+    return _.isEmpty(edu_stage_ids) ? null : ['edu_stage_id', '<>', edu_stage_ids];
+  }
+
+  function changeLangQuery(item, query, value) {
+    query.where(whereLang(item)).searchValue(value);
+  }
+
+  function changeEduStageQuery(item, query, value) {
+    query.where(whereEduStage(item)).searchValue(value);
+  }
+
+  function addItem(items) {
+    items.push({});
+  }
+
+  function removeItem(items, index) {
+    items.splice(index, 1);
+  }
+
+  d.langs = _.mapRows(d.langs, ['lang_id', 'name']);
+  d.edu_stages =_.mapRows(d.edu_stages, ['edu_stage_id', 'name']);
+
+  if (!d.langs.length) {
+    d.langs.push({});
+  }
+
+  if (!d.edu_stages.length) {
+    d.edu_stages.push({});
+  }
+
+  scope.d = d;
+
+  scope.uiTreeOption = {
+    beforeDrop : function (event) {
+      return event.source.nodesScope.$id == event.dest.nodesScope.$id;
+    }
+  };
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()" b-hotkey="close">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="form-row">
+          <div class="col-sm-6">
+            <label><t>candidate info</t></label>
+            <div> <hr> </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.region"/>
+                <span><t>region</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.address"/>
+                <span><t>address</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.experience"/>
+                <span><t>experience</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.source"/>
+                <span><t>source</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.recommendation"/>
+                <span><t>recommendation</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.cv"/>
+                <span><t>cv</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="col-sm">
+          <label><t>languages</t></label>
+            <div> <hr> </div>
+            <div ui-tree="uiTreeOption">
+              <div ui-tree-nodes ng-model="d.langs">
+                <div ui-tree-node ng-repeat="item in d.langs">
+                  <div class="row">
+                    <div class="col-sm">
+                      <div class="input-group" ng-style="{ 'margin-bottom': ($last ? '0' : '10px') }">
+                        <span class="input-group-prepend">
+                          <div class="btn btn-default btn-icon" ui-tree-handle><i class="fa fa-arrows-alt-v"></i></div>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="addItem(d.langs)"><i class="fa fa-plus"></i></button>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="removeItem(d.langs, $index)" ng-disabled="$first && $last" tabindex=-1><i class="fa fa-minus"></i></button>
+                        </span>
+                        <b-input name="languages"
+                                 limit="5"
+                                 model="item.name | name"
+                                 model-key="item.lang_id | lang_id"
+                                 on-change="changeLangQuery(item, query, value)">
+                          {{ row.name }}
+                        </b-input>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm">
+            <label><t>edu stage</t></label>
+            <div> <hr> </div>
+            <div ui-tree="uiTreeOption">
+              <div ui-tree-nodes ng-model="d.edu_stages">
+                <div ui-tree-node ng-repeat="item in d.edu_stages">
+                  <div class="row">
+                    <div class="col-sm">
+                      <div class="input-group" ng-style="{ 'margin-bottom': ($last ? '0' : '10px') }">
+                        <span class="input-group-prepend">
+                          <div class="btn btn-default btn-icon" ui-tree-handle><i class="fa fa-arrows-alt-v"></i></div>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="addItem(d.edu_stages)"><i class="fa fa-plus"></i></button>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="removeItem(d.edu_stages, $index)" ng-disabled="$first && $last" tabindex=-1><i class="fa fa-minus"></i></button>
+                        </span>
+                        <b-input name="edu_stages"
+                                 limit="5"
+                                 model="item.name | name"
+                                 model-key="item.edu_stage_id | edu_stage_id"
+                                 on-change="changeEduStageQuery(item, query, value)">
+                          {{ row.name }}
+                        </b-input>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

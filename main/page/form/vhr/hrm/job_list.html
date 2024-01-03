@@ -1,0 +1,128 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (param) t.param({ division_id: param.division_id });
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  page.isInit() && t.filter('state', '=', 'A');
+
+  var stateClass = { A: 'success', P: 'danger' };
+  page.grid('table').asHtml('state_html', 'state,state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ stateClass[row.state] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ job_id: row.job_id });
+  }
+
+  function edit(row) {
+    fi.edit({ job_id: row.job_id }, closeIfDialog);
+  }
+
+  function deleteOne(row) {
+    page.confirm(t('delete job $1?')(row.name), function() {
+      fi.delete({ job_id: row.job_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteMany() {
+    page.confirm(t('delete $1 job(s)?')(q.checked.size), function() {
+      fi.delete({ job_id: _.pluck(q.checked.rows(), 'job_id') }).then(page.reload, page.alert);
+    });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  var sc = [ // success
+    { grant: fi.add, fn: add },
+    { grant: fi.import, fn: importData }
+  ];
+
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.first = q.sc.acc[0].grant;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.first" b-hotkey="add">{{ q.sc.first.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="job_id,name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="code, name, job_group_name" searchable="job_id, created_by_name, modified_by_name"
+          extra-columns="job_id, division_names, role_names, expense_coa_name, expense_ref_set_names, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="code" size=3/>
+      <b-col name="name" size=5/>
+      <b-col name="job_group_name" size=4/>
+      <b-col name="created_by_name" size=4/>
+      <b-col name="created_on" size=4/>
+      <b-col name="state_name" as-html="state_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="job_id" directive="equal" extra/>
+    <b-filter name="code"/>
+    <b-filter name="name"/>
+    <b-filter name="job_group_id" decorate-with="job_group_name"/>
+    <b-filter name="division_ids" decorate-with="division_names"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="role_ids" decorate-with="role_names" extra/>
+    <b-filter name="expense_coa_id" decorate-with="expense_coa_name" extra/>
+    <b-filter name="expense_ref_set" decorate-with="expense_ref_set_names" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

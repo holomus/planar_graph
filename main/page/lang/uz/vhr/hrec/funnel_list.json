@@ -1,0 +1,13 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{funnel_count} funnel(s)?": "Haqiqatan ham <b>$1</b>ta bosqichlar to'plam(lar)ini oʻchirib tashlamoqchimisiz?",
+ "delete $1{funnel_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.funnel_id": "ID",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

@@ -1,0 +1,9 @@
+select *
+  from Mr_Natural_Persons p
+ where p.Company_Id = 580
+   and exists (select *
+          from Href_Staffs q
+         where q.Company_Id = 580
+           and q.Employee_Id = p.Person_Id
+           and q.Dismissal_Date is null)
+   and p.State = 'P';

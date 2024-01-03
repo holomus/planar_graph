@@ -1,0 +1,15 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{reject_reason_count} reject reason(s)?": "Вы действительно хотите удалить <b>$1</b> причин(у/ы)?",
+ "delete reject reason $1{reject_reason_name}?": "Вы действительно хотите удалить <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.reject_reason_id": "ИД",
+ "table.state_name": "Статус"
+}

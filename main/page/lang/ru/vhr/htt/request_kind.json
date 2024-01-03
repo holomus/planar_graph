@@ -1,0 +1,21 @@
+{
+ "carryover cap (days)": "Лимит переноса (дн.)",
+ "carryover policy": "Политика переноса",
+ "Eg: 30": "Например: 30",
+ "Eg: 5": "Например: 5",
+ "expires after (days)": "Перенос истекает через (дн.)",
+ "active": "Активный",
+ "allow unused time": "Учитывать неиспользованное время",
+ "annual day limit": "Количество дней в год",
+ "annually limited": "Является ежегодным",
+ "day count type": "Предоставляется",
+ "name": "Название",
+ "passive": "Неактивный",
+ "request restriction days": "Количество дней ограничения",
+ "request with restriction days": "Ограничение времени запроса",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "state": "Статус",
+ "time kind": "Вид времени",
+ "user permitted": "Предоставляется всем сотрудникам"
+}

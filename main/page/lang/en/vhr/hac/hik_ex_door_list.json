@@ -1,0 +1,15 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{door_count} door(s)?": "Delete  <b>$1</b> doors?",
+ "delete door $1{door_name}?": "Delete  <b>$1</b> door?",
+ "get doors from HCP": "Download",
+ "table.created_on": "Created on",
+ "table.device_code": "Device Code",
+ "table.door_code": "Code",
+ "table.door_name": "Name",
+ "table.door_no": "Number",
+ "table.door_state": "Status",
+ "table.door_state_name": "Status Name",
+ "table.modified_on": "Modified on",
+ "table.region_code": "Region Code"
+}

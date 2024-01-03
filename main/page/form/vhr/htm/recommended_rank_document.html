@@ -1,0 +1,218 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      dt_format = 'DD.MM.YYYY';
+
+  // fix status
+  function fixStatus(item) {
+    let first_change_date = moment(item.first_change_date, dt_format),
+        new_change_date = moment(item.new_change_date, dt_format);
+    item.diff_days = new_change_date.diff(first_change_date, 'days') - (+item.old_penalty_period || 0);
+
+    [item.diff_days_class, item.status_name] = item.diff_days == 0 ? ['badge-success', q.t_intime] : item.diff_days > 0 ? ['badge-danger', q.t_overtime] : ['badge-warning', q.t_nearest];
+  }
+
+  // change dates
+  function changeDates() {
+    let date = moment(d.document_date, dt_format).startOf('month');
+    _.each(d.staffs, item => {
+      item.new_change_date = moment.max(date, moment(item.first_change_date, dt_format)).format(dt_format);
+      fixStatus(item);
+    })
+  }
+
+  // fix data
+  function fixData(data) {
+    return _.chain(data)
+            .mapRows(['staff_id', 
+                      'staff_number', 
+                      'staff_name', 
+                      'robot_id', 
+                      'robot_name', 
+                      'from_rank_id', 
+                      'from_rank_name', 
+                      'last_change_date', 
+                      'to_rank_id', 
+                      'to_rank_name',
+                      'new_change_date', 
+                      'period', 
+                      'nearest', 
+                      'old_penalty_period',
+                      'division_name',
+                      'job_name',
+                      'experience_id',
+                      'attempt_no',
+                      'note'])
+            .each(item => item.first_change_date = moment(item.last_change_date, dt_format).add(parseFloat(item.period), 'days').format(dt_format))
+            .each(fixStatus)
+            .value();
+  }
+
+  // load staffs
+  function loadStaffs(){
+    page.post(':load_staffs', _.pick(d, 'document_id', 'document_date', 'division_id')).then(result => {
+      d.staffs = fixData(result);
+    }, page.alert);
+  }
+
+  // save
+  function save(set_training) {
+    let t_confirm_message = set_training == 'Y' ? t('save and go set training?')() : t('save?')();
+    if (page.valid(scope.form)) {
+      page.confirm(t_confirm_message, function() {
+        let data = _.pick(d, 'document_id', 
+                             'document_number', 
+                             'document_date', 
+                             'division_id', 
+                             'note');
+            data.set_training = set_training;
+            data.staffs = _.map(d.staffs, x => _.pick(x, ['staff_id',
+                                                          'robot_id',
+                                                          'from_rank_id',
+                                                          'last_change_date',
+                                                          'to_rank_id',
+                                                          'new_change_date',
+                                                          'attempt_no',
+                                                          'experience_id',
+                                                          'period',
+                                                          'nearest',
+                                                          'old_penalty_period',
+                                                          'increment_permit',
+                                                          'note']))
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  // items
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.staffs, item);
+      d.staffs.splice(index, 1);
+    });
+    q.checked = {};
+  }
+
+  function rowStatus(row) {
+    return row.attempt_no > 1 ? 'label-warning' : 'label-success';
+  }
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => {
+                   x.disabled = x.enabled == 'N';
+                   x.parent_id = x.parent_id || '';
+                 })
+                 .value();
+  q.t_intime = t('intime')();
+  q.t_overtime = t('overtime')();
+  q.t_nearest = t('nearest')();
+  q.t_change_dates = t('change all dates: if intime date in this month of document date then intime date else start of this month?')();
+
+  d.staffs = fixData(d.staffs);
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>save and set training</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>document date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.document_date" b-date-picker required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>document number</t><r ng-if="d.document_id"/></label>
+              <input type="text" class="form-control" ng-model="d.document_number" b-maxlength="50" ng-required="d.document_id"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>division name</t></label>
+              <b-tree-select
+                origin="q.divisions"
+                id-key="division_id"
+                model="d.division_id"/>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows="4" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="separator separator-solid my-4"></div>
+      <div class="form-row mb-2">
+        <div class="col-sm-14">
+          <button type="button" class="btn btn-default" ng-click="loadStaffs()" ng-disabled="!d.document_date"><t>fill</t></button>
+          <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+        </div>
+        <div class="col-sm-10">
+          <b-pg-controller name="staffs">
+        </div>
+      </div>
+      <b-pg-grid name="staffs" search="staff_name, robot_name, from_rank_name, to_rank_name" on-check="onCheck(checked)" searchable="staff_number, division_name, job_name"
+                 sort="staff_name" local-data="d.staffs">
+        <b-pg-header name="ranks">
+          <div><t>old rank</t>&nbsp;<i class="fas fa-arrow-right"></i>&nbsp;<t>new rank</t></div>
+        </b-pg-header>
+        <b-pg-header name="new_change_date">
+          <div class="row ml-0 d-flex justify-content-between pr-4">
+            <div><t>new change date</t></div>
+            <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.t_change_dates }}" on-click-yes="changeDates()">
+              <i class="fas fa-check"></i>
+            </button>
+          </div>
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="staff_name" size="4"/>
+          <b-pg-col name="attempt_status" size="3">
+            <span class="label label-pill label-inline mr-2" ng-class="rowStatus(row)">
+              <t p1="{{ row.attempt_no }}">attempt no $1</t>
+            </span>
+          </b-pg-col>
+          <b-pg-col name="robot_name" size="3"/>
+          <b-pg-col name="ranks" size="4">
+            <div class="row ml-0">
+              <div class="badge badge-primary">{{ row.from_rank_name }}</div>
+              &nbsp;<i class="fas fa-arrow-right pt-1"></i>&nbsp;
+              <div class="badge badge-success">{{ row.to_rank_name }}</div>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="new_change_date" size="3">
+            <input type="text" class="form-control" ng-model="row.new_change_date" ng-blur="fixStatus(row)" b-date-picker required/>
+          </b-pg-col>
+          <b-pg-col name="status" size="3">
+            <div class="row ml-0" ng-if="row.new_change_date">
+              <div class="badge" ng-class="row.diff_days_class">{{ row.diff_days }}</div>
+              &nbsp;
+              <div>{{ row.status_name }}</div>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="note" size="3">
+            <input type="text" class="form-control" ng-model="row.note" b-maxlength="300"/>
+          </b-pg-col>
+        </b-pg-row>
+
+        <b-pg-extra-col name="staff_number" size="3"/>
+        <b-pg-extra-col name="last_change_date" size="3"/>
+        <b-pg-extra-col name="division_name" size="3"/>
+        <b-pg-extra-col name="job_name" size="3"/>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

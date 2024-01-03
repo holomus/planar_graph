@@ -1,0 +1,17 @@
+select p.Staff_Id,
+       (select t.Name
+          from Mr_Natural_Persons t
+         where t.Company_Id = p.Company_Id
+           and t.Person_Id = p.Employee_Id) Sname,
+       (select t.Name
+          from Htt_Schedules t
+         where t.Company_Id = p.Company_Id
+           and t.Schedule_Id = p.Schedule_Id) Schname
+  from Href_Staffs p
+ where p.Company_Id = &new_company_id
+   and exists (select *
+          from Htt_Schedule_Patterns q
+         where q.Company_Id = p.Company_Id
+           and q.Filial_Id = p.Filial_Id
+           and q.Schedule_Id = p.Schedule_Id
+           and q.Schedule_Kind = 'P')

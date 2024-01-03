@@ -1,0 +1,406 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bUtil) {
+  var d = _.omit(model, 'references', 'adjustments'),
+      q = model.references;
+
+  // load data
+  function loadData(staff_id) {
+    let data = {
+      adjustment_date: d.adjustment_date,
+      journal_id: d.journal_id,
+      staff_id: staff_id,
+      kind: q.kind
+    };
+
+    if (q.departments_filter) data.division_id = d.division_id
+    else data.org_unit_id = d.division_id;
+
+    return page.post(':load_data', data);
+  }
+
+  // fix data
+  function fixData(data) {
+    let result = _.chain(data)
+                  .mapRows(['staff_id', 'name', 'kind', 'begin_end_time', 'plan_time', 'input_output_time', 'intime', 'free_time', 'overtime', 'turnout_time', 'not_worked_time', 'page_id'])
+                  .each(x => {
+                    x.plan_time_view       = bUtil.minutesToTime(x.plan_time);
+                    x.intime_view          = bUtil.minutesToTime(x.intime);
+                    x.free_time_view       = bUtil.minutesToTime(x.free_time);
+                    x.overtime_view        = bUtil.minutesToTime(x.overtime);
+                    x.turnout_time_view    = bUtil.minutesToTime(x.turnout_time);
+                    x.not_worked_time_view = bUtil.minutesToTime(x.not_worked_time);
+
+                    x.plan_time       = parseFloat(x.plan_time || 0);
+                    x.intime          = parseFloat(x.intime || 0);
+                    x.free_time       = parseFloat(x.free_time || 0);
+                    x.overtime        = parseFloat(x.overtime || 0);
+                    x.turnout_time    = parseFloat(x.turnout_time || 0);
+                    x.not_worked_time = parseFloat(x.not_worked_time || 0);
+                  })
+                  .groupBy('kind')
+                  .value();
+
+    _.each(q.kinds, kind => {
+      result[kind] = result[kind] || [];
+    });
+
+    return result;
+  }
+
+  // staff
+  function addItem() {
+    d.adjustments[q.kind].push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked[q.kind].rows(), item => {
+      let index = _.findIndex(d.adjustments[q.kind], item);
+      d.adjustments[q.kind].splice(index, 1);
+    });
+  }
+
+  function whereStaff() {
+    let staff_ids = _.chain(d.adjustments[q.kind]).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', d.adjustment_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', d.adjustment_date]
+                  ]]]
+                ];
+
+    if (d.division_id) {
+      if (q.departments_filter)
+        where = ['and', [['division_id', '=', d.division_id], where]];
+      else
+        where = ['and', [['org_unit_id', '=', d.division_id], where]];
+    }
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function selectStaff(item) {
+    fi.select_staff({ date: d.adjustment_date }, _.partial(setStaff, item), { where: whereStaff() });
+  }
+
+  function setStaff(item, data) {
+    if (!data) return;
+    item.staff_id = data.staff_id;
+    item.name     = data.name;
+
+    item.plan_time_view    = '';
+    item.intime_view       = '';
+    item.free_time_view    = '';
+    item.overtime_view     = '';
+    item.turnout_time_view = '';
+
+    item.plan_time    = 0;
+    item.intime       = 0;
+    item.free_time    = 0;
+    item.overtime     = 0;
+    item.turnout_time = 0;
+
+    if (item.staff_id) {
+      loadData(item.staff_id).then(result => {
+        if (result.length == 0) {
+          let index = _.findIndex(d.adjustments[q.kind], item)
+          d.adjustments[q.kind].splice(index, 1, {});
+
+          notify(t('no free time found for $1{staff_name} on $2{adjustment_date}')(item.name, d.adjustment_date), 'warning');
+        } else {
+          result = fixData(result);
+          _.extend(item, result[q.kind][0]);
+
+          notify(t('free time found for $1{staff_name} on $2{adjustment_date}')(item.name, d.adjustment_date));
+        }
+      }, page.alert);
+    }
+  }
+
+  function setStaffs() {
+    fi.select_staff({ date: d.adjustment_date }, function(staffs) {
+      if (!_.isEmpty(staffs)) {
+        loadData(_.pluck(staffs, 'staff_id')).then(result => {
+          if (result.length == 0) {
+            notify(t('no free times found for $1{staff_count} staff(s) on $2{adjustment_date}')(staffs.length, d.adjustment_date), 'warning');
+          } else {
+            d.adjustments[q.kind].push(...(fixData(result))[q.kind]);
+
+            notify(t('free time found for $1{staff_count} staff(s) on $2{adjustment_date}')(staffs.length, d.adjustment_date));
+          }
+        }, page.alert);
+      }
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  // fill
+  function fillData() {
+    loadData().then(result => {
+      if (result.length == 0) {
+        d.adjustments[q.kind] = [];
+        notify(t('no free times found on $1{adjustment_date}')(d.adjustment_date), 'warning');
+      } else {
+        d.adjustments[q.kind] = fixData(result)[q.kind];
+
+        notify(t('successfully free times loaded on $1{adjustment_date}')(d.adjustment_date));
+      }
+    }, page.alert);
+  }
+
+  // on check
+  function onCheck(checked, kind) {
+    q.checked[kind] = checked;
+  }
+
+  // save
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        let data = _.omit(d, 'adjustments');
+        data.posted = posted;
+        data.adjustments = _.chain(d.adjustments)
+                            .each((v, k) => _.each(v, x => x.kind = k))
+                            .values()
+                            .flatten()
+                            .map(x => x = _.pick(x, 'page_id', 'staff_id', 'kind', 'free_time', 'overtime', 'turnout_time'))
+                            .filter(x => x.turnout_time > 0 || x.overtime > 0)
+                            .groupBy('staff_id')
+                            .map((v, staff_id) => { return { staff_id: staff_id, kinds: v }; })
+                            .value();
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  // fix time
+  function fixTime(item) {
+    item.overtime     = bUtil.timeToMinutes(item.overtime_view);
+    item.turnout_time = bUtil.timeToMinutes(item.turnout_time_view);
+  }
+
+  // set turnout time
+  function setTurnoutTime() {
+    _.each(d.adjustments[q.kind], x => {
+      if (x.free_time <= x.not_worked_time) {
+        x.turnout_time_view = x.free_time_view;
+      } else {
+        x.turnout_time_view = x.not_worked_time_view;
+      }
+      x.overtime_view = '00:00';
+
+      fixTime(x);
+    })
+  }
+
+  // change adjustment date
+  function changeAdjustmentDate() {
+    if (!!d.adjustment_date) {
+      if (d.adjustment_date != q.adjustment_date) {
+        if (d.adjustments.length > 0) {
+          page.confirm(t('adjustment date is changed, delete all adjustments and fill?')(), () => {
+            d.adjustments = {};
+            q.adjustment_date = d.adjustment_date;
+
+            _.each(q.adjustment_kinds, kind => {
+              d.adjustments[kind.kind] = [];
+            });
+
+            fillData();
+          }, () => {
+            d.adjustment_date = q.adjustment_date;
+          });
+        } else q.adjustment_date = d.adjustment_date;
+      }
+    }
+  }
+
+  // change tab
+  function changeTab(kind) {
+    q.kind = kind;
+  }
+
+  function departmentsFilterChange() {
+    d.division_id = null;
+  }
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => {x.disabled = x.enabled == 'N'; x.parent_id = x.parent_id || ''})
+                 .value();
+  q.org_units = _.chain(q.org_units)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => {x.disabled = x.enabled == 'N'; x.parent_id = x.parent_id || ''})
+                 .value();
+  q.kinds = q.adjustment_kinds[0];
+  q.adjustment_kinds = _.mapMatrix(q.adjustment_kinds, ['kind', 'name']);
+  q.adjustment_date = d.adjustment_date;
+  q.checked = {};
+  q.kind = fi.adjustment_full ? q.kinds[0] : q.kinds[1];
+  q.access_key = { 'F': 'adjustment_full', 'I': 'adjustment_incomplete' };
+  q.departments_filter = !(d.departments_filter == 'N');
+
+  d.adjustments = fixData(model.adjustments);
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-20">
+                <label><t>division name</t><r/></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"
+                  ng-if="q.departments_filter"
+                  required/>
+                <b-tree-select
+                  origin="q.org_units"
+                  id-key="division_id"
+                  model="d.division_id"
+                  ng-if="!q.departments_filter"
+                  required/>
+              </div>
+              <div class="col-sm-4">
+                <label><t>divisions filter</t></label><br/>
+                <label class="switch">
+                  <div class="form-group">
+                    <input type="checkbox" ng-model="q.departments_filter" ng-change="departmentsFilterChange()"/>
+                    <span>
+                      <t ng-if="q.departments_filter">departments</t>
+                      <t ng-if="!q.departments_filter">teams</t>
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>adjustment date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.adjustment_date" b-date-picker required ng-blur="changeAdjustmentDate()"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+          </div>
+        </div>
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item" ng-repeat="kind in q.adjustment_kinds" ng-click="changeTab(kind.kind)">
+            <a class="nav-link" ng-class="{ 'active': q.kind == kind.kind }" ng-if="fi[q.access_key[kind.kind]]">
+              <span>{{ kind.name }}</span>
+            </a>
+          </li>
+        </ul>
+        <div class="tab-content mt-4 mb-4">
+          <div class="tab-pane" ng-class="{ 'active': q.kind == kind.kind }" ng-repeat="kind in q.adjustment_kinds">
+            <div class="form-row mt-4" ng-if="fi[q.access_key[kind.kind]]">
+              <div class="col-sm mb-2">
+                <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+                <button type="button" class="btn btn-default" ng-click="fillData()" ng-disabled="!d.adjustment_date"><t>fill</t></button>
+                <button type="button" class="btn btn-success" ng-click="setStaffs()" ng-disabled="!d.adjustment_date" ng-if="fi.select_staff"><t>select</t></button>
+                <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked[kind.kind].has">
+                  <t p1="q.checked[kind.kind].size">delete $1</t>
+                </button>
+                <button type="button" class="btn btn-default" ng-click="setTurnoutTime()" ng-show="d.adjustments[kind.kind].length" ng-if="kind.kind == q.ak_full"><t>free time turnout time</t></button>
+              </div>
+              <div class="col-sm md-2">
+                <b-pg-controller name="{{ kind.kind }}"/>
+              </div>
+            </div>
+            <b-pg-grid name="{{ kind.kind }}" local-data="d.adjustments[kind.kind]" on-check="onCheck(checked, kind.kind)" search="name" iterator="item" ng-if="fi[q.access_key[kind.kind]]">
+              <b-pg-header name="rownum"><t>rownum</t></b-pg-header>
+              <b-pg-header name="name"><t>staffs</t></b-pg-header>
+              <b-pg-header name="begin_end_time"><t>begin end time</t></b-pg-header>
+              <b-pg-header name="plan_time_view"><t>plan time</t></b-pg-header>
+              <b-pg-header name="input_output_time"><t>input output time</t></b-pg-header>
+              <b-pg-header name="intime_view"><t>intime</t></b-pg-header>
+              <b-pg-header name="free_time_view"><t>free time</t></b-pg-header>
+              <b-pg-header name="turnout_time_view"><t>turnout time</t></b-pg-header>
+              <b-pg-header name="overtime_view"><t>overtime</t></b-pg-header>
+              <b-pg-row>
+                <b-pg-col name="rownum" size="1">
+                  <div class="text-center">{{ item.rownum }}</div>
+                </b-pg-col>
+                <b-pg-col name="name" size="8">
+                  <div class="form-group">
+                    <b-input name="staffs"
+                             model="item.name | name"
+                             model-key="item.staff_id | staff_id"
+                             column="staff_number, hiring_date, dismissal_date, staff_kind_name, division_id"
+                             search="staff_number, name"
+                             on-change="changeStaffQuery(query, value)"
+                             on-select="setStaff(item, row)"
+                             on-delete="setStaff(item, {})"
+                             is-view="fi.select_staff"
+                             on-view="selectStaff(item)"
+                             readonly="!d.adjustment_date"
+                             required-key>
+                      <header>
+                        <div class="col-sm-6"><t>staff number</t></div>
+                        <div class="col-sm-12"><t>staff name</t></div>
+                        <div class="col-sm-6"><t>staff kind name</t></div>
+                      </header>
+                      <content>
+                        <div class="col-sm-6">{{ row.staff_number }}</div>
+                        <div class="col-sm-12">{{ row.name }}</div>
+                        <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                      </content>
+                    </b-input>
+                  </div>
+                </b-pg-col>
+                <b-pg-col name="begin_end_time" size="3"/>
+                <b-pg-col name="plan_time_view" size="2"/>
+                <b-pg-col name="input_output_time" size="3"/>
+                <b-pg-col name="intime_view" size="2"/>
+                <b-pg-col name="free_time_view" size="2"/>
+                <b-pg-col name="turnout_time_view" size="2">
+                  <input type="text" class="form-control" ng-model="item.turnout_time_view" b-validate="{ s: item.free_time >= item.turnout_time || kind.kind != q.ak_full }"
+                    ng-change="fixTime(item)" b-date-picker="HH:mm" required/>
+                  <span class="text-danger" ng-show="item.free_time < item.turnout_time && kind.kind == q.ak_full"><t>overtime and turnout time exceeded from free time</t></span>
+                </b-pg-col>
+              </b-pg-row>
+              <b-pg-extra-col name="overtime_view">
+                <input type="text" class="form-control" ng-model="item.overtime_view" ng-change="fixTime(item)" b-date-picker="HH:mm" required/>
+              </b-pg-extra-col>
+            </b-pg-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

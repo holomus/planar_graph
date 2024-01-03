@@ -1,0 +1,15 @@
+{
+ "add photo": "Добавить фото",
+ "attach employee": "Прикрепить к филиалу",
+ "attach employee $1{person name}?": "Прикрепить $1 к филиалу ?",
+ "close": "Закрыть",
+ "delete": "Удалить",
+ "edit image": "Изменить фото",
+ "edit photo": "Изменить фото",
+ "email": "E-mail",
+ "location": "Локация",
+ "more": "Дополнительно",
+ "pasport_series and number": "Паспортные данные",
+ "phone number": "Номер телефона",
+ "save photo": "Сохранить"
+}

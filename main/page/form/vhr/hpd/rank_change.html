@@ -1,0 +1,333 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, AppSession) {
+  var d = _.extend(_.omit(model, 'rank_changes'), param),
+      q = model.references;
+
+  // rank
+  function setRank(rank_change, row) {
+    if (!row) return;
+    rank_change.rank_id = row.rank_id;
+    rank_change.rank_name = row.name;
+
+    getNewWage(row);
+  }
+
+  function getNewWage(row) {
+    if (d.access_to_hidden_salary == 'Y') {
+      page.post(':get_new_wage', _.pick(d, 'rank_id', 'change_date', 'staff_id', 'employee_id')).then(function(result) {
+        _.extend(d, result);
+      });
+    }
+  }
+
+  function whereRank(item) {
+    return ['rank_id', '<>', item.old_rank_id];
+  }
+
+  function addRank(rank_change, name) {
+    fi.add_rank(null, _.partial(setRank, rank_change), { name });
+  }
+
+  function selectRank(rank_change) {
+    fi.select_rank(null, _.partial(setRank, rank_change), { where: whereRank(rank_change) });
+  }
+
+  function changeRankQuery(query, value, item) {
+    query.where(whereRank(item)).searchValue(value);
+  }
+
+  function applRank(item) {
+    let row = { rank_id: item.rank_id, name: item.rank_name };
+    _.each(d.rank_changes, x => {
+      if (!x.rank_id) setRank(x, row);
+    });
+  }
+
+  // staff
+  function getStaffInfo(rank_change) {
+    if (!rank_change.change_date || !rank_change.staff_id) return;
+
+    page.post(':get_staff_info', _.pick(rank_change, 'change_date', 'staff_id', 'employee_id')).then(function(result) {
+      rank_change.old_rank_name = result.old_rank_name;
+      rank_change.old_rank_id = result.old_rank_id;
+      rank_change.old_wage = result.old_wage;
+      rank_change.access_to_hidden_salary = result.access_to_hidden_salary;
+    }, page.alert);
+  }
+
+  function whereStaff(filter_date) {
+    let staff_ids = _.chain(d.rank_changes).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', filter_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', filter_date]
+                  ]]]
+                ];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    return where;
+  }
+
+  function changeStaffQuery(rank_change, query, value) {
+    query.param({ change_date: rank_change.change_date }).where(whereStaff(rank_change.change_date)).searchValue(value);
+  }
+
+  function setStaff(rank_change, row) {
+    if (!row) return;
+    rank_change.staff_id = row.staff_id;
+    rank_change.staff_name = row.name;
+    rank_change.employee_id = row.employee_id;
+
+    getStaffInfo(rank_change);
+  }
+
+  function selectStaff(rank_change) {
+    fi.select_staff({ date: rank_change.change_date }, _.partial(setStaff, rank_change), { where: whereStaff(rank_change.change_date) });
+  }
+
+  function setStaffs() {
+    fi.select_staff({ date: d.journal_date }, function(result) {
+      if (!_.isEmpty(result)) {
+        page.post(':get_staff_infos', { change_date: d.journal_date, staff_ids: _.pluck(result, 'staff_id') }).then(function(res) {
+          _.each(res, x => {
+            d.rank_changes.push({
+              staff_id: x.staff_id,
+              staff_name: _.findWhere(result, { staff_id: x.staff_id }).name,
+              old_rank_name: x.old_rank_name,
+              old_rank_id: x.old_rank_id,
+              change_date: x.change_date
+            });
+          });
+        }, page.alert);
+      }
+    }, { where: whereStaff(d.journal_date), multiple_select: true });
+  }
+
+  // save
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        var data = _.pick(d, 'journal_id', 'journal_number', 'journal_name', 'journal_date', 'journal_type_id');
+        data.posted = posted;
+        data.rank_changes = _.map(angular.copy(q.is_rank_change_multiple ? d.rank_changes : [d]), x => x = _.pick(x, 'page_id', 'change_date', 'staff_id', 'rank_id'));
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function addItem() {
+    d.rank_changes.push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.rank_changes, item);
+      d.rank_changes.splice(index, 1);
+    });
+  }
+
+  function applDate(item) {
+    _.each(d.rank_changes, x => { if(!x.change_date) x.change_date = item.change_date });
+  }
+
+  q.user_id = AppSession.si.user.user_id;
+  q.is_rank_change_multiple = d.journal_type_id != q.journal_type_id;
+  q.tConfirmApplyDate = t('apply date to others?');
+  q.tConfirmApplyRank = t('apply rank to others?');
+  model.rank_changes = _.mapRows(model.rank_changes, ['page_id', 'change_date', 'staff_id', 'employee_id', 'staff_name', 'old_rank_id', 'old_rank_name', 'old_wage', 'new_wage', 'rank_id', 'rank_name', 'access_to_hidden_salary']);
+
+  if (q.is_rank_change_multiple) {
+    d.rank_changes = model.rank_changes;
+  } else {
+    _.extend(d, model.rank_changes[0]);
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="form-row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>journal date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+              <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>journal name</t></label>
+            <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+          </div>
+          <div ng-if="!q.is_rank_change_multiple">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>change date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.change_date" ng-blur="getStaffInfo(d)" b-date-picker required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>staff</t><r/></label>
+              <b-input name="staffs"
+                       model="d.staff_name | name"
+                       model-key="d.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date, staff_kind_name, old_rank_name, employee_id"
+                       search="staff_number, name, old_rank_name"
+                       on-change="changeStaffQuery(d, query, value)"
+                       on-select="setStaff(d, row)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(d)"
+                       readonly="!d.change_date"
+                       required-key>
+                <header>
+                  <div class="col-sm-5"><t>staff number</t></div>
+                  <div class="col-sm-9"><t>staff name</t></div>
+                  <div class="col-sm-5"><t>staff kind name</t></div>
+                  <div class="col-sm-5"><t>old rank name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-5">{{ row.staff_number }}</div>
+                  <div class="col-sm-9">{{ row.name }}</div>
+                  <div class="col-sm-5">{{ row.staff_kind_name }}</div>
+                  <div class="col-sm-5">{{ row.old_rank_name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>old rank name</t></label>
+              <span class="form-view">{{ d.old_rank_name }}</span>
+            </div>
+            <div class="form-group" ng-if="d.access_to_hidden_salary == 'Y' || q.user_id == d.employee_id">
+              <label><t>old wage</t></label>
+              <span class="form-view">{{ d.old_wage }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>new rank</t><r/></label>
+              <b-input name="ranks"
+                       model="d.rank_name | name"
+                       model-key="d.rank_id | rank_id"
+                       column="order_no"
+                       sort="order_no, name"
+                       is-add="fi.add_rank"
+                       on-add="addRank(d, value)"
+                       is-view="fi.select_rank"
+                       on-view="selectRank(d)"
+                       on-select="setRank(d, row)"
+                       readonly="!d.staff_id"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group" ng-if="d.access_to_hidden_salary == 'Y' || q.user_id == d.employee_id">
+              <label><t>new wage</t></label>
+              <span class="form-view">{{ d.new_wage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div ng-if="q.is_rank_change_multiple">
+        <div class="form-row">
+          <div class="col-sm mb-2">
+            <button type="button" class="btn btn-success" ng-click="setStaffs()" ng-if="fi.select_staff"><t>select</t></button>
+            <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm md-2">
+            <b-pg-controller name="staffs"/>
+          </div>
+        </div>
+        <b-pg-grid name="staffs" local-data="d.rank_changes" on-check="onCheck(checked)" iterator="item" search="staff_name, old_rank_name, new_rank_name">
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1">
+              <div class="text-center">{{ item.rownum }}</div>
+            </b-pg-col>
+            <b-pg-col name="change_date" size="4">
+              <div class="input-group">
+                <input type="text" class="form-control" ng-model="item.change_date" b-date-picker required/>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyDate() }}" on-click-yes="applDate(item)">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="staff_name" size="8">
+              <div class="form-group" >
+                <b-input name="staffs"
+                         model="item.staff_name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number"
+                         search="name"
+                         on-change="changeStaffQuery(item, query, value)"
+                         on-select="setStaff(item, row)"
+                         is-view="fi.select_staff"
+                         on-view="selectStaff(item)"
+                         required-key
+                         readonly="!item.change_date">
+                  <header>
+                    <div class="col-sm-8"><t>staff number</t></div>
+                    <div class="col-sm-16"><t>staff name</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-8">{{ row.staff_number }}</div>
+                    <div class="col-sm-16">{{ row.name }}</div>
+                  </content>
+                </b-input>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="old_rank_name" size="5"/>
+            <b-pg-col name="new_rank_name" size="5">
+              <div class="input-group">
+                <b-input name="ranks"
+                         model="item.rank_name | name"
+                         model-key="item.rank_id | rank_id"
+                         is-add="fi.add_rank"
+                         is-view="fi.select_rank"
+                         on-add="addRank(item, value)"
+                         on-change="changeRankQuery(query, value, item)"
+                         on-view="selectRank(item)"
+                         required-key
+                         readonly="!item.staff_id">
+                  {{ row.name }}
+                </b-input>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyRank() }}" on-click-yes="applRank(item)">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </div>
+</form></div>

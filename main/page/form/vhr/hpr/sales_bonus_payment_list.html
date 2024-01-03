@@ -1,0 +1,149 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var pg = page.grid('table');
+
+  pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${ row.posted == 'Y' ? 'primary' : 'secondary' }">${ row.posted_name }</span>`;
+  });
+  pg.asHtml('barcode_html', 'barcode', function(row) {
+    return `<img src="gen/barcode?text=${ row.barcode }&width=75&height=15&font-size=12"/>`;
+  });
+});
+page.ctrl(function(scope, fi, model, t) {
+  var q = { to_post: {}, to_unpost: {}, to_delete: {} };
+
+  function doAction(doFunc, doTrans, payment_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ payment_id: payment_id }).then(() => {
+        q.to_post = {};
+        q.to_unpost = {};
+        q.to_delete = {};
+
+        page.query('table').fetch();
+      }, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post payment No. $1{payment_number} of $2{payment_date}?')(row.payment_number, row.payment_date), row.payment_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1 payment(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'payment_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost payment No. $1{payment_number} of $2{payment_date}?')(row.payment_number, row.payment_date), row.payment_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1 payment(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'payment_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete payment No. $1{payment_number} of $2{payment_date}?')(row.payment_number, row.payment_date), row.payment_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{payment_count} payment(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'payment_id'));
+  }
+
+  function add(payment_type_id) {
+    fi.add({ payment_type_id: payment_type_id });
+  }
+
+  function edit(row) {
+    fi.edit({ payment_id: row.payment_id });
+  }
+
+  function transactions(row) {
+    window.open(page.url('transactions', {
+      rt: 'html',
+      payment_id: row.payment_id
+    }));
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit && row.posted == 'N' ? edit(row) : null;
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N');
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y');
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N');
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-if="fi.add" ng-click="add()" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="payment_id, payment_number, payment_date, posted" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-payment_date, -begin_date" search="payment_number" searchable="payment_id, payment_name, division_name, barcode, note"
+          extra-columns="payment_id, payment_name, division_name, job_name, cashbox_name, bank_account_name, note, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="payment_date" size=3/>
+      <b-col name="payment_number" size=3/>
+      <b-col name="begin_date" size=3/>
+      <b-col name="end_date" size=3/>
+      <b-col name="payment_type_name" size=6/>
+      <b-col name="amount" size=3 format="amount" align="right"/>
+      <b-col name="posted_name" size=2 as-html="posted_html"/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="barcode" as-html="barcode_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.posted == 'N'"><t>edit</t></button>
+      <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'">{{ fi.post.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'">{{ fi.unpost.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="transactions(row)" ng-if="fi.transactions && row.posted == 'Y'">{{ fi.transactions.title }}</button>
+    </b-action>
+
+    <b-filter name="payment_id" directive="equal" extra/>
+    <b-filter name="payment_date"/>
+    <b-filter name="payment_number"/>
+    <b-filter name="begin_date"/>
+    <b-filter name="end_date"/>
+    <b-filter name="payment_type" decorate-with="payment_type_name"/>
+    <b-filter name="amount"/>
+    <b-filter name="posted" decorate-with="posted_name"/>
+    <b-filter name="payment_name" extra/>
+    <b-filter name="division_id" decorate-with="division_name" extra/>
+    <b-filter name="job_id" decorate-with="job_name" extra/>
+    <b-filter name="cashbox_id" decorate-with="cashbox_name" extra/>
+    <b-filter name="bank_account_id" decorate-with="bank_account_name" extra/>
+    <b-filter name="barcode" extra/>
+    <b-filter name="note" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,590 @@
+<script biruni>
+page.init(function(param) {
+  var t = page.query('personal_requests_unchecked');
+  t.param({ employee_id: param.employee_id });
+  var g = page.query('personal_requests_checked');
+  g.param({ employee_id: param.employee_id });
+  var rk_accruals = page.query('request_kind_accruals');
+  rk_accruals.param({ employee_id: param.employee_id });
+
+  var statusClass = { N: 'warning', A: 'success', D: 'danger', C: 'primary' };
+
+  function prepareGrid(grid) {
+    grid.asHtml('status_html', 'status, status_name', row => {
+      return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+    });
+    grid.asHtml('barcode_html', 'barcode', row => {
+      return `<img src="gen/barcode?text=${ row.barcode }&width=75&height=15&font-size=12"/>`;
+    });
+  };
+  prepareGrid(page.grid('personal_requests_unchecked'));
+  prepareGrid(page.grid('personal_requests_checked'));
+});
+page.ctrl(function(scope, model, t, fi, $timeout) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {};
+
+  var modal = page.$content.find("form[name=modal]>.modal");
+  var approveModal = page.$content.find("form[name=approve_modal]>.modal");
+  var uncheckedGrid = page.query('personal_requests_unchecked');
+  var checkedGrid = page.query('personal_requests_checked');
+  var accrualsGrid = page.query('request_kind_accruals');
+
+  function fetchQuery() {
+    q.notFinished = {};
+    q.Finished = {};
+
+    uncheckedGrid.param({ employee_id: d.employee_id });
+    uncheckedGrid.fetch();
+
+    checkedGrid.param({ employee_id: d.employee_id });
+    checkedGrid.fetch();
+
+    accrualsGrid.param({ employee_id: d.employee_id });
+    accrualsGrid.fetch();
+  }
+
+
+  function saveRequest(edit) {
+    if (page.valid(scope.modal) && !(q.note_is_required == 'Y' && (!p.data.note || !q.note_valid))) {
+      let data = _.pick(p.data, ['begin_date',
+                                 'begin_time',
+                                 'end_time',
+                                 'end_date',
+                                 'request_type',
+                                 'request_kind_id',
+                                 'request_id',
+                                 'accrual_kind',
+                                 'note']);
+      data.employee_id = d.employee_id;
+      page.post(_.isUndefined(edit) ? ':add':':edit', data).then((result) => {
+        hideModal();
+        fetchQuery();
+      }, page.alert);
+    }
+  }
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function selectRequestKind() {
+    fi.select_request_kind({ employee_id: d.employee_id }, setRequestKind);
+  }
+
+  function changeRequestKindQuery(query, value) {
+    query.param(_.pick(d, 'employee_id'));
+    query.searchValue(value);
+  }
+
+  function loadRequestKindLimits() {
+    if (p.data.request_kind_id && p.data.annually_limited == 'Y' && p.data.begin_date) {
+      page.post(':load_request_limits', {
+        employee_id: d.employee_id,
+        staff_id: p.data.staff_id,
+        request_kind_id: p.data.request_kind_id,
+        begin_date: p.data.begin_date,
+        end_date: p.data.end_date || p.data.begin_date,
+        request_id: p.data.request_id
+      }).then(function(result) {
+        p.data.accruals = result;
+      }, page.alert);
+    }
+  }
+
+  function yearChange() {
+    if (!p.data.begin_date) return;
+    let end_date  = p.data.end_date || p.data.begin_date,
+        old_begin = p.data.begin_year,
+        old_end   = p.data.end_year,
+        new_begin = moment(p.data.begin_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD'),
+        new_end   = moment(end_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD');
+
+    if (old_begin != new_begin || old_end != new_end) {
+      p.data.begin_year = new_begin;
+      p.data.end_year = new_end;
+
+      loadRequestKindLimits();
+    }
+  }
+
+  function setRequestKind(row) {
+    if (!row) return;
+    p.data.request_kind_id = row.request_kind_id;
+    p.data.request_kind_name = row.name;
+    p.data.annually_limited = row.annually_limited;
+
+    q.plan_load_full_block = row.plan_load != q.plan_load_full;
+    p.data.request_type = q.plan_load_full_block ? q.request_type_part_of_day : q.request_type_full_day;
+
+    loadRequestKindLimits();
+  }
+
+  function addRequest() {
+    p.data = {
+      begin_date: moment().format('DD.MM.YYYY'),
+      request_type: q.request_type_part_of_day,
+      accrual_kind: q.accrual_kind_plan,
+      begin_year: moment().startOf('year').format('YYYYMMDD'),
+      end_year: moment().startOf('year').format('YYYYMMDD')
+    };
+    showModal();
+  }
+
+  function hasAccessDirect(row) {
+    return q.access_all_employee == 'Y' || row.access_level == q.ual_direct_employee;
+  }
+
+  function hasAccess(row) {
+    return hasAccessDirect(row) || row.access_level == q.ual_personal;
+  }
+
+  function hasView(row) {
+    return fi[(q.personal_mode == 'Y' ? 'view_personal' : 'view')] && hasAccess(row);
+  }
+
+  function view(row) {
+    return fi[(q.personal_mode == 'Y' ? 'view_personal' : 'view')]({ request_id: row.request_id });
+  }
+
+  function hasEdit(row) {
+    return fi.edit && row.status == 'N' && (q.access_all_employee == 'Y' || row.access_level == q.ual_personal);
+  }
+
+  function doAction(doFunc, doTrans, request_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ request_id: request_id }).then(fetchQuery, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans, is_modal, action, modal) {
+    return is_modal ? function(row) {
+      p.title = doTrans(row.request_kind_name, row.request_date);
+      p.data = { request_id: row.request_id };
+      p.action = function() {
+        doFunc(p.data).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      $timeout(() => modal.modal('show'));
+    } : function(row) {
+      doAction(doFunc, doTrans(row.request_kind_name, row.request_date), row.request_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key, is_modal, modal) {
+    return is_modal ? function(row) {
+        p.title = doTrans(q.notFinished[key].size);
+        p.data = { request_id: _.pluck(q.notFinished[key].rows, 'request_id') };
+        p.action = function() {
+          doFunc(p.data).then(page.reload, page.alert);
+        };
+        p.action_title = doFunc.title;
+        $timeout(() => modal.modal('show'));
+    } : function() {
+        doAction(doFunc, doTrans(q.notFinished[key].size), _.pluck(q.notFinished[key].rows, 'request_id'));
+    }
+  }
+
+  function prepFinishedActionMany(doFunc, doTrans, key, is_modal) {
+    return is_modal ? function(row) {
+        p.title = doTrans(q.Finished[key].size);
+        p.data = { request_id: _.pluck(q.Finished[key].rows, 'request_id') };
+        p.action = function() {
+          doFunc(p.data).then(page.reload, page.alert);
+        };
+        p.action_title = doFunc.title;
+    } : function() {
+        doAction(doFunc, doTrans(q.Finished[key].size), _.pluck(q.Finished[key].rows, 'request_id'));
+    }
+  }
+
+  function editModal(row) {
+    p.data = angular.copy(row);
+
+    page.post(':get_request_info', _.pick(row, ['request_kind_id', 'staff_id', 'request_id', 'begin_time', 'end_time'])).then(x => {
+      p.data.plan_load = q.plan_load = x.plan_load;
+      _.extend(p.data, _.omit(x, 'plan_load'));
+
+      p.data.begin_date = moment(p.data.begin_time, 'DD.MM.YYYY HH:mm:ss').format('DD.MM.YYYY');
+      p.data.begin_time = moment(p.data.begin_time, 'DD.MM.YYYY HH:mm:ss').format('HH:mm');
+      p.data.end_date = moment(p.data.end_time, 'DD.MM.YYYY HH:mm:ss').format('DD.MM.YYYY');
+      p.data.end_time = moment(p.data.end_time, 'DD.MM.YYYY HH:mm:ss').format('HH:mm');
+      p.data.request_date = moment(p.data.request_date, 'DD.MM.YYYY HH:mm:ss').format('DD.MM.YYYY');
+      p.data.begin_year = moment(p.data.begin_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD'),
+      p.data.end_year = moment(p.data.end_date || p.data.begin_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD');
+      p.data.edit = true;
+      showModal();
+    });
+  }
+
+  function report(row, rt) {
+    window.open(page.url('run', { request_id: row.request_id, rt: rt }));
+  }
+
+  function onDblclick(row) {
+    hasEdit(row) ? editModal(row) : null;
+  }
+
+  function prepChecked(key, checked, filterFunc, finishedGrid) {
+    if (finishedGrid) {
+      q.Finished[key] = {};
+      q.Finished[key].rows = _.filter(checked.rows(), filterFunc);
+      q.Finished[key].size = q.Finished[key].rows.length;
+      q.Finished[key].has = q.Finished[key].size > 0;
+    } else {
+      q.notFinished[key] = {};
+      q.notFinished[key].rows = _.filter(checked.rows(), filterFunc);
+      q.notFinished[key].size = q.notFinished[key].rows.length;
+      q.notFinished[key].has = q.notFinished[key].size > 0;
+    }
+  }
+
+  function onCheck(checked, finishedGrid) {
+    prepChecked('to_delete', checked, x => x.status == 'N' && hasAccess(x), finishedGrid);
+    prepChecked('to_approve', checked, x => x.status == 'N' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_deny', checked, x => x.status == 'N' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_complete', checked, x => x.status == 'A' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_cancel', checked, x => x.status == 'A' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_reset', checked, x => x.status != 'N' && hasAccessDirect(x), finishedGrid);
+  }
+
+  function changeNote(note) {
+    if (q.note_is_required == 'Y') {
+      q.note_valid = note.length > q.note_limit;
+    }
+  }
+
+  q.request_types = _.mapRows(q.request_types, ['kind', 'name']);
+  q.note_valid = true;
+  q.notFinished = {};
+  q.notFinished.to_delete = {};
+  q.notFinished.to_approve = {};
+  q.notFinished.to_deny = {};
+  q.notFinished.to_complete = {};
+  q.notFinished.to_cancel = {};
+  q.plan_load_full_block = q.plan_load ? q.plan_load != q.plan_load_full : null;
+
+  q.Finished = {};
+  q.Finished.to_reset = {};
+
+  q.personal_mode = model.personal_mode;
+
+  p.data = {};
+
+  scope.approveOne = prepActionOne(fi.approve, t('approve request $1{request_kind_name} on $2{request_date}?'), true, t('approve'), approveModal);
+  scope.approveMany = prepActionMany(fi.approve, t('approve $1{request_count} requests?'), 'to_approve', true, approveModal);
+  scope.denyOne = prepActionOne(fi.deny, t('deny request $1{request_kind_name} on $2{request_date}?'));
+  scope.denyMany = prepActionMany(fi.deny, t('deny $1{request_count} requests?'), 'to_deny');
+  scope.deleteOne = prepActionOne(fi.delete, t('delete request $1{request_kind_name} on $2{request_date}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{request_count} requests?'), 'to_delete');
+  scope.completeOne = prepActionOne(fi.complete, t('complete request $1{request_kind_name} on $2{request_date}?'));
+  scope.completeMany = prepActionMany(fi.complete, t('complete $1{request_count} requests?'), 'to_complete');
+  scope.cancelOne = prepActionOne(fi.cancel, t('cancel request $1{request_kind_name} on $2{request_date}?'));
+  scope.cancelMany = prepActionMany(fi.cancel, t('cancel $1{request_count} requests?'), 'to_cancel');
+  scope.resetOne = prepActionOne(fi.reset, t('reset request $1{request_kind_name} on $2{request_date}?'));
+  scope.resetMany = prepActionMany(fi.reset, t('reset $1{request_count} requests?'), 'to_reset');
+
+  scope.resetManyFinished = prepFinishedActionMany(fi.reset, t('reset $1{request_count} requests?'), 'to_reset');
+
+  scope.d = d;
+  scope.p = p;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <div class="card card-custom gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>unchecked requests</t></h3>
+      </div>
+      <div class="card-toolbar">
+        <button type="button" class="btn btn-outline-success" ng-click="addRequest()"><t>add</t></button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-primary" ng-click="approveMany()" ng-if="fi.approve" ng-show="q.notFinished.to_approve.has"><t p1="q.notFinished.to_approve.size">approve $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="denyMany()" ng-if="fi.deny" ng-show="q.notFinished.to_deny.has"><t p1="q.notFinished.to_deny.size">deny $1</t></button>
+          <button type="button" class="btn btn-primary" ng-click="completeMany()" ng-if="fi.complete" ng-show="q.notFinished.to_complete.has"><t p1="q.notFinished.to_complete.size">complete $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="cancelMany()" ng-if="fi.cancel" ng-show="q.notFinished.to_cancel.has"><t p1="q.notFinished.to_cancel.size">cancel $1</t></button>
+          <button type="button" class="btn btn-primary" ng-click="resetMany()" ng-if="fi.reset" ng-show="q.notFinished.to_reset.has"><t p1="q.notFinished.to_reset.size">reset $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.notFinished.to_delete.has"><t p1="q.notFinished.to_delete.size">delete $1</t></button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-grid-controller name="personal_requests_unchecked"/>
+        </div>
+      </div>
+      <b-grid name="personal_requests_unchecked" required="request_id, staff_id, request_kind_name, request_date, accrual_kind, status, access_level, begin_time, end_time, request_type, request_kind_id, note"
+              on-dblclick="onDblclick(row)" sort="-request_date"
+              on-check="onCheck(checked, false)" search="request_kind_name, note, manager_note" searcheable="request_id, request_kind_name"
+              extra-columns="request_id, request_type_name, begin_time, end_time, accrual_kind_name, approved_by_name, created_by_name, created_on, modified_by_name, modified_on">
+        <b-row>
+          <b-col name="request_date" size=3/>
+          <b-col name="request_kind_name" size=6/>
+          <b-col name="request_time" size=3/>
+          <b-col name="note" size=4/>
+          <b-col name="manager_note" size=4/>
+          <b-col name="status_name" as-html="status_html" size=3/>
+        </b-row>
+
+        <b-extra-columns>
+          <b-col name="barcode" as-html="barcode_html"/>
+        </b-extra-columns>
+
+        <b-action>
+          <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+          <button type="button" class="btn btn-default" ng-click="editModal(row)" ng-if="hasEdit(row)"><t>edit</t></button>
+          <button type="button" class="btn btn-default" ng-click="approveOne(row)" ng-if="fi.approve && row.status == 'N' && hasAccessDirect(row)">{{ fi.approve.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="denyOne(row)" ng-if="fi.deny && row.status == 'N' && hasAccessDirect(row)">{{ fi.deny.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="completeOne(row)" ng-if="fi.complete && row.status == 'A' && hasAccessDirect(row)">{{ fi.complete.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="cancelOne(row)" ng-if="fi.cancel && row.status == 'A' && hasAccessDirect(row)">{{ fi.cancel.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N' && hasAccessDirect(row)">{{ fi.reset.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N' && hasAccess(row)">{{ fi.delete.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="report(row, 'html')">
+            <a href="" ng-click="report(row, 'xlsx')"><span class="far fa-file-excel" style="font-size: 14px;"></span></a>
+            <t>report</t>
+          </button>
+        </b-action>
+
+        <b-filter name="request_id" directive="equal" extra/>
+        <b-filter name="request_date"/>
+        <b-filter name="request_kind_id" decorate-with="request_kind_name"/>
+        <b-filter name="request_type" decorate-with="request_type_name"/>
+        <b-filter name="status" decorate-with="status_name"/>
+        <b-filter name="begin_time"/>
+        <b-filter name="end_time"/>
+        <b-filter name="accrual_kind" decorate-with="accrual_kind_name" extra/>
+        <b-filter name="barcode" directive="equal" extra/>
+        <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+        <b-filter name="created_by" decorate-with="created_by_name" extra/>
+        <b-filter name="created_on" extra/>
+        <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+        <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+  <div class="card card-custom gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>checked requests</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-primary" ng-click="resetManyFinished()" ng-if="fi.reset" ng-show="q.Finished.to_reset.has"><t p1="q.Finished.to_reset.size">reset $1</t></button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-grid-controller name="personal_requests_checked"/>
+        </div>
+      </div>
+      <b-grid name="personal_requests_checked" required="request_id, staff_id, request_kind_name, request_date, accrual_kind, status, access_level" on-dblclick="onDblclick(row)" sort="-request_date"
+              on-check="onCheck(checked, true)" search="request_kind_name, note, manager_note" searcheable="request_id, request_kind_name"
+              extra-columns="request_id, request_type_name, begin_time, end_time, accrual_kind_name, approved_by_name, completed_by_name, created_by_name, created_on, modified_by_name, modified_on">
+        <b-row>
+          <b-col name="request_date" size=3/>
+          <b-col name="request_kind_name" size=6/>
+          <b-col name="request_time" size=3/>
+          <b-col name="note" size=4/>
+          <b-col name="manager_note" size=4/>
+          <b-col name="status_name" as-html="status_html" size=3/>
+        </b-row>
+
+        <b-extra-columns>
+          <b-col name="barcode" as-html="barcode_html"/>
+        </b-extra-columns>
+
+        <b-action>
+          <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+          <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N' && hasAccessDirect(row)">{{ fi.reset.title }}</button>
+          <button type="button" class="btn btn-default" ng-click="report(row, 'html')">
+            <a href="" ng-click="report(row, 'xlsx')"><span class="far fa-file-excel" style="font-size: 14px;"></span></a>
+            <t>report</t>
+          </button>
+        </b-action>
+
+        <b-filter name="request_id" directive="equal" extra/>
+        <b-filter name="request_date"/>
+        <b-filter name="request_kind_id" decorate-with="request_kind_name"/>
+        <b-filter name="request_type" decorate-with="request_type_name"/>
+        <b-filter name="status" decorate-with="status_name"/>
+        <b-filter name="begin_time"/>
+        <b-filter name="end_time"/>
+        <b-filter name="accrual_kind" decorate-with="accrual_kind_name" extra/>
+        <b-filter name="barcode" directive="equal" extra/>
+        <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+        <b-filter name="completed_by" decorate-with="completed_by_name" extra/>
+        <b-filter name="created_by" decorate-with="created_by_name" extra/>
+        <b-filter name="created_on" extra/>
+        <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+        <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+  <div class="card card-custom gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>request kind accruals</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="offset-sm-14 col-sm-10 mb-2">
+          <b-grid-controller name="request_kind_accruals"/>
+        </div>
+      </div>
+      <b-grid name="request_kind_accruals" sort="-period_end" search="request_kind_name, accrual_kind_name" extra-columns="request_kind_id">
+        <b-row>
+          <b-col name="request_kind_name" size="5"/>
+          <b-col name="accrual_kind_name" size="4"/>
+          <b-col name="period_begin" size="3"/>
+          <b-col name="period_end" size="3"/>
+          <b-col name="accrued_days" size="3"/>
+          <b-col name="used_days" size="3"/>
+          <b-col name="left_days" size="3"/>
+        </b-row>
+
+        <b-filter name="request_kind_id" decorate-with="request_kind_name"/>
+        <b-filter name="accrual_kind" decorate-with="accrual_kind_name"/>
+        <b-filter name="period_begin"/>
+        <b-filter name="period_end"/>
+      </b-grid>
+    </div>
+  </div>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>add request</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>request kind</t><r/></label>
+              <b-input name="request_kinds"
+                       model="p.data.request_kind_name | name"
+                       model-key="p.data.request_kind_id | request_kind_id"
+                       column="user_permitted, plan_load, annually_limited"
+                       on-change="changeRequestKindQuery(query, value)"
+                       is-view="fi.select_request_kind"
+                       on-view="selectRequestKind()"
+                       on-select="setRequestKind(row)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="card card-custom card-body form-group" style="background-color: #ffffff !important;" ng-if="p.data.request_kind_id && p.data.annually_limited == 'Y'">
+              <div class="form-group">
+                <div class="row">
+                  <div class="col-sm-6"><label><t>limit period</t></label></div>
+                  <div class="col-sm-6"><label><t>accrued days</t></label></div>
+                  <div class="col-sm-6"><label><t>used days</t></label></div>
+                  <div class="col-sm-6"><label><t>left days</t></label></div>
+                </div>
+              </div>
+              <div class="form-group" ng-repeat="accrual in p.data.accruals">
+                <div class="row" ng-if="p.data.accrual_kind == q.accrual_kind_plan">
+                  <div class="col-sm-6"><label class="text-muted">{{ accrual.plan_end_date }}</label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_accrued_days">$1 days</t></label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_used_days">$1 days</t></label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_left_days">$1 days</t></label></div>
+                </div>
+                <div class="row" ng-if="p.data.accrual_kind == q.accrual_kind_carryover">
+                  <div class="col-sm-6"><label class="text-muted">{{ accrual.carryover_end_date }}</label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_accrued_days">$1 days</t></label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_used_days">$1 days</t></label></div>
+                  <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_left_days">$1 days</t></label></div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="radio" ng-repeat="item in q.request_types">
+                <input type="radio" name="request_type" value="{{ item.kind }}" ng-model="p.data.request_type"
+                        ng-disabled=" q.plan_load_full_block !== null
+                        && !q.plan_load_full_block && item.kind == q.request_type_part_of_day"/>
+                <span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <div class="form-row">
+                <div ng-class="d.request_type == q.request_type_part_of_day ? 'col-sm-8 mb-sm-0 mb-4' : 'col-sm-8'" ng-if="p.data.request_type != q.request_type_multiple_days">
+                  <label><t>request date</t><r/></label>
+                  <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="p.data.begin_date" ng-change="yearChange()" required/>
+                </div>
+                <div class="col-sm-8 mb-sm-0 mb-4" ng-if="p.data.request_type == q.request_type_part_of_day">
+                  <label><t>begin time</t><r/></label>
+                  <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="p.data.begin_time" required/>
+                </div>
+                <div class="col-sm-8 mb-sm-0 mb-4" ng-if="p.data.request_type == q.request_type_part_of_day">
+                  <label><t>end time</t><r/></label>
+                  <input type="text" class="form-control" ng-model="p.data.end_time" b-date-picker="HH:mm" required/>
+                </div>
+                <div class="col-sm-8 mb-sm-0 mb-4" ng-if="p.data.request_type == q.request_type_multiple_days">
+                  <label><t>begin date</t><r/></label>
+                  <input type="text" class="form-control" ng-model="p.data.begin_date" b-date-picker="DD.MM.YYYY" ng-change="yearChange()" required/>
+                </div>
+                <div class="col-sm-8 mb-sm-0 mb-4" ng-if="p.data.request_type == q.request_type_multiple_days">
+                  <label><t>end date</t><r/></label>
+                  <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker="DD.MM.YYYY" ng-change="yearChange()" required/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-if="p.data.annually_limited == 'Y'">
+              <label><t>accrual kind</t></label><br/>
+              <label class="radio">
+                <input type="radio" name="accrual_kind" value="{{ q.accrual_kind_plan }}" ng-model="p.data.accrual_kind"/>
+                <span><t>plan</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="accrual_kind" value="{{ q.accrual_kind_carryover }}" ng-model="p.data.accrual_kind"/>
+                <span><t>carryover</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>note</t><r ng-if="q.note_is_required == 'Y'"/></label>
+              <textarea class="form-control" rows="4" ng-change="changeNote(p.data.note)" ng-model="p.data.note" ng-required="q.note_is_required == 'Y'"/>
+              <small ng-if="q.note_is_required == 'Y' && !q.note_valid" class="form-text text-danger mt-0"><t p1="q.note_limit">letters must be minimum: $1</t></small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveRequest()" ng-if="!p.data.edit"><t>add</t></button>
+            <button type="button" class="btn btn-primary" ng-click="saveRequest(true)" ng-if="p.data.edit"><t>edit</t></button>
+            <button type="button" class="btn btn-default" ng-click="hideModal()"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="approve_modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>manager note</t></label>
+              <textarea class="form-control" rows=3 ng-model="p.data.manager_note"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="p.action()">{{ p.action_title }}</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

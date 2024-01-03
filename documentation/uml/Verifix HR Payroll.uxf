@@ -1,0 +1,339 @@
+<diagram program="umletino" version="15.0.0"><zoom_level>8</zoom_level><help_text>// Uncomment the following line to change the fontsize and font:
+fontsize=10
+// fontfamily=SansSerif //possible: SansSerif,Serif,Monospaced
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// Welcome to UMLet!
+//
+// Double-click on elements to add them to the diagram, or to copy them
+// Edit elements by modifying the text in this panel
+// Hold Ctrl to select multiple elements
+// Use Ctrl+mouse to select via lasso
+//
+// Use +/- or Ctrl+mouse wheel to zoom
+// Drag a whole relation at its central square icon
+//
+// Press Ctrl+C to copy the whole diagram to the system clipboard (then just paste it to, eg, Word)
+// Edit the files in the "palettes" directory to create your own element palettes
+//
+// Select "Custom Elements &gt; New..." to create new element types
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// This text will be stored with each diagram;  use it for notes.</help_text><element><id>UMLClass</id><coordinates><x>704</x><y>304</y><w>920</w><h>648</h></coordinates><panel_attributes>lt=.
+--
+*VERIFIX*
+*HPR BOOK*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>0</x><y>304</y><w>696</w><h>648</h></coordinates><panel_attributes>lt=.
+--
+*ANOR*
+*MPR BOOK*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>8</x><y>344</y><w>168</w><h>104</h></coordinates><panel_attributes>*MPR_SETTINGS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+INCOME_TAX_EXISTS
+/INCOME_TAX_RATE/
+PENSION_PAYMENT_EXISTS
+/PENSION_PAYMENT_RATE/
+SOCIAL_PAYMENT_EXISTS
+/SOCIAL_PAYMENT_RATE/
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>896</x><y>344</y><w>168</w><h>96</h></coordinates><panel_attributes>*HPR_OPER_GROUPS*
+--
+*COMPANY_ID*
+*OPER_GROUP_ID*
+OPERATION_KIND
+NAME
+ESTIMATION_TYPE
+/ESTIMATION_FORMULA/
+PCODE</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>520</x><y>344</y><w>168</w><h>248</h></coordinates><panel_attributes>*MPR_BOOKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*BOOK_ID*
+BOOK_NUMBER
+BOOK_DATE
+/BOOK_NAME/
+/MONTH/
+/DIVISION_ID/
+CURRENCY_ID
+POSTED
+BARCODE
+/NOTE/
+/C_ACCRUED_AMOUNT/
+/C_ACCRUED_AMOUNT_BASE/
+/C_DEDUCTED_AMOUNT/
+/C_DEDUCTED_AMOUNT_BASE/
+/C_INCOME_TAX_AMOUNT/
+/C_PENSION_PAYMENT_AMOUNT/
+/C_SOCIAL_PAYMENT_AMOUNT/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>520</x><y>624</y><w>168</w><h>152</h></coordinates><panel_attributes>*MPR_BOOK_OPERATIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*BOOK_ID*
+*OPERATION_ID*
+EMPLOYEE_ID
+OPER_TYPE_ID
+AMOUNT
+AMOUNT_BASE
+/NET_AMOUNT/
+/INCOME_TAX_AMOUNT/
+/PENSION_PAYMENT_AMOUNT/
+/SOCIAL_PAYMENT_AMOUNT/
+/ORDER_NO/</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>592</x><y>584</y><w>24</w><h>56</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;50</additional_attributes></element><element><id>Relation</id><coordinates><x>424</x><y>568</y><w>192</w><h>72</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;50;220;50;220;70</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1448</x><y>344</y><w>168</w><h>96</h></coordinates><panel_attributes>*HPR_BOOK_TYPES*
+--
+*COMPANY_ID*
+*BOOK_TYPE_ID*
+NAME
+PCODE</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>720</x><y>504</y><w>168</w><h>64</h></coordinates><panel_attributes>*HPR_BOOKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*BOOK_ID*
+BOOK_TYPE_ID</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1448</x><y>472</y><w>168</w><h>64</h></coordinates><panel_attributes>*HPR_BOOK_TYPE_BINDS*
+--
+*COMPANY_ID*
+*BOOK_TYPE_ID*
+*OPER_GROUP_ID*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>0</x><y>960</y><w>1624</w><h>240</h></coordinates><panel_attributes>lt=.
+--
+*HPR Algorithm*</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>984</y><w>656</w><h>32</h></coordinates><panel_attributes>*Timebook actions*
+lt=-</panel_attributes><additional_attributes>10;20;800;20</additional_attributes></element><element><id>UMLClass</id><coordinates><x>264</x><y>1016</y><w>168</w><h>40</h></coordinates><panel_attributes>Timebook - Post
+--
+Creates Lock Intervals</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>448</x><y>1016</y><w>168</w><h>40</h></coordinates><panel_attributes>Timebook - Unpost
+--
+Delete Lock Intervals</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>720</x><y>600</y><w>168</w><h>104</h></coordinates><panel_attributes>*HPR_BOOK_OPERATIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*BOOK_ID*
+*OPERATION_ID*
+STAFF_ID
+/CHARGE_ID/
+AUTOFILLED
+--
+Autofilled is "Yes" then Charge_id is not null
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>720</x><y>344</y><w>168</w><h>144</h></coordinates><panel_attributes>*HPR_INDICATORS*
+--
+*COMPANY_ID*
+*INDICATOR_ID*
+NAME
+/SHORT_NAME/
+IDENTIFIER
+/USED/
+STATE
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1264</x><y>472</y><w>168</w><h>64</h></coordinates><panel_attributes>*HPR_OPER_TYPE_INDICATORS*
+--
+*COMPANY_ID*
+*OPER_TYPE_ID*
+*INDICATOR_ID*
+IDENTIFIER
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1264</x><y>344</y><w>168</w><h>96</h></coordinates><panel_attributes>*HPR_OPER_TYPES*
+--
+*COMPANY_ID*
+*OPER_TYPE_ID*
+/OPER_GROUP_ID/
+/ESTIMATION_TYPE/
+/ESTIMATION_FORMULA/
+/PCODE/
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>184</x><y>344</y><w>160</w><h>184</h></coordinates><panel_attributes>*MPR_OPER_TYPE_TEMPLATES*
+--
+*TEMPLATE_ID*
+*OPER_TYPE_ID*
+OPERATION_KIND
+NAME
+/SHORT_NAME/
+/ACCOUNTING_TYPE/
+/CORR_COA_ID/
+/CORR_REF_SET/
+/INCOME_TAX_EXISTS/
+/INCOME_TAX_RATE/
+/PENSION_PAYMENT_EXISTS/
+/PENSION_PAYMENT_RATE/
+/SOCIAL_PAYMENT_EXISTS/
+/SOCIAL_PAYMENT_RATE/
+/NOTE/
+STATE
+/CODE/
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>352</x><y>344</y><w>160</w><h>232</h></coordinates><panel_attributes>*MPR_OPER_TYPES*
+--
+*COMPANY_ID*
+*OPER_TYPE_ID*
+OPERATION_KIND
+NAME
+/SHORT_NAME/
+/ACCOUNTING_TYPE/
+/CORR_COA_ID/
+/CORR_REF_SET/
+/INCOME_TAX_EXISTS/
+/INCOME_TAX_RATE/
+/PENSION_PAYMENT_EXISTS/
+/PENSION_PAYMENT_RATE/
+/SOCIAL_PAYMENT_EXISTS/
+/SOCIAL_PAYMENT_RATE/
+/NOTE/
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>8</x><y>512</y><w>168</w><h>272</h></coordinates><panel_attributes>*MPR_PAYMENTS*
+--
+*COMPANY_ID*
+*PAYMENT_ID*
+FILIAL_ID
+STATUS
+PAYMENT_NUMBER
+PAYMENT_DATE
+BOOKED_DATE
+CURRENCY_ID
+PAYMENT_TYPE
+/CASHBOX_ID/
+/BANK_ACCOUNT_ID/
+AMOUNT
+AMOUNT_BASE
+PAID_AMOUNT
+PAID_AMOUNT_BASE
+/UNPAID_AMOUNT/
+/UNPAID_AMOUNT_BASE/
+/NOTE/
+SOURCE_TABLE
+/SOURCE_ID/
+/BARCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>8</x><y>808</y><w>168</w><h>128</h></coordinates><panel_attributes>*MPR_PAYMENT_EMPLOYEES*
+--
+*COMPANY_ID*
+*PAYMENT_ID*
+*FILIAL_ID*
+*EMPLOYEE_ID*
+/BANK_ACCOUNT_ID/
+PAY_AMOUNT
+PAY_AMOUNT_BASE
+/PAID_DATE/
+PAID
+/NOTE/
+ORDER_NO
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>72</x><y>776</y><w>24</w><h>48</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;40</additional_attributes></element><element><id>Relation</id><coordinates><x>960</x><y>320</y><w>400</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;30;10;10;480;10;480;30</additional_attributes></element><element><id>Relation</id><coordinates><x>1336</x><y>432</y><w>24</w><h>56</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;50</additional_attributes></element><element><id>Relation</id><coordinates><x>1520</x><y>432</y><w>24</w><h>56</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;50</additional_attributes></element><element><id>Relation</id><coordinates><x>1336</x><y>320</y><w>208</w><h>168</h></coordinates><panel_attributes></panel_attributes><additional_attributes>10;10;130;10;130;170;240;170;240;190</additional_attributes></element><element><id>Relation</id><coordinates><x>680</x><y>344</y><w>56</w><h>184</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes><additional_attributes>10;10;40;10;40;210;50;210</additional_attributes></element><element><id>Relation</id><coordinates><x>640</x><y>600</y><w>96</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes><additional_attributes>10;30;10;10;100;10</additional_attributes></element><element><id>Relation</id><coordinates><x>792</x><y>560</y><w>24</w><h>56</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;50</additional_attributes></element><element><id>UMLClass</id><coordinates><x>0</x><y>0</y><w>696</w><h>296</h></coordinates><panel_attributes>lt=.
+--
+*VERIFIX*
+*HPR TIMEBOOK*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>8</x><y>48</y><w>168</w><h>160</h></coordinates><panel_attributes>*HPR_TIMEBOOKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMEBOOK_ID*
+TIMEBOOK_NUMBER
+TIMEBOOK_DATE
+MONTH
+/DIVISION_ID/
+STATUS
+/NOTE/
+BARCODE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>200</x><y>48</y><w>168</w><h>136</h></coordinates><panel_attributes>*HPR_TIMEBOOK_STAFFS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMEBOOK_ID*
+*STAFF_ID*
+SCHEDULE_ID
+JOB_ID
+DIVISION_ID
+PLAN_DAYS
+PLAN_HOURS
+FACT_DAYS
+FACT_HOURS
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>400</x><y>48</y><w>168</w><h>88</h></coordinates><panel_attributes>*HPR_TIMESHEET_LOCKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*STAFF_ID*
+*TIMESHEET_DATE*
+TIMEBOOK_ID
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>200</x><y>200</y><w>168</w><h>88</h></coordinates><panel_attributes>*HPR_TIMEBOOK_FACTS*
+--
+*COMPANY_ID*
+*FILIAL_ID (new)*
+*TIMEBOOK_ID*
+*STAFF_ID*
+*TIME_KIND_ID*
+FACT_HOURS
+  </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>168</x><y>48</y><w>48</w><h>24</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;40;10</additional_attributes></element><element><id>Relation</id><coordinates><x>360</x><y>48</y><w>56</w><h>24</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;50;10</additional_attributes></element><element><id>Relation</id><coordinates><x>288</x><y>176</y><w>24</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;30</additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>1080</y><w>656</w><h>32</h></coordinates><panel_attributes>*Book actions*
+lt=-</panel_attributes><additional_attributes>10;20;800;20</additional_attributes></element><element><id>UMLClass</id><coordinates><x>152</x><y>1112</y><w>168</w><h>40</h></coordinates><panel_attributes>Book - Unpost
+--
+Changes Charges status Calculated to Used</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>344</x><y>1112</y><w>168</w><h>40</h></coordinates><panel_attributes>Book - Post
+--
+Changes Charges status Used to Completed</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>536</x><y>1112</y><w>168</w><h>40</h></coordinates><panel_attributes>Book - Delete
+--
+Changes Charges status Used to Calculated</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>704</x><y>0</y><w>920</w><h>296</h></coordinates><panel_attributes>lt=.
+--
+*VERIFIX*
+*HPR CHARGES*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>728</x><y>48</y><w>184</w><h>176</h></coordinates><panel_attributes>*HPR_CHARGES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*CHARGE_ID*
+INTERVAL_ID
+BEGIN_DATE
+END_DATE
+OPER_TYPE_ID
+AMOUNT
+DIVISION_ID (for filtering purpose)
+SCHEDULE_ID (cache)
+JOB_ID (cache)
+/RANK_ID (cache)/
+/POSITION_ID (cache)/
+STATUS
+(New, Used, Completed)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>904</x><y>48</y><w>64</w><h>24</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;60;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>952</x><y>48</y><w>184</w><h>88</h></coordinates><panel_attributes>*HPR_CHARGE_INDICATORS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*CHARGE_ID*
+*INDICATOR_ID*
+INDICATOR_VALUE</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>880</x><y>48</y><w>392</w><h>576</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>40;10;70;10;70;300;470;300;470;540;50;540;50;700;10;700</additional_attributes></element><element><id>UMLClass</id><coordinates><x>128</x><y>1256</y><w>184</w><h>96</h></coordinates><panel_attributes>Charge - New
+--
+1. Created by HR
+2. When Kind - Timebook, then 
+takes oper_type_ids from 
+hpd_page_oper_types
+3. When Kind - Timeoff
+takes oper_type(created by system)
+It depends on Timeoff Kind</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>544</x><y>1256</y><w>184</w><h>96</h></coordinates><panel_attributes>Charge - Completed
+--
+1. Changed by Accountant
+2. Book is posted</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>0</x><y>1208</y><w>1624</w><h>280</h></coordinates><panel_attributes>lt=.
+--
+*HPR Interval Records Algorithm*</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>336</x><y>1256</y><w>184</w><h>96</h></coordinates><panel_attributes>Charge - Used
+--
+1. Changed by Accountant
+2. Book is unposted</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>232</x><y>1224</y><w>216</w><h>48</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=orange
+Book Save</panel_attributes><additional_attributes>250;40;230;20;30;20;10;40</additional_attributes></element><element><id>Relation</id><coordinates><x>440</x><y>1224</y><w>216</w><h>48</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=#00aa00
+Book Post</panel_attributes><additional_attributes>250;40;230;20;30;20;10;40</additional_attributes></element><element><id>Relation</id><coordinates><x>440</x><y>1344</y><w>224</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=red
+Book Unpost</panel_attributes><additional_attributes>10;10;40;30;250;30;260;10</additional_attributes></element><element><id>Relation</id><coordinates><x>216</x><y>1344</y><w>224</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+fg=red
+Book Delete</panel_attributes><additional_attributes>10;10;40;30;250;30;260;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>400</x><y>168</y><w>168</w><h>80</h></coordinates><panel_attributes>*HPR_TIMEBOOK_INTERVALS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMEBOOK_ID*
+*STAFF_ID*
+INTERVAL_ID</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>360</x><y>48</y><w>56</w><h>144</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;30;10;30;160;50;160</additional_attributes></element></diagram>

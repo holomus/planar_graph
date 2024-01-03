@@ -1,0 +1,17 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{wage_scale_count} wage scale(s)?": "<b>$1</b> ta tarif setka(lar)ni o'chirmoqchimisiz?",
+ "delete wage scale $1{wage_scale_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "info": "Ko'rish",
+ "list": "Shakllantirishlar",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.full_name": "To'liq nom",
+ "table.last_changed_date": "So'nggi o'zgarish sanasi",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.state_name": "Holat",
+ "table.wage_scale_id": "ID"
+}

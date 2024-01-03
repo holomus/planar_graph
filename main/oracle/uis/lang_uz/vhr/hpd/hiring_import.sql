@@ -1,0 +1,45 @@
+prompt PATH TRANSLATE /vhr/hpd/hiring_import
+begin
+uis.lang_uz('#a:/vhr/hpd/hiring_import$save_setting','Sozlamalarni saqlash');
+uis.lang_uz('#f:/vhr/hpd/hiring_import','Ishga qabul qilish / Import');
+uis.lang_uz('ui-vhr126:concluding term','Yakunlovchi muddat');
+uis.lang_uz('ui-vhr126:contract date','Shartnoma sanasi');
+uis.lang_uz('ui-vhr126:contract number','Shartnoma raqami');
+uis.lang_uz('ui-vhr126:division code','Bo''lim kodi');
+uis.lang_uz('ui-vhr126:division name','Bo''lim');
+uis.lang_uz('ui-vhr126:employee code','Xodim kodi');
+uis.lang_uz('ui-vhr126:employee name','Xodim');
+uis.lang_uz('ui-vhr126:employment type name','Bandlik turi');
+uis.lang_uz('ui-vhr126:expiry date','Shartnoma muddati');
+uis.lang_uz('ui-vhr126:fixed term','Muddatli mehnat shartnomasi');
+uis.lang_uz('ui-vhr126:fixed term base code','Muddatli shartnoma tuzish uchun asoslar (kod)');
+uis.lang_uz('ui-vhr126:fixed term base name','Muddatli shartnoma uchun asos');
+uis.lang_uz('ui-vhr126:fixed_term:no','Yo''q');
+uis.lang_uz('ui-vhr126:fixed_term:yes','Ha');
+uis.lang_uz('ui-vhr126:fte','Ish vaqti turi');
+uis.lang_uz('ui-vhr126:hiring conditions','Ishga qabul qilish shartlari');
+uis.lang_uz('ui-vhr126:hiring date','Ishga qabul qilish sanasi');
+uis.lang_uz('ui-vhr126:hirings','Ro''yxat bilan qabul qilish');
+uis.lang_uz('ui-vhr126:identifier:code','Kod');
+uis.lang_uz('ui-vhr126:identifier:name','Nom');
+uis.lang_uz('ui-vhr126:indicator value','Ko''rsatkich qiymati');
+uis.lang_uz('ui-vhr126:job code','Lavozim kodi');
+uis.lang_uz('ui-vhr126:job name','Lavozim');
+uis.lang_uz('ui-vhr126:oper type name','Amaliyot turi');
+uis.lang_uz('ui-vhr126:other conditions','Boshqa shartlar');
+uis.lang_uz('ui-vhr126:rank','Daraja');
+uis.lang_uz('ui-vhr126:rank code','Daraja kodi');
+uis.lang_uz('ui-vhr126:rank name','Daraja');
+uis.lang_uz('ui-vhr126:representative basis','Vakillik asoslari');
+uis.lang_uz('ui-vhr126:robot code','Ish o''rni kodi');
+uis.lang_uz('ui-vhr126:robot name','Ish o''rni');
+uis.lang_uz('ui-vhr126:schedule code','Ish jadvali kodi');
+uis.lang_uz('ui-vhr126:schedule name','Ish jadvali');
+uis.lang_uz('ui-vhr126:staff_number','Xodim raqami');
+uis.lang_uz('ui-vhr126:trial period','Sinov muddati (kun)');
+uis.lang_uz('ui-vhr126:vacation days limit','Yillik mehnat ta''tili davomiyligi');
+uis.lang_uz('ui-vhr126:vacation days limit must be between 0 and 365','Yillik mehnat ta''tili davomiyligi 0 dan 365 gacha bo''lishi kerak');
+uis.lang_uz('ui-vhr126:workplace equipment','Ish joyidagi jihozlar');
+commit;
+end;
+/

@@ -1,0 +1,11 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{plan_group_count} ?": "Do you really want to delete <b>$1</b> group(s)?",
+ "delete plan group $1{plan_group_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.name": "Name",
+ "table.order_no": "No.",
+ "table.plan_group_id": "ID",
+ "table.plan_type_count": "Measures Qty",
+ "table.state_name": "Status"
+}

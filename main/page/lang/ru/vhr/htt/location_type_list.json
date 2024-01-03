@@ -1,0 +1,15 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{location_type_count} location type(s)?": "Удалить типы локаций в количестве <b>$1</b>?",
+ "delete location type $1{location_type_name}?": "Удалить $1?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.color": "Цвет",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.location_type_id": "ИД",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

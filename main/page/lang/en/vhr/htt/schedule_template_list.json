@@ -1,0 +1,16 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{schedule_template_count} schedule_template(s)?": "Do you really want to delete <b>$1</b> work schedule template(s)?",
+ "delete schedule_template $1{schedule_template_name}?": "Do you really want to delete <b>$1</b>?",
+ "table.count_early_name": "Early Check Out",
+ "table.count_lack_name": "Absence",
+ "table.count_late_name": "Late Check In",
+ "table.description": "Description",
+ "table.input_acceptance_time": "Advance Check In",
+ "table.name": "Name",
+ "table.output_acceptance_time": "Advance Check Out",
+ "table.shift_time": "Shift Period",
+ "table.state_name": "Status",
+ "table.template_id": "ID",
+ "table.track_duration_time": "Track Period"
+}

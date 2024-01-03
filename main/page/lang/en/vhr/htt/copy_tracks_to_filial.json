@@ -1,0 +1,14 @@
+{
+ "copiable tracks are succesfully copied": "Tracks copied successfully",
+ "fill": "Fill",
+ "no copiable tracks found for any employees": "Copiable tracks not found",
+ "no copiable tracks found for selected $1{employee count} employees": "Copiable tracks not found for $1 employee(s)",
+ "pg.employees.division_name": "Department",
+ "pg.employees.employee_number": "PersNo",
+ "pg.employees.hiring_date": "Hiring Date",
+ "pg.employees.job_name": "Job",
+ "pg.employees.name": "Full Name",
+ "pg.employees.tracks_count": "Number of tracks",
+ "successfully data loaded, $1{loaded employee count} employee(s) have(s) copiable tracks": "$1 employee(s) have copiable tracks",
+ "successfully data loaded, $1{loaded employee count} out of $2{selected employee count} employee(s) have(s) copiable tracks": "$1 employee(s) have copiable tracks out of $2"
+}

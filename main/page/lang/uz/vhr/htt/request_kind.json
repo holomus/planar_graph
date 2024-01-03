@@ -1,0 +1,21 @@
+{
+ "active": "Faol",
+ "allow unused time": "Foydalanilmagan vaqtni inobatga olish",
+ "annual day limit": "Yillik kunlari miqdori",
+ "annually limited": "Yillik",
+ "carryover cap (days)": "Ko'chirish limiti (kun)",
+ "carryover policy": "Ko'chirish siyosati",
+ "day count type": "Taqdim etilish kunlari turi",
+ "Eg: 30": "Masalan: 30",
+ "Eg: 5": "Masalan: 5",
+ "expires after (days)": "Ko'chirish ishlatilish muddati",
+ "name": "Nom",
+ "passive": "Faol emas",
+ "request restriction days": "Kunlar miqdori",
+ "request with restriction days": "So'rov vaqtini chegaralash",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "state": "Holat",
+ "time kind": "Vaqt turi",
+ "user permitted": "Barcha xodimlarga beriladi"
+}

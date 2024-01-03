@@ -1,0 +1,22 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{operation_count} operation(s)?": "Удалить начисления в количестве <b>$1</b>?",
+ "delete operation $1{operation_name}?": "Удалить начисление <b>$1</b>?",
+ "select": "Выбрать",
+ "table.accounting_type_name": "Бухгалтерский учет",
+ "table.code": "Код",
+ "table.corr_coa_name": "Счет",
+ "table.corr_ref_set": "Субконто",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.estimation_formula": "Формула",
+ "table.estimation_type_name": "Расчет и показатели",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.note": "Описание",
+ "table.oper_group_name": "Назначение начисления",
+ "table.oper_type_id": "ИД",
+ "table.short_name": "Краткое название",
+ "table.state_name": "Статус"
+}

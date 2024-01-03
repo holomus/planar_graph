@@ -1,0 +1,5 @@
+{
+ "pg.relation_degree.before": "Старое значение",
+ "pg.relation_degree.current": "Новое значение",
+ "pg.relation_degree.field_name": "Поле"
+}

@@ -1,0 +1,51 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var tg = page.grid('table');
+  var trackTypeColors = { C: '#ffa800', I: '#6993ff', O: '#f64e60', M:'#8950fc', P:'#ff8b97' };
+  var statusClass = { D: 'secondary', N: 'warning', P: 'info', U: 'primary' };
+
+  tg.asHtml('track_type_html', 'track_type, track_type_name', function(row) {
+    return `<span class="fa fa-circle" style="color:${ trackTypeColors[row.track_type] }"></span>&nbsp;<span>${ row.track_type_name }</span>`;
+  });
+  tg.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageMedium(row.photo_sha) }"/>` : null;
+  });
+  tg.asHtml('photo_exists_html', 'photo_exists', function(row) {
+    return `<i class="fa ${ row.photo_exists == 'Y' ? 'fa-check text-success' : 'fa-times text-danger' }"/>`;
+  });
+});
+</script>
+<div class="b-toolbar row">
+  <div class="offset-sm-14 col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table"
+            sort="-track_time" search="person_name, device_name, device_type_name"
+            searchable="track_type_name, track_time">
+      <b-row>
+        <b-col name="person_name" size=4/>
+        <b-col name="photo_sha" as-html="photo_html" img="100;100" size=4/>
+        <b-col name="device_name" size=4/>
+        <b-col name="device_type_name" size=3/>
+        <b-col name="track_type_name" as-html="track_type_html" size=3/>
+        <b-col name="event_type_name" size=3/>
+        <b-col name="track_time" size=3/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="photo_exists_name" as-html="photo_exists_html"/>
+      </b-extra-columns>
+
+      <b-filter name="person_id" decorate-with="person_name"/>
+      <b-filter name="device_type_id" decorate-with="device_type_name"/>
+      <b-filter name="device_id" decorate-with="device_name"/>
+      <b-filter name="event_type_code" decorate-with="event_type_name"/>
+      <b-filter name="track_type" decorate-with="track_type_name"/>
+      <b-filter name="track_time"/>
+      <b-filter name="photo_exists" decorate-with="photo_exists_name" extra/>
+    </b-grid>
+  </form>
+</div>

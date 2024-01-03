@@ -1,0 +1,5 @@
+{
+ "pg.vacation.before": "Previous Value",
+ "pg.vacation.current": "Current Value",
+ "pg.vacation.field_name": "Field"
+}

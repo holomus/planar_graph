@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{nationality_count} nationality(ies)?": "Haqiqatan ham <b>$1</b>ta millat(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete nationality $1{nationality_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.name": "Nomi",
+ "table.nationality_id": "ID",
+ "table.state_name": "Holat"
+}

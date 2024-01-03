@@ -1,0 +1,23 @@
+{
+ "add": "Добавить",
+ "all items will be removed. continue?": "Изменение подразделения приведет к очистке табличных частей документа. Продолжить изменение?",
+ "apply schedule to others?": "Применять график работу к другим?",
+ "begin date": "Начало",
+ "delete $1": "Удалить $1",
+ "division name": "Подразделение",
+ "end date": "Конец",
+ "journal date": "Дата",
+ "journal name": "Название документа",
+ "journal number": "Номер",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.schedule": "График работы",
+ "pg.staffs.staffs": "Сотрудники",
+ "post": "Провести",
+ "post?": "Сохранить и провести документ?",
+ "save": "Сохранить",
+ "save?": "Сохранить документ?",
+ "select": "Подбор",
+ "staff kind name": "Вид занятости",
+ "staff name": "Сотрудник",
+ "staff number": "Табельный номер"
+}

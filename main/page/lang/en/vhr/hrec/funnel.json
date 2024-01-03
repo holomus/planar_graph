@@ -1,0 +1,11 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another funnel": "Code must be unique",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "stages": "Stages",
+ "state": "Status"
+}

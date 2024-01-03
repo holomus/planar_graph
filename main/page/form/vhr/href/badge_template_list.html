@@ -1,0 +1,159 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, $timeout) {
+  var q = {},
+      p = {},
+      query = page.query('table');
+
+  function deleteAction(message, badge_template_id) {
+    page.confirm(message, function() {
+      fi.delete({ badge_template_id: badge_template_id }).then(page.reload, page.alert);
+    })
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete badge template $1{badge_template_name}?')(row.name), row.badge_template_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{badge_template_count} badge templates?')(q.checked.size), _.pluck(q.checked.rows(), 'badge_template_id'));
+  }
+
+  function onChecked(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    badgeModal(row);
+  }
+
+  // badge modal
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function badgeModal(row) {
+    if (row) {
+      p.data = angular.copy(row);
+      q.addMode = false;
+    } else {
+      q.addMode = true;
+
+      p.data = {
+        state: 'A'
+      }
+    }
+
+    p.data.data = {
+      company_name: t('company')(),
+      filial_name: t('filial'),
+      filial_logo: 'page/resource/core/no_image.png',
+      employee_name: t('employee name')(),
+      employee_number: t('employee number')(),
+      employee_job: t('job')(),
+      employee_rank: t('rank')(),
+      employee_division: t('division')(),
+      employee_photo: 'page/resource/vhr/no_photo_male.png',
+      qrcode: 'page/resource/vhr/verifix_qr_code.png'
+    };
+
+    page.untouch(scope.modal);
+    showModal();
+  }
+
+  function saveBadgeTemplate() {
+    if (page.valid(scope.modal)) {
+      if (p.data.html_value) {
+        page.post(':save', p.data).then(() => {
+          hideModal();
+          query.fetch();
+        }, page.alert);
+      } else {
+        q.has_html = false;
+      }
+    }
+  }
+
+  q.has_html = true;
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button name="button" class="btn btn-primary" ng-if="fi.add" ng-click="badgeModal()" b-hotkey="add">{{ fi.add.title }}</button>
+    <button name="button" class="btn btn-danger" ng-if="fi.delete" ng-show="q.checked.has" ng-click="deleteMany()"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+  <b-grid name="table" required="badge_template_id, name, html_value, state" on-check="onChecked(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name" searchable="html_value" extra-columns="badge_template_id, html_value">
+    <b-row>
+      <b-col name="name" size=23/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-if="fi.edit" ng-click="badgeModal(row)">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-if="fi.delete" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="badge_template_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="html_value" extra/>
+    <b-filter name="state" decorate-with="state_name" extra/>
+  </b-grid>
+  </form>
+
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 80vw;" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">
+              <t ng-if="q.addMode">add badge template</t>
+              <t ng-if="!q.addMode">edit badge template</t>
+            </h4>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4">
+              <div class="col-sm">
+                <label><t>name</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.name" required/>
+              </div>
+              <div class="col-sm">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="p.data.state" />
+                  <span>
+                    <t ng-if="p.data.state == 'A'">active</t>
+                    <t ng-if="p.data.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <b-content-maker text="p.data.html_value" data="p.data.data" style="flex-grow: 1;"/>
+            <span class="text-danger mt-4" ng-if="!q.has_html"><t>please fill workspace and run it first</t></span>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveBadgeTemplate()" ng-disabled="!p.data.html_value"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,382 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t) {
+  var d = model, q = {};
+
+  var employee_keys = [
+        'staff_number',
+        'first_name',
+        'last_name',
+        'middle_name',
+        'birthday',
+        'gender',
+        'nationality_name',
+        'nationality_id',
+        'email',
+        'main_phone',
+        'region',
+        'region_id',
+        'address',
+        'legal_address',
+        'npin',
+        'iapa',
+        'hiring_date',
+        'location',
+        'location_id',
+        'division',
+        'division_id',
+        'job',
+        'job_id',
+        'fte',
+        'fte_value',
+        'schedule',
+        'schedule_id',
+        'salary_type',
+        'salary_type_id',
+        'salary_amount',
+        'login'
+      ];
+
+  function checkDuplicate() {
+    let obj = {};
+    return !_.any(_.filter(d.columnItems, x => x.column_number), function(item, index) {
+      if (obj[item.column_number]) {
+        page.alert(t('more than one row cannot have one column number, row_index=$1 and row_index=$2')(obj[item.column_number], index + 1));
+        return true;
+      }
+      obj[item.column_number] = index + 1;
+    });
+  }
+
+  function saveSetting() {
+    if (checkDuplicate()) {
+      var data = {
+        starting_row: d.starting_row,
+        parent_region_id: d.region_id,
+        region_identifier : d.region_identifier,
+        division_identifier: d.division_identifier,
+        job_identifier: d.job_identifier,
+        schedule_identifier : d.schedule_identifier,
+        location_identifier : d.location_identifier,
+        keys: _.pluck(d.columnItems, 'key'),
+        column_number: _.pluck(d.columnItems, 'column_number')
+      };
+      fi.save_setting(data).then(changeSection, page.alert);
+    }
+  }
+
+  function template() {
+    window.open(page.url('template'));
+  }
+
+  function importFile() {
+    if (d.template) {
+      page.confirm(t('do you want to import file?')(), function () {
+        let data = { template: d.template };
+        page.post(':import', data, 'excel').then(function(result) {
+          d.employees = _.mapRows(result.items, employee_keys);
+          q.error_messages = result.errors;
+        }, page.alert);
+      });
+    }
+  }
+
+  function changeSection(active_section) {
+    q.active_section = active_section || 'I';
+  }
+
+  function removeItem(row) {
+    d.employees = _.without(d.employees, row);
+  }
+
+  function itemsToDefault() {
+    d.employees = [];
+  }
+
+  function checkValidation() {
+    return !_.some(d.employees, function(p, i) {
+      if (!_.any(['', 'M', 'F'], x => x == p.gender)) {
+        return (page.alert(t('invalid gender, gender must be M{male} or F{female}, at row = $1')(i + 1)), true);
+      }
+    });
+  }
+
+  function importData() {
+    if (page.valid(scope.form) && checkValidation()) {
+      page.confirm(t('save?')(), function() {
+        let data = { items: d.employees };
+
+        page.post(':import_data', data).then(function() {
+          notify(t('import succeeded!')());
+          page.dropzone('file').clear();
+          q.error_messages = [];
+          d.employees = [];
+          d.template = '';
+        }, page.alert);
+      });
+    }
+  }
+
+  d.columnItems = _.mapRows(model.items, ['key', 'name', 'column_number']);
+  d.regions = _.mapRows(d.regions, ['region_id', 'name', 'parent_id']);
+  d.divisions = _.mapRows(d.divisions, ['division_id', 'name', 'parent_id']);
+
+  q.tClear = t('clear?');
+  q.active_section = 'I';
+  q.identifiers = _.mapRows(model.identifiers, ['key', 'name']);
+
+  q.t_staff_number = t('staff_number')();
+  q.t_first_name = t('first name')();
+  q.t_last_name = t('last name')();
+  q.t_middle_name = t('middle name')();
+  q.t_birthday = t('birthday')();
+  q.t_gender = t('gender(M/F)')();
+  q.t_nationality = t('nationality')();
+  q.t_email = t('email')();
+  q.t_main_phone = t('main phone')();
+  q.t_region = t('region')();
+  q.t_address = t('address')();
+  q.t_legal_address = t('legal address')();
+  q.t_npin = t('npin')();
+  q.t_iapa = t('iapa')();
+  q.t_hiring_date = t('hiring_date')();
+  q.t_division = t('division')();
+  q.t_job = t('job')();
+  q.t_fte = t('fte')();
+  q.t_schedule = t('schedule')();
+  q.t_location = t('location')();
+  q.t_salary_type = t('salary_type')();
+  q.t_salary_amount = t('salary_amount')();
+  q.t_login = t('login')();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+<div class="btn-group">
+  <button type="button" class="btn" ng-class="q.active_section == 'I' ? 'btn-success' : 'btn-default'" ng-click="changeSection('I')"><t>import section</t></button>
+  <button type="button" class="btn" ng-class="q.active_section == 'S' ? 'btn-success' : 'btn-default'" ng-click="changeSection('S')"><t>setting section</t></button>
+</div>
+<button type="button" class="btn btn-primary" ng-click="importData()" ng-if="q.active_section == 'I' && d.employees.length"><t>save</t></button>
+<button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="q.active_section == 'I'"><t>import</t></button>
+<button type="button" class="btn btn-primary" ng-click="template()"><t>template</t></button>
+<button type="button" class="btn btn-primary" ng-click="saveSetting()" ng-if="q.active_section == 'S'"><t>save</t></button>
+<button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div ng-show="q.active_section == 'I'">
+        <div class="row">
+          <div class="col-sm-12 mb-4">
+            <h5><t>file</t></h5>
+            <b-dropzone name="file" model="d.template" accept="'.xls, .xlsx'"></b-dropzone>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <h5><t>errors</t></h5>
+            <div class="mb-2">
+              <b-pg-controller name="error_messages"/>
+            </div>
+            <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0" limit="10">
+              <b-pg-row>
+                <b-pg-col name="row_id" size=3/>
+                <b-pg-col name="error" size=21>
+                  <div ng-repeat="item in row.items">
+                    {{ item }}<br/><hr ng-if="!$last"/>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+        <h5><t>data</t></h5>
+        <div class="row">
+          <div class="col-sm-12 offset-sm-12 mb-2">
+            <b-pg-controller name="employees"/>
+          </div>
+        </div>
+        <b-pg-grid name="employees" local-data="d.employees" iterator="item" search="first_name, last_name, middle_name" sort="rownum, first_name, last_name">
+          <b-pg-header name="actions">
+            <div class="text-center">
+              <button type="button" class="btn btn-outline-danger btn-icon" b-toggle data-title="{{ q.tClear() }}" on-click-yes="itemsToDefault()" ng-if="d.employees.length">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1"/>
+            <b-pg-col name="staff_number" size="2">
+              <input type="text" class="form-control" ng-model="item.staff_number" placeholder="{{ q.t_staff_number }}"/>
+            </b-pg-col>
+            <b-pg-col name="first_name" size="3">
+              <input type="text" class="form-control" ng-model="item.first_name" placeholder="{{ q.t_first_name }}" required/>
+            </b-pg-col>
+            <b-pg-col name="last_name" size="3">
+              <input type="text" class="form-control" ng-model="item.last_name" placeholder="{{ q.t_last_name }}" ng-required="d.crs.last_name == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="middle_name" size="3">
+              <input type="text" class="form-control" ng-model="item.middle_name" placeholder="{{ q.t_middle_name }}" ng-required="d.crs.middle_name == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="birthday" size="2">
+              <input type="text" class="form-control" ng-model="item.birthday" placeholder="{{ q.t_birthday }}" b-date-picker ng-required="d.crs.birthday == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="gender(M/F)" size="2">
+              <input type="text" class="form-control" ng-model="item.gender" placeholder="{{ q.t_gender }}" required/>
+            </b-pg-col>
+            <b-pg-col name="nationality_name" size="2">
+              <b-input name="nationalities"
+                       model="item.nationality_name | name"
+                       model-key="item.nationality_id | nationality_id">
+                       {{ row.name }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="email" size="3">
+              <input type="text" class="form-control" ng-model="item.email" placeholder="{{ q.t_email }}" ng-required="d.crs.email == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="main_phone" size="3">
+              <input type="text" class="form-control" ng-model="item.main_phone" placeholder="{{ q.t_main_phone }}" ng-required="d.crs.phone_number == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="region" size="3">
+              <b-tree-select origin="d.regions" id-key="region_id" model="item.region_id" ng-required="d.crs.region == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="address" size="4">
+              <input type="text" class="form-control" ng-model="item.address" placeholder="{{ q.t_address}}" ng-required="d.crs.address == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="legal_address" size="4">
+              <input type="text" class="form-control" ng-model="item.legal_address" placeholder="{{ q.t_legal_address}}" ng-required="d.crs.legal_address == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="npin" size="4">
+              <input type="text" class="form-control" ng-model="item.npin" placeholder="{{ q.t_npin}}" b-maxlength="14" ng-required="d.crs.npin == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="iapa" size="4">
+              <input type="text" class="form-control" ng-model="item.iapa" placeholder="{{ q.t_iapa}}" b-maxlength="14" ng-required="d.crs.iapa == 'Y'"/>
+            </b-pg-col>
+            <b-pg-col name="hiring_date" size="2">
+              <input type="text" class="form-control" ng-model="item.hiring_date" placeholder="{{ q.t_hiring_date}}" b-date-picker/>
+            </b-pg-col>
+            <b-pg-col name="division" size="3">
+              <b-tree-select origin="d.divisions" id-key="division_id" model="item.division_id"/>
+            </b-pg-col>
+            <b-pg-col name="job" size="3">
+              <b-input  name="jobs"
+                        model="item.job | job"
+                        model-key="item.job_id | job_id">
+                        {{ row.job }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="fte" size="2">
+              <b-input name="ftes"
+                       model="item.fte | fte"
+                       model-key="item.fte_id | fte_id">
+                       {{ row.fte }}
+            </b-input>
+            </b-pg-col>
+            <b-pg-col name="schedule" size="3">
+              <b-input name="schedules"
+                       model="item.schedule | schedule"
+                       model-key="item.schedule_id | schedule_id">
+                       {{ row.schedule }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="location" size="4">
+              <b-input name="locations"
+                       model="item.location | location"
+                       model-key="item.location_id | location_id">
+                       {{ row.location }}
+            </b-input>
+            </b-pg-col>
+            <b-pg-col name="salary_type" size="2">
+              <b-input name="salary_types"
+                       model="item.salary_type | salary_type"
+                       model-key="item.salary_type_id | salary_type_id">
+                       {{ row.salary_type }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="salary_amount" size="2">
+              <input type="text" class="form-control" ng-model="item.salary_amount" placeholder="{{ q.t_salary_amount }}"/>
+            </b-pg-col>
+            <b-pg-col name="login" size="3">
+              <input type="text" class="form-control" ng-model="item.login" placeholder="{{ q.t_login }}"/>
+            </b-pg-col>
+            <b-pg-col name="actions" size="1">
+              <div class="text-center">
+                <button type="button" class="btn btn-default btn-hover-text-danger btn-icon" ng-click="removeItem(item)"><i class="fa fa-trash"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div ng-if="q.active_section == 'S'">
+        <div class="form-group row">
+          <div class="col-sm-12">
+            <div class="sg">
+              <div class="sg-header">
+                <div class="sg-row">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16"><t>column name</t></div>
+                    <div class="sg-cell col-8"><t>column number</t></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="item in d.columnItems">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16">{{ item.name }}</div>
+                    <div class="sg-cell col-8">
+                      <input type="text" class="form-control" ng-model="item.column_number" b-number scale="0"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>starting row</t></label>
+                <input type="text" class="form-control" ng-model="d.starting_row" b-number scale="0"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in q.identifiers">
+                <input type="radio" name="division_identifier" value="{{ item.key }}" ng-model="d.division_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>job identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in q.identifiers">
+                <input type="radio" name="job_identifier" value="{{ item.key }}" ng-model="d.job_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>schedule identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in q.identifiers">
+                <input type="radio" name="schedule_identifier" value="{{ item.key }}" ng-model="d.schedule_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>location identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in q.identifiers">
+                <input type="radio" name="location_identifier" value="{{ item.key }}" ng-model="d.location_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>region identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in q.identifiers">
+                <input type="radio" name="region_identifier" value="{{ item.key }}" ng-model="d.region_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group" ng-if="d.region_identifier == 'N'">
+              <label><t>region name</t></label>
+              <b-tree-select
+                origin="d.regions"
+                id-key="region_id"
+                model="d.region_id"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

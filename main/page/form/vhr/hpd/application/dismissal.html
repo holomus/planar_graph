@@ -1,0 +1,156 @@
+<script biruni>
+page.ctrl(function(scope, model, fi) {
+  var d = model;
+
+  function save() {
+    if (!page.valid(scope.form)) return;
+    page.post(':save', _.pick(d, 'application_id', 'application_date', 'staff_id', 'dismissal_date', 'dismissal_reason_id', 'note')).then(page.close, page.alert);
+  }
+
+  // staff
+  function whereStaff() {
+    return [
+      'and',
+      [
+        ['hiring_date', '<=', d.dismissal_date],
+        ['dismissal_date', '=', [null]]
+      ]
+    ]
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function setStaff(row) {
+    if (!row) return;
+    d.staff_id = row.staff_id;
+    d.staff_name = row.name;
+
+    if(row.staff_id) {
+      page.post(':get_staff_info', { staff_id: d.staff_id }).then(result => {
+        _.extend(d, result);
+        d.robot_name = result.robot_name;
+      }, page.alert);
+    }
+  }
+
+  function selectStaff() {
+    fi.select_staff({ date: d.dismissal_date }, setStaff, { where: whereStaff() });
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>application number</t></label>
+                <span class="form-view">{{ d.application_number }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>application date</t></label>
+                <span class="form-view">{{ d.application_date }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>employee</t><r/></label>
+              <b-input name="staffs"
+                       model="d.staff_name | name"
+                       model-key="d.staff_id | staff_id"
+                       column="staff_number"
+                       on-select="setStaff(row)"
+                       on-delete="setStaff({})"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff()"
+                       on-change="changeStaffQuery(query, value)"
+                       required-key>
+                <header>
+                  <div class="col-sm-8"><t>staff number</t></div>
+                  <div class="col-sm-16"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-8">{{ row.staff_number }}</div>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>dismissal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.dismissal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>dismissal reason name</t></label>
+                <b-input name="dismissal_reasons"
+                         model="d.dismissal_reason_name | name"
+                         model-key="d.dismissal_reason_id | dismissal_reason_id"
+                         column="reason_type_name, reason_type">
+                  <header>
+                    <div class="col-sm-12"><t>reason name</t></div>
+                    <div class="col-sm-12"><t>reason type</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-12">{{ row.name }}</div>
+                    <div class="col-sm-12">
+                      <span class="badge" ng-class="{ 'badge-primary': row.reason_type == 'P', 'badge-danger': row.reason_type == 'N' }">
+                        {{ row.reason_type_name }}
+                      </span>
+                    </div>
+                  </content>
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <!---------------------------------------- person info ---------------------------------------->
+          <div class="card-header" ng-if="d.staff_id">
+            <div class="card-title">
+              <h3 class="card-label"><t>person info</t></h3>
+            </div>
+          </div>
+          <div class="card-body" ng-if="d.staff_id">
+            <div class="form-group" ng-if="d.robot_name">
+              <label><t>robot</t></label>
+              <span class="form-view">{{ d.robot_name }}</span>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>division</t></label>
+                  <span class="form-view">{{ d.division_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>manager</t></label>
+                  <span class="form-view">{{ d.manager_name }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>job</t></label>
+                  <span class="form-view">{{ d.job_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>phone number</t></label>
+                  <span class="form-view">{{ d.phone_number }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,22 @@
+{
+ "deduction": "Удержание",
+ "pg.accruals.actions": "Действия",
+ "pg.accruals.indicators": "Показатели",
+ "pg.accruals.oper_type": "Начисление",
+ "pg.accruals.rownum": "№",
+ "pg.deductions.actions": "Действия",
+ "pg.deductions.indicators": "Показатели",
+ "pg.deductions.oper_type": "Удержание",
+ "pg.deductions.rownum": "№",
+ "accrual": "Оплата труда",
+ "add": "Добавить",
+ "division name": "Подразделение",
+ "job name": "Должность",
+ "rank name": "Разряд (категория)",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "schedule name": "График работы",
+ "vacation days limit": "Кол-во отпускных дней (в год)",
+ "wage scale": "Тарифная группа",
+ "you don't have access to add or view salaries": "Отсутствует доступ к оплате труда"
+}

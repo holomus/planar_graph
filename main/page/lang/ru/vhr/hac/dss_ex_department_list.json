@@ -1,0 +1,12 @@
+{
+ "close": "Закрыть",
+ "delete $1": "Удалить $1",
+ "delete $1{department_count} department(s)?": "Удалить <b>$1</b> организацию(й)?",
+ "delete department $1{department_name}?": "Удалить организацию <b>$1</b>?",
+ "details": "Детали",
+ "extra details": "Детали",
+ "table.created_on": "Дата создания",
+ "table.department_code": "Код",
+ "table.department_name": "Название",
+ "table.modified_on": "Дата изменения"
+}

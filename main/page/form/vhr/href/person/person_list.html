@@ -1,0 +1,231 @@
+<script biruni>
+page.init(function(xparam, param, t) {
+  var q = page.query('table');
+
+  q.param(_.pick(xparam, 'filial_id'));
+
+  if (xparam.where) q.where(xparam.where);
+  else if (param.where) q.where(param.where);
+
+  page.isInit() && q.filter('state', '=', 'A');
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  var pg = page.grid('table');
+
+  pg.asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+  pg.asHtml('is_blacklisted_html', 'is_blacklisted, is_blacklisted_name', row => {
+    if (row.is_blacklisted == 'Y') {
+      return `<span class="badge badge-dark">${ t('blacklisted')() }</span>`;
+    }
+    return '<span></span>';
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, xparam, fi, t) {
+  var d = model, q = {};
+
+  function makeAction(action, message, data, callback) {
+    page.confirm(message, function() {
+      action(data).then(callback, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    makeAction(fi.delete, t('delete person $1{person name}?')(row.name), { person_id: row.person_id }, page.reload);
+  }
+
+  function deleteMany() {
+    makeAction(fi.delete, t('delete $1{persons count} person(s)?')(q.checked.size), { person_id: _.pluck(q.checked.rows(), 'person_id') }, page.reload);
+  }
+
+  function attachOne(row) {
+    makeAction(fi.attach, t('attach person $1{person name}?')(row.name), { person_id: row.person_id }, page.close);
+  }
+
+  function attachMany() {
+    makeAction(fi.attach, t('attach $1{persons count} person(s)?')(q.checked.size), { person_id: _.pluck(q.checked.rows(), 'person_id') }, page.close);
+  }
+
+  function detachOne(row) {
+    makeAction(fi.detach, t('detach person $1{person name}?')(row.name), { person_id: row.person_id }, page.reload);
+  }
+
+  function detachMany() {
+    makeAction(fi.detach, t('detach $1{persons count} person(s)?')(q.checked.size), { person_id: _.pluck(q.checked.rows(), 'person_id') }, page.reload);
+  }
+
+  function changeStateOne(row, state) {
+    let transFunc = state == 'P' ? t('activate $1{person_name}?') : t('deactivate $1{person_name}?');
+    makeAction(fi.change_state, transFunc(row.name), { person_id: row.person_id, state: state }, page.reload);
+  }
+
+  function changeStateMany(key, state) {
+    let transFunc = state == 'P' ? t('activate $1{persons count} person(s)?') : t('deactivate $1{persons count} person(s)?');
+    makeAction(fi.change_state, transFunc(q[key].size), { person_id: _.pluck(q[key].rows, 'person_id'), state: state }, page.reload);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) {
+      selectOne(result);
+    }
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ person_id: row.person_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ person_id: row.person_id }, closeIfDialog);
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function prepareChecked(checked, key, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    q.rows = {};
+    prepareChecked(checked, 'active', (x) => x.state == 'A');
+    prepareChecked(checked, 'passive', (x) => x.state == 'P');
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : fi.view ? view(row): fi.edit ? edit(row) : fi.attach ? attachOne(row) : fi.detach ? detachOne(row) : null;
+  }
+
+  var sc = [ // success
+    { grant: fi.add, fn: add },
+    { grant: fi.open_attach, fn: fi.open_attach }
+  ];
+
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.first = q.sc.acc[0].grant;
+  }
+
+  var dg = [ // danger
+    { grant: fi.detach, fn: detachMany },
+    { grant: fi.delete, fn: deleteMany }
+  ];
+
+  q.dg = {};
+  q.dg.acc = _.filter(dg, x => x.grant);
+  q.dg.length = q.dg.acc.length;
+  if (q.dg.length > 0) {
+    q.dg.firstFn = q.dg.acc[0].fn;
+    q.dg.first = q.dg.acc[0].grant;
+  }
+
+  q.multiple_select = xparam.multiple_select;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.sc.length">
+      <button type="button" class="btn btn-sm btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.first" b-hotkey="add">{{ q.sc.first.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-primary" ng-click="attachMany()" ng-show="q.checked.has" ng-if="fi.attach">
+      <t p1="q.checked.size">attach $1</t>
+    </button>
+    <div class="btn-group" ng-if="fi.change_state" ng-show="q.checked.has">
+      <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" ><t>change state</t></button>
+      <div class="dropdown-menu">
+        <a class="dropdown-item" ng-click="changeStateMany('passive', 'A')" ng-show="q.passive.has"><t p1="q.passive.size">activate $1</t></a>
+        <a class="dropdown-item" ng-click="changeStateMany('active', 'P')" ng-show="q.active.has"><t p1="q.active.size">deactivate $1</t></a>
+      </div>
+    </div>
+    <div class="btn-group" ng-if="q.dg.length && q.checked.has">
+      <button type="button" class="btn btn-sm btn-danger" ng-click="q.dg.firstFn()" ng-if="q.dg.first">{{ q.dg.first.title }} {{ q.checked.size }}</button>
+      <button type="button" class="btn btn-danger dropdown-toggle dropdown-toggle-split" ng-if="q.dg.length > 1" data-toggle="dropdown"></button>
+      <div class="dropdown-menu" ng-if="q.dg.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.dg.acc | limitTo: (1 - q.dg.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }} {{ q.checked.size }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="person_id, name, gender, photo_sha, state" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+    sort="name" search="name, tin, code" searchable="region_name, birthday, main_phone, iapa, npin, email"
+    extra-columns="person_id, last_name, first_name, middle_name, gender_name, birthday, tin, region_name, main_phone, iapa, npin, email, legal_address, address, key_person_name">
+    <b-row>
+      <b-col name="name" as-html="person_html" size=14/>
+      <b-col name="tin" size=3/>
+      <b-col name="code" size=3/>
+      <b-col name="is_blacklisted" as-html="is_blacklisted_html" size=3/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="changeStateOne(row, row.state == 'P' ? 'A' : 'P')" ng-if="fi.change_state">
+        <t ng-if="row.state == 'P'">activate</t>
+        <t ng-if="row.state == 'A'">deactivate</t>
+      </button>
+      <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="fi.attach">{{ fi.attach.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="fi.detach">{{ fi.detach.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="person_id" directive="equal" extra/>
+    <b-filter name="tin" directive="equal" extra/>
+    <b-filter name="iapa" directive="equal" extra/>
+    <b-filter name="npin" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="gender" decorate-with="gender_name"/>
+    <b-filter name="birthday"/>
+    <b-filter name="region_id" decorate-with="region_name"/>
+    <b-filter name="main_phone"/>
+    <b-filter name="is_blacklisted" decorate-with="is_blacklisted_name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="last_name" extra/>
+    <b-filter name="first_name" extra/>
+    <b-filter name="middle_name" extra/>
+    <b-filter name="email" extra/>
+    <b-filter name="legal_address" extra/>
+    <b-filter name="key_person" decorate-with="key_person_name" extra/>
+  </b-grid>
+</form></div>

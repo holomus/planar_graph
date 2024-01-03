@@ -1,0 +1,155 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table').param(param);
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  page.grid('table').asHtml('serial_number_html', 'serial_number', function(row) {
+    return `<img src="gen/barcode?text=${ row.serial_number }&width=75&height=15&font-size=12"/>`;
+  });
+});
+page.ctrl(function(scope, model, fi, param, $timeout, t) {
+  var q = {},
+      p = {};
+
+  function doReliable(message, device_id) {
+    page.confirm(message, function() {
+      fi.reliable({ device_id: device_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function doUnreliable(message, device_id) {
+    page.confirm(message, function() {
+      fi.unreliable({ device_id: device_id }).then( res => {
+        if (res.length > 0) {
+          p.device_tracks = res;
+          p.device_id = device_id;
+          showModal();
+        } else {
+          page.reload();
+        }
+      }, page.alert);
+    });
+  }
+
+  function clearTracks() {
+    fi.clear_tracks({ device_id: p.device_id }).then(hideModal, page.alert);
+  }
+
+  function unreliableOne(row) {
+    doUnreliable(t('make unknown device $1{device_name}?')(row.name), row.device_id);
+  }
+
+  function unreliableMany() {
+    doUnreliable(t('make unknown $1{devices_count} device(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_id'));
+  }
+
+  function reliableOne(row) {
+    doReliable(t('make known device $1{device_name}?')(row.name), row.device_id);
+  }
+
+  function reliableMany() {
+    doReliable(t('make known $1{device_count} device(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_id'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.reliable ? reliableOne(row) : fi.unreliable ? unreliableOne(row) : null;
+  }
+
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  modal.on('hidden.bs.modal', function (e) {
+    page.query('table').fetch();
+    q.checked = {};
+  });
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="reliableMany()" ng-if="fi.reliable" ng-show="q.checked.has"><t p1="q.checked.size">reliable $1</t></button>
+    <button type="button" class="btn btn-warning" ng-click="unreliableMany()" ng-if="fi.unreliable" ng-show="q.checked.has"><t p1="q.checked.size">unreliable $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="device_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="last_seen_on" search="name, device_type_name, location_name" searchable="serial_number"
+            extra-columns="device_id, device_type_name, created_by_name, created_on, modified_by_name, modified_on">
+      <b-row>
+        <b-col name="name" size=6/>
+        <b-col name="serial_number" as-html="serial_number_html" size=8/>
+        <b-col name="location_name" size=6/>
+        <b-col name="last_seen_on" size=3/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="reliableOne(row)" ng-if="fi.reliable">{{ fi.reliable.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="unreliableOne(row)" ng-if="fi.unreliable">{{ fi.unreliable.title }}</button>
+      </b-action>
+
+      <b-filter name="device_id" directive="equal"/>
+      <b-filter name="name"/>
+      <b-filter name="location_id" decorate-with="location_name"/>
+      <b-filter name="last_seen_on"/>
+      <b-filter name="serial_number" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div ng-class="p.device_tracks.length > 1 ? 'modal-dialog modal-xl' : 'modal-dialog modal-md'">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>device tracks</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-custom alert-light-danger mb-5" role="alert">
+              <div class="alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
+              <div class="alert-text" ng-if="p.device_tracks.length > 1"><t>tracks found that will be removed?</t></div>
+              <div class="alert-text"ng-if="p.device_tracks.length == 1">
+                <t p1="p.device_tracks[0].device_name" p2="p.device_tracks[0].tracks_count">in $1 device $2 tracks found that will be removed?</t>
+              </div>
+            </div>
+            <b-pg-grid name="tracks" local-data="p.device_tracks" limit="1000" ng-if="p.device_tracks.length > 1">
+              <b-pg-row>
+                <b-pg-col name="serial_number" size="8"/>
+                <b-pg-col name="device_name" size="10"/>
+                <b-pg-col name="tracks_count" size="6"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="clearTracks()"><t>yes</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>no</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

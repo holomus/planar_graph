@@ -1,0 +1,5 @@
+{
+ "pg.requests.before": "Старое значение",
+ "pg.requests.current": "Новое значение",
+ "pg.requests.field_name": "Поле"
+}

@@ -1,0 +1,577 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, bStorage, bFrame, AppSession) {
+  var d = model.data,
+      s = model.settings,
+      q = {},
+      frame = page.$content.find('.report-frame')[0];
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  // division group
+  function setDivisionGroup(row) {
+    if (!row) return;
+    s.division_group_id = row.division_group_id;
+    s.division_group_name = row.name;
+  }
+
+  function selectDivisionGroup() {
+    fi.select_division_group(null, setDivisionGroup, { where: ['state', '=', 'A'] });
+  }
+
+  function whereStaff() {
+    return _.isEmpty(d.staffs) ? null : ['staff_id', '<>', _.pluck(d.staffs, 'staff_id')];
+  }
+
+  function changeStaff(query, value) {
+    query.param({ begin_date: d.begin_date, end_date: d.end_date }).where(whereStaff());
+    query.searchValue(value);
+  }
+
+  function setStaff(rows) {
+    if (!rows) return;
+    d.staffs.push(...rows);
+  }
+
+  function selectStaff() {
+    fi.select_staff(null, setStaff, { where: whereStaff(), multiple_select: true });
+  }
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+      var data = {
+        begin_date: d.begin_date,
+        end_date: d.end_date,
+        division_ids: d.division_ids,
+        job_ids: _.pluck(d.jobs, 'job_id'),
+        location_ids: _.pluck(d.locations, 'location_id'),
+        staff_ids: _.pluck(d.staffs, 'staff_id'),
+        rt: rt
+      };
+
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        window.open(page.url('run', data));
+      }
+    }
+  }
+
+  function savePreferences() {
+    page.confirm(t('save preferences?')(), function() {
+      page.post(':save_preferences', s).then(page.isDialog() ? page.close : page.reload, page.alert);
+    });
+  }
+
+  function clearPreferences() {
+    page.prefClear(page.isDialog() ? page.close : page.reload);
+  }
+
+  function setFormMode(mode) {
+    q.formMode     = mode;
+    q.classParam   = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView    = mode == 'V'? 'btn-primary' : 'btn-default';
+    q.classSetting = mode == 'S' ? 'btn-primary' : 'btn-default';
+  }
+
+  function disableMinuteWords() {
+    if (s.minutes == 'N')
+      s.minute_words = 'N';
+  }
+
+  function createNewTemplate($event) {
+    $event.preventDefault();
+    $event.stopPropagation();
+    q.create_new_template = !q.create_new_template;
+  }
+
+  function cancelAddTemplate() {
+    q.create_new_template = !q.create_new_template;
+  }
+
+  function saveNewTemplate() {
+    if (q.new_template_name) {
+      q.filter_templates.push({
+        name: q.new_template_name,
+        range_name: q.last_range_name,
+        filters: {
+          filial_ids: _.pluck(d.filials, 'filial_id'),
+          division_ids: d.division_ids,
+          job_ids: _.pluck(d.jobs, 'job_id'),
+          location_ids: _.pluck(d.locations, 'location_id'),
+          staff_ids: _.pluck(d.staffs, 'staff_id'),
+          begin_date: d.begin_date,
+          end_date: d.end_date
+        }
+      })
+      q.new_template_name = '';
+    }
+    q.create_new_template = !q.create_new_template;
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+  }
+
+  function selectFilterItem(item) {
+    if (item.editTextMode) return;
+    q.active_template_name = item.name;
+    q.last_range_name = item.range_name;
+
+    page.post(':check_filters', {
+      min_date:    item.filters.begin_date,
+      max_date:    item.filters.end_date,
+      filial_id:   item.filters.filial_ids,
+      job_id:      item.filters.job_ids,
+      location_id: item.filters.location_ids,
+      staff_id:    item.filters.staff_ids
+     }).then(res => {
+      d = angular.copy({
+        begin_date: item.filters.begin_date,
+        end_date: item.filters.end_date,
+        filials: _.mapRows(res.filials, ['filial_id', 'name']),
+        division_ids: item.filters.division_ids,
+        jobs: _.mapRows(res.jobs, ['job_id', 'name']),
+        locations: _.mapRows(res.locations, ['location_id', 'name']),
+        staffs: _.mapRows(res.staffs, ['staff_id', 'name']),
+        divisions:  _.chain(model.divisions)
+                     .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                     .each(x => x.disabled = x.enabled == 'N')
+                     .value()
+      });
+      scope.d = d;
+
+      }, page.alert);
+  }
+
+  function setPinned(item, $event) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates[index].pin = q.filter_templates[index].pin == 'Y' ? 'N' : 'Y';
+
+    if (q.filter_templates[index].pin == 'Y') {
+      _.each(q.filter_templates, (x, i) => {
+        if (i != index) x.pin = 'N';
+      });
+    }
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+
+    $event.preventDefault();
+    $event.stopPropagation();
+  }
+
+  function removeTemplate(item) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates.splice(index, 1);
+
+    if (q.filter_templates.length == 0) {
+      q.active_template_name = null;
+    } else {
+      q.active_template_name = q.filter_templates[0].name;
+    }
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+  }
+
+  function setDefaultFilter() {
+    _.each(q.filter_templates, x => {
+      if (x.pin == 'Y') {
+        q.active_template_name = x.name;
+        selectFilterItem(x);
+      }
+    });
+  }
+
+  function editTemplate(item, $event) {
+    item.editTextMode = true;
+    $event.preventDefault();
+    $event.stopPropagation();
+  }
+
+  function saveEditFilter(item) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates[index].editTextMode = false;
+    q.filter_templates[index].name = item.name;
+    q.filter_templates[index].range_name = q.last_range_name;
+    q.filter_templates[index].filters =  {
+      filial_ids: _.pluck(d.filials, 'filial_id'),
+      division_ids: d.division_ids,
+      job_ids: _.pluck(d.jobs, 'job_id'),
+      location_ids: _.pluck(d.locations, 'location_id'),
+      staff_ids: _.pluck(d.staffs, 'staff_id'),
+      begin_date: d.begin_date,
+      end_date: d.end_date
+    };
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+
+    setDefaultFilter();
+  }
+
+  function cancelEditFilter(item) {
+    item.editTextMode = false;
+  }
+
+  function setRange(range_name) {
+    q.last_range_name = range_name;
+  }
+
+  d.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.division_ids = [];
+  d.jobs = [];
+  d.locations = [];
+  d.staffs = [];
+  setFormMode(param.open_setting == 'Y' ? 'S' : 'P');
+
+  q.filter_templates = storage.filter_templates || [];
+  q.create_new_template = true;
+  q.filter_templates.length > 0 ? setDefaultFilter() : null;
+
+  s.rest_free_coef = s.rest_free_coef || 1;
+  s.custom_fact_time = s.custom_fact_time || 'N';
+
+  scope.d = d;
+  scope.s = s;
+  scope.q = q;
+
+  scope.$watch('d.division_ids', function(division_ids) {
+    page.query('staffs').where(division_ids.length > 0 ? ['division_id', '=', division_ids] : null);
+    d.employee_id = '';
+    d.employee_name = '';
+  });
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+    <button type="button" class="btn" ng-class="q.classSetting" ng-click="setFormMode('S')"><t>preferences</t></button>
+  </div>
+  <button type="button" class="btn btn-default" ng-if="page.isDialog()" ng-click="page.close()">{{ page.close.title }}</button>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+  <div class="btn-group" ng-show="q.formMode =='S'">
+    <button type="button" class="btn btn-primary" ng-click="savePreferences()"><t>save preferences</t></button>
+    <button type="button" class="btn btn-default" ng-click="clearPreferences()"><t>clear preferences</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <style>
+    .template-pinned {
+      transform: rotate(45deg);
+      opacity: 1;
+      color: #1b82e3;
+    }
+  </style>
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="d-flex mb-4">
+              <div>
+                <label><t>date</t></label><br/>
+                <b-date-range-picker begin="d.begin_date"
+                                     end="d.end_date"
+                                     selectedRange="q.last_range_name"
+                                     on-change="onChangeDate(start, end)"
+                                     setRange="setRange(range_name)"
+                                     half-month/>
+              </div>
+              <div class="ml-auto">
+                <label><t>templates</t></label><br/>
+                <div class="dropdown">
+                  <button class="btn btn-default dropdown-toggle"
+                          type="button"
+                          id="dropdownTemplate"
+                          data-toggle="dropdown"
+                          aria-haspopup="true"
+                          aria-expanded="false"
+                          ng-hide="q.active_template_name">
+                    <t>create template</t>
+                  </button>
+                  <button class="btn btn-default dropdown-toggle"
+                          type="button"
+                          id="dropdownTemplate"
+                          data-toggle="dropdown"
+                          aria-haspopup="true"
+                          ng-show="q.active_template_name"
+                          aria-expanded="false">
+                    {{ q.active_template_name }}
+                  </button>
+                  <div class="dropdown-menu" style="min-width: 20em;" aria-labelledby="dropdownTemplate">
+                    <div class="dropdown-item cursor-pointer py-2 px-4 ng-binding" ng-click="createNewTemplate($event)">
+                      <i class="fas fa-save mr-4"></i>
+                      <t>new template</t>
+                    </div>
+                    <div class="add-new-field-wrapper ng-hide" style="margin: 10px" ng-show="!q.create_new_template">
+                      <input type="text" class="form-control ng-valid ng-dirty ng-touched ng-empty" ng-model="q.new_template_name" b-maxlength="100">
+                      <div class="w-100 d-flex justify-content-between mt-2">
+                        <button type="button" class="btn btn-primary ng-binding" ng-click="saveNewTemplate()"><t>save</t></button>
+                        <button type="button" class="btn btn-default ng-binding" ng-click="cancelAddTemplate()"><t>cancel</t></button>
+                      </div>
+                    </div>
+                    <div class="dropdown-item cursor-pointer py-2 px-4 d-flex justify-content-between" ng-repeat="item in q.filter_templates track by $index" ng-click="selectFilterItem(item)">
+                      <span>
+                        <span ng-hide="item.editTextMode">{{ item.name }}</span>
+                        <input type="text" class="form-control" ng-model="item.name" ng-show="item.editTextMode">
+                      </span>
+                      <div class="dropdown-item-actions" ng-hide="item.editTextMode">
+                        <i class="fas fa-thumbtack cursor-pointer text-hover-primary mr-3" ng-class="{ 'template-pinned': item.pin == 'Y' }" ng-click="setPinned(item, $event)"></i>
+                        <i class="fas fa-pencil-alt cursor-pointer text-hover-primary mr-3" ng-click="editTemplate(item, $event)"></i>
+                        <i class="fas fa-trash cursor-pointer text-hover-danger" ng-click="removeTemplate(item)"></i>
+                      </div>
+                      <div class="dropdown-item-actions ng-hide" ng-show="item.editTextMode">
+                        <i class="fas fa-save cursor-pointer text-hover-primary mr-3" ng-click="saveEditFilter(item)"></i>
+                        <i class="fas fa-times cursor-pointer text-hover-danger" ng-click="cancelEditFilter(item)"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"
+                row-limit="2000"
+                option-check-childs/>
+            </div>
+            <div class="form-group">
+              <label><t>jobs</t></label>
+              <div class="jobs">
+                <b-input
+                  multiple
+                  name="jobs"
+                  model="d.jobs"
+                  model-key="job_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>locations</t></label>
+              <div class="locations">
+                <b-input
+                  multiple
+                  name="locations"
+                  model="d.locations"
+                  model-key="location_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>staffs</t></label>
+              <b-input name="staffs"
+                       multiple
+                       model="d.staffs"
+                       model-key="staff_id"
+                       column="staff_number, staff_kind_name"
+                       label="name"
+                       on-change="changeStaff(query, value)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff()">
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                  <div class="col-sm-6"><t>staff kind</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number}}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form ng-show="q.formMode == 'S'" name="settings">
+    <div class="row">
+      <div class="col-sm-18">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <div class="form-group">
+                    <b><t>employee info</t></b>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.staff_number" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting staff number</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group" ng-if="d.position_enable == 'Y'">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.position" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting position</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.job" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting job</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.rank" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting rank</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.division" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting division</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group" ng-if="d.position_enable == 'Y'">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.org_unit" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting org unit</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.location" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting location</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.schedule" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting schedule</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.manager" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting manager</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group" ng-show="s.manager == 'Y'">
+                    <label><t>manager division group</t></label>
+                    <b-input name="division_groups"
+                             model="s.division_group_name | name"
+                             model-key="s.division_group_id | division_group_id"
+                             is-view="fi.select_division_group"
+                             on-view="selectDivisionGroup()">
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <b><t>timesheet info</t></b>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.late_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting late input</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.early_output" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting early output</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.overtime" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting overtime</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.free_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting free time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.fact_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting fact time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.worked_days" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting worked days</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minutes" ng-true-value="'Y'" ng-false-value="'N'" ng-change="disableMinuteWords()"/>
+                    <span><t>setting minutes</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minute_words" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.minutes != 'Y'"/>
+                    <span><t>setting minute words</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.input_output" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting input output</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.check_track" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting check track</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.check_track_schedule" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting check track schedule</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.dismissed_and_not_hired" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting show if dismissed or not hired</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P' || q.formMode == 'S'" class="report-frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

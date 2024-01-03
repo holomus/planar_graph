@@ -1,0 +1,12 @@
+{
+ "table.three_day_inactive": "Не активность (3 д.)",
+ "table.three_hour_inactive": "Не активность (3 ч.)",
+ "table.twelve_hour_inactive": "Не активность (12 ч.)",
+ "table.company_id": "ИД сервера",
+ "table.day_inactive": "Не активность (день)",
+ "table.device_count": "Кол-во устройств",
+ "table.email": "E-mail",
+ "table.hour_inactive": "Не активность (час)",
+ "table.name": "Название",
+ "table.phone": "Номер телефона"
+}

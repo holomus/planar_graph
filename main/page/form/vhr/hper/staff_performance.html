@@ -1,0 +1,428 @@
+<script biruni>
+page.require("amcharts4",
+             "amcharts4-theme-animated");
+page.ctrl(function(scope, fi, t, model, bHttp, $timeout, bConfig) {
+  moment.locale(bConfig.langCode());
+  var d = _.omit(model, 'references'),
+      q = {},
+      p = { data: {}},
+      xy_chart;  
+      
+  d.period_kinds = _.mapRows(d.period_kinds, ['kind', 'name']);
+  d.grid_data = [];
+  q.t_no_data = t('There is no data to show on this chart')();
+  q.t_main = t('main')();
+  q.t_extra = t('extra')();
+
+  q.xy_series = {};
+  _.chain([
+    [q.t_main, "main_fact_percent", "#06D6A0", false],
+    [q.t_extra, "extra_fact_percent", "#FFD166", true]
+  ]).mapRows(['name', 'value', 'color', 'hidden']).each(x => {
+    q.xy_series[x.value] = x;
+  });  
+  
+  function isNull(num) {
+    return _.isUndefined(num) || _.isNull(num) || _.isNaN(num) || String(num) == '';
+  }
+
+  function pf(num) {
+    if (isNull(num)) return 0;
+    return parseFloat(num);
+  }
+
+  function prepareGridData(months) {
+    if (months) {
+      d.m_months = _.map(months, x => {
+        return {
+          raw_month: x.raw_month,
+          month: x.full_month,
+          type: q.t_main,
+          job_name: x.job_name, 
+          division_name: x.division_name, 
+          percent: x.main_fact_percent,
+          amount: x.main_fact_amount
+        };
+      });
+
+      d.e_months = _.map(_.filter(months, x => { return !!x.extra_fact_percent; }), e => {
+        return {
+          raw_month: e.raw_month,
+          month: e.full_month,
+          type: q.t_extra,
+          job_name: e.job_name, 
+          division_name: e.division_name, 
+          percent: e.extra_fact_percent,
+          amount: e.extra_fact_amount
+        };
+      });
+    }
+
+    d.grid_data = [];
+
+    if (!q.xy_series.main_fact_percent.hidden) d.grid_data.push(...d.m_months);
+    if (!q.xy_series.extra_fact_percent.hidden) d.grid_data.push(...d.e_months);   
+    
+    $timeout(() => scope.$digest());
+  }
+
+  function calcAvarageFact() {
+    let arr = _.pluck(d.months, 'main_fact_percent');
+    
+    d.avg_fact_percent = arr.reduce((a, b) => pf(a) + pf(b), 0) / arr.length || 0;
+  }
+
+  function groupBy(data) {
+    let reduced;
+    
+    reduced = data.reduce(function(m, k){
+      if(!m[k.month]){
+        m[k.month] = {...k, count: 1};
+        return m;
+      }
+      m[k.month].main_fact_percent += k.main_fact_percent;
+      m[k.month].extra_fact_percent += k.extra_fact_percent;
+      return m;
+    },{});
+
+    return Object.keys(reduced).map(function(k){
+      let item  = reduced[k];
+      return {
+          month: item.month,
+          main_fact_percent: item.main_fact_percent,
+          extra_fact_percent: item.extra_fact_percent,
+      }
+    });
+  }
+
+  function mapData(result) {
+    d.staff_id = result.staff_id;
+    d.months = _.mapRows(result.months, ['month', 'job_name', 'division_name', 'main_fact_amount', 'main_fact_percent', 'extra_fact_amount', 'extra_fact_percent']);
+    
+    calcAvarageFact();
+
+    q.max_val = _.max(d.months, x => { return Math.max(x.main_fact_percent, x.extra_fact_percent) });
+    q.max_val = Math.max(q.max_val.main_fact_percent, q.max_val.extra_fact_percent);
+
+    let last_month = (_.last(d.months) || {}).month;
+
+    _.each(d.months, x => {
+      x.raw_month = x.month;
+      let month = moment(x.month, 'DD.MM.YYYY');
+
+      x.full_month = month.format('MMMM YYYY');
+      x.full_month = x.full_month[0].toUpperCase() + x.full_month.slice(1);
+
+      x.month = month.format('MMM');
+      x.month = x.month[0].toUpperCase() + x.month.slice(1);
+    });
+    
+    prepareGridData(d.months);
+
+    d.first_month = (_.first(d.months) || {}).full_month || '';
+    d.last_month = (_.last(d.months) || {}).full_month || '';
+
+    d.chart_data = groupBy(d.months);
+  }
+
+  // chart
+  function xyChart(data) {
+    if (xy_chart) {
+      xy_chart.data = data;
+      xy_chart.invalidateData();
+    }
+
+    let elem = page.$content.find('.xy-chart');
+
+    assert(elem.length, "day stats xy chart element is not found");
+    // Create chart instance
+    let chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+
+    chart.paddingBottom = 0;
+    chart.paddingLeft = 0;
+
+    // Create category axis
+    let categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.minGridDistance = 50;
+    categoryAxis.dataFields.category = "month";
+    categoryAxis.startLocation = 0.5;
+
+    // Create value axis
+    let valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    if (chart.data.length > 0) {
+      valueAxis.renderer.minLabelPosition = 0.01;
+      valueAxis.maxPrecision = 0;
+      valueAxis.min = 0;
+      valueAxis.max = q.max_val + 10;
+      valueAxis.strictMinMax = true;
+
+      var axisRange = valueAxis.axisRanges.create();
+      axisRange.value = 100;
+      axisRange.grid.strokeOpacity = 1.2;
+      axisRange.grid.strokeDasharray = 3;
+    } else {
+      let noDataContainer = chart.chartContainer.createChild(am4core.Container);
+      noDataContainer.align = 'center';
+      noDataContainer.isMeasured = false;
+      noDataContainer.x = am4core.percent(50);
+      noDataContainer.horizontalCenter = 'middle';
+      noDataContainer.y = am4core.percent(35);
+      noDataContainer.verticalCenter = 'middle';
+      noDataContainer.layout = 'vertical';
+
+      let messageLabel = noDataContainer.createChild(am4core.Label);
+      messageLabel.html = `
+      <div style="width: 50vw;">
+        <div class="text-center">
+          <i style="font-size: 6rem; color: #e0e0e0" class="far fa-chart-bar"></i>
+        </div>
+        <div class="font-weight-bolder text-center">
+          <h5>${ q.t_no_data }</h5>
+        </div>
+      </div>
+      `;
+      messageLabel.maxWidth = 300;
+      messageLabel.wrap = true;
+    }
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "month";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.tooltipText = "{valueY}";
+      series.tooltip.pointerOrientation = "vertical";
+      series.tooltip.getFillFromObject = false;
+      series.tooltip.background.fill = color;
+      series.fill = color;
+      series.fillOpacity = 0.3;
+      series.stroke = color;
+      series.legendSettings.valueText = " ";
+      series.hidden = hidden;
+      series.sequencedInterpolation = true;
+      series.hiddenState.sequencedInterpolation  = false;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+    }
+
+    _.each(q.xy_series, (v, k) => {
+      addLineSeries(v.name, v.value, v.color, v.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    // legend
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'bottom';
+
+    chart.legend.itemContainers.template.events.on("hit", function(ev) {
+      let key = ev.target.dataItem.dataContext.dataFields.valueY;
+      q.xy_series[key].hidden = !q.xy_series[key].hidden;
+      prepareGridData();
+    });
+
+    xy_chart = chart;
+  }
+
+  function gaugeChart(score) {
+    var chartMin = 0;
+    var chartMax = score > 100 ? score : 100;
+
+    var data = {
+      score: score,
+      gradingData: [
+        { title: t('poor')(), color: "#F0506F", lowScore: 0, highScore: 20 },
+        { title: t('unsatisfactory')(), color: "#F6846B", lowScore: 20, highScore: 40 },
+        { title: t('satsfactory')(), color: "#FCD166", lowScore: 40, highScore: 60 },
+        { title: t('very satsfactory')(), color: "#71D487", lowScore: 60, highScore: 80 },
+        { title: t('outstanding')(), color: "#11D59D", lowScore: 80, highScore: 100 }
+      ]
+    };
+
+    if (data.score > 100) data.gradingData.push({ title: t("mega performance")(), color: "#bf42f5", lowScore: 100, highScore: chartMax });
+
+    function lookUpGrade(lookupScore, grades) {
+      for (var i = 0; i < grades.length; i++) {
+        if (
+          grades[i].lowScore < lookupScore &&
+          grades[i].highScore >= lookupScore
+        ) {
+          return grades[i];
+        }
+      }
+      return null;
+    }
+
+    var chart = am4core.create("gauge-chart", am4charts.GaugeChart);
+    chart.hiddenState.properties.opacity = 0;
+    chart.fontSize = 11;
+    chart.innerRadius = am4core.percent(80);
+    chart.resizable = true;
+    chart.hiddenState.properties.opacity = 0;
+
+    var label = chart.createChild(am4core.Label);
+    label.text = t('employee avarage efficiency indicator')();
+    label.fontSize = 12;
+    label.align = "center";
+
+    var axis = chart.xAxes.push(new am4charts.ValueAxis());
+    axis.min = chartMin;
+    axis.max = chartMax;
+    axis.strictMinMax = true;
+    axis.renderer.radius = am4core.percent(110);
+    axis.renderer.inside = true;
+    axis.renderer.ticks.template.disabled = false;
+    axis.renderer.ticks.template.strokeOpacity = 1;
+    axis.renderer.ticks.template.strokeWidth = 0.5;
+    axis.renderer.ticks.template.length = 5;
+    axis.renderer.grid.template.disabled = true;
+    axis.renderer.labels.template.radius = am4core.percent(20);
+    axis.renderer.labels.template.fontSize = "0.9em";
+
+    var gradient = new am4core.LinearGradient();
+    gradient.stops.push({color:am4core.color("#EF476F")})
+    gradient.stops.push({color:am4core.color("#FFD166")})
+    gradient.stops.push({color:am4core.color("#06D6A0")})
+    
+    axis.renderer.line.stroke = gradient;
+    axis.renderer.line.strokeWidth = 25;
+    axis.renderer.line.strokeOpacity = 1;
+
+    var axis2 = chart.xAxes.push(new am4charts.ValueAxis());
+    axis2.min = chartMin;
+    axis2.max = chartMax;
+    axis2.strictMinMax = true;
+    axis2.renderer.radius = am4core.percent(80);
+    axis2.renderer.labels.template.disabled = true;
+    axis2.renderer.ticks.template.disabled = true;
+    axis2.renderer.grid.template.disabled = false;
+    axis2.renderer.grid.template.opacity = 0.7;
+    axis2.renderer.labels.template.bent = true;
+    axis2.renderer.labels.template.fill = am4core.color("#000");
+    axis2.renderer.labels.template.fontWeight = "bold";
+    axis2.renderer.labels.template.fillOpacity = 0.5;
+
+    var matchingGrade = lookUpGrade(data.score, data.gradingData);
+
+    var label = chart.radarContainer.createChild(am4core.Label);
+    label.isMeasured = false;
+    label.fontSize = "4vh";
+    label.x = am4core.percent(50);
+    label.paddingBottom = 15;
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "bottom";
+    label.text = data.score.toFixed(1);
+    label.fill = am4core.color(matchingGrade.color);
+
+    var label2 = chart.radarContainer.createChild(am4core.Label);
+    label2.isMeasured = false;
+    label2.fontSize = "2vh";
+    label2.horizontalCenter = "middle";
+    label2.verticalCenter = "bottom";
+    label2.text = matchingGrade.title.toUpperCase();
+    label2.fill = am4core.color(matchingGrade.color);
+
+    var hand = chart.hands.push(new am4charts.ClockHand());
+    hand.axis = axis2;
+    hand.innerRadius = am4core.percent(55);
+    hand.startWidth = 8;
+    hand.pin.disabled = true;
+    hand.fill = matchingGrade.color;
+    hand.strokeOpacity = 0.2;
+    
+    setInterval(function() {
+      hand.showValue(data.score, 1000, am4core.ease.outQuint);
+    }, 1000);
+  }  
+
+  function reloadCharts(result) {
+    mapData(result);
+
+    $timeout(function() {
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        xyChart(d.chart_data);
+        gaugeChart(d.avg_fact_percent);
+      });
+    });
+  }
+
+  function changeFilter() {
+    page.post(':load_xy_chart_stats', _.pick(d, 'employee_id', 'period_kind')).then(reloadCharts, page.alert);
+  }
+
+  reloadCharts(d);
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-header" style="display: block;">
+        <div class="row">
+          <div class="col-sm-24 col-md col-lg col-xxl mt-md-3">
+            <div class="card-title">
+              <h3 class="card-label">
+                <t p1="d.first_month" ng-if="d.first_month && d.first_month == d.last_month">employee performance for $1{first_month}</t>
+                <t p1="d.first_month" p2="d.last_month" ng-if="d.first_month != d.last_month">employee performance for period ($1{first_month} - $2{last_month})</t>
+                <t ng-if="!d.first_month">employee performance</t>
+              </h3>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md-10 col-lg-8 col-xxl-5 mt-3">
+            <ui-select ng-model="d.period_kind" ng-change="changeFilter()">
+              <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+              <ui-select-choices repeat="item.kind as item in d.period_kinds | filter: $select.search">
+                {{ item.name }}
+              </ui-select-choices>
+            </ui-select>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-group row">
+          <div class="col-sm-8">
+            <div class="gauge-chart" style="min-height: 300px;"></div>
+          </div>
+          <div class="col-sm-16">
+            <div class="xy-chart" style="min-height: 300px;"></div>
+          </div>
+        </div>
+        <div class="row">          
+          <div class="col-sm">
+            <div class="row" ng-if="d.months.length > 5">
+              <div class="offset-sm-12 col-sm-12 mb-2">
+                <b-pg-controller name="staff_plans"/>
+              </div>
+            </div>
+            <b-pg-grid name="staff_plans" local-data="d.grid_data" min-width="500" iterator="item" limit="1000" sort="raw_month, amount">
+              <b-pg-row>
+                <b-pg-col name="raw_month" size="4" format="date">{{ item.month }}</b-pg-row>
+                <b-pg-col name="type" size="4"/>
+                <b-pg-col name="job_name" size="4"/>
+                <b-pg-col name="division_name" size="4"/>
+                <b-pg-col name="percent" size="4"/>
+                <b-pg-col name="amount" size="4" format="amount"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

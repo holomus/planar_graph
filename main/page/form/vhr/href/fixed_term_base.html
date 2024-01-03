@@ -1,0 +1,91 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, bHttp) {
+  var d = _.isUndefined(model.fixed_term_base_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  function validateCode() {
+    if (d.code) {
+      if (d.code == q.code_origin) {
+        q.code_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':code_is_unique', { code: d.code }).then(function(result) {
+          q.code_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.code_is_unique = true;
+  }
+
+  function validateName() {
+    if (d.name) {
+      if (d.name.toLowerCase() == q.name_origin) {
+        q.name_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':name_is_unique', { name: d.name }).then(function(result) {
+          q.name_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.name_is_unique = true;
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  if (d.fixed_term_base_id) {
+    q.name_origin = d.name.toLowerCase();
+    q.code_origin = d.code;
+  };
+
+  validateCode();
+  validateName();
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>code</t></label>
+              <input type="text" class="form-control" ng-model="d.code" ng-model-options="{ debounce: 500 }"
+                     ng-change="validateCode()" b-validate="{ s: q.code_is_unique || d.code.length == 0 }" b-maxlength="50" />
+              <span class="text-danger" ng-hide="d.code.length == 0 || q.code_is_unique"><t>code is already used by another base</t></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" ng-model-options="{ debounce: 500 }"
+                   ng-change="validateName()" b-validate="{ s: q.name_is_unique || d.name.length == 0 }" b-maxlength="100" required />
+            <span class="text-danger" ng-hide="d.name.length == 0 || q.name_is_unique"><t>name should be unique</t></span>
+          </div>
+          <div class="form-group">
+            <label><t>text</t></label>
+            <textarea class="form-control" rows="3" ng-model="d.text" b-maxlength="300"></textarea>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br />
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state" />
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

@@ -1,0 +1,21 @@
+{
+ "assess list": "Список тем для оценивания",
+ "pg.persons.subject1": "Тематика 1",
+ "pg.persons.subject10": "Тематика 10",
+ "pg.persons.subject2": "Тематика 2",
+ "pg.persons.subject3": "Тематика 3",
+ "pg.persons.subject4": "Тематика 4",
+ "pg.persons.subject5": "Тематика 5",
+ "pg.persons.subject6": "Тематика 6",
+ "pg.persons.subject7": "Тематика 7",
+ "pg.persons.subject8": "Тематика 8",
+ "pg.persons.subject9": "Тематика 9",
+ "subject group name: $1": "Группа тематик: $1",
+ "total": "Всего",
+ "not passed": "Не пройден",
+ "pass all?": "Пройти все?",
+ "passed": "Пройден",
+ "pg.persons.name": "ФИО",
+ "pg.persons.passed": "Пройден",
+ "save": "Сохранить"
+}

@@ -1,0 +1,9 @@
+select *
+  from Old_Vx_Org_Tracks p
+ where p.Company_Id = 480
+   and not exists (select *
+          from Migr_Keys_Store_Two St
+         where St.Company_Id = 580
+           and St.Key_Name = 'track_id'
+           and St.Old_Id = p.Track_Id)
+   and p.Track_Date >= to_date('01.01.2023', 'dd.mm.yyyy')

@@ -1,0 +1,18 @@
+{
+ "close": "Close",
+ "delete $1": "Delete $1",
+ "delete $1{device_count} device(s)?": "Do you really want to delete <b>$1</b> device(s)?",
+ "delete device $1{device_name}?": "Do you really want to delete <b>$1</b>?",
+ "details": "Details",
+ "extra details": "Details",
+ "get $1 device infos": "Load details of $1 device(s)",
+ "get device info": "Load Details",
+ "get devices": "Load",
+ "loop ended before loading all data": "Loop ended before loading all devices",
+ "table.created_on": "Created on",
+ "table.device_code": "Device Code",
+ "table.device_name": "Name",
+ "table.modified_on": "Modified on",
+ "table.serial_number": "Serial No.",
+ "table.status_name": "Status"
+}

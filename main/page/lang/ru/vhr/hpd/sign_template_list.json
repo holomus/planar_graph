@@ -1,0 +1,16 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1 template(s)?": "Удалить $1 шаблон(ов)?",
+ "delete template $1?": "Удалить шаблон $1?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.journal_type_name": "Тип документа",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.note": "Примечание",
+ "table.process_name": "Процесс",
+ "table.sign_kind_name": "Подписание",
+ "table.state_name": "Статус",
+ "table.template_id": "ИД"
+}

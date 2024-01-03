@@ -1,0 +1,497 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'divisions', 'providers'),
+      q = {},
+      DEFAULT_COLOR = '#4B77BE';
+
+  // map
+  var map = page.getMap('map'),
+      default_latlng = d.default_latlng.split(','),
+      markers = [],
+      tracks = [],
+      locations = [],
+      gps_tracks = [],
+      polyline_count = 0,
+      tLocation = t('location'),
+      tAccuracy = t('accuracy'),
+      tProvider = t('provider'),
+      tMeter = t('m'),
+      tNote = t('note');
+      tRegion = t('region'),
+      tAddress = t('address'),
+      tLatLng = t('latlng'),
+      tTotaDistanceKilometre = t('total distance: $1 km $2 m'),
+      tTotaDistanceMetre = t('total distance: $1 m');
+
+  map.init({
+    lat: default_latlng[0],
+    lng: default_latlng[1],
+    zoom: 15
+  });
+
+  function gpsTrackPopup(x) {
+    return `<div class="card border-0">
+              <div class="card-body">
+                <div class="card-text"><b>${ d.employee_name }</b></div>
+                <div class="card-text text-muted"><span><i class="fa fa-calendar text-primary"></i>&nbsp;${ x.track_date }</span></div>
+                <div class="card-text text-muted"><span><i class="far fa-clock text-primary"></i>&nbsp;${ x.track_time }</span></div>
+                <legend></legend>
+                <div class="card-text"><span><b>${ tAccuracy() }:</b>&nbsp;${ x.accuracy + `&nbsp;${ tMeter() }` }</span></div>
+                <div class="card-text"><span><b>${ tProvider() }:</b>&nbsp;${ x.provider_name }</span></div>
+              </div>
+            </div>`;
+  }
+
+  function trackPopup(x) {
+    let img_src = x.photo_sha ? window.location.origin + window.location.pathname + page.loadImage(x.photo_sha).replace('/map_module','') : null;
+    return `<div class="card border-0">
+              <div class="row no-gutters">` +
+                (img_src ? `<div class="col-md-8"><img class="card-img" src="${ img_src }"/></div>` : '') +
+                `<div class="col-md-16">
+                  <div class="card-body">
+                    <div class="card-text"><b>${ d.employee_name }</b></div>
+                    <div class="card-text text-muted"><span><i class="far fa-clock text-primary"></i>&nbsp;${ x.track_time }</span></div>
+                    <div class="card-text text-muted">
+                      <span>
+                        <i class="fa fa-map-marker ${ x.track_type == 'I' ? 'text-success' : x.track_type == 'O' ? 'text-danger' : 'text-warning' }"></i>&nbsp;${ x.track_type_name }
+                      </span>
+                    </div>
+                    <legend></legend>
+                    <div class="card-text"><span><b>${ tLocation() }:</b>&nbsp;${ x.location_name || '...' }</span></div>
+                    <div class="card-text"><span><b>${ tAccuracy() }:</b>&nbsp;${ x.accuracy ? x.accuracy + `&nbsp;${ tMeter() }` : '...' }</span></div>
+                    <div class="card-text"><span><b>${ tNote() }:</b>&nbsp;${ x.note || '...' }</span></div>
+                    <div class="card-text"><span><b>${ tLatLng() }:</b>&nbsp;${ x.latlng || '...' }</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+  }
+
+  function trackIcon(x) {
+    switch (x.track_type) {
+      case 'I':
+        return 'group_marks/a-05'; // success
+      case 'O':
+        return 'group_marks/a-01'; // danger
+      case 'C':
+        return 'group_marks/a-02'; // warning
+      default:
+        return 'group_marks/a-02'; // warning
+    }
+  }
+
+  function locationPopup(x) {
+    return `<div class="card border-0">
+              <div class="card-body">
+                <div class="card-text"><b>${ x.name }</b></div>
+                <legend></legend>
+                <div class="card-text"><span><b>${ tRegion() }:</b>&nbsp;${ x.region_name || '...' }</span></div>
+                <div class="card-text"><span><b>${ tAddress() }:</b>&nbsp;${ x.address || '...' }</span></div>
+                <div class="card-text"><span><b>${ tLatLng() }:</b>&nbsp;${ x.latlng || '...' }</span></div>
+              </div>
+            </div>`;
+  }
+
+  function calculateTheDistance(lat1, lng1, lat2, lng2) {
+    var EARTH_RADIUS = 6372795,
+        M_PI = 3.14159265358979;
+
+    lat1 = lat1 * M_PI / 180;
+    lat2 = lat2 * M_PI / 180;
+    long1 = lng1 * M_PI / 180;
+    long2 = lng2 * M_PI / 180;
+
+    cl1 = Math.cos(lat1);
+    cl2 = Math.cos(lat2);
+    sl1 = Math.sin(lat1);
+    sl2 = Math.sin(lat2);
+    delta = long2 - long1;
+    cdelta = Math.cos(delta);
+    sdelta = Math.sin(delta);
+
+    var a = cl1 * sl2 - sl1 * cl2 * cdelta,
+        b = cl2 * sdelta;
+
+    y = Math.sqrt(Math.pow(b, 2) + Math.pow(a, 2));
+    x = sl1 * sl2 + cl1 * cl2 * cdelta;
+
+    ad = Math.atan2(y, x);
+    dist = ad * EARTH_RADIUS;
+    return dist;
+  }
+
+  function reloadGpsTracking() {
+    map.then(function(api) {
+      api.removePlacemarks();
+      for (var i = 0; i < polyline_count; i++) {
+        api.removePolylineWithArrows(i);
+      }
+      polyline_count = 0;
+
+      if (d.show_gps_tracking) {
+        gps_tracks = _.chain(d.gps_tracks).filter(x => x.lat && x.lng).map(function(x) {
+          return {
+            key: `gps_track:${ x.track_number }`,
+            title: gpsTrackPopup(x),
+            latlng: [x.lat, x.lng],
+            icon: 'default'
+          };
+        }).value();
+
+        let latlngs = _.pluck(gps_tracks, 'latlng');
+
+        if (d.show_gps_markers) {
+          _.each(gps_tracks, function(x) {
+            api.addPlacemark(x.key, x.latlng, x.icon, x.title);
+          });
+        }
+
+        let i = 0, n = gps_tracks.length - 1, points = [];
+
+        while (i < n) {
+          points.push(latlngs[i]);
+          while (i < n && calculateTheDistance(latlngs[i][0], latlngs[i][1], latlngs[i + 1][0], latlngs[i + 1][1]) <= 500) {
+            points.push(latlngs[i+1]);
+            i++;
+          }
+          if (points.length > 1) {
+            api.addPolylineWithArrows(polyline_count++, points, {color: '#343a40'});
+            points = [];
+            continue;
+          }
+          while (i < n && calculateTheDistance(latlngs[i][0], latlngs[i][1], latlngs[i + 1][0], latlngs[i + 1][1]) > 500) {
+            points.push(latlngs[i+1]);
+            i++;
+          }
+          if (points.length > 1) {
+            api.addPolylineWithArrows(polyline_count++, points, {color: '#007bff', dashArray: '10,10', lineJoin: 'round'});
+            points = [];
+          }
+        }
+      }
+    });
+  }
+
+  function reloadMap() {
+    map.then(function(api) {
+      tracks = _.chain(d.tracks).filter(x => x.latlng).map(function(x) {
+        let latlng = x.latlng.split(",");
+        return {
+          key: `track:${ x.track_id }`,
+          title: trackPopup(x),
+          latlng: latlng,
+          lat: latlng[0],
+          lng: latlng[1],
+          icon: trackIcon(x)
+        };
+      }).value();
+      if (d.show_locations) {
+        locations = _.chain(d.locations).filter(x => x.latlng).map(function(x) {
+          let latlng = x.latlng.split(",");
+          return {
+            key: 'location:' + x.location_id,
+            title: locationPopup(x),
+            latlng: latlng,
+            lat: latlng[0],
+            lng: latlng[1],
+            iconColor: x.color || DEFAULT_COLOR
+          };
+        }).value();
+      } else {
+        locations = [];
+      }
+
+      api.removeMarkers();
+      markers = _.union(tracks, locations);
+      api.addMarkers(markers);
+      let latlng = markers.length > 0 ? _.first(markers).latlng : default_latlng;
+      api.setCenter(latlng);
+
+      reloadGpsTracking();
+    });
+  }
+
+  function loadTracking() {
+    if (page.valid(scope.form)) {
+      page.post(':load', {
+        begin_date: d.begin_date,
+        end_date: d.end_date,
+        employee_id: d.employee_id,
+        location_type_ids: _.pluck(d.location_types, 'location_type_id')
+      }).then(function(result) {
+        d.total_distance = result.total_distance >= 1000 ? tTotaDistanceKilometre(Math.trunc(result.total_distance / 1000), result.total_distance % 1000) : tTotaDistanceMetre(result.total_distance || '0');
+        d.tracks = _.chain(result.tracks)
+                    .map(x => x = JSON.parse(x))
+                    .mapRows(['track_id', 'track_time', 'track_type', 'track_type_name', 'location_name', 'accuracy', 'photo_sha', 'latlng', 'note', 'is_valid'])
+                    .value();
+        d.locations = _.chain(result.locations)
+                       .map(x => x = JSON.parse(x))
+                       .mapRows(['location_id', 'name', 'region_name', 'address', 'latlng', 'color'])
+                       .each(x => x.color = x.color || DEFAULT_COLOR)
+                       .value();
+        d.gps_tracks = _.chain(result.gps_tracks)
+                        .map(track => {
+                          return _.chain(track.data.slice(0, -1).split('\n'))
+                                  .map(x => x.split('\t'))
+                                  .mapRows(['track_time', 'lat', 'lng', 'accuracy', 'provider'])
+                                  .each(x => {
+                                    x.track_date = track.track_date;
+                                    x.track_number = moment(x.track_date + ' ' + x.track_time, 'DD.MM.YYYY HH:mm:ss').format('YYYYMMDDHHmmss');
+                                    x.provider_name = q.providers[x.provider];
+                                  })
+                                  .value();
+                        })
+                        .flatten()
+                        .sortBy(x => x.track_number)
+                        .value();
+        reloadMap();
+      }, page.alert);
+    }
+  }
+
+  function showMarkerPopup(type, id) {
+    let key = `${ type }:${ id }`;
+    let index = _.findIndex(markers, x => x.key == key);
+    map.then(function(api) {
+      api.showMarkerPopup(index, 20);
+      api.setCenter(markers[index].latlng);
+    });
+  }
+
+  // employee
+  function changeEmployeeQuery(query, value) {
+    query.param(_.pick(d, ['begin_date', 'end_date', 'division_id'])).searchValue(value);
+  }
+
+  function setEmployee(row) {
+    if (!row) return;
+    d.employee_id = row.employee_id;
+    d.employee_name = row.name;
+  }
+
+  function whereEmployee() {
+    let where = ['and', [['hiring_date', '<=', d.end_date], ['or', [['dismissal_date', '=', [null]], ['dismissal_date', '>=', d.begin_date]]]]];
+    return d.division_id ? ['and', [where, ['division_id', '=', d.division_id]]] : where;
+  }
+
+  function selectEmployee() {
+    fi.select_employee(null, setEmployee, { where: whereEmployee() });
+  }
+
+  // tab
+  function setActiveTab(name) {
+    q.active_tab = name;
+  }
+
+  function tabClass(name) {
+    return q.active_tab == name ? 'active' : '';
+  }
+
+  function pageId(name) {
+    return name + page.id;
+  }
+
+  function launchFullscreen() {
+    page.launchFullscreen(document.getElementById(pageId('fullscreen')));
+  }
+
+  function run(rt) {
+    if (page.valid(scope.form)) {
+      var data = _.chain(d).pick('begin_date', 'end_date', 'employee_id').extend({ rt: rt }).value();
+      window.open(page.url('run', data));
+    }
+  }
+
+  function calculateAll() {
+    page.confirm(t('calculate gps track distance for all persons?')(), function() {
+      page.post(':calculate_all').then(page.reload, page.alert);
+    });
+  }
+
+  d.location_types = [];
+  d.tracks = [];
+  d.gps_tracks = [];
+  d.locations = [];
+  d.show_locations = model.show_locations == 'Y';
+  d.show_gps_tracking = model.show_gps_tracking == 'Y';
+  d.show_gps_markers = false;
+
+  q.active_tab = 'tracking';
+  q.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  q.providers = _.object(model.providers);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-default" ng-click="launchFullscreen()"><t>fullscreen</t></button>
+  <button type="button" class="btn btn-warning" ng-click="calculateAll()" ng-if="d.is_need_calculate == 'Y'"><t>calculate</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form" id="{{ pageId('fullscreen') }}">
+    <div class="card card-custom">
+      <div class="card-body" style="min-height: 100vh; display: grid;">
+        <div class="row">
+          <div class="col-sm-17">
+            <b-map name="map"/>
+          </div>
+          <div class="col-sm-7">
+            <div class="form-group">
+              <label><t>track date</t></label><br/>
+              <b-date-range-picker begin="d.begin_date" end="d.end_date"/>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select origin="q.divisions" id-key="division_id" model="d.division_id"/>
+            </div>
+            <div class="form-group">
+              <label><t>location types</t></label>
+              <b-input name="location_types"
+                       multiple
+                       model="d.location_types"
+                       model-key="location_type_id"
+                       column="color">
+                <div style="width:20px; height:20px; border-radius:3px;" ng-style="{ 'background-color': row.color }"></div>&nbsp;{{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>employee</t><r/></label>
+              <b-input name="employees"
+                       model="d.employee_name | name"
+                       model-key="d.employee_id | employee_id"
+                       on-change="changeEmployeeQuery(query, value)"
+                       is-view="fi.select_employee"
+                       on-view="selectEmployee()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary btn-block" ng-click="loadTracking()"><t>load</t></button>
+            </div>
+            <div class="form-group">
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html')"><t>HTML</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx')"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv')"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml')"><t>XML</t></button>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-model="d.show_locations" ng-change="setActiveTab('tracking'); reloadMap();" />
+                <span><t>show locations</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-model="d.show_gps_tracking" ng-change="d.show_gps_markers = d.show_gps_tracking; setActiveTab('tracking'); reloadMap();" />
+                <span><t>show gps tracking</t></span>
+              </label>
+            </div>
+            <div class="form-group" ng-if="d.show_gps_tracking">
+              <label class="switch">
+                <input type="checkbox" ng-model="d.show_gps_markers" ng-change="setActiveTab('tracking'); reloadGpsTracking();" />
+                <span><t>show gps tracking icon </t></span>
+              </label>
+            </div>
+            <div class="form-group" ng-show="d.show_gps_tracking">
+              <span>{{ d.total_distance }}</span>
+            </div>
+            <div class="card card-custom bg-white">
+              <div class="card-header card-header-tabs-line">
+                <div class="card-toolbar align-items-end">
+                  <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+                    <li class="nav-item">
+                      <a class="nav-link" ng-class="tabClass('tracking')" ng-click="setActiveTab('tracking')" role="tab"><t>tracking</t></a>
+                    </li>
+                    <li class="nav-item" ng-show="d.show_gps_tracking">
+                      <a class="nav-link" ng-class="tabClass('gps_tracking')" ng-click="setActiveTab('gps_tracking')" role="tab"><t>gps tracking</t></a>
+                    </li>
+                    <li class="nav-item" ng-show="d.show_locations">
+                      <a class="nav-link" ng-class="tabClass('locations')" ng-click="setActiveTab('locations')" role="tab"><t>locations</t></a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="tab-content">
+                  <div class="tab-pane" ng-class="tabClass('tracking')">
+                    <div class="form-group">
+                      <b-pg-controller name="tracks"/>
+                    </div>
+                    <b-pg-grid name="tracks" local-data="d.tracks" search="track_type_name, location_name" use-default-setting min-height="'auto'">
+                      <b-pg-header name="track_time">
+                        <div class="text-center"><i class="fa fa-clock text-primary"></i></div>
+                      </b-pg-header>
+                      <b-pg-row>
+                        <b-pg-col name="track_time" size=4>
+                          <div class="text-center" ng-if="row.latlng">
+                            <a href ng-click="showMarkerPopup('track', row.track_id)">{{ row.track_time }}</a>
+                          </div>
+                          <div class="text-center" ng-if="!row.latlng">
+                            {{ row.track_time }}
+                          </div>
+                        </b-pg-col>
+                        <b-pg-col name="track_type_name" size=4>
+                          <span>
+                            <i class="fa fa-map-marker" ng-class="{'text-success': row.track_type == 'I', 'text-danger': row.track_type == 'O', 'text-warning': row.track_type == 'C'}"></i>
+                            &nbsp;{{ row.track_type_name }}
+                          </span>
+                        </b-pg-col>
+                        <b-pg-col name="location_name" size=6/>
+                        <b-pg-col name="accuracy" size=4/>
+                        <b-pg-col name="note" size=6/>
+                      </b-pg-row>
+                    </b-pg-grid>
+                  </div>
+                  <div class="tab-pane" ng-show="d.show_gps_tracking" ng-class="tabClass('gps_tracking')">
+                    <div class="form-group">
+                      <b-pg-controller name="gps_tracks"/>
+                    </div>
+                    <b-pg-grid name="gps_tracks" local-data="d.gps_tracks" use-default-setting min-height="'auto'">
+                      <b-pg-header name="track_time">
+                        <div class="text-center"><i class="fa fa-clock text-primary"></i></div>
+                      </b-pg-header>
+                      <b-pg-row>
+                        <b-pg-col name="track_time" size=4>
+                          <div class="text-center">{{ row.track_time }}</div>
+                        </b-pg-col>
+                        <b-pg-col name="accuracy" size=4/>
+                        <b-pg-col name="provider_name" size=16/>
+                      </b-pg-row>
+                    </b-pg-grid>
+                  </div>
+                  <div class="tab-pane" ng-show="d.show_locations" ng-class="tabClass('locations')">
+                    <div class="form-group">
+                      <b-pg-controller name="locations" />
+                    </div>
+                    <b-pg-grid name="locations" local-data="d.locations" use-default-setting min-height="'auto'">
+                      <b-pg-row>
+                        <b-pg-col name="name" size=9 >
+                          <span ng-if="row.color" class="text-center">
+                            <i ng-show="!color" class="fa fa-map-marker" style="color: {{ row.color }}"/>
+                            <a href ng-click="showMarkerPopup('location', row.location_id)">
+                              &nbsp;{{ row.name }}
+                            </a>
+                          </span>
+                          <span ng-if="!row.color">
+                            <a href ng-click="showMarkerPopup('location', row.location_id)">
+                              &nbsp;{{ row.name }}
+                            </a>
+                          </span>
+                        </b-pg-col>
+                        <b-pg-col name="region_name" size=9/>
+                        <b-pg-col name="latlng" size=6/>
+                      </b-pg-row>
+                    </b-pg-grid>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

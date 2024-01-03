@@ -1,0 +1,9 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{inventory_type_count} inventory type(s)?": "Delete <b>$1</b> inventory type(s)?",
+ "delete inventory type $1{inventory_type_name}?": "Delete inventory type <b>$1</b>?",
+ "select": "Select",
+ "table.inventory_type_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,10 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another relation degree": "Код уже закреплен за другой степенью родства",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

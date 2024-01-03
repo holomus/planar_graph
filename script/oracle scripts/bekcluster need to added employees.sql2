@@ -1,0 +1,36 @@
+select Qr.Filial_Id,
+       Qr.Name            Employee_Name,
+       Qr.New_Employee_Id,
+       Qr.Employee_Id     Old_Employee_Id,
+       Qr.Filial_Name,
+       Qr.Old_Filial_Name
+  from (select Sk.New_Id Filial_Id,
+               Ks.New_Id New_Employee_Id,
+               (select e.Name
+                  from Md_Filials e
+                 where e.Filial_Id = Sk.New_Id) Filial_Name,
+               (select e.Name
+                  from Old_Vx_Hr_Divisions e
+                 where e.Division_Id = p.Subcompany_Id) Old_Filial_Name,
+               p.*
+          from Old_Vx_Hr_Employees p
+          join Migr_Keys_Store_One Sk
+            on Sk.Company_Id = 580
+           and Sk.Key_Name in ('filial_id', 'division_filial_id')
+           and Sk.Old_Id = p.Subcompany_Id
+          join Migr_Keys_Store_One Ks
+            on Ks.Company_Id = 580
+           and Ks.Key_Name = 'person_id'
+           and Ks.Old_Id = p.Employee_Id
+         where p.Company_Id = 480
+           --and p.c_Division_Id is not null
+           and exists (select *
+                  from Md_Filials w
+                 where w.Filial_Id = Sk.New_Id
+                   and w.State = 'A')
+           and not exists (select *
+                  from Href_Staffs q
+                 where q.Company_Id = 580
+                   and q.Filial_Id = Sk.New_Id
+                   and q.Employee_Id = Ks.New_Id)
+           and p.Employee_Id in (49253, 46972, 50715)) Qr

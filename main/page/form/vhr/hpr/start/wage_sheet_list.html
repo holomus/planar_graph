@@ -1,0 +1,328 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var pg = page.grid('table');
+
+  pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${ row.posted == 'Y' ? 'primary' : 'secondary' }">${ row.posted_name }</span>`;
+  });
+  pg.asHtml('month_html', 'month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+  pg.asHtml('period_begin_html', 'period_begin', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.period_begin, 'DD.MM.YYYY').format('DD MMM YYYY') }</span>`;
+  });
+  pg.asHtml('period_end_html', 'period_end', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.period_end, 'DD.MM.YYYY').format('DD MMM YYYY') }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var q = {},
+      s = model.settings;
+
+  function deleteAction(message, sheet_id) {
+    page.confirm(message, function() {
+      fi.delete({ sheet_id: sheet_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function doAction(doFunc, doTrans, sheet_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ sheet_id: sheet_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans) {
+    return function(row) {
+      doAction(doFunc, doTrans(row.sheet_number, moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY')), row.sheet_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key) {
+    return function() {
+      doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'sheet_id'));
+    }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {},
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_post', checked, x => x.posted == 'N');
+    prepChecked('to_unpost', checked, x => x.posted == 'Y');
+    prepChecked('to_delete', checked, x => x.posted == 'N');
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ sheet_id: row.sheet_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ sheet_id: row.sheet_id });
+  }
+
+  // settings modal
+  var modal = page.$content.find('form[name=settingsModal]>.modal');
+
+  function showSettingsModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideSettingsModal() {
+    $timeout(function () {
+      modal.modal('hide');
+    });
+  }
+
+  function savePreferences() {
+    page.post(':save_preferences', s).then(hideSettingsModal, page.alert);
+  }
+
+  function disableMinuteWords() {
+    if (s.minutes == 'N')
+      s.minute_words = 'N';
+  }
+
+  function runReport(row) {
+    if (row.posted != 'Y') return;
+    window.open(page.url('run', {
+      sheet_id: row.sheet_id,
+      rt: 'html'
+    }));
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+  scope.s = s;
+  scope.postOne = prepActionOne(fi.post, t('post sheet $1{sheet_number} on $2{month}?'));
+  scope.postMany = prepActionMany(fi.post, t('post $1{sheet_count} sheets?'), 'to_post');
+  scope.unpostOne = prepActionOne(fi.unpost, t('unpost sheet $1{sheet_number} on $2{month}?'));
+  scope.unpostMany = prepActionMany(fi.unpost, t('unpost $1{sheet_count} sheets?'), 'to_unpost');
+  scope.deleteOne = prepActionOne(fi.delete, t('delete sheet $1{sheet_number} on $2{month}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{sheet_count} sheets?'), 'to_delete');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has">
+      <t p1="q.to_post.size">post $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has">
+      <t p1="q.to_unpost.size">unpost $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has">
+      <t p1="q.to_delete.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="sheet_id, sheet_number, sheet_date, month, posted" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="-sheet_date" search="sheet_number" searchable="month, division_names"
+            extra-columns="sheet_id, note, created_by_name, created_on, modified_by_name, modified_on">
+      <b-row>
+        <b-col name="sheet_date" size=5/>
+        <b-col name="sheet_number" size=5/>
+        <b-col name="month" size=5 as-html="month_html"/>
+        <b-col name="division_names" size=5/>
+        <b-col name="posted_name" size=3 as-html="posted_html"/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="period_begin" as-html="period_begin_html"/>
+        <b-col name="period_end" as-html="period_end_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'">{{ fi.post.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'">{{ fi.unpost.title }}</button>
+        <div class="btn-group" ng-if="fi.run && row.posted == 'Y'">
+          <button type="button" class="btn btn-icon btn-default" ng-click="showSettingsModal()">
+            <i class="fa fa-cog"></i>
+          </button>
+          <button type="button" class="btn btn-default" ng-click="runReport(row)"><t>report</t></button>
+        </div>
+      </b-action>
+
+      <b-filter name="sheet_id" directive="equal" extra/>
+      <b-filter name="sheet_number"/>
+      <b-filter name="sheet_date"/>
+      <b-filter name="month" date-level="month" directive="equal"/>
+      <b-filter name="division_ids" decorate-with="division_names"/>
+      <b-filter name="posted" decorate-with="posted_name"/>
+      <b-filter name="period_begin"/>
+      <b-filter name="period_end"/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+  <form name="settingsModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>report settings</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <label class="font-weight-bold"><t>time info</t></label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minutes" ng-true-value="'Y'" ng-false-value="'N'" ng-change="disableMinuteWords()"/>
+                    <span><t>setting minutes</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minute_words" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.minutes != 'Y'"/>
+                    <span><t>setting minute words</t></span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <label class="font-weight-bold"><t>report info</t></label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.staff_number" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting staff number</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.detail" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show detailed report</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.monthly_plan" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show monthly plan</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.period_plan" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show period plan</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.fact_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show fact time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.division" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show division</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.job" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show job</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.schedule" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show schedule</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.fte" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show fte</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.onetime_aviable" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>show onetime</t></span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <label class="font-weight-bold"><t>part info</t></label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.overtime_fact" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>overtime value</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.late_fact" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>late value</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.early_fact" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>early value</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.lack_fact" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>lack value</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.break_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>break time</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="savePreferences()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

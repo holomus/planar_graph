@@ -1,0 +1,12 @@
+{
+ "active": "Active",
+ "identifier": "Identifier",
+ "identifier is not valid": "Invalid variable",
+ "identifier should be unique": "Variable must be unique",
+ "indicator group": "Variable Group",
+ "name": "Name",
+ "passive": "Inactive",
+ "save": "Save",
+ "short name": "Alternative Name",
+ "state": "Status"
+}

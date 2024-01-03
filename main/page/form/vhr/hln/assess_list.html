@@ -1,0 +1,223 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  var d = model, q = {};
+
+  function assess() {
+    let data = _.pick(d, 'training_id');
+    data.persons = [];
+    _.each(d.persons, x => {
+      data.persons.push({
+        person_id: x.person_id,
+        passed: x.passed,
+        subjects: d.person_subjects[x.person_id]
+       })
+    });
+
+    page.post(':assess', data).then(page.close, page.alert);
+  }
+
+  function passAll(pass) {
+    _.each(d.persons, person => {
+      person.passed = pass;
+      changePass(person);
+    });
+  }
+
+  function changePass(item) {
+    _.each(d.person_subjects[item.person_id], x => {
+      x.passed = item.passed;
+    });
+  }
+
+  function changeSubjectPass(item, subject) {
+    item.passed = _.some(d.person_subjects[item.person_id], (x) => { return x.passed == 'N' }) ? 'N' : 'Y';
+  }
+
+  page.title(page.title() + ' (' + d.training_number + ')');
+
+  d.training_subjects = _.mapRows(d.training_subjects, ['subject_id', 'name']);
+  d.person_subjects = _.chain(d.person_subjects)
+                       .mapRows(['person_id', 'subject_id', 'passed'])
+                       .groupBy('person_id')
+                       .value();
+
+  d.persons = _.chain(d.persons)
+               .mapRows(['person_id', 'name', 'passed'])
+               .each( x => {
+                x.subjects = d.person_subjects[x.person_id];
+               })
+               .value();
+
+  q.tPass = t('pass all?')();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <div class="row">
+    <div class="col-sm-12 mb-2">
+      <button type="button" class="btn btn-primary" ng-click="assess()"><t>save</t></button>
+      <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+    </div>
+  </div>
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <t ng-if="d.subject_group_name" p1="d.subject_group_name">subject group name: $1</t>
+        <t ng-if="!d.subject_group_name">assess list</t>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="offset-sm-12 col-sm-12 mb-2">
+          <b-pg-controller name="persons"/>
+        </div>
+      </div>
+      <b-pg-grid name="persons" local-data="d.persons" sort="name" search="name" iterator="item" limit="1000">
+        <b-pg-header name="passed">
+          <div class="text-left">
+            <button type="button" class="btn btn-outline-primary btn-icon" b-toggle data-title="{{ q.tPass }}" on-click-yes="passAll('Y')" on-click-no="passAll('N')" ng-if="d.persons.length">
+              <i class="fa fa-check"></i>
+            </button>
+            <t>total</t>
+          </div>
+        </b-pg-header>
+        <b-pg-header name="subject1">
+          <div class="text-center">{{ d.training_subjects[0].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject2">
+          <div class="text-center">{{ d.training_subjects[1].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject3">
+          <div class="text-center">{{ d.training_subjects[2].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject4">
+          <div class="text-center">{{ d.training_subjects[3].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject5">
+          <div class="text-center">{{ d.training_subjects[4].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject6">
+          <div class="text-center">{{ d.training_subjects[5].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject7">
+          <div class="text-center">{{ d.training_subjects[6].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject8">
+          <div class="text-center">{{ d.training_subjects[7].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject9">
+          <div class="text-center">{{ d.training_subjects[8].name }}</div>
+        </b-pg-header>
+        <b-pg-header name="subject10">
+          <div class="text-center">{{ d.training_subjects[9].name }}</div>
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="name" size=7/>
+          <b-pg-col name="subject1" size="5">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][0].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][0])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject2" size="5" access="d.training_subjects[1].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][1].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][1])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject3" size="5" access="d.training_subjects[2].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][2].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][2])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject4" size="5" access="d.training_subjects[3].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][3].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][3])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject5" size="5" access="d.training_subjects[4].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][4].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][4])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject6" size="5" access="d.training_subjects[5].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][5].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][5])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject7" size="5" access="d.training_subjects[6].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][6].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][6])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject8" size="5" access="d.training_subjects[7].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][7].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][7])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject9" size="5" access="d.training_subjects[8].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][8].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][8])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="subject10" size="5" access="d.training_subjects[9].subject_id">
+            <div class="form-group text-center">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.person_subjects[item.person_id][9].passed"
+                       ng-change="changeSubjectPass(item, d.person_subjects[item.person_id][9])"/>
+                <span></span>
+              </label>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="passed" size=2>
+            <div class="form-group text-left">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="item.passed" ng-change="changePass(item)"/>
+                <span class="slider round">
+                  <t ng-if="item.passed == 'Y'">passed</t>
+                  <t ng-if="item.passed == 'N'">not passed</t>
+                </span>
+              </label>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</div>

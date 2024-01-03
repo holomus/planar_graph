@@ -1,0 +1,35 @@
+<script biruni>
+page.init(function(param) {
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  page.grid('table').asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+
+  page.query('table').param(param);
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>subordinates</t></h3>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="form-group row">
+      <div class="offset-sm-12 col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table" required="employee_id" sort="name" search="name">
+      <b-row>
+        <b-col name="name" as-html="person_html" size=24/>
+      </b-row>
+
+      <b-filter name="employee_id" directive="equal" extra/>
+      <b-filter name="name"/>
+    </b-grid>
+  </div>
+</div>

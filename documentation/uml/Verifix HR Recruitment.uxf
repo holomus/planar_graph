@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>9</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>576</x>
+      <y>585</y>
+      <w>261</w>
+      <h>369</h>
+    </coordinates>
+    <panel_attributes>*HREC_APPLICATIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*APPLICATION_ID*
+APPLICATION_NUMBER
+DIVISION_ID
+JOB_ID
+QUANTITY
+/WAGE/
+/RESPONSIBILITIES/
+/REQUIREMENTS/
+STATUS
+/NOTE/
+CRETAED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+
+--
+Status:
+(D)raft
+(W)aiting
+(A)pproved
+c(O)mplited
+(C)ancelled</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>576</x>
+      <y>1161</y>
+      <w>261</w>
+      <h>549</h>
+    </coordinates>
+    <panel_attributes>*HREC_VACANCIES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*VACANCY_ID*
+OPENED_DATE
+/CLOSED_DATE/
+/DEADLINE/
+/APPLICATION_ID/
+DIVISION_ID
+JOB_ID
+FUNNEL_ID
+QUANTITY
+SCOPE
+URGENT
+/WAGE/
+/RESPONSIBILITIES/
+/REQUIRMENTS/
+STATUS
+/NOTE/
+CRETAED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+
+--
+SCOPE
+(A)ll
+(E)mployees
+(N)on-employees
+
+--
+URGENT
+(Y)es
+(N)o
+
+--
+STATUS
+(O)pen
+(C)losed
+
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>369</x>
+      <y>1845</y>
+      <w>261</w>
+      <h>126</h>
+    </coordinates>
+    <panel_attributes>*HREC_VACANCY_RECRUITERS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*VACANCY_ID*
+*USER_ID*
+
+--
+USER_ID - users who has Recruiter role</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>810</x>
+      <y>1845</y>
+      <w>261</w>
+      <h>126</h>
+    </coordinates>
+    <panel_attributes>*HREC_VACANCY_CANDIDATES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*VACANCY_ID*
+*CANDIDATE_ID*
+STAGE_ID
+/REFUSAL_REASON_ID/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>234</x>
+      <y>45</y>
+      <w>261</w>
+      <h>189</h>
+    </coordinates>
+    <panel_attributes>*HREC_STAGES*
+--
+*COMPANY_ID*
+*STAGE_ID*
+NAME
+STATE
+ORDER_NO
+/CODE/
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>567</x>
+      <y>45</y>
+      <w>261</w>
+      <h>189</h>
+    </coordinates>
+    <panel_attributes>*HREC_FUNNELS*
+--
+*COMPANY_ID*
+*FUNNEL_ID*
+NAME
+STATE
+/CODE/
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>405</x>
+      <y>306</y>
+      <w>261</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HREC_FUNNEL_STAGES*
+--
+*COMPANY_ID*
+*FUNNEL_ID*
+*STAGE_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>810</x>
+      <y>2052</y>
+      <w>261</w>
+      <h>297</h>
+    </coordinates>
+    <panel_attributes>*HREC_OPERATIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*OPERATION_ID*
+OPERATION_KIND
+VACANCY_ID
+CANDIDATE_ID
+/FROM_STAGE_ID/
+/TO_STAGE_ID/
+/REJECT_REASON_ID/
+/NOTE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+
+--
+OPERATION KINDS: 
+(A)ction
+(N)ote</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>900</x>
+      <y>45</y>
+      <w>261</w>
+      <h>189</h>
+    </coordinates>
+    <panel_attributes>*HREC_REJECT_REASONS*
+--
+*COMPANY_ID*
+*REJECT_REASON_ID*
+NAME
+STATE
+/ORDER_NO/
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>369</x>
+      <y>225</y>
+      <w>288</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>300.0;10.0;300.0;60.0;10.0;60.0;10.0;140.0;40.0;140.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>351</x>
+      <y>225</y>
+      <w>72</w>
+      <h>162</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;160.0;60.0;160.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>540</x>
+      <y>945</y>
+      <w>180</w>
+      <h>351</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>180.0;10.0;180.0;130.0;10.0;130.0;10.0;370.0;40.0;370.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>513</x>
+      <y>225</y>
+      <w>225</w>
+      <h>1116</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>230.0;10.0;230.0;330.0;10.0;330.0;10.0;1220.0;70.0;1220.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>342</x>
+      <y>1701</y>
+      <w>378</w>
+      <h>225</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>400.0;10.0;400.0;140.0;10.0;140.0;10.0;230.0;30.0;230.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>693</x>
+      <y>1701</y>
+      <w>135</w>
+      <h>225</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;230.0;130.0;230.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>306</x>
+      <y>225</y>
+      <w>522</w>
+      <h>1728</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;1740.0;520.0;1740.0;520.0;1900.0;560.0;1900.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>783</x>
+      <y>225</y>
+      <w>216</w>
+      <h>1746</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>220.0;10.0;220.0;1780.0;10.0;1780.0;10.0;1920.0;30.0;1920.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>216</x>
+      <y>0</y>
+      <w>972</w>
+      <h>396</h>
+    </coordinates>
+    <panel_attributes>References</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>216</x>
+      <y>549</y>
+      <w>972</w>
+      <h>441</h>
+    </coordinates>
+    <panel_attributes>Application</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>216</x>
+      <y>1125</y>
+      <w>972</w>
+      <h>1260</h>
+    </coordinates>
+    <panel_attributes>Recruitment</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>774</x>
+      <y>1962</y>
+      <w>171</w>
+      <h>207</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>170.0;10.0;170.0;70.0;10.0;70.0;10.0;210.0;40.0;210.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>306</x>
+      <y>225</y>
+      <w>522</w>
+      <h>1980</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;2180.0;560.0;2180.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>306</x>
+      <y>225</y>
+      <w>522</w>
+      <h>1962</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;2160.0;560.0;2160.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>747</x>
+      <y>225</y>
+      <w>252</w>
+      <h>1998</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>260.0;10.0;260.0;1780.0;10.0;1780.0;10.0;2200.0;70.0;2200.0</additional_attributes>
+  </element>
+</diagram>

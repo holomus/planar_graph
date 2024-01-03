@@ -1,0 +1,12 @@
+{
+ "eval": "Исправить",
+ "eval $1": "Исправить $1",
+ "eval $1 error(s)?": "Исправить <b>$1</b> ошибку(ок)?",
+ "eval error $1?": "Исправить ошибку <b>$1</b>?",
+ "table.command": "Команды",
+ "table.device_id": "ИД устройства",
+ "table.device_name": "Устройство",
+ "table.error": "Ошибка",
+ "table.error_id": "ИД ошибки",
+ "table.status_name": "Статус"
+}

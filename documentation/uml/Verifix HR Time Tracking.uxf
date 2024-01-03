@@ -1,0 +1,1241 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.3.0">
+  <help_text>// Uncomment the following line to change the fontsize and font:
+fontsize=14
+// fontfamily=SansSerif //possible: SansSerif,Serif,Monospaced
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// Welcome to UMLet!
+//
+// Double-click on elements to add them to the diagram, or to copy them
+// Edit elements by modifying the text in this panel
+// Hold Ctrl to select multiple elements
+// Use Ctrl+mouse to select via lasso
+//
+// Use +/- or Ctrl+mouse wheel to zoom
+// Drag a whole relation at its central square icon
+//
+// Press Ctrl+C to copy the whole diagram to the system clipboard (then just paste it to, eg, Word)
+// Edit the files in the "palettes" directory to create your own element palettes
+//
+// Select "Custom Elements &gt; New..." to create new element types
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// This text will be stored with each diagram;  use it for notes.</help_text>
+  <zoom_level>8</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>472</y>
+      <w>200</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>*HTT_CALENDARS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*CALENDAR_ID*
+NAME
+/CODE/
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>288</x>
+      <y>568</y>
+      <w>200</w>
+      <h>136</h>
+    </coordinates>
+    <panel_attributes>*HTT_CALENDAR_DAYS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*CALENDAR_ID*
+*CALENDAR_DATE*
+NAME
+DAY_KIND ((H)oliday, (N)onworking, 
+                     Rest (S)wapped day)
+/SWAPPED_DATE/
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>288</x>
+      <y>472</y>
+      <w>200</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HTT_CALENDAR_REST_DAYS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*CALENDAR_ID*
+*WEEK_DAY_NO*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>280</x>
+      <y>944</y>
+      <w>200</w>
+      <h>272</h>
+    </coordinates>
+    <panel_attributes>*HTT_DEVICES*
+--
+*COMPANY_ID*
+*DEVICE_ID*
+/NAME/
+DEVICE_TYPE_ID
+SERIAL_NUMBER
+/MODEL_ID/
+/LOCATION_ID/
+/TRACK_TYPES/
+/MARK_TYPES/
+/LAST_SEEN_ON/
+/HOST/
+/LOGIN/
+/PASSWORD/
+STATE((A)ctive, (P)assive)
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>536</x>
+      <y>944</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_DEVICE_ADMINS*
+--
+*COMPANY_ID*
+*DEVICE_ID*
+*PERSON_ID*
+CREATED_BY
+CREATED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>24</x>
+      <y>944</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_DEVICE_TYPES*
+--
+*DEVICE_TYPE_ID*
+NAME
+/TRACK_TYPES/
+/MARK_TYPES/
+STATE((A)ctive, (P)assive)
+PCODE
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>544</x>
+      <y>0</y>
+      <w>200</w>
+      <h>56</h>
+    </coordinates>
+    <panel_attributes>*HTT_DIRTY_PERSONS*
+--
+COMPANY_ID
+PERSON_ID
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1560</x>
+      <y>1376</y>
+      <w>200</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HTT_DIRTY_TIMESHEETS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMESHEET_ID*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>288</x>
+      <y>192</y>
+      <w>200</w>
+      <h>232</h>
+    </coordinates>
+    <panel_attributes>*HTT_LOCATIONS*
+--
+*COMPANY_ID*
+*LOCATION_ID*
+NAME
+/LOCATION_TYPE_ID/
+/TIMEZONE_CODE/
+/REGION_ID/
+/ADDRESS/
+LATLNG
+ACCURACY
+STATE((A)ctive, (P)assive)
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>800</x>
+      <y>192</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_LOCATION_DIVISIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*LOCATION_ID*
+*DIVISION_ID*
+CREATED_BY
+CREATED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>552</x>
+      <y>352</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_LOCATION_PERSONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*LOCATION_ID*
+*PERSON_ID*
+ATTACH_TYPE(Auto, Manual)
+CREATED_BY
+CREATED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>192</y>
+      <w>200</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>*HTT_LOCATION_TYPES*
+--
+*COMPANY_ID*
+*LOCATION_TYPE_ID*
+NAME
+/COLOR/
+STATE((A)ctive, (P)assive)
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>0</y>
+      <w>200</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>*HTT_PERSONS*
+--
+*COMPANY_ID*
+*PERSON_ID*
+/PIN/
+/PIN_CODE/
+/RFID_CODE/
+/QR_CODE/
+/BIOPHOTO_SHA/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>288</x>
+      <y>0</y>
+      <w>200</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HTT_PERSON_PHOTOS*
+--
+*COMPANY_ID*
+*PERSON_ID*
+*PHOTO_SHA*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>288</x>
+      <y>1864</y>
+      <w>200</w>
+      <h>256</h>
+    </coordinates>
+    <panel_attributes>*HTT_REQUESTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*REQUEST_ID*
+REQUEST_KIND_ID
+STAFF_ID
+BEGIN_TIME
+END_TIME
+REQUEST_TYPE((P)art of day, 
+                    (F)ull day, (M)ultiple days)
+/MANAGER_NOTE/
+/NOTE/
+STATUS((N)ew, (A)pproved, 
+               (C)ompleted, (D)enied)
+BARCODE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>544</x>
+      <y>1864</y>
+      <w>200</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>*HTT_REQUEST_HELPERS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*STAFF_ID*
+*INTERVAL_DATE*
+*REQUEST_ID*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>1864</y>
+      <w>200</w>
+      <h>232</h>
+    </coordinates>
+    <panel_attributes>*HTT_REQUEST_KINDS*
+--
+*COMPANY_ID*
+*REQUEST_KIND_ID*
+NAME
+TIME_KIND_ID
+ANNUALLY_LIMITED
+DAY_COUNT_TYPE((C)alendar, 
+           (W)ork days, (P)roduction days)
+/ANNUAL_DAY_LIMIT/
+USER_PERMITTED
+ALLOW_UNUSED_TIME
+/REQUEST_RESTRICTION_DAYS/
+STATE((A)ctive, (P)assive)
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>544</x>
+      <y>472</y>
+      <w>200</w>
+      <h>296</h>
+    </coordinates>
+    <panel_attributes>*HTT_SCHEDULES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SCHEDULE_ID*
+NAME
+SHIFT
+INPUT_ACCEPTANCE
+OUTPUT_ACCEPTANCE
+TRACK_DURATION
+COUNT_LATE
+COUNT_EARLY
+COUNT_LACK
+/CALENDAR_ID/
+/TAKE_HOLIDAYS/
+/TAKE_NONWORKING/
+STATE((A)ctive, (P)assive)
+/CODE/
+/BARCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1056</x>
+      <y>472</y>
+      <w>200</w>
+      <h>248</h>
+    </coordinates>
+    <panel_attributes>*HTT_SCHEDULE_DAYS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SCHEDULE_ID*
+*SCHEDULE_DATE*
+DAY_KIND((W)orking day, (R)est day, 
+                   (H)oliday, (N)onworking)
+/BEGIN_TIME/
+/END_TIME/
+/BREAK_ENABLED/
+/BREAK_BEGIN_TIME/
+/BREAK_END_TIME/
+FULL_TIME
+PLAN_TIME
+SHIFT_BEGIN_TIME
+SHIFT_END_TIME
+INPUT_BORDER
+OUTPUT_BORDER
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>800</x>
+      <y>472</y>
+      <w>200</w>
+      <h>232</h>
+    </coordinates>
+    <panel_attributes>*HTT_SCHEDULE_ORIGIN_DAYS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SCHEDULE_ID*
+*SCHEDULE_DATE*
+DAY_KIND((W)orking day, (R)est day)
+/BEGIN_TIME/
+/END_TIME/
+/BREAK_ENABLED/
+/BREAK_BEGIN_TIME/
+/BREAK_END_TIME/
+FULL_TIME
+PLAN_TIME
+SHIFT_BEGIN_TIME
+SHIFT_END_TIME
+INPUT_BORDER
+OUTPUT_BORDER
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>800</x>
+      <y>776</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_SCHEDULE_PATTERNS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SCHEDULE_ID*
+SCHEDULE_KIND((W)eekly, (P)eriodic)
+ALL_DAYS_EQUAL
+/COUNT_DAYS/
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1056</x>
+      <y>776</y>
+      <w>200</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>*HTT_SCHEDULE_PATTERN_DAYS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SCHEDULE_ID*
+*DAY_NO*
+DAY_KIND((W)orking, (R)est)
+PLAN_TIME
+/BEGIN_TIME/
+/END_TIME/
+/BREAK_ENABLED/
+/BREAK_BEGIN_TIME/
+/BREAK_END_TIME/
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>808</x>
+      <y>1272</y>
+      <w>200</w>
+      <h>376</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEETS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMESHEET_ID*
+TIMESHEET_DATE
+STAFF_ID
+EMPLOYEE_ID
+SCHEDULE_ID
+/CALENDAR_ID/
+DAY_KIND((W)ork, (R)est, (H)oliday, 
+                   (N)onworking)
+TRACK_DURATION
+COUNT_LATE
+COUNT_EARLY
+COUNT_LACK
+SHIFT_BEGIN_TIME
+SHIFT_END_TIME
+INPUT_BORDER
+OUTPUT_BORDER
+/BEGIN_TIME/
+/END_TIME/
+/BREAK_ENABLED/
+/BREAK_BEGIN_TIME/
+/BREAK_END_TIME/
+PLAN_TIME
+FULL_TIME
+/INPUT_TIME/
+/OUTPUT_TIME/
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1064</x>
+      <y>1344</y>
+      <w>200</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEET_FACTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMESHEET_ID*
+*TIME_KIND_ID*
+FACT_VALUE
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1312</x>
+      <y>1264</y>
+      <w>200</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEET_HELPERS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*STAFF_ID*
+*INTERVAL_DATE*
+*TIMESHEET_ID*
+DAY_KIND
+SHIFT_BEGIN_TIME
+SHIFT_END_TIME
+INPUT_BORDER
+OUTPUT_BORDER
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1560</x>
+      <y>1480</y>
+      <w>200</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEET_LOCKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*STAFF_ID*
+*TIMESHEET_DATE*
+FACTS_CHANGED
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1560</x>
+      <y>1272</y>
+      <w>200</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEET_REQUESTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMESHEET_ID*
+*REQUEST_ID*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1312</x>
+      <y>1456</y>
+      <w>200</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIMESHEET_TRACKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TIMESHEET_ID*
+*TRACK_ID*
+TRACK_DATETIME
+TRACK_TYPE
+TRACK_USED
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>1600</y>
+      <w>200</w>
+      <h>232</h>
+    </coordinates>
+    <panel_attributes>*HTT_TIME_KINDS*
+--
+*COMPANY_ID*
+*TIME_KIND_ID*
+NAME
+LETTER_CODE
+/DIGITAL_CODE/
+/PARENT_ID/
+PLAN_LOAD
+REQUESTABLE
+/BG_COLOR/
+/COLOR/
+STATE((A)ctive, (P)assive)
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>32</x>
+      <y>1240</y>
+      <w>200</w>
+      <h>336</h>
+    </coordinates>
+    <panel_attributes>*HTT_TRACKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRACK_ID*
+TRACK_DATE
+TRACK_TIME
+TRACK_DATETIME
+PERSON_ID
+TRACK_TYPE((I)nput, (O)utput, (C)heck)
+MARK_TYPE((P)assword, (T)ouch, 
+                        (R)fid card, (Q)R code, 
+                        (F)ace, (M)anual)
+/DEVICE_ID/
+/LOCATION_ID/
+/LATLNG/
+/ACCURACY/
+/PHOTO_SHA/
+/NOTE/
+IS_VALID
+STATUS((D)raft, (N)ot used, 
+               (P)artially used, (U)sed)
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>0</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>0</y>
+      <w>336</w>
+      <h>112</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;120.0;360.0;120.0;360.0;10.0;400.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>192</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>192</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>640</x>
+      <y>192</y>
+      <w>152</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>130.0;10.0;170.0;10.0;170.0;150.0;10.0;150.0;10.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>472</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>472</y>
+      <w>80</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;130.0;80.0;130.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>472</y>
+      <w>336</w>
+      <h>296</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=orange</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;350.0;360.0;350.0;360.0;10.0;400.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>472</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>472</y>
+      <w>336</w>
+      <h>272</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#00aa00</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;320.0;360.0;320.0;360.0;10.0;400.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>472</y>
+      <w>80</w>
+      <h>328</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;390.0;80.0;390.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>472</y>
+      <w>336</w>
+      <h>328</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#aa0000</panel_attributes>
+    <additional_attributes>10.0;10.0;30.0;10.0;30.0;340.0;340.0;340.0;340.0;390.0;400.0;390.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>216</x>
+      <y>944</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>472</x>
+      <y>944</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>1864</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>480</x>
+      <y>1864</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>736</x>
+      <y>472</y>
+      <w>88</w>
+      <h>824</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=orange</panel_attributes>
+    <additional_attributes>10.0;10.0;40.0;10.0;40.0;1010.0;90.0;1010.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>472</y>
+      <w>600</w>
+      <h>832</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#00aa00</panel_attributes>
+    <additional_attributes>10.0;10.0;40.0;10.0;40.0;450.0;670.0;450.0;670.0;1020.0;730.0;1020.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>80</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;100.0;80.0;100.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>1352</y>
+      <w>856</w>
+      <h>344</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#0faada</panel_attributes>
+    <additional_attributes>10.0;320.0;100.0;320.0;100.0;410.0;1020.0;410.0;1020.0;10.0;1050.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>328</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;390.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>328</w>
+      <h>208</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#aa0000</panel_attributes>
+    <additional_attributes>10.0;10.0;70.0;10.0;70.0;30.0;360.0;30.0;360.0;240.0;390.0;240.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>224</x>
+      <y>1240</y>
+      <w>1104</w>
+      <h>480</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;10.0;40.0;10.0;40.0;310.0;300.0;310.0;300.0;580.0;1060.0;580.0;1060.0;290.0;1360.0;290.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>576</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#aaaa00</panel_attributes>
+    <additional_attributes>10.0;10.0;90.0;10.0;90.0;60.0;370.0;60.0;370.0;200.0;650.0;200.0;650.0;10.0;700.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>480</x>
+      <y>1288</y>
+      <w>1096</w>
+      <h>600</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>10.0;730.0;50.0;730.0;50.0;550.0;1310.0;550.0;1310.0;10.0;1350.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>576</w>
+      <h>192</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#00aaaa</panel_attributes>
+    <additional_attributes>10.0;10.0;110.0;10.0;110.0;80.0;350.0;80.0;350.0;220.0;670.0;220.0;670.0;140.0;700.0;140.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>240</x>
+      <y>192</y>
+      <w>280</w>
+      <h>784</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#aa00dd</panel_attributes>
+    <additional_attributes>310.0;10.0;330.0;10.0;330.0;870.0;10.0;870.0;10.0;960.0;50.0;960.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>0</x>
+      <y>1600</y>
+      <w>48</w>
+      <h>288</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>40.0;10.0;10.0;10.0;10.0;340.0;40.0;340.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1000</x>
+      <y>1272</y>
+      <w>576</w>
+      <h>328</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#af0000</panel_attributes>
+    <additional_attributes>10.0;10.0;30.0;10.0;30.0;390.0;680.0;390.0;680.0;270.0;700.0;270.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>24</x>
+      <y>1072</y>
+      <w>200</w>
+      <h>136</h>
+    </coordinates>
+    <panel_attributes>*HTT_TERMINAL_MODELS*
+--
+*MODEL_ID*
+NAME
+/PHOTO_SHA/
+SUPPORT_FACE_RECOGNATION
+SUPPORT_FPRINT
+SUPPORT_RFID_CARD
+STATE((A)ctive, (P)assive)
+PCODE
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>216</x>
+      <y>944</y>
+      <w>80</w>
+      <h>152</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;170.0;50.0;170.0;50.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>856</x>
+      <y>1864</y>
+      <w>200</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>*HTT_GPS_TRACKS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRACK_ID*
+PERSON_ID
+TRACK_DATE
+TOTAL_DISTANCE
+CALCULATED (Yes, No)
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1112</x>
+      <y>1864</y>
+      <w>200</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HTT_GPS_TRACK_DATAS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRACK_ID*
+DATA
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1048</x>
+      <y>1864</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1112</x>
+      <y>1984</y>
+      <w>200</w>
+      <h>88</h>
+    </coordinates>
+    <panel_attributes>*HTT_GPS_TRACK_BATCHES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRACK_ID*
+*BATCH_ID*
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1048</x>
+      <y>1864</y>
+      <w>80</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=#0faaaa</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;160.0;80.0;160.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>544</x>
+      <y>192</y>
+      <w>200</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HTT_LOCATION_DIVISIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*LOCATION_ID*
+CREATED_BY
+CREATED_ON
+  </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>480</x>
+      <y>192</y>
+      <w>80</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1360</x>
+      <y>1864</y>
+      <w>144</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>DATA
+--
+TRACK_TIME
+LAT
+LNG
+ACCURACY
+PROVIDER - (G)PS, (N)ETWORK</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1304</x>
+      <y>1864</y>
+      <w>72</w>
+      <h>24</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;70.0;10.0</additional_attributes>
+  </element>
+</diagram>

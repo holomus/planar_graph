@@ -1,0 +1,148 @@
+<script biruni>
+page.ctrl(function(scope, model, param, fi, t) {
+  var d = _.omit(model, 'transfer_units') || {};
+  d = _.extend(d, _.mapRows(model.transfer_units, ['application_unit_id', 'staff_id', 'staff_name', 'transfer_begin', 'robot_id', 'robot_name', 'note'])[0]);
+
+  function save() {
+    if (!page.valid(scope.form)) return;
+    let data = _.pick(d, 'application_id', 'application_number', 'application_date');
+    data.transfer_units = [_.pick(d, 'application_unit_id', 'staff_id', 'transfer_begin', 'robot_id', 'note')];
+    page.post(':save', data).then(page.close, page.alert);
+  }
+
+  // robot
+  function whereRobot() {
+    var where = [
+      'and',
+      [
+        ['opened_date', '<=', d.transfer_begin],
+        ['or',
+          [
+            ['closed_date', '=', [null]],
+            ['closed_date', '>=', d.transfer_begin]
+          ]
+        ]
+      ]
+    ];
+    where = ['and', [['fte', '>', 0], where]];
+    return where;
+  }
+
+  function setRobot(row) {
+    if (!row) return;
+    d.robot_id = row.robot_id;
+    d.robot_name = row.name;
+  }
+
+  function addRobot(value) {
+    fi.add_robot(null, setRobot, { name: value });
+  }
+
+  function selectRobot() {
+    fi.select_robot(null, setRobot, { where: whereRobot() });
+  }
+
+  function changeRobotQuery(query, value) {
+    query.param({ transfer_begin: d.transfer_begin }).where(whereRobot()).searchValue(value);
+  }
+
+  // staff
+  function whereStaff() {
+    return ['and',
+             [['hiring_date', '<=', d.transfer_begin],
+              ['or',
+                [['dismissal_date', '=', [null]],
+                 ['dismissal_date', '>=', d.transfer_begin]
+                ]
+              ]]
+           ];
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function setStaff(row) {
+    if (!row) return;
+    d.staff_id = row.staff_id;
+    d.staff_name = row.name;
+  }
+
+  function selectStaff() {
+    fi.select_staff({ date: d.transfer_begin }, setStaff, { where: whereStaff() });
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>application number</t></label>
+                <span class="form-view">{{ d.application_number }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>application date</t></label>
+                <span class="form-view">{{ d.application_date }}</span>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>transfer begin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.transfer_begin" b-date-picker required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>robot</t><r/></label>
+                <b-input name="robots"
+                         model="d.robot_name | name"
+                         model-key="d.robot_id | robot_id"
+                         is-add="fi.add_robot"
+                         on-add="addRobot(value)"
+                         is-view="fi.select_robot"
+                         on-view="selectRobot()"
+                         on-change="changeRobotQuery(query, value)"
+                         readonly="!d.transfer_begin"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>employee</t><r/></label>
+              <b-input name="staffs"
+                       model="d.staff_name | name"
+                       model-key="d.staff_id | staff_id"
+                       column="staff_number"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff()"
+                       on-change="changeStaffQuery(query, value)"
+                       required-key>
+                <header>
+                  <div class="col-sm-8"><t>staff number</t></div>
+                  <div class="col-sm-16"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-8">{{ row.staff_number }}</div>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

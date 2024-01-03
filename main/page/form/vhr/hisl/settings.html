@@ -1,0 +1,392 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var d = model,
+      q = {},
+      p = {};
+  
+  function changeSection(active_section) {
+    q.active_section = active_section;
+  }
+
+  // setting
+  function saveSetting() {
+    if (page.valid(scope.settingForm)) {
+      let data = _.pick(d, 'integration_enabled');
+
+      if (d.integration_enabled == 'Y') {
+        data.api_host = d.api_host;
+        data.auth_url = d.auth_url;
+        data.auth_email = d.auth_email;
+        data.auth_password = d.auth_password;
+      }
+
+      fi.save_setting(data).then(page.reload, page.alert);
+    }
+  }
+
+
+  // division
+  let divisionModal = page.$content.find('form[name=divisionModal]>.modal');
+
+  function reloadDivisions() {
+    q.checked_divisions = {};
+    page.query('table_divisions').fetch();
+  }
+
+  function showDivisionModal() {
+    p.data = {};
+    $timeout(function() {
+      divisionModal.modal('show');
+    });
+  }
+
+  function hideDivisionModal() {
+    $timeout(function() {
+      divisionModal.modal('hide');
+    });
+  }
+
+  function saveDivision() {
+    if (page.valid(scope.divisionModal)) {
+      let data = _.pick(p.data, 'division_id', 'division_code');
+      fi.add_division(data).then(function() {
+        hideDivisionModal();
+        reloadDivisions();
+      }, page.alert);
+    }
+  }
+
+  function deleteDivision(message, division_id) {
+    page.confirm(message, function() {
+      fi.remove_division({ division_id: division_id }).then(reloadDivisions, page.alert);
+    });
+  }
+
+  function deleteDivisionOne(row) {
+    deleteDivision(t('delete division $1{division_name}?')(row.division_name), row.division_id);
+  }
+
+  function deleteDivisionMany() {
+    deleteDivision(t('delete $1{division_count} division(s)?')(q.checked_divisions.size), _.pluck(q.checked_divisions.rows(), 'division_id'));
+  }
+
+  function onCheckDivision(checked) {
+    q.checked_divisions = checked;
+  }
+
+  // user
+  let userModal = page.$content.find('form[name=userModal]>.modal');
+
+  function reloadUsers() {
+    q.checked_users = {};
+    page.query('table_users').fetch();
+  }
+
+  function showUserModal() {
+    p.data = {};
+    $timeout(function() {
+      userModal.modal('show');
+    });
+  }
+
+  function hideUserModal() {
+    $timeout(function() {
+      userModal.modal('hide');
+    });
+  }
+
+  function saveUser() {
+    if (page.valid(scope.userModal)) {
+      let data = _.pick(p.data, 'user_id', 'user_code');
+      fi.add_user(data).then(function() {
+        hideUserModal();
+        reloadUsers();
+      }, page.alert);
+    }
+  }
+
+  function deleteUser(message, user_id) {
+    page.confirm(message, function() {
+      fi.remove_user({ user_id: user_id }).then(reloadUsers, page.alert);
+    });
+  }
+
+  function deleteUserOne(row) {
+    deleteUser(t('delete user $1{user_name}?')(row.user_name), row.user_id);
+  }
+
+  function deleteUserMany() {
+    deleteUseer(t('delete $1{user_count} user(s)?')(q.checked_users.size), _.pluck(q.checked_users.rows(), 'user_id'));
+  }
+
+  function onCheckDivision(checked) {
+    q.checked_divisions = checked;
+  }
+
+  changeSection('settings');
+  if (!d.integration_enabled) d.integration_enabled = 'N';
+  q.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.checked_divisions = {};
+  q.checked_users = {};
+  
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.active_section == 'settings' }" ng-click="changeSection('settings')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>settings</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.active_section == 'divisions' }" ng-click="changeSection('divisions')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-building"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>divisions</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.active_section == 'users' }" ng-click="changeSection('users')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-users"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>users</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.active_section == 'logs' }" ng-click="changeSection('logs')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-history"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>logs</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.active_section == 'settings'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="card-label"><t>settings</t></h5>
+          </div>
+          <div class="card-toolbar">
+            <button type="button" class="btn btn-outline-primary" ng-if="fi.save_setting" ng-click="saveSetting()"><t>save</t></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <form name="settingForm">
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.integration_enabled"/>
+                <span ng-show="d.integration_enabled == 'Y'"><t>integration enabled</t></span>
+                <span ng-show="d.integration_enabled == 'N'"><t>integration disabled</t></span>
+              </label>
+            </div>
+            <div class="row" ng-if="d.integration_enabled == 'Y'">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>auth host</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.api_host" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>auth url</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.auth_url" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>auth email</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.auth_email" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>auth password</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.auth_password" required/>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.active_section == 'divisions'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="card-label"><t>divisions</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12 mb-2">
+              <button type="button" class="btn btn-success" ng-if="fi.add_division" ng-click="showDivisionModal()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteDivisionMany()" ng-if="fi.remove_division" ng-show="q.checked_divisions.has"><t p1="q.checked_divisions.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-12 mb-2 text-right">
+              <b-grid-controller name="table_divisions"/>
+            </div>
+          </div>
+          <b-grid name="table_divisions" required="division_id, division_name" on-check="onCheckDivision(checked)"
+                  sort="division_name" search="division_name, division_code" searchable="division_id" extra-columns="created_by_name, created_on">
+            <b-row>
+              <b-col name="division_name" size=12/>
+              <b-col name="division_code" size=11/>
+            </b-row>
+        
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="deleteDivisionOne(row)" ng-if="fi.remove_division"><t>delete</t></button>
+            </b-action>
+        
+            <b-filter name="division_id" directive="equal"/>
+            <b-filter name="division_code" directive="extra"/>
+            <b-filter name="division_name"/>
+            <b-filter name="created_by" decorate-with="created_by_name"/>
+            <b-filter name="created_on"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.active_section == 'users'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="card-label"><t>users</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12 mb-2">
+              <button type="button" class="btn btn-success" ng-if="fi.add_user" ng-click="showUserModal()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteUserMany()" ng-if="fi.remove_user" ng-show="q.checked_users.has"><t p1="q.checked_users.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-12 mb-2 text-right">
+              <b-grid-controller name="table_users"/>
+            </div>
+          </div>
+          <b-grid name="table_users" required="user_id, user_name" on-check="onCheckUser(checked)"
+                  sort="user_name" search="user_name, user_code" searchable="user_id" extra-columns="created_by_name, created_on">
+            <b-row>
+              <b-col name="user_name" size=12/>
+              <b-col name="user_code" size=11/>
+            </b-row>
+        
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="deleteUserOne(row)" ng-if="fi.remove_user"><t>delete</t></button>
+            </b-action>
+        
+            <b-filter name="user_id" directive="equal"/>
+            <b-filter name="user_code" directive="extra"/>
+            <b-filter name="user_name"/>
+            <b-filter name="created_by" decorate-with="created_by_name"/>
+            <b-filter name="created_on"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.active_section == 'logs'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="card-label"><t>logs</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="offset-sm-12 col-sm-12 mb-2 text-right">
+              <b-grid-controller name="table_logs"/>
+            </div>
+          </div>
+          <b-grid name="table_logs" required="log_id"
+                  sort="-created_on" search="url" searchable="log_id" extra-columns="log_id, created_by_name">
+            <b-row>
+              <b-col name="created_on" size=3/>
+              <b-col name="status_name" size=3/>
+              <b-col name="url" size=6/>
+              <b-col name="request_body" size=6/>
+              <b-col name="response_body" size=6/>
+            </b-row>
+        
+            <b-filter name="log_id" directive="equal"/>
+            <b-filter name="created_on"/>
+            <b-filter name="status" decorate-with="status_name"/>
+            <b-filter name="url"/>
+            <b-filter name="request_body"/>
+            <b-filter name="response_body"/>
+            <b-filter name="created_by" decorate-with="created_by_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form name="divisionModal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>division add title</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>division</t><r/></label>
+              <b-tree-select
+                origin="q.divisions"
+                id-key="division_id"
+                model="p.data.division_id"/>
+            </div>
+            <div class="form-group">
+              <label><t>division code</t><r/></label>
+              <input type="input" class="form-control" ng-model="p.data.division_code"/>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveDivision()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="userModal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>user add title</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>user</t><r/></label>
+              <b-input name="persons"
+                model="p.data.user_name | name"
+                model-key="p.data.user_id | person_id"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>user code</t><r/></label>
+              <input type="input" class="form-control" ng-model="p.data.user_code"/>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveUser()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

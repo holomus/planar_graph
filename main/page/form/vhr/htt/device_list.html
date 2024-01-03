@@ -1,0 +1,310 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table').param(param);
+  var statusColors = { U: '#C1C1C1', O: '#1BC5BD', F: '#f64e60' };
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  var pg = page.grid('table');
+  var trackTypeClass = { C: 'warning', I: 'primary', O: 'danger' };
+  pg.asHtml('autogen_inputs_html', 'autogen_inputs, autogen_inputs_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.autogen_inputs == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.autogen_inputs_name }</div></div>`;
+  });
+  pg.asHtml('autogen_outputs_html', 'autogen_outputs, autogen_outputs_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.autogen_outputs == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.autogen_outputs_name }</div></div>`;
+  });
+  pg.asHtml('ignore_tracks_html', 'ignore_tracks, ignore_tracks_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.ignore_tracks == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.ignore_tracks_name }</div></div>`;
+  });
+  pg.asHtml('ignore_images_html', 'ignore_images, ignore_images_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.ignore_images == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.ignore_images_name }</div></div>`;
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.asHtml('ready_html', 'ready, ready_name', function(row) {
+    if (!row.ready) return;
+    return `<div class="alert alert-custom alert-light-${ row.ready == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.ready_name }</div></div>`;
+  });
+  pg.asHtml('restricted_type_html', 'restricted_type, restricted_type_name', function(row) {
+    if (!row.restricted_type_name) return;
+    return `<span class="fa fa-circle text-${ trackTypeClass[row.restricted_type] }"></span>&nbsp;<span>${ row.restricted_type_name }</span>`;
+  });
+  pg.asHtml('charge_percentage_html', 'charge_percentage', row => {
+    return `<div class="alert alert-custom alert-light-default text-center py-1 px-3 m-0">
+              <div class="mr-2 mb-0" style="color: ${ row.charge_percentage > 15 ? '#A5D6A7' : '#EF9A9A' }">${ row.charge_percentage + (row.charge_percentage ? ' %' : '')}</div>
+              <i class="fa fa-battery-empty font-20px fa-battery-filling mb-0" aria-hidden="true" style="display: ${ row.charge_percentage ? 'block' : 'none'}; color: ${ row.charge_percentage > 15 ? '#A5D6A7' : '#EF9A9A' }">
+                <span style="width:calc(${ row.charge_percentage }% * 0.73)"></span>
+              </i>
+          </div>`;
+  });
+  pg.asHtml('status_name_html', 'status_name, status', (row) => {
+    return `<span class="row m-0"><span class="fa fa-circle" style="color:${ statusColors[row.status] }"></span>&nbsp;<span>${ row.status_name }</span></span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, param, t, $timeout, bAlert) {
+  var q = model, p = {};
+
+  function doAction(action, message, device_id) {
+    page.confirm(message, function() {
+      action({ device_id: device_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete device $1{device_name}?')(row.name), row.device_id);
+  }
+
+  function error(row){
+    fi.error({ device_id: row.device_id });
+  }
+
+  function command(row){
+    fi.command({ device_id: row.device_id });
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{device_count} device(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_id'));
+  }
+
+  function onCheck(checked) {
+    q.to_sync = {};
+    q.to_sync.rows = _.filter(checked.rows(), x => x.device_type_id == q.terminal_device_type_id);
+    q.to_sync.size = q.to_sync.rows.length;
+    q.to_sync.has = q.to_sync.size > 0;
+
+    q.to_load_track = {};
+    q.to_load_track.rows = _.filter(checked.rows(), x => x.ready == 'Y');
+    q.to_load_track.size = q.to_load_track.rows.length;
+    q.to_load_track.has = q.to_load_track.size > 0;
+
+    q.checked = checked;
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add({ location_id: param.location_id }, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ device_id: row.device_id, location_id: param.location_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ device_id: row.device_id, location_id: param.location_id }, closeIfDialog);
+  }
+
+  function tracks(row) {
+    fi.tracks({ device_id: row.device_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : null;
+  }
+
+  function unknownDevices() {
+    fi.unknown_devices({ location_id: param.location_id });
+  }
+
+  async function loadTracks() {
+    if (page.valid(scope.modal)) {
+      try {
+        _.each(p.data.rows, async x => {
+          let data = {
+            start_time: p.data.start_time,
+            end_time: p.data.end_time,
+            device_id: x.hac_device_id,
+            serial_number: x.serial_number,
+            server_id: x.server_id,
+            page_num: 1
+          }
+          let result = { item_count: 1 };
+          let max_loop = 100;
+
+          try {
+            while (max_loop > 0 && result.item_count > 0) {
+              result = await fi.load_tracks(data);
+              data.page_num += 1;
+              max_loop -= 1;
+            }
+            if (max_loop <= 0 && result.item_count >= 0)
+              notify(t('loop ended before loading all data')(), 'danger');
+            else {
+              notify(t('successfully loaded tracks')());
+              hideModal();
+            }
+          } catch (exception) {
+            $timeout(function() {
+              bAlert.open(exception);
+            });
+          }
+        })
+      } catch (error) {
+        page.alert(error);
+      }
+    }
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(row, is_multiple) {
+    p.data = {
+      start_time: moment().startOf('day').format('DD.MM.YYYY HH:mm'),
+      end_time: moment().endOf('day').format('DD.MM.YYYY HH:mm'),
+      rows: is_multiple ? q.to_load_track.rows : [row]
+    };
+
+    page.untouch(scope.modal);
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  scope.p = p;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="showModal(null, true)" ng-if="fi.load_tracks" ng-show="q.to_load_track.has"><t p1="q.to_load_track.size">load tracks $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="unknownDevices()" ng-if="fi.unknown_devices && q.unknowns_count > 0">
+      {{ fi.unknown_devices.title }}<span class="label label-sm label-warning ml-2">{{ q.unknowns_count }}</span>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <style>
+      .font-20px{font-size: 20px;}
+
+      .fa-battery-filling{
+        position: relative;
+      }
+      .fa-battery-filling span{
+        position: absolute;
+        background: #A5D6A7;
+        top: 28%;
+        height: 44%;
+        left: 11%;
+        border-radius: 1px;
+        transition: 250ms ease;
+      }
+      .fa-battery-filling [style="width:calc(1% * 0.73)"],
+      .fa-battery-filling [style="width:calc(2% * 0.73)"],
+      .fa-battery-filling [style="width:calc(3% * 0.73)"],
+      .fa-battery-filling [style="width:calc(4% * 0.73)"],
+      .fa-battery-filling [style="width:calc(5% * 0.73)"],
+      .fa-battery-filling [style="width:calc(6% * 0.73)"],
+      .fa-battery-filling [style="width:calc(7% * 0.73)"],
+      .fa-battery-filling [style="width:calc(8% * 0.73)"],
+      .fa-battery-filling [style="width:calc(9% * 0.73)"],
+      .fa-battery-filling [style="width:calc(10% * 0.73)"],
+      .fa-battery-filling [style="width:calc(11% * 0.73)"],
+      .fa-battery-filling [style="width:calc(12% * 0.73)"],
+      .fa-battery-filling [style="width:calc(13% * 0.73)"],
+      .fa-battery-filling [style="width:calc(14% * 0.73)"],
+      .fa-battery-filling [style="width:calc(15% * 0.73)"]{
+        background: #EF9A9A;
+      }
+    </style>
+    <b-grid name="table" required="device_id, device_type_id, name, serial_number, server_id, hac_device_id, ready, state, status, status_name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="-last_seen_on" search="name, device_type_name, location_name, timezone_code" searchable="serial_number"
+            extra-columns="device_id, lang_name, use_settings_name, only_last_restricted_name, ready_name, created_by, created_on, modified_by, modified_on">
+      <b-row>
+        <b-col name="device_type_name" size=4/>
+        <b-col name="name" size=5/>
+        <b-col name="location_name" size=4/>
+        <b-col name="timezone_code" size=3/>
+        <b-col name="status_name" as-html="status_name_html" size=2/>
+        <b-col name="last_seen_on" size=3/>
+        <b-col name="charge_percentage" as-html="charge_percentage_html" size=2/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="autogen_inputs_name" as-html="autogen_inputs_html"/>
+        <b-col name="autogen_outputs_name" as-html="autogen_outputs_html"/>
+        <b-col name="ignore_tracks_name" as-html="ignore_tracks_html"/>
+        <b-col name="ignore_images_name" as-html="ignore_images_html"/>
+        <b-col name="restricted_type_name" as-html="restricted_type_html"/>
+        <b-col name="serial_number"/>
+        <b-col name="ready_name" as-html="ready_html"/>
+        <b-col name="state_name" as-html="state_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showModal(row, false)" ng-if="row.ready == 'Y'"><t>load tracks</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="command(row)" ng-if="fi.command && row.device_type_id == q.terminal_device_type_id"><t>command</t></button>
+        <button type="button" class="btn btn-default" ng-click="error(row)" ng-if="fi.error && row.device_type_id == q.terminal_device_type_id"><t>error</t></button>
+        <button type="button" class="btn btn-default" ng-click="tracks(row)" ng-if="fi.tracks && (row.device_type_id == q.hikvision_device_type_id || row.device_type_id == q.dahua_device_type_id)"><t>tracks</t></button>
+      </b-action>
+
+      <b-filter name="device_id" directive="equal"/>
+      <b-filter name="device_type_id" decorate-with="device_type_name"/>
+      <b-filter name="name"/>
+      <b-filter name="location_id" decorate-with="location_name"/>
+      <b-filter name="timezone_code"/>
+      <b-filter name="last_seen_on"/>
+      <b-filter name="status" decorate-with="status_name"/>
+      <b-filter name="state" decorate-with="state_name"/>
+      <b-filter name="lang_code" decorate-with="lang_name" extra/>
+      <b-filter name="autogen_inputs" decorate-with="autogen_inputs_name" extra/>
+      <b-filter name="autogen_outputs" decorate-with="autogen_outputs_name" extra/>
+      <b-filter name="ignore_tracks" decorate-with="ignore_tracks_name" extra/>
+      <b-filter name="ignore_images" decorate-with="ignore_images_name" extra/>
+      <b-filter name="restricted_type" decorate-with="restricted_type_name"/>
+      <b-filter name="only_last_restricted" decorate-with="only_last_restricted_name"/>
+      <b-filter name="use_settings" decorate-with="use_settings_name" extra/>
+      <b-filter name="serial_number" extra/>
+      <b-filter name="ready" decorate-with="ready_name" extra/>
+      <b-filter name="created_by" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>load tracks</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <input type="text" class="form-control" ng-model="p.data.start_time" b-date-picker="DD.MM.YYYY HH:mm" required/>
+              </div>
+              <div class="col-sm-12">
+                <input type="text" class="form-control" ng-model="p.data.end_time" b-date-picker="DD.MM.YYYY HH:mm" required/>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="loadTracks()"><t>load</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

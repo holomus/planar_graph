@@ -1,0 +1,482 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model, $timeout) {
+  var d = model,
+    q = {},
+    p = {};
+
+  //sort function
+  function sortFunction(a, b, key) {
+    let c = a[key];
+    let d = b[key];
+    return c > d ? 1 : c < d ? -1 : 0;
+  }
+
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // specialties
+  function setSpecialty(data, row) {
+    if (!row) return;
+    data.specialty_id = row.specialty_id;
+    data.specialty_name = row.name;
+  }
+
+  function addSpecialty(data, value) {
+    fi.add_specialty({ kind: 'S' }, _.partial(setSpecialty, data), { name: value });
+  }
+
+  function selectSpecialty(data) {
+    fi.select_specialty(null, _.partial(setSpecialty, data));
+  }
+
+  // langs
+  function changeLangQuery(query, value) {
+    query.where(whereLang()).searchValue(value);
+  }
+
+  function whereLang() {
+    let lang_ids = _.chain(p.data).pluck('lang_id').compact().value();
+
+    return _.isEmpty(lang_ids) ? null : ['lang_id', '<>', lang_ids];
+  }
+
+  function setLang(data, row) {
+    if (!row) return;
+    data.lang_id = row.lang_id;
+    data.lang_name = row.name;
+  }
+
+  function addLang(data, value) {
+    fi.add_lang(null, _.partial(setLang, data), { name: value });
+  }
+
+  function selectLang(data) {
+    fi.select_lang(null, _.partial(setLang, data), { where: whereLang() });
+  }
+
+  // lang levels
+  function setLangLevel(data, row) {
+    if (!row) return;
+    data.lang_level_id = row.lang_level_id;
+    data.lang_level_name = row.name;
+  }
+
+  function addLangLevel(data, value) {
+    fi.add_lang_level(null, _.partial(setLangLevel, data), { name: value });
+  }
+
+  function selectLangLevel(data) {
+    fi.select_lang_level(null, _.partial(setLangLevel, data));
+  }
+
+  // edu stages
+  function setEduStage(data, row) {
+    if (!row) return;
+    data.edu_stage_id = row.edu_stage_id;
+    data.edu_stage_name = row.name;
+  }
+
+  function addEduStage(data, value) {
+    fi.add_edu_stage(null, _.partial(setEduStage, data), { name: value });
+  }
+
+  function selectEduStage(data) {
+    fi.select_edu_stage(null, _.partial(setEduStage, data));
+  }
+
+  // institutions
+  function setInstitution(data, row) {
+    if (!row) return;
+    data.institution_id = row.institution_id;
+    data.institution_name = row.name;
+  }
+
+  function addInstitution(data, value) {
+    fi.add_institution(null, _.partial(setInstitution, data), { name: value });
+  }
+
+  function selectInstitution(data) {
+    fi.select_institution(null, _.partial(setInstitution, data));
+  }
+
+  // files
+  function uploadFiles($file) {
+    if (_.isEmpty($file)) return;
+    _.each($file, x => p.data.files.push(x));
+    page.dropzone('files').clear();
+  }
+
+  function deleteFile(index) {
+    p.data.files.splice(index, 1);
+  }
+
+  function hasFiles(row) {
+    return row.files.length > 0;
+  }
+
+  // person langs
+  function editPersonLang() {
+    scope.modal_content = 'person_lang_vhr41.html';
+    p.title = t('add person lang')();
+    p.data = d.person_langs.length > 0 ? angular.copy(d.person_langs) : [{}];
+    showModal();
+  }
+
+  function savePersonLang() {
+    if (page.valid(scope.modal)) {
+      let data = {};
+      filtered_data = _.filter(p.data, x => { return x.hasOwnProperty('lang_id') && x.hasOwnProperty('lang_level_id') });
+      data.lang_ids = _.pluck(filtered_data, 'lang_id');
+      data.lang_level_ids = _.pluck(filtered_data, 'lang_level_id');
+      data.person_id = d.person_id;
+      fi.save_lang(data).then(function(result) {
+        d.person_langs = angular.copy(filtered_data);
+        p.data = {};
+        d.person_langs.sort(_.partial(sortFunction, _, _, 'lang_name'));
+        hideModal();
+      }, page.alert)
+    }
+  }
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  // person edu stages
+  function addPersonEduStage() {
+    scope.modal_content = 'person_edu_stage_vhr41.html';
+    p.title = t('add person edu stage')();
+    p.data = {};
+    p.data.files = [];
+    showModal();
+  }
+
+  function editPersonEduStage(row) {
+    scope.modal_content = 'person_edu_stage_vhr41.html';
+    p.title = t('edit person edu stage')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function downloadPersonEduStageFiles(row) {
+    window.open(page.url("download_files", { person_edu_stage_id: row.person_edu_stage_id }));
+  }
+
+  function savePersonEduStage() {
+    if (page.valid(scope.modal)) {
+      let data = _.omit(p.data, ['edu_stage_name', 'institution_name', 'specialty_name', 'files']);
+      data.person_id = d.person_id;
+      data.shas = _.map(p.data.files, x => x.sha ? x.sha : x);
+      fi.save_edu_stage(data).then(function(result) {
+        p.data.person_edu_stage_id = result.person_edu_stage_id;
+        p.data.files = _.mapRows(result.files, ['sha', 'name']);
+        d.person_edu_stages = _.reject(d.person_edu_stages, x => x.person_edu_stage_id == p.data.person_edu_stage_id);
+        d.person_edu_stages.push(p.data);
+        d.person_edu_stages.sort(_.partial(sortFunction, _, _, 'edu_stage_name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonEduStage(row) {
+    page.confirm(t('delete person edu stage $1{edu stage name}?')(row.edu_stage_name), function() {
+      fi.del_edu_stage({ person_edu_stage_id: row.person_edu_stage_id }).then(function() {
+        var index = _.findIndex(d.person_edu_stages, row);
+        d.person_edu_stages.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  function addLangRow() {
+    p.data.push({});
+  }
+
+  function removeLangRow(index) {
+    p.data.splice(index, 1)
+    if (p.data.length == 0) addLangRow();
+  }
+
+  q.t_remove_file = t('remove file')();
+
+  // map rows data
+  d.person_langs = _.mapRows(d.person_langs, ['lang_id', 'lang_name', 'lang_level_id', 'lang_level_name']);
+
+  d.person_edu_stages.edu_stages = _.mapRows(d.person_edu_stages.edu_stages,
+    ['person_edu_stage_id',
+      'edu_stage_id',
+      'edu_stage_name',
+      'institution_id',
+      'institution_name',
+      'begin_date',
+      'end_date',
+      'specialty_id',
+      'specialty_name',
+      'qualification',
+      'course',
+      'hour_amount',
+      'base']);
+
+  d.person_edu_stages.edu_stage_files = _.chain(d.person_edu_stages.edu_stage_files)
+    .mapRows(['person_edu_stage_id', 'sha', 'name'])
+    .groupBy('person_edu_stage_id')
+    .value();
+
+  _.each(d.person_edu_stages.edu_stages, function(person_edu_stage) {
+    person_edu_stage.files = d.person_edu_stages.edu_stage_files[person_edu_stage.person_edu_stage_id] || [];
+  });
+
+  d.person_edu_stages = d.person_edu_stages.edu_stages;
+
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom gutter-b" style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label">
+        <t>education</t>
+      </h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.add_edu_stage" ng-click="addPersonEduStage()">
+        <t>add</t>
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="tab-content">
+      <b-pg-grid name="person_edu_stages" local-data="d.person_edu_stages" min-height="'auto'" search="edu_stage_name, institution_name"
+                 searchable="begin_date, end_date" sort="edu_stage_name, institution_name, begin_date, end_date" current-limit="1000">
+        <b-pg-header name="action">
+          ::label
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="edu_stage_name" size="7" />
+          <b-pg-col name="institution_name" size="7" />
+          <b-pg-col name="begin_date" size="4" />
+          <b-pg-col name="end_date" size="4" />
+          <b-pg-col name="action" size="2">
+            <div class="text-center w-100 dropdown" ng-if="fi.download_files || fi.save_edu_stage || fi.del_edu_stage">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                <a class="dropdown-item" ng-if="fi.save_edu_stage" ng-click="editPersonEduStage(row)"><t>edit</t></a>
+                <a class="dropdown-item" ng-if="hasFiles(row)" ng-click="downloadPersonEduStageFiles(row)"><t>download</t></a>
+                <a class="dropdown-item text-danger" ng-if="fi.del_edu_stage" ng-click="delPersonEduStage(row)"><t>delete</t></a>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+      <div class="row mt-8">
+        <div class="col-sm-8">
+          <table class="table table-hover">
+            <col width="50%">
+            <col width="50%">
+            <thead>
+              <tr>
+                <th class="pl-0"><h5 style="color:#212121;"><t>Languages</t></h5></th>
+                <th>
+                  <button type="button" class="btn btn-link text-decoration-none" ng-if="fi.save_lang" ng-click="editPersonLang()">
+                    <t ng-if="d.person_langs.length == 0">add</t>
+                    <t ng-if="d.person_langs.length > 0">edit</t>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody ng-repeat="item in d.person_langs">
+              <tr>
+                <td>{{ item.lang_name }}</td>
+                <td>{{ item.lang_level_name }}</td>
+              </tr>
+            </tbody>
+            <tbody ng-if="d.person_langs.length == 0">
+              <tr>
+                <td colspan="2"><p class="font-italic"><t>No data</t></p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PERSON LANG MODAL -->
+  <script type="text/ng-template" id="person_lang_vhr41.html" class="modal-lg">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="col-sm-11"><t>language</t></label>
+        <label class="col-sm-11"><t>language level</t></label>
+      </div>
+      <div class="form-row mb-3" ng-repeat="item in p.data">
+        <div class="col-11">
+          <b-input name="langs"
+                   model="item.lang_name | name"
+                   model-key="item.lang_id | lang_id"
+                   label="lang_name"
+                   is-view="fi.select_lang"
+                   on-view="selectLang(item)"
+                   is-add="fi.add_lang"
+                   on-add="addLang(item, value)"
+                   on-select="setLang(item, row)"
+                   on-delete="setLang(item, {})"
+                   on-change="changeLangQuery(query, value)"
+                   required-key="item.lang_level_id">
+            {{ row.name }}
+          </b-input>
+        </div>
+        <div class="col-11">
+          <b-input name="lang_levels"
+                   model="item.lang_level_name | name"
+                   model-key="item.lang_level_id | lang_level_id"
+                   label="lang_level_name"
+                   is-view="fi.select_lang_level"
+                   on-view="selectLangLevel(item)"
+                   is-add="fi.add_lang_level"
+                   on-add="addLangLevel(item, value)"
+                   required-key="item.lang_id">
+            {{ row.name }}
+          </b-input>
+        </div>
+        <div class="col-2 align-self-end">
+          <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="removeLangRow($index)" ng-if="item.lang_id  || p.data.length > 1">
+            <i class="fa fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="btn-group text-center mt-2">
+        <button type="button" class="btn btn-default btn-icon" ng-click="addLangRow()">
+          <i class="fa fa-plus"></i>
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_lang" ng-click="savePersonLang()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+  <!-- PERSON EDU STAGE MODAL -->
+  <script type="text/ng-template" id="person_edu_stage_vhr41.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><t>edu stage name</t><r/></label>
+        <b-input name="edu_stages"
+                 model="p.data.edu_stage_name | name"
+                 model-key="p.data.edu_stage_id | edu_stage_id"
+                 column="order_no"
+                 sort="order_no, name"
+                 is-add="fi.add_edu_stage"
+                 is-view="fi.select_edu_stage"
+                 on-add="addEduStage(p.data, value)"
+                 on-view="selectEduStage(p.data)"
+                 required-key>
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-group">
+        <label><t>institution name</t></label>
+        <b-input name="institutions"
+                 model="p.data.institution_name | name"
+                 model-key="p.data.institution_id | institution_id"
+                 is-add="fi.add_institution"
+                 is-view="fi.select_institution"
+                 on-add="addInstitution(p.data, value)"
+                 on-view="selectInstitution(p.data)">
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>begin date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.begin_date" b-date-picker="DD.MM.YYYY"/>
+        </div>
+        <div class="col-sm">
+          <label><t>end date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker="DD.MM.YYYY"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>specialty name</t></label>
+        <b-input name="specialties"
+                 model="p.data.specialty_name | name"
+                 model-key="p.data.specialty_id | specialty_id"
+                 is-add="fi.add_specialty"
+                 is-view="fi.select_specialty"
+                 on-add="addSpecialty(p.data, value)"
+                 on-view="selectSpecialty(p.data)">
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-group">
+        <label><t>qualification</t></label>
+        <input type="text" class="form-control" ng-model="p.data.qualification" b-maxlength="100"/>
+      </div>
+      <div class="form-row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>course</t></label>
+          <input type="text" class="form-control" ng-model="p.data.course" b-number scale="0" precision="1"/>
+        </div>
+        <div class="col-sm">
+          <label><t>hour amount</t></label>
+          <input type="text" class="form-control" ng-model="p.data.hour_amount" b-number scale="0" precision="6"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>base</t></label>
+        <input type="text" class="form-control" ng-model="p.data.base" b-maxlength="50"/>
+      </div>
+      <div class="form-group">
+        <label><t>files</t></label>
+        <div class="form-group mb-0" style="font-size: 14px;" ng-repeat="file in p.data.files">
+          <label>
+            <i class="fa fa-times" style="cursor: pointer;" title="{{ q.t_remove_file }}" ng-click="deleteFile($index)"/>
+            <span class="font-blue-hoki">{{ file.name }}</span><br ng-if="!$last"/>
+          </label>
+        </div>
+        <div style="font-size: 14px;">
+          <label class="font-grey-salt" ng-if="p.data.files.length == 0"><span class="fa fa-file">&nbsp;&nbsp;</span><t>no files</t></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <b-dropzone name="files" multiple on-select="uploadFiles($file)"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_edu_stage" ng-click="savePersonEduStage()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+</div>

@@ -1,0 +1,23 @@
+{
+ "polygon points": "Polygon coordinates",
+ "accuracy": "Accuracy (meters)",
+ "accuracy $1 m": "$1 Accuracy (meters)",
+ "active": "Active",
+ "add polygon vertices": "Add polygon for analysis",
+ "address": "Address",
+ "bssids": "BSSID",
+ "code": "Code",
+ "if you have several bssids, you must seperate with ; (semicolon)": "If there are multiple BSSIDs, use \";\" to separate them.",
+ "invalid polygon input": "Invalid polygon coordinates",
+ "latlng": "Geolocation",
+ "location type": "Location Type",
+ "name": "Name",
+ "no": "No",
+ "passive": "Inactive",
+ "prohibited": "Tracks Limitation",
+ "region name": "Region",
+ "save": "Save",
+ "state": "Status",
+ "timezone name": "Time Zone",
+ "yes": "Yes"
+}

@@ -1,0 +1,1160 @@
+<script biruni>
+page.require("amcharts4", "amcharts4-theme-animated");
+page.ctrl(function(scope, fi, model, t, $timeout) {
+  var d = _.omit(model, 'headcount_dimension_by_filials', 'headcount_dimension_by_divisions', 'headcount_dimension_by_job_groups', 'headcount_dimension_by_months'),
+      f = {}; // filter data
+
+  $timeout(function() {
+    am4core.ready(function() {
+      am4core.useTheme(am4themes_animated);
+    })
+  });
+
+  f.headcount_dimension = d.headcount_dimension;
+  d.HEADCOUNT_DIMENSION_BY_FILIALS = model.headcount_dimension_by_filials;
+  d.HEADCOUNT_DIMENSION_BY_DIVISIONS = model.headcount_dimension_by_divisions;
+  d.HEADCOUNT_DIMENSION_BY_JOB_GROUPS = model.headcount_dimension_by_job_groups;
+  d.HEADCOUNT_DIMENSION_BY_MONTHS = model.headcount_dimension_by_months;
+
+  function initFilterData() {
+    f.quarters = _.map([t('Q1')(), t('Q2')(), t('Q3')(), t('Q4')()], (x, index) => { return { index: index + 1, name: x }; } );
+    f.formats = { 'Y': 'YYYY', 'Q': 'YYYY', 'M': 'MM.YYYY' };
+    f.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+    f.period_type = 'Y';
+
+    changePeriodType();
+  }
+
+  function hideFilter() {
+    // hides filter if it is shown
+    if (f.show_filter) toggleFilter();
+  }
+
+  function toggleFilter() {
+    page.$content.find('.filter-panel').animate({ width: !f.show_filter ? 330 : 0 });
+    f.show_filter = !f.show_filter;
+  }
+
+  function changePeriodType() {
+    if (f.period_type == 'M' && f.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_MONTHS) {
+      f.headcount_dimension = d.HEADCOUNT_DIMENSION_BY_FILIALS;
+    }
+
+    f.date = moment().format(f.formats[f.period_type]);
+    f.quarter = {};
+  }
+
+  function applyDate() {
+    f.dateMoment = moment(f.date, f.formats[f.period_type]);
+
+    if (f.period_type == 'Q') {
+      f.dateMoment.quarter(f.quarter.index);
+    }
+  }
+
+  function buildHeadcountByPeriodsChart() {
+    var chart = am4core.create("headcountByPeriodsChartDiv", am4charts.XYChart);
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'top';
+    chart.legend.contentAlign = "left";
+    chart.numberFormatter.numberFormat = "#.";
+    chart.data = _.map(d.headcount_by_periods, function(x) {
+      return _.extend(x, { unsigned_dismissal: -x.dismissal });
+    });
+    chart.colors.list = [
+      am4core.color("#6D8CC7"),
+      am4core.color("#4953A1"),
+      am4core.color("#E48C63")
+    ];
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.grid.template.disabled = true;
+    categoryAxis.dataFields.category = "period";
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color, location, sign) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.clustered = false;
+      series.dataFields.valueY = field;
+      series.dataFields.categoryX = "period";
+      series.name = name;
+      if (field == 'dismissal') {
+        series.columns.template.tooltipText = "{name}: [bold]{unsigned_dismissal}[/]";;
+      } else {
+        series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";;
+      }
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.locationY = location;
+      seriesBullet.interactionsEnabled = false;
+      seriesBullet.label.fill = am4core.color(color);
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.verticalCenter = "bottom";
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.label.adapter.add('text', function(label, target, key) {
+        if (target.dataItem) {
+          let value = target.dataItem.values.valueY.value;
+          return value < 0 ? -value : value;
+        } else {
+          return label;
+        }
+      });
+    }
+
+    createSeries("total", t("total")(), "#000", 0, 1);
+    createSeries("hiring", t("hiring")(), "#fff", 0.5, 1);
+    createSeries("dismissal", t("dismissal")(), "#000", 0, -1);
+
+    var lineSeries = chart.series.push(new am4charts.LineSeries());
+    lineSeries.dataFields.valueY = "turnover";
+    lineSeries.dataFields.categoryX = "period";
+    lineSeries.name = t("turnover")();
+    lineSeries.strokeWidth = 5;
+    lineSeries.stroke = am4core.color("#E48C63");
+
+    var lineBullets = lineSeries.bullets.push(new am4charts.LabelBullet())
+    lineBullets.interactionsEnabled = false;
+    lineBullets.label.text = '{valueY}%';
+    lineBullets.label.fill = am4core.color("#E48C63");
+    lineBullets.label.background.stroke = am4core.color("#B5C6E3");
+    lineBullets.label.background.opacity = 0.5;
+    lineBullets.label.paddintBottom = 20;
+    lineBullets.label.dy = -10;
+  }
+
+  function buildHeadcountByDivisionsChart() {
+    var chart = am4core.create("headcountByDivisionsChart", am4charts.XYChart);
+    chart.data = d.headcount_by_divisions;
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'top';
+    chart.legend.contentAlign = "left";
+    chart.numberFormatter.numberFormat = "#.";
+    chart.scrollbarX = new am4core.Scrollbar();
+    chart.scrollbarX.parent = chart.bottomAxesContainer;
+    chart.data = _.map(d.headcount_by_divisions, function(x) {
+      return _.extend(x, { unsigned_dismissal: -x.dismissal });
+    });
+    chart.colors.list = [
+      am4core.color("#6D8CC7"),
+      am4core.color("#4953A1"),
+      am4core.color("#E48C63")
+    ];
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "division";
+    categoryAxis.renderer.grid.template.disabled = true;
+    categoryAxis.renderer.minGridDistance = 50;
+    categoryAxis.renderer.labels.template.maxWidth = 150;
+
+    categoryAxis.events.on("sizechanged", function(ev) {
+      var axis = ev.target;
+      var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+      if (cellWidth < axis.renderer.labels.template.maxWidth) {
+        axis.renderer.labels.template.rotation = 90;
+      }
+      else {
+        axis.renderer.labels.template.rotation = 0;
+      }
+    });
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color, location) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.dataFields.valueY = field;
+      series.dataFields.categoryX = "division";
+      series.name = name;
+      series.clustered = false;
+      if (field == 'dismissal') {
+        series.columns.template.tooltipText = "{name}: [bold]{unsigned_dismissal}[/]";;
+      } else {
+        series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";;
+      }
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.fill = am4core.color(color);
+      seriesBullet.label.verticalCenter = "bottom";
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.locationY = location;
+      seriesBullet.label.adapter.add('text', function(label, target, key) {
+        if (target.dataItem) {
+          let value = target.dataItem.values.valueY.value;
+          return value < 0 ? -value : value;
+        } else {
+          return label;
+        }
+      });
+    }
+
+    createSeries("total", t("total")(), "#000", 0);
+    createSeries("hiring", t("hiring")(), "#fff", 0.5);
+    createSeries("dismissal", t("dismissal")(), "#000", 0);
+
+    var lineSeries = chart.series.push(new am4charts.LineSeries());
+    lineSeries.dataFields.valueY = "turnover";
+    lineSeries.dataFields.categoryX = "division";
+    lineSeries.name = t("turnover")();
+    lineSeries.strokeWidth = 5;
+    lineSeries.stroke = am4core.color("#E48C63");
+
+    var lineBullets = lineSeries.bullets.push(new am4charts.LabelBullet())
+    lineBullets.interactionsEnabled = false
+    lineBullets.label.text = '{valueY}%';
+    lineBullets.label.fill = am4core.color("#E48C63");
+    lineBullets.label.background.stroke = am4core.color("#B5C6E3");
+    lineBullets.label.background.opacity = 0.5;
+    lineBullets.label.fontSize = 20;
+    lineBullets.label.dy = -10;
+  }
+
+  function buildHeadcountByJobGroupsChart() {
+    var chart = am4core.create("headcountByJobGroupsChart", am4charts.XYChart);
+    chart.data = d.headcount_by_job_groups;
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'top';
+    chart.legend.contentAlign = "left";
+    chart.numberFormatter.numberFormat = "#.";
+    chart.scrollbarX = new am4core.Scrollbar();
+    chart.scrollbarX.parent = chart.bottomAxesContainer;
+    chart.data = _.map(d.headcount_by_job_groups, (x) => {
+      return _.extend(x, { unsigned_dismissal: -x.dismissal });
+    });
+    chart.colors.list = [
+      am4core.color("#6D8CC7"),
+      am4core.color("#4953A1"),
+      am4core.color("#E48C63")
+    ];
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "job_group";
+    categoryAxis.renderer.grid.template.disabled = true;
+    categoryAxis.renderer.minGridDistance = 50;
+    categoryAxis.renderer.labels.template.maxWidth = 150;
+
+    categoryAxis.events.on("sizechanged", (ev) => {
+      var axis = ev.target;
+      var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+      if (cellWidth < axis.renderer.labels.template.maxWidth) {
+        axis.renderer.labels.template.rotation = 90;
+      }
+      else {
+        axis.renderer.labels.template.rotation = 0;
+      }
+    });
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color, location) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.dataFields.valueY = field;
+      series.dataFields.categoryX = "job_group";
+      series.name = name;
+      series.clustered = false;
+      if (field == 'dismissal') {
+        series.columns.template.tooltipText = "{name}: [bold]{unsigned_dismissal}[/]";;
+      } else {
+        series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";;
+      }
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.fill = am4core.color(color);
+      seriesBullet.label.verticalCenter = "bottom";
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.locationY = location;
+      seriesBullet.label.adapter.add('text', (label, target, key) => {
+        if (target.dataItem) {
+          let value = target.dataItem.values.valueY.value;
+          return value < 0 ? -value : value;
+        } else {
+          return label;
+        }
+      });
+    }
+
+    createSeries("total", t("total")(), "#000", 0);
+    createSeries("hiring", t("hiring")(), "#fff", 0.5);
+    createSeries("dismissal", t("dismissal")(), "#000", 0);
+
+    var lineSeries = chart.series.push(new am4charts.LineSeries());
+    lineSeries.dataFields.valueY = "turnover";
+    lineSeries.dataFields.categoryX = "job_group";
+    lineSeries.name = t("turnover")();
+    lineSeries.strokeWidth = 5;
+    lineSeries.stroke = am4core.color("#E48C63");
+
+    var lineBullets = lineSeries.bullets.push(new am4charts.LabelBullet())
+    lineBullets.interactionsEnabled = false
+    lineBullets.label.text = '{valueY}%';
+    lineBullets.label.fill = am4core.color("#E48C63");
+    lineBullets.label.background.stroke = am4core.color("#B5C6E3");
+    lineBullets.label.background.opacity = 0.5;
+    lineBullets.label.fontSize = 20;
+    lineBullets.label.dy = -10;
+  }
+
+  function buildHeadcountByFilialsChart() {
+    var chart = am4core.create("headcountByFilialsChartDiv", am4charts.XYChart);
+    chart.data = d.headcount_by_filials;
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'top';
+    chart.legend.contentAlign = "left";
+    chart.numberFormatter.numberFormat = "#.";
+    chart.scrollbarX = new am4core.Scrollbar();
+    chart.scrollbarX.parent = chart.bottomAxesContainer;
+    chart.data = _.map(d.headcount_by_filials, function(x) {
+      return _.extend(x, { unsigned_dismissal: -x.dismissal });
+    });
+    chart.colors.list = [
+      am4core.color("#6D8CC7"),
+      am4core.color("#4953A1"),
+      am4core.color("#E48C63")
+    ];
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "filial";
+    categoryAxis.renderer.grid.template.disabled = true;
+    categoryAxis.renderer.minGridDistance = 50;
+    categoryAxis.renderer.labels.template.maxWidth = 150;
+
+    categoryAxis.events.on("sizechanged", function(ev) {
+      var axis = ev.target;
+      var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+      if (cellWidth < axis.renderer.labels.template.maxWidth) {
+        axis.renderer.labels.template.rotation = 90;
+      }
+      else {
+        axis.renderer.labels.template.rotation = 0;
+      }
+    });
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color, location) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.dataFields.valueY = field;
+      series.dataFields.categoryX = "filial";
+      series.name = name;
+      series.clustered = false;
+      if (field == 'dismissal') {
+        series.columns.template.tooltipText = "{name}: [bold]{unsigned_dismissal}[/]";;
+      } else {
+        series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";;
+      }
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.fill = am4core.color(color);
+      seriesBullet.label.verticalCenter = "bottom";
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.locationY = location;
+      seriesBullet.label.adapter.add('text', function(label, target, key) {
+        if (target.dataItem) {
+          let value = target.dataItem.values.valueY.value;
+          return value < 0 ? -value : value;
+        } else {
+          return label;
+        }
+      });
+    }
+
+    createSeries("total", t("total")(), "#000", 0);
+    createSeries("hiring", t("hiring")(), "#fff", 0.5);
+    createSeries("dismissal", t("dismissal")(), "#000", 0);
+
+    var lineSeries = chart.series.push(new am4charts.LineSeries());
+    lineSeries.dataFields.valueY = "turnover";
+    lineSeries.dataFields.categoryX = "filial";
+    lineSeries.name = t("turnover")();
+    lineSeries.strokeWidth = 5;
+    lineSeries.stroke = am4core.color("#E48C63");
+
+    var lineBullets = lineSeries.bullets.push(new am4charts.LabelBullet())
+    lineBullets.interactionsEnabled = false
+    lineBullets.label.text = '{valueY}%';
+    lineBullets.label.fill = am4core.color("#E48C63");
+    lineBullets.label.background.stroke = am4core.color("#B5C6E3");
+    lineBullets.label.background.opacity = 0.5;
+    lineBullets.label.fontSize = 20;
+    lineBullets.label.dy = -10;
+  }
+
+  function printCheckboxes() {
+    f.xy_series = {};
+
+    _.each(d.headcount_by_months[0], (val, key) => {
+      if(key != 'month') {
+        var serie = {
+          hidden: false,
+          state: true,
+          value: key
+        };
+        serie.color = randomDarkColor();
+        f.xy_series[key] = serie;
+      }
+    });
+
+    f.visibleCheckbox = {};
+    f.invisibleCheckbox = {};
+    f.checkboxIndex = 0;
+    f.showAllCheckboxes = false;
+
+    let style1 = '', style2 = '';
+
+    _.each(f.xy_series, (x, key) => {
+      if (f.checkboxIndex < 4) {
+        style1 += `
+          .${ x.value }.switch input[type=checkbox]~span::before {
+              background: -webkit-linear-gradient(left, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+              background: linear-gradient(to right, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+              background-size: 200%;
+              background-position: 100%;
+          }
+          .${ x.value }.switch input[type=checkbox]:checked~span::after {
+            border-color: ${ x.color };
+          }
+          .${ x.value }.switch input[type=checkbox]:checked~span::before {
+            background-position: 0%;
+          }
+        `;
+
+        f.visibleCheckbox[key] = x;
+      } else {
+        style2 += `
+          .${ x.value }.switch input[type=checkbox]~span::before {
+              background: -webkit-linear-gradient(left, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+              background: linear-gradient(to right, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+              background-size: 200%;
+              background-position: 100%;
+          }
+          .${ x.value }.switch input[type=checkbox]:checked~span::after {
+            border-color: ${ x.color };
+          }
+          .${ x.value }.switch input[type=checkbox]:checked~span::before {
+            background-position: 0%;
+          }
+        `;
+        f.invisibleCheckbox[key] = x;
+      }
+      f.checkboxIndex ++;
+    });
+
+    $timeout(function(){
+      let xy_checkboxes1 = page.$content.find(".xy_checkboxes1");
+      let xy_checkboxes2 = page.$content.find(".xy_checkboxes2");
+      xy_checkboxes1.append('<style>' + style1 + '</style>');
+      xy_checkboxes2.append('<style>' + style2 + '</style>');
+    });
+  }
+
+  function randomDarkColor() {
+    return '#' +
+      Math.floor(Math.random() * 100 + 50).toString(16) +
+      Math.floor(Math.random() * 100 + 50).toString(16) +
+      Math.floor(Math.random() * 100 + 50).toString(16);
+  }
+
+  function changeLineState(line_key) {
+    if (!f.xy_series[line_key].state) {
+      f.xy_series[line_key].series.hide();
+    } else f.xy_series[line_key].series.show();
+  }
+
+  function buildHeadcountByMonthsChart() {
+    let elem = page.$content.find('#headcountByMonthsChartDiv');
+    printCheckboxes();
+
+    assert(elem.length, "headcount by month xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = d.headcount_by_months;
+
+    // Create category axis
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "month";
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.maxLabelPosition = 0.95;
+    valueAxis.maxPrecision = 0;
+    valueAxis.min = 0;
+    valueAxis.max = f.xy_chart_size;
+    valueAxis.strictMinMax = true;
+
+    valueAxis.adapter.add("getTooltipText", (text, target) => {
+      if (text > 100) return '';
+      else return text ? text + '%' : text;
+    });
+
+    function addLineSeries(value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "month";
+      series.name = value;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.fill = am4core.color(color);
+      series.tooltipText = "{valueY}% " + value;
+      series.stroke = am4core.color(color);
+      series.legendSettings.valueText = "{valueY}%";
+      series.hidden = hidden;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+
+      f.xy_series[value].series = series;
+    }
+
+    _.each(f.xy_series, x => {
+      addLineSeries(x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+  }
+
+
+  function buildDismissalReasonsChart() {
+    var chart = am4core.create("dismissalReasonsChartDiv", am4charts.XYChart);
+    chart.paddingLeft = -10;
+    chart.colors.list = [
+      am4core.color("#A7B9DD"),
+      am4core.color("#5B66B5")
+    ]
+    chart.colors.step = 2;
+    chart.data = d.dismissal_reasons;
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'bottom';
+
+    var categoryAxis = chart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "reason_name";
+    categoryAxis.renderer.inversed = true;
+    categoryAxis.renderer.grid.template.disabled = true;
+    categoryAxis.renderer.baseGrid.disabled = true;
+    categoryAxis.renderer.labels.template.align = "left";
+
+    var valueAxis = chart.xAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.opposite = true;
+    valueAxis.renderer.ticks.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+    valueAxis.numberFormatter.numberFormat = "#";
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.baseGrid.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+    valueAxis.title.align = 'left';
+    valueAxis.title.fontSize = 16;
+    valueAxis.title.marginBottom = 10;
+
+    function createSeries(field, name) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.dataFields.valueX = field;
+      series.dataFields.categoryY = "reason_name";
+      series.name = name;
+      series.sequencedInterpolation = true;
+      series.columns.template.tooltipText = "{name}: [bold]{valueX}[/]";
+
+      var categoryLabel = series.bullets.push(new am4charts.LabelBullet());
+      categoryLabel.label.dx = 25;
+      categoryLabel.label.fill = am4core.color("black");
+      categoryLabel.label.text = "{valueX}%";
+    }
+
+    createSeries("period_1_percentage", d.period_1);
+    createSeries("period_2_percentage", d.period_2);
+  }
+
+  function buildExperienceByYearsChart() {
+    var chart = am4core.create('experienceByYearsChart', am4charts.XYChart)
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'bottom';
+    chart.colors.step = 2;
+    chart.colors.list = [
+      am4core.color("#A7B9DD"),
+      am4core.color("#5B66B5")
+    ];
+    chart.data = [
+      {
+        years: '< 1',
+          period_1: d.experience_period_1.less_than_1_year,
+          period_2: d.experience_period_2.less_than_1_year
+      },
+      {
+        years: '1-3',
+          period_1: d.experience_period_1.between_1_and_3_years,
+          period_2: d.experience_period_2.between_1_and_3_years
+      },
+      {
+        years: '4-5',
+          period_1: d.experience_period_1.between_4_and_5_years,
+          period_2: d.experience_period_2.between_4_and_5_years
+      },
+      {
+        years: '> 5',
+          period_1: d.experience_period_1.more_than_5_years,
+          period_2: d.experience_period_2.more_than_5_years
+      }
+    ];
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis())
+    categoryAxis.dataFields.category = 'years'
+    categoryAxis.renderer.grid.template.disabled = true;
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.labels.template.disabled = true;
+    valueAxis.renderer.grid.template.disabled = true;
+
+    function createSeries(value, name) {
+      var series = chart.series.push(new am4charts.ColumnSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = 'years';
+      series.name = name;
+      series.events.on("hidden", arrangeColumns);
+      series.events.on("shown", arrangeColumns);
+      series.columns.template.tooltipText = "{name}: [bold]{valueY}[/]";
+
+      var seriesBullets = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullets.interactionsEnabled = false;
+      seriesBullets.dy = -10;
+      seriesBullets.label.text = '{valueY}';
+      seriesBullets.label.fill = am4core.color('black');
+      seriesBullets.label.fontSize = 20;
+    }
+
+    createSeries('period_1', d.period_1);
+    createSeries('period_2', d.period_2);
+
+    function arrangeColumns() {
+      var series = chart.series.getIndex(0);
+      var w = 1 - categoryAxis.renderer.cellStartLocation - (1 - categoryAxis.renderer.cellEndLocation);
+      if (series.dataItems.length > 1) {
+        var x0 = categoryAxis.getX(series.dataItems.getIndex(0), "categoryX");
+        var x1 = categoryAxis.getX(series.dataItems.getIndex(1), "categoryX");
+        var delta = ((x1 - x0) / chart.series.length) * w;
+        if (am4core.isNumber(delta)) {
+          var middle = chart.series.length / 2;
+
+          var newIndex = 0;
+          chart.series.each(function(series) {
+            if (!series.isHidden && !series.isHiding) {
+                series.dummyData = newIndex;
+                newIndex++;
+            }
+            else {
+                series.dummyData = chart.series.indexOf(series);
+            }
+          })
+          var visibleCount = newIndex;
+          var newMiddle = visibleCount / 2;
+
+          chart.series.each(function(series) {
+            var trueIndex = chart.series.indexOf(series);
+            var newIndex = series.dummyData;
+            var dx = (newIndex - trueIndex + middle - newMiddle) * delta
+
+            series.animate({ property: "dx", to: dx }, series.interpolationDuration, series.interpolationEasing);
+            series.bulletsContainer.animate({ property: "dx", to: dx }, series.interpolationDuration, series.interpolationEasing);
+          })
+        }
+      }
+    }
+  }
+
+  function buildAllCharts() {
+    am4core.registry.baseSprites.forEach(chart => chart.dispose());
+
+    buildHeadcountByPeriodsChart();
+    buildDismissalReasonsChart();
+    buildExperienceByYearsChart();
+
+    switch (d.headcount_dimension) {
+      case d.HEADCOUNT_DIMENSION_BY_FILIALS:
+        buildHeadcountByFilialsChart();
+        break;
+      case d.HEADCOUNT_DIMENSION_BY_DIVISIONS:
+        buildHeadcountByDivisionsChart();
+        break;
+      case d.HEADCOUNT_DIMENSION_BY_JOB_GROUPS:
+        buildHeadcountByJobGroupsChart();
+        break;
+      case d.HEADCOUNT_DIMENSION_BY_MONTHS:
+        buildHeadcountByMonthsChart();
+        break;
+    }
+  }
+
+  function buildDashboard(newModel) {
+    d.headcount_by_periods = _.mapRows(newModel.headcount_by_periods, [ 'period', 'total', 'hiring', 'dismissal', 'turnover', 'total_relative',
+                                                                        'hiring_relative', 'dismissal_relative', 'turnout_relative' ]);
+    d.headcount_dimension = newModel.headcount_dimension;
+    d.headcount_by_filials = _.mapRows(newModel.headcount_by_filials, [ 'filial', 'total', 'hiring', 'dismissal', 'turnover' ]);
+    d.headcount_by_divisions = _.mapRows(newModel.headcount_by_divisions, [ 'division','total', 'hiring', 'dismissal', 'turnover' ]);
+    d.headcount_by_job_groups = _.mapRows(newModel.headcount_by_job_groups, [ 'job_group', 'total', 'hiring', 'dismissal', 'turnover' ]);
+
+    d.headcount_by_months = [];
+    f.xy_chart_size = 0;
+     _.chain(newModel.headcount_by_months)
+      .mapRows(['month', 'total', 'hiring', 'dismissal', 'turnover', 'filial_name'])
+      .groupBy('month')
+      .each(month => {
+        var data = { month: moment(month[0].month, 'DD.MM.YYYY').format('MMM.YYYY') };
+
+        _.each(month, x => {
+          f.xy_chart_size = Math.max(f.xy_chart_size, +x.turnover + 10);
+          data[x.filial_name] = x.turnover;
+        })
+
+        d.headcount_by_months.push(data);
+      })
+      .value();
+
+    d.dismissal_reasons = _.mapRows(newModel.dismissal_reasons, ['reason_name', 'period_1_percentage','period_2_percentage']);
+    d.experience_period_1 = newModel.experience_period_1;
+    d.experience_period_2 = newModel.experience_period_2;
+    d.period_1 = newModel.period_1;
+    d.period_2 = newModel.period_2;
+    d.total_headcount = _.find(d.headcount_by_periods, { period: d.period_2 });
+    d.current_staff_headcount = newModel.current_staff_headcount;
+    d.t_popover_message = t('avg = dismissal_count / ((begin_total + (begin_total + hiring_count + dismissal_count)) / 2) = $1{dismissal_count} / (($2{begin_total} + ($3{begin_total} + $4{hiring_count} + $5{dismissal_count})) / 2) = $6{labor_turnover}')(-d.total_headcount.dismissal, d.total_headcount.total, d.total_headcount.total, d.total_headcount.hiring, -d.total_headcount.dismissal, d.total_headcount.turnover);
+
+    debouncedBuildAllCharts();
+  }
+
+  function reload() {
+    applyDate();
+
+    let data = {
+      date: f.dateMoment.format('MM.YYYY'),
+      period_type: f.period_type
+    }
+
+    data.headcount_dimension = f.headcount_dimension;
+    data.job_group_ids = _.pluck(f.job_groups, 'job_group_id');
+
+    if (fi.isHead) {
+      data.filial_ids = _.pluck(f.filials, 'filial_id');
+    } else {
+      data.division_ids = f.division_ids;
+      data.headcount_dimension = f.headcount_dimension;
+
+      if (f.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_JOB_GROUPS) {
+        data.job_group_ids = _.pluck(f.job_groups, 'job_group_id');
+      }
+    }
+
+    if (f.period_type == 'Q') {
+      data.quarter = f.quarter;
+    }
+
+    page.post(':reload_filter', data).then(res => {
+      toggleFilter();
+      buildDashboard(res);
+    }, page.alert);
+  }
+
+  // fullscreen
+  function goFullscreen(temp){
+    var elem = document.getElementById(temp);
+
+    if(elem.requestFullscreen){
+        elem.requestFullscreen().then($timeout);
+    }
+    else if(elem.mozRequestFullScreen){
+        elem.mozRequestFullScreen().then($timeout);
+    }
+    else if(elem.webkitRequestFullscreen){
+        elem.webkitRequestFullscreen().then($timeout);
+    }
+    else if(elem.msRequestFullscreen){
+        elem.msRequestFullscreen().then($timeout);
+    }
+  }
+
+  function exitFullscreen() {
+    document.exitFullscreen().then($timeout);
+  }
+
+  function isFullscreen() {
+    return document.fullscreen;
+  }
+
+  initFilterData();
+
+  var debouncedBuildAllCharts = _.debounce(buildAllCharts, 700);
+  buildDashboard(model);
+
+  d.t_popover_title = t('how calculated labour turnover')();
+  d.t_popover_message = t('avg = dismissal_count / ((begin_total + (begin_total + hiring_count + dismissal_count)) / 2) = $1{dismissal_count} / (($2{begin_total} + ($3{begin_total} + $4{hiring_count} + $5{dismissal_count})) / 2) = $6{labor_turnover}')(-d.total_headcount.dismissal, d.total_headcount.total, d.total_headcount.total, d.total_headcount.hiring, -d.total_headcount.dismissal, d.total_headcount.turnover);
+
+  $('#popover').attr('title', d.t_popover_title);
+
+  scope.d = d;
+  scope.f = f;
+});
+</script>
+<div class="b-content"><form name="form" class="form-horizontal">
+  <div class="card card-custom">
+    <div class="card-body" ng-click="hideFilter()">
+      <div class="form-row mb-4 px-5">
+        <div class="col-sm-12 col-md mb-4">
+          <div class="card h-100 bg-secondary">
+            <div class="card-body py-4">
+              <h3 class="card-text text-center"><t>total number of current staff</t></h3>
+              <h1 class="card-text text-center font-weight-bolder">
+                <t p1="d.current_staff_headcount">$1 people</t>
+              </h1>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12 col-md mb-4">
+          <div class="card h-100 bg-secondary">
+            <div class="card-body py-4">
+              <h3 class="card-text text-center"><t>total headcount</t></h3>
+              <h1 class="card-text text-center font-weight-bolder">
+                <t p1="d.total_headcount.total">$1 people</t>
+                <span class="text-success font-size-h3">
+                  <t p1="d.total_headcount.total_relative">$1%</t>
+                  <i class="fa fa-caret-up font-size-h3"></i>
+                </span>
+              </h1>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12 col-md mb-4">
+          <div class="card h-100 bg-secondary">
+            <div class="card-body py-4">
+              <h3 class="card-text text-center"><t>total hiring</t></h3>
+              <h1 class="card-text text-center font-weight-bolder">
+                <t p1="d.total_headcount.hiring">$1 people</t>
+                <span class="text-success font-size-h3">
+                  <t p1="d.total_headcount.hiring_relative">$1%</t>
+                  <i class="fa fa-caret-up font-size-h3"></i>
+                </span>
+              </h1>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12 col-md mb-4">
+          <div class="card h-100 bg-secondary">
+            <div class="card-body py-4">
+              <h3 class="card-text text-center"><t>total dismissal</t></h3>
+              <h1 class="card-text text-center font-weight-bolder">
+                <t p1="-d.total_headcount.dismissal">$1 people</t>
+                <span class="text-success font-size-h3">
+                  <t p1="d.total_headcount.dismissal_relative">$1%</t>
+                  <i class="fa fa-caret-up font-size-h3"></i>
+                </span>
+              </h1>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12 col-md mb-4">
+          <div class="card h-100 bg-secondary">
+            <div class="card-body py-4">
+              <div class="w-100 b-right" style="cursor: pointer;">
+                <a id="popover" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ d.t_popover_message }}" tabindex="0"><i class="far fa-question-circle"></i></a>
+              </div>
+              <h3 class="card-text text-center mt-n6">
+                <t>total turnover</t>
+              </h3>
+              <h1 class="card-text text-center font-weight-bolder">
+                <t p1="d.total_headcount.turnover">$1%</t>
+                <span class="text-success font-size-h3">
+                  <t p1="d.total_headcount.turnout_relative">$1%</t>
+                  <i class="fa fa-caret-up font-size-h3"></i>
+                </span>
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="col-sm-8">
+          <div class="card card-custom" id="periodsChartFullscreen">
+            <div class="card-body" style="height: 700px;">
+              <div class="col-sm-24 col-md mb-4" style="height: 100%;">
+                <div class="form-row">
+                  <div class="col-sm-20">
+                    <h3 class="font-weight-bolder pl-5"><t>headcount by periods</t></h3>
+                  </div>
+                  <div class="col-sm-4">
+                    <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('periodsChartFullscreen')">
+                      <i class="fas fa-expand-alt"></i>
+                    </button>
+                    <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                      <i class="fas fa-compress-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div style="width: 100%; height: 90%; font-size: 16px;" id="headcountByPeriodsChartDiv"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-8">
+          <div class="card card-custom" id="divisionsChartFullscreen" ng-if="d.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_DIVISIONS">
+            <div class="card-body" style="height: 700px;">
+              <div class="form-row">
+                <div class="col-sm-20">
+                  <h3 class="font-weight-bolder pl-4"><t>headcount by divisions</t></h3>
+                </div>
+                <div class="col-sm-4">
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('divisionsChartFullscreen')">
+                    <i class="fas fa-expand-alt"></i>
+                  </button>
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                    <i class="fas fa-compress-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div style="width: 100%; height: 90%; font-size: 16px;" id="headcountByDivisionsChart"></div>
+            </div>
+          </div>
+          <div class="card card-custom" id="jobGroupsChartFullscreen" ng-if="d.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_JOB_GROUPS">
+            <div class="card-body" style="height: 700px;">
+              <div class="form-row">
+                <div class="col-sm-20">
+                  <h3 class="font-weight-bolder pl-4"><t>headcount by job groups</t></h3>
+                </div>
+                <div class="col-sm-4">
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('jobGroupsChartFullscreen')">
+                    <i class="fas fa-expand-alt"></i>
+                  </button>
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                    <i class="fas fa-compress-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div style="width: 100%; height: 90%; font-size: 16px;" id="headcountByJobGroupsChart"></div>
+            </div>
+          </div>
+          <div class="card card-custom" id="filialsChartFullscreen" ng-if="d.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_FILIALS">
+            <div class="card-body" style="height: 700px;">
+              <div class="form-row">
+                <div class="col-sm-20">
+                  <h3 class="font-weight-bolder pl-4"><t>headcount by filials</t></h3>
+                </div>
+                <div class="col-sm-4">
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('filialsChartFullscreen')">
+                    <i class="fas fa-expand-alt"></i>
+                  </button>
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                    <i class="fas fa-compress-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div style="width: 100%; height: 90%; font-size: 16px;" id="headcountByFilialsChartDiv"></div>
+            </div>
+          </div>
+          <div class="card card-custom" id="monthsChartFullscreen" ng-if="fi.isHead && d.headcount_dimension == d.HEADCOUNT_DIMENSION_BY_MONTHS">
+            <div class="card-body" style="height: 700px;">
+              <div class="form-row">
+                <div class="col-sm-20">
+                  <h3 class="font-weight-bolder pl-4"><t>headcount by months</t></h3>
+                </div>
+                <div class="col-sm-4">
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('monthsChartFullscreen')">
+                    <i class="fas fa-expand-alt"></i>
+                  </button>
+                  <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                    <i class="fas fa-compress-alt"></i>
+                  </button>
+                </div>
+              </div>
+              <div style="width: 100%; height: 80%; font-size: 16px;" id="headcountByMonthsChartDiv"></div>
+              <div class="form-row">
+                <div class="col-sm-22">
+                  <div class="xy_checkboxes1 row ml-sm-25">
+                    <div class="col-sm-6 mb-4" ng-repeat="item in f.visibleCheckbox">
+                      <label class="{{ item.value }} switch">
+                        <input type="checkbox" ng-model="f.visibleCheckbox[item.value].state" ng-change="changeLineState(item.value)" ng-disabled="!f.visibleCheckbox[item.value].series"/>
+                        <span>{{ item.value }}</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="xy_checkboxes2"></div>
+                  <div class="xy_checkboxes2 row ml-sm-25" ng-if="f.showAllCheckboxes">
+                    <div class="col-sm-6 mb-4" ng-repeat="item in f.invisibleCheckbox">
+                      <label class="{{ item.value }} switch">
+                        <input type="checkbox" ng-model="f.invisibleCheckbox[item.value].state" ng-change="changeLineState(item.value)" ng-disabled="!f.invisibleCheckbox[item.value].series"/>
+                        <span>{{ item.value }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-sm-2" ng-if="f.checkboxIndex > 4">
+                  <button type="button rig" class="btn btn-sm" style="float: right" ng-click="f.showAllCheckboxes = !f.showAllCheckboxes">
+                    <i class="fa fa-chevron-down" ng-if="!f.showAllCheckboxes"></i>
+                    <i class="fa fa-chevron-up" ng-if="f.showAllCheckboxes"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-8">
+          <div class="card card-custom" id="dismissalReasonsChartFullscreen">
+            <div class="card-body" style="height: 700px;">
+              <div class="form-group" style="height: 50%;">
+                <div class="form-row">
+                  <div class="col-sm-20">
+                    <h3 class="font-weight-bolder"><t>dismissal reasons</t></h3>
+                  </div>
+                  <div class="col-sm-4">
+                    <button type="button" class="btn btn-default btn-icon" style="float: right" ng-hide="isFullscreen()" ng-click="goFullscreen('dismissalReasonsChartFullscreen')">
+                      <i class="fas fa-expand-alt"></i>
+                    </button>
+                    <button type="button" class="btn btn-default btn-icon" style="float: right" ng-show="isFullscreen()" ng-click="exitFullscreen()">
+                      <i class="fas fa-compress-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div style="width: 100%; height: 100%; font-size: 16px;" id="dismissalReasonsChartDiv"></div>
+              </div>
+              <div class="form-group" style="height: 50%;">
+                <h3 class="font-weight-bolder"><t>experience by years</t></h3>
+                <div style="width: 100%; height: 100%; font-size: 16px;" id="experienceByYearsChart"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-panel position-absolute top-0 right-0 h-100 overflow-hidden" style="width: 0; padding-left: 30px;">
+      <button type="button"
+              class="btn btn-icon position-absolute border-right-0 rounded-right-0 mt-4 left-0"
+              ng-class="f.show_filter ? 'btn-secondary' : 'btn-warning'"
+              ng-click="toggleFilter()">
+        <i ng-class="f.show_filter ? 'fa fa-times' : 'fa fa-filter'"></i>
+      </button>
+      <div class="card card-custom w-300px h-100 shadow-sm">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>filter</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <div ng-if="fi.isHead">
+              <label><t>filials</t></label>
+              <b-input
+                multiple
+                name="filials"
+                model="f.filials"
+                model-key="filial_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div ng-if="!fi.isHead">
+              <label><t>divisions</t></label>
+              <b-tree-select
+                multiple
+                origin="f.divisions"
+                id-key="division_id"
+                model="f.division_ids"
+                parent-key="parent_id"
+                hide-limit="5"
+                option-check-childs/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>job groups</t></label>
+            <b-input
+              multiple
+              name="job_groups"
+              model="f.job_groups"
+              model-key="job_group_id"
+              label="name">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>period type</t></label><br>
+            <div class="col-sm row">
+              <label class="radio">
+                <input type="radio" name="period_type" value="Y" ng-change="changePeriodType()" ng-model="f.period_type"/>
+                <span><t>year</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="period_type" value="Q" ng-change="changePeriodType()" ng-model="f.period_type"/>
+                <span><t>quarter</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="period_type" value="M" ng-change="changePeriodType()" ng-model="f.period_type"/>
+                <span><t>month</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group" ng-if="f.period_type == 'Y' || f.period_type == 'Q'">
+            <label><t>year</t></label>
+            <input type="text"
+                    class="form-control"
+                    b-date-picker="YYYY"
+                    ng-model="f.date"/>
+          </div>
+          <div class="form-group" ng-if="f.period_type == 'M'">
+            <label><t>month</t></label>
+            <input type="text"
+                    class="form-control"
+                    b-date-picker="MM.YYYY"
+                    ng-model="f.date"/>
+          </div>
+          <div class="form-group" ng-if="f.period_type == 'Q'">
+            <label><t>quarter</t></label><br/>
+            <style>
+              .dropdown>.ui-select-dropdown.dropdown-menu {
+                top: 26px !important;
+              }
+            </style>
+            <ui-select ng-model="f.quarter">
+              <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+              <ui-select-choices repeat="quarter in f.quarters | filter: $select.search">
+                {{ quarter.name }}
+              </ui-select-choices>
+            </ui-select>
+          </div>
+          <div class="form-group">
+            <label><t>headcount dimension</t></label><br>
+            <div class="col-sm row">
+              <label class="radio" ng-if="!fi.isHead">
+                <input type="radio" name="headcount_dimension" value="{{ d.HEADCOUNT_DIMENSION_BY_DIVISIONS }}" ng-model="f.headcount_dimension"/>
+                <span><t>by divisions</t></span>
+              </label>
+              <label class="radio" ng-if="fi.isHead">
+                <input type="radio" name="headcount_dimension" value="{{ d.HEADCOUNT_DIMENSION_BY_FILIALS }}" ng-model="f.headcount_dimension"/>
+                <span><t>by filials</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="headcount_dimension" value="{{ d.HEADCOUNT_DIMENSION_BY_JOB_GROUPS }}" ng-model="f.headcount_dimension"/>
+                <span><t>by job groups</t></span>
+              </label>
+              <label class="radio" ng-if="fi.isHead && f.period_type != 'M'">
+                <input type="radio" name="headcount_dimension" value="{{ d.HEADCOUNT_DIMENSION_BY_MONTHS }}" ng-model="f.headcount_dimension"/>
+                <span><t>by months</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <button type="button" ng-click="reload()" class="btn btn-primary w-100"><t>reload</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

@@ -1,0 +1,5 @@
+{
+ "pg.reason.before": "Старое значение",
+ "pg.reason.current": "Новое значение",
+ "pg.reason.field_name": "Поле"
+}

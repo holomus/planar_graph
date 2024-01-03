@@ -1,0 +1,8 @@
+{
+ "fte value": "Employment type value",
+ "fte value must be between 0 and 1": "Employment type value must be between 0 and 1",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "order no": "No.",
+ "save": "Save"
+}

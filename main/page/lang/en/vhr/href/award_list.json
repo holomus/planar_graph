@@ -1,0 +1,9 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{awards_count} award(s)?": "Do you really want to delete <b>$1</b> award(s)?",
+ "delete award $1{award_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.award_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,133 @@
+<script biruni>
+page.ctrl(function(scope, model, bRequire, $timeout) {
+  var d = model;
+
+  function showPhoto(photo) {
+    page.previewFile({
+      sha: photo.photo_sha,
+      name: photo.name,
+      type: 'image'
+    });
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  d.photos = _.mapRows(d.photos, ['name', 'photo_sha', 'is_main']);
+  d.photos = _.each(d.photos, photo => photo.photo_src = page.loadImageLarge(photo.photo_sha));
+  d.fingers = _.mapRows(d.fingers, ['finger_no', 'name', 'side', 'tmp']);
+  d.fprint_count = _.chain(d.fingers).pluck('tmp').compact().value().length;
+  d.hands = _.chain(d.hands)
+             .mapRows(['side', 'name'])
+             .each(hand => {
+               hand.fingers = _.filter(d.fingers, { side: hand.side });
+             })
+             .value();
+
+  bRequire.load('qrcode').then(function() {
+    qrcode = new QRCode(page.$content.find('.person-qrcode')[0], { width: 200, height: 200 });
+    qrcode.makeCode(d.qr_code);
+  });
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>person identification</t></h3>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="form-row mb-4">
+          <div class="col-sm-12 mb-4 mb-sm-0">
+            <label><t>pin</t></label>
+            <span class="form-view">{{ d.pin }}</span>
+          </div>
+          <div class="col-sm-12">
+            <label><t>pin code</t></label>
+            <span class="form-view">{{ d.pin_code }}</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="col-sm-12 mb-4">
+            <label><t>rfid code</t></label>
+            <span class="form-view">{{ d.rfid_code }}</span>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <label><t>fprints</t></label><br/>
+            <button type="button" class="btn btn-default btn-block" ng-click="showModal()">
+              <i class="fas fa-edit"></i>
+              <t p1="d.fprint_count">regestered $1/10 fingers</t>
+            </button>
+          </div>
+        </div>
+        <div class="separator separator-solid my-4" ng-if="d.qr_code"></div>
+        <div class="form-row">
+          <div class="col-sm-12 mb-4 pl-4" ng-show="d.qr_code">
+            <label><t>qr code</t></label>
+            <div class="d-flex justify-content-left"><div class="person-qrcode"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-12">
+        <div ng-show="d.photos.length > 0">
+          <div class="form-group">
+            <label><t>photo</t></label>
+          </div>
+          <div class="form-group row ml-2">
+            <div class="mr-6 mb-4" ng-repeat="photo in d.photos">
+              <div class="image-input image-input-outline bgi-position-center">
+                <div class="image-input-wrapper w-auto h-auto" ng-style="photo.is_main == 'Y' && { 'border': '3px solid #6992ff' }">
+                  <img class="w-auto h-200px cursor-pointer" ngf-src="photo.photo_src" ng-click="showPhoto(photo)"/>
+                </div>
+              </div>
+              <br/>
+              <span ng-if="photo.is_main == 'Y'"><t>main photo</t></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- FPRINT -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>fprint template</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="text-center" ng-repeat="hand in d.hands">
+              <h5 class="font-weight-boldest">{{ hand.name }}</h5><br/>
+              <div class="row">
+                <div class="col-sm p-2" ng-repeat="finger in hand.fingers">
+                  <div class="image-input">
+                    <i class="fas fa-fingerprint icon-3x" ng-class="finger.tmp ? 'text-success' : 'text-light-dark'"></i>
+                  </div>
+                  <br/>
+                  <label class="font-weight-boldest">{{ finger.finger_no }}</label>
+                  <br/>
+                  <label class="text-muted">{{ finger.name }}</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div >

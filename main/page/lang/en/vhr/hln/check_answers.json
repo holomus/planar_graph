@@ -1,0 +1,10 @@
+{
+ "correct": "Yes",
+ "finish": "Finish",
+ "not correct": "No",
+ "pg.answers.correct": "Correct",
+ "pg.answers.name": "Name",
+ "pg.answers.order_no": "No.",
+ "pg.answers.writing_answer": "Writing",
+ "pg.answers.writing_hint": "Hint"
+}

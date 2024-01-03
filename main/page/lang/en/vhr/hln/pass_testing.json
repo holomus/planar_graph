@@ -1,0 +1,14 @@
+{
+ "before start": "Time before testing",
+ "Do you finish ? If you want you can go back to review your answers.": "Do you really want to finish testing? If you wish, you may go back to check your answers",
+ "finish": "Finish",
+ "mark question": "Mark question",
+ "next": "Next",
+ "Options": "Answers",
+ "prev": "Previous",
+ "Question № $1:": "Question № $1:",
+ "test finished": "Testing finished",
+ "testing paused for some time": "Testing paused",
+ "testing time has expired": "Testing time is up",
+ "view result": "View results"
+}

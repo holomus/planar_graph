@@ -1,0 +1,48 @@
+prompt PATH TRANSLATE /vhr/href/employee/employee_import
+begin
+uis.lang_uz('#a:/vhr/href/employee/employee_import$save_setting','Sozlamalarni saqlash');
+uis.lang_uz('#f:/vhr/href/employee/employee_import','Xodimlar / Import');
+uis.lang_uz('ui-vhr265:address','Manzil');
+uis.lang_uz('ui-vhr265:birthday','Tug''ilgan kun');
+uis.lang_uz('ui-vhr265:code','Kod');
+uis.lang_uz('ui-vhr265:email','E-mail');
+uis.lang_uz('ui-vhr265:employee_id','ID');
+uis.lang_uz('ui-vhr265:employees','Xodimlar');
+uis.lang_uz('ui-vhr265:first name','Ism');
+uis.lang_uz('ui-vhr265:first_name','Ism');
+uis.lang_uz('ui-vhr265:gen_user','Foydalanuvchi yaratish');
+uis.lang_uz('ui-vhr265:gender','Jins');
+uis.lang_uz('ui-vhr265:iapa','ShJBPH');
+uis.lang_uz('ui-vhr265:last name','Familiya');
+uis.lang_uz('ui-vhr265:last_name','Familiya');
+uis.lang_uz('ui-vhr265:legal_address','Ro''yxatga olingan manzil');
+uis.lang_uz('ui-vhr265:location','Joylashuv');
+uis.lang_uz('ui-vhr265:location (code)','Joylashuv kodi');
+uis.lang_uz('ui-vhr265:location_identifier: code','Kod');
+uis.lang_uz('ui-vhr265:location_identifier: name','Nom');
+uis.lang_uz('ui-vhr265:login_template: first_name.last_name','ism.familiya');
+uis.lang_uz('ui-vhr265:login_template: first_name_last_name','ism_familiya');
+uis.lang_uz('ui-vhr265:login_template: last_name.first_name','familiya.ism');
+uis.lang_uz('ui-vhr265:login_template: last_name_first_name','familiya_ism');
+uis.lang_uz('ui-vhr265:main phone','Telefon raqam');
+uis.lang_uz('ui-vhr265:main_phone','Telefon raqam');
+uis.lang_uz('ui-vhr265:middle name','Otasining ismi');
+uis.lang_uz('ui-vhr265:middle_name','Otasining ismi');
+uis.lang_uz('ui-vhr265:nationality','Millat');
+uis.lang_uz('ui-vhr265:npin','JShShIR');
+uis.lang_uz('ui-vhr265:passport_begin_date','Berilgan sana');
+uis.lang_uz('ui-vhr265:passport_expiry_date','Amal qilish muddati');
+uis.lang_uz('ui-vhr265:passport_issued_by','Berildi');
+uis.lang_uz('ui-vhr265:passport_issued_date','Berilgan sana');
+uis.lang_uz('ui-vhr265:passport_number','Pasport raqami');
+uis.lang_uz('ui-vhr265:passport_series','Pasport seriyasi');
+uis.lang_uz('ui-vhr265:pin','PIN kod');
+uis.lang_uz('ui-vhr265:pin_code','Parol');
+uis.lang_uz('ui-vhr265:region','Hudud');
+uis.lang_uz('ui-vhr265:region_identifier: code','Kod');
+uis.lang_uz('ui-vhr265:region_identifier: name','Nom');
+uis.lang_uz('ui-vhr265:rfid_code','RFID karta raqami');
+uis.lang_uz('ui-vhr265:tin','STIR');
+commit;
+end;
+/

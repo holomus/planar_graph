@@ -1,0 +1,18 @@
+{
+ "table.matched_sha": "Matching photo",
+ "calculate image vectors": "Calculate image vector",
+ "close": "Close",
+ "matching photo found": "Matching photo found",
+ "pg.matched_photos.match_percent": "Match Percent",
+ "pg.matched_photos.match_score": "Match Score",
+ "pg.matched_photos.person_name": "Matched Employee",
+ "pg.matched_photos.photo": "Photo",
+ "successfully added vector calculation job": "Calculation vector successfully added",
+ "table.match_score": "Match Score",
+ "table.match_score_percent": "Match Score Percent",
+ "table.matched_person_names": "Matched Employee",
+ "table.person_id": "Employee ID",
+ "table.person_name": "Employee",
+ "table.photo_sha": "Photo",
+ "table.vector_calculated_name": "Calculation image vector"
+}

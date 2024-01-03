@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another language level": "Kod allaqachon boshqa til darajasiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nomi noyob bo'lishi kerak",
+ "order_no": "Tartib raqami",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

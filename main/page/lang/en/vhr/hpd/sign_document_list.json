@@ -1,0 +1,17 @@
+{
+ "change status to progress $1{count} documents?": "Change status to progress $1 documents?",
+ "change status to progress $1{title} document?": "Change status to progress document $1?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.document_id": "ID",
+ "table.esign_allowed_name": "E-Sign Allowed",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.note": "Note",
+ "table.process_name": "Processes",
+ "table.sign_kind_name": "Signing",
+ "table.status_name": "Status",
+ "table.title": "Name",
+ "to progress $1": "To Progress $1"
+}

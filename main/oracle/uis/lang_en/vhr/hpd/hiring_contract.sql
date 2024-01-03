@@ -1,0 +1,45 @@
+prompt PATH TRANSLATE /vhr/hpd/hiring_contract
+begin
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_accrual','Create wage payment');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_deduction','Create wage deduction');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_employee','Create employee');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_employment_source','Create employment source');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_fte','Create employment type');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_job','Create job');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_rank','Create qualification rank');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_schedule','Create work schedule');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$add_wage_scale','Create tariff group');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_accrual','Select wage payments');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_deduction','Select wage deduction');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_employee','Select employee');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_employment_source','Select employment source');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_fte','Select employment type');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_job','Select job');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_rank','Select qualification rank');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_robot','Select position');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_schedule','Select work schedule');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+add$select_wage_scale','Select tariff group');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_accrual','Create wage payment');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_deduction','Create wage deduction');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_employee','Create employee');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_employment_source','Create employment source');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_fte','Create employment type');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_job','Create job');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_rank','Create qualification rank');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_schedule','Create work schedule');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$add_wage_scale','Create tariff group');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_accrual','Select wage payments');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_deduction','Select wage deduction');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_employee','Select employee');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_employment_source','Select employment source');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_fte','Select employment type');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_job','Select job');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_rank','Select qualification rank');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_robot','Select position');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_schedule','Select work schedule');
+uis.lang_en('#a:/vhr/hpd/hiring_contract+edit$select_wage_scale','Select tariff group');
+uis.lang_en('#f:/vhr/hpd/hiring_contract+add','Hiring for Civil Law Contracts / New');
+uis.lang_en('#f:/vhr/hpd/hiring_contract+edit','Hiring for Civil Law Contracts / Edit');
+commit;
+end;
+/

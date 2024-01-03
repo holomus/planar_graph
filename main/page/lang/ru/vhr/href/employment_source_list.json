@@ -1,0 +1,12 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{employment_source_count} employment source(s)?": "Удалить источники занятости в количестве <b>$1</b>?",
+ "delete employment source $1{employment_source_name}?": "Удалить источник занятости <b>$1</b>?",
+ "select": "Выбрать",
+ "select $1": "Выбрать $1",
+ "table.kind_name": "Вид источника",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.source_id": "ИД",
+ "table.state_name": "Статус"
+}

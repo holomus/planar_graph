@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/htt/location_import
+begin
+uis.lang_en('#a:/vhr/htt/location_import$save_settings','Save Settings');
+uis.lang_en('#f:/vhr/htt/location_import','Location (import)');
+uis.lang_en('ui-vhr272:$1{error message} with accuracy $2{accuracy}','Error $1 in Accuracy: $2');
+uis.lang_en('ui-vhr272:$1{error message} with address $2{address}','Error $1 in Address: $2');
+uis.lang_en('ui-vhr272:$1{error message} with code $2{code}','Error $1 in Code: $2');
+uis.lang_en('ui-vhr272:$1{error message} with division name $2{division_name}','Error $1 in Department: $2');
+uis.lang_en('ui-vhr272:$1{error message} with employees $2{employees}','Error $1 in Employees: $2');
+uis.lang_en('ui-vhr272:$1{error message} with lat lng $2{latlng}','Error $1 in Geolocation: $2');
+uis.lang_en('ui-vhr272:$1{error message} with location name $2{name}','Error $1 in Location: $2');
+uis.lang_en('ui-vhr272:$1{error message} with location type name $2{location_type_name}','Error $1 in Location Type: $2');
+uis.lang_en('ui-vhr272:$1{error message} with prohibited $2{prohibited}','Error $1 in Tracks Limitation: $2');
+uis.lang_en('ui-vhr272:$1{error message} with region name $2{region_name}','Error $1 in Region: $2');
+uis.lang_en('ui-vhr272:$1{error message} with state $2{state}','Error $1 in Status: $2');
+uis.lang_en('ui-vhr272:$1{error message} with time zone $2{time_zone}','Error $1 in Timezone: $2');
+uis.lang_en('ui-vhr272:accuracy','Accuracy (meters)');
+uis.lang_en('ui-vhr272:address','Address');
+uis.lang_en('ui-vhr272:code','Code');
+uis.lang_en('ui-vhr272:division name','Department');
+uis.lang_en('ui-vhr272:division_name','Department');
+uis.lang_en('ui-vhr272:employee_id_by_number: employee not found, employee_number=$1','Employees not found. PersNo = $1');
+uis.lang_en('ui-vhr272:employee_identifier:code','Code');
+uis.lang_en('ui-vhr272:employee_identifier:employee_number','PersNo');
+uis.lang_en('ui-vhr272:employee_identifier:name','Full Name');
+uis.lang_en('ui-vhr272:employee_identifier:tin','TIN');
+uis.lang_en('ui-vhr272:employees','Employees');
+uis.lang_en('ui-vhr272:employees ($1)','Employees ($1)');
+uis.lang_en('ui-vhr272:lat lng','Geolocation');
+uis.lang_en('ui-vhr272:latlng','Geolocation');
+uis.lang_en('ui-vhr272:location import','Location (import)');
+uis.lang_en('ui-vhr272:location_type name','Location Tyoe');
+uis.lang_en('ui-vhr272:location_type_id_by_name: location type not found, location_type_name=$1','Location type not found. Location type = $1');
+uis.lang_en('ui-vhr272:location_type_name','Location Type');
+uis.lang_en('ui-vhr272:name','Name');
+uis.lang_en('ui-vhr272:prohibited','Tracks Limitation');
+uis.lang_en('ui-vhr272:region name','Region');
+uis.lang_en('ui-vhr272:region_id_by_name: region not found, name=$1','Region not found. Name = $1');
+uis.lang_en('ui-vhr272:region_name','Region');
+uis.lang_en('ui-vhr272:state','Status');
+uis.lang_en('ui-vhr272:time zone','Timezone');
+uis.lang_en('ui-vhr272:time_zone','Timezone');
+uis.lang_en('ui-vhr272:time_zone_code_by_name: time zone not found, name=$1','Timezone not found. Name = $1');
+commit;
+end;
+/

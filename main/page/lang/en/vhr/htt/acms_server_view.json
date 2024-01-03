@@ -1,0 +1,18 @@
+{
+ "attach $1": "Attach $1",
+ "attach $1{company_count} company(s)?": "Attach <b>$1</b> company(es)?",
+ "attach company $1{company_name}?": "Attach  <b>$1</b>?",
+ "attached companies": "Attached",
+ "company": "Company",
+ "detach $1": "Detach $1",
+ "detach $1{company_count} company(s)?": "Detach <b>$1</b> company(es)?",
+ "detach company $1{company_name}?": "Delete  <b>$1</b>?",
+ "detached companies": "Available",
+ "main": "Main",
+ "name": "Name",
+ "order no": "No.",
+ "secret code": "Key",
+ "table_company.code": "Code",
+ "table_company.name": "Name",
+ "url": "URL"
+}

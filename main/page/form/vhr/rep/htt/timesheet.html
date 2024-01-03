@@ -1,0 +1,928 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, bStorage, bFrame, AppSession) {
+  var d = model.data,
+      s = model.settings,
+      q = {},
+      frame = page.$content.find('.report-frame')[0];
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  // division group
+  function setDivisionGroup(row) {
+    if (!row) return;
+    s.division_group_id = row.division_group_id;
+    s.division_group_name = row.name;
+  }
+
+  function selectDivisionGroup() {
+    fi.select_division_group(null, setDivisionGroup, { where: ['state', '=', 'A'] });
+  }
+
+  function whereStaff() {
+    return _.isEmpty(d.staffs) ? null : ['staff_id', '<>', _.pluck(d.staffs, 'staff_id')];
+  }
+
+  function changeStaff(query, value) {
+    query.param({ begin_date: d.begin_date, end_date: d.end_date }).where(whereStaff());
+    query.searchValue(value);
+  }
+
+  function setStaff(rows) {
+    if (!rows) return;
+    d.staffs.push(...rows);
+  }
+
+  function selectStaff() {
+    fi.select_staff(null, setStaff, { where: whereStaff(), multiple_select: true });
+  }
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+      var data = {
+        begin_date: d.begin_date,
+        end_date: d.end_date,
+        division_ids: d.division_ids,
+        job_ids: _.pluck(d.jobs, 'job_id'),
+        location_ids: _.pluck(d.locations, 'location_id'),
+        staff_ids: _.pluck(d.staffs, 'staff_id'),
+        filial_ids: _.pluck(d.filials, 'filial_id'),
+        rt: rt
+      };
+
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        if (frame.src) {
+          var uri = frame.contentDocument.location.href;
+          uri = uri.replace('rt=html','rt=' + rt);
+          window.open(uri);
+        } else {
+          window.open(page.url('run', data));
+        }
+      }
+    }
+  }
+
+  function savePreferences() {
+    q.setting_valid = s.separate_leave_time == 'N' || s.time_kinds.length > 0;
+
+    if (q.setting_valid) {
+      s.time_kind_ids = _.pluck(s.time_kinds, 'time_kind_id');
+
+      page.confirm(t('save preferences?')(), function() {
+        page.post(':save_preferences', s).then(page.isDialog() ? page.close : page.reload, page.alert);
+      });
+    }
+  }
+
+  function clearPreferences() {
+    page.prefClear(page.isDialog() ? page.close : page.reload);
+  }
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V'? 'btn-primary' : 'btn-default';
+    q.classSetting = mode == 'S' ? 'btn-primary' : 'btn-default';
+  }
+
+  function disableMinuteWords() {
+    s.minute_words = 'N';
+    s.only_minute = 'N';
+  }
+
+  function createNewTemplate($event) {
+    $event.preventDefault();
+    $event.stopPropagation();
+    q.create_new_template = !q.create_new_template;
+  }
+
+  function cancelAddTemplate() {
+    q.create_new_template = !q.create_new_template;
+  }
+
+  function saveNewTemplate() {
+    if (q.new_template_name) {
+      q.filter_templates.push({
+        name: q.new_template_name,
+        range_name: q.last_range_name,
+        filters: {
+          filial_ids: _.pluck(d.filials, 'filial_id'),
+          division_ids: d.division_ids,
+          job_ids: _.pluck(d.jobs, 'job_id'),
+          location_ids: _.pluck(d.locations, 'location_id'),
+          staff_ids: _.pluck(d.staffs, 'staff_id'),
+          begin_date: d.begin_date,
+          end_date: d.end_date
+        }
+      })
+      q.new_template_name = '';
+    }
+    q.create_new_template = !q.create_new_template;
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+  }
+
+  function selectFilterItem(item) {
+    if (item.editTextMode) return;
+    q.active_template_name = item.name;
+    q.last_range_name = item.range_name;
+
+    page.post(':check_filters', {
+      min_date:    item.filters.begin_date,
+      max_date:    item.filters.end_date,
+      filial_id:   item.filters.filial_ids,
+      job_id:      item.filters.job_ids,
+      location_id: item.filters.location_ids,
+      staff_id:    item.filters.staff_ids
+     }).then(res => {
+      d = angular.copy({
+        begin_date: item.filters.begin_date,
+        end_date: item.filters.end_date,
+        filials: _.mapRows(res.filials, ['filial_id', 'name']),
+        division_ids: item.filters.division_ids,
+        jobs: _.mapRows(res.jobs, ['job_id', 'name']),
+        locations: _.mapRows(res.locations, ['location_id', 'name']),
+        staffs: _.mapRows(res.staffs, ['staff_id', 'name']),
+        divisions: _.chain(model.divisions)
+                   .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                   .each(x => x.disabled = x.enabled == 'N')
+                   .value()
+      });
+      scope.d = d;
+     }, page.alert);
+  }
+
+  function setPinned(item, $event) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates[index].pin = q.filter_templates[index].pin == 'Y' ? 'N' : 'Y';
+
+    if (q.filter_templates[index].pin == 'Y') {
+      _.each(q.filter_templates, (x, i) => {
+        if (i != index) x.pin = 'N';
+      });
+    }
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+
+    $event.preventDefault();
+    $event.stopPropagation();
+  }
+
+  function removeTemplate(item) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates.splice(index, 1);
+
+    if (q.filter_templates.length == 0) {
+      q.active_template_name = null;
+    } else {
+      q.active_template_name = q.filter_templates[0].name;
+    }
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+  }
+
+  function setDefaultFilter() {
+    _.each(q.filter_templates, x => {
+      if (x.pin == 'Y') {
+        q.active_template_name = x.name;
+        selectFilterItem(x);
+      }
+    });
+  }
+
+  function editTemplate(item, $event) {
+    item.editTextMode = true;
+    $event.preventDefault();
+    $event.stopPropagation();
+  }
+
+  function saveEditFilter(item) {
+    let index = _.findIndex(q.filter_templates, item);
+    q.filter_templates[index].editTextMode = false;
+    q.filter_templates[index].name = item.name;
+    q.filter_templates[index].range_name = q.last_range_name;
+    q.filter_templates[index].filters = {
+      filial_ids: _.pluck(d.filials, 'filial_id'),
+      division_ids: d.division_ids,
+      job_ids: _.pluck(d.jobs, 'job_id'),
+      location_ids: _.pluck(d.locations, 'location_id'),
+      staff_ids: _.pluck(d.staffs, 'staff_id'),
+      begin_date: d.begin_date,
+      end_date: d.end_date
+    }
+
+    bStorage.json(storage_key, { filter_templates: q.filter_templates });
+
+    setDefaultFilter();
+  }
+
+  function cancelEditFilter(item) {
+    item.editTextMode = false;
+  }
+
+  function setRange(range_name) {
+    q.last_range_name = range_name;
+  }
+
+  d.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.division_ids = [];
+  d.jobs = [];
+  d.locations = [];
+  d.staffs = [];
+  d.filials = [];
+  setFormMode(param.open_setting == 'Y' ? 'S' : 'P');
+
+  s.rest_free_coef = s.rest_free_coef || 1;
+  s.custom_fact_time = s.custom_fact_time || 'N';
+  s.separate_leave_time = s.separate_leave_time || 'N';
+  s.time_kinds = s.time_kinds || [];
+  q.setting_valid = true;
+  q.filter_templates = storage.filter_templates || [];
+  q.create_new_template = true;
+  q.filter_templates.length > 0 ? setDefaultFilter() : null;
+
+  // definition of settings
+  function makeDefinitionSettings(id, title, message) {
+    $(`#${id}`).attr('title', title)
+    q[`t_definition_${id}`] = message;
+  }
+
+  makeDefinitionSettings('free_time', t('setting free time')(), t('this setting is used to view time outside of the employee work schedule. you can get information about it through "free time" column')());
+  makeDefinitionSettings('fact_time', t('setting fact time')(), t('this setting is used to see how long employees have worked. you can get information about it through "fact time" column')());
+  makeDefinitionSettings('fact_coef', t('setting fact coef')(), t('this setting is used to show the percentage (%) of the employee time at work compared to the employee plan time. you can get information about it through "fact coef" column')());
+  makeDefinitionSettings('worked_days', t('setting worked days')(), t('this setting is used to see how many days an employee has worked. you can get information about it through "worked days" column')());
+  makeDefinitionSettings('worked_coef', t('setting worked coef')(), t('this setting is used to show the percentage (%) of work that the employee has done in relation to the plan time. you can get information about it through "worked coef" column')());
+  makeDefinitionSettings('daily_hours', t('setting daily fact hours')(), t('this setting is used to show how long an employee has been at work. If the setting is off, your daily hour time will include only the time inside the schedule, otherwise, your time outside the schedule will also be included. this setting changes the employees daily work time in the report')());
+  makeDefinitionSettings('daily_leave_time', t('setting show daily leave time')(), t('this setting is used to view the amount of the employee daily leave time. if this setting is off, you can only see which employee day has which leave kind, otherwise you can see also the amount of this leave time')());
+  makeDefinitionSettings('request_letter_code', t('setting to hide request with letter code')(), t('The report uses their short names to describe the request or day type. This setting can prevent such letters from appearing')());
+  makeDefinitionSettings('minutes', t('setting minutes')(), t('this setting is used to display the times in your table along with minutes')());
+  makeDefinitionSettings('minute_words', t('setting minute words')(), t('this setting is used to view the times in the table in words')());
+  makeDefinitionSettings('only_minute', t('setting show time in only minutes')(), t('this setting is used to see the times in the table only in minutes')());
+  makeDefinitionSettings('input_output', t('setting input output')(), t('this setting is used to view employee check-in and check-out times. if the setting is on, you will see check-in and check-out times, not the employees daily work time')());
+  makeDefinitionSettings('check_track', t('setting check track')(), t('This setting is used to give a warning about whether the employee has a daily tracks or not. if the setting is on when the employee does not complete the track that should be done according to the employees schedule, the cell representing this day in the report is displayed in a warning color.')());
+  makeDefinitionSettings('check_track_schedule', t('setting check track schedule')(), t('this setting is used to see the number of completed tracks that the employee should do according to the schedule and to warn about this.')());
+  makeDefinitionSettings('dismissed_and_not_hired', t('setting show if dismissed or not hired')(), t('when this setting is on, if there is time before the employees hiring or after the dismissal in the selected period, it is represented by their short names. The short name of the pre-hiring period is "not hired" and the short name of the post-dismissal period is "dismissed"')());
+
+  makeDefinitionSettings('removed_penalty_time', t('setting show fact time removed penalty time')(), t('this setting is used to view the employee working hours minus penalty times')());
+  makeDefinitionSettings('period_penalty_time', t('setting to show total penalty time for period')(), t('this setting is used to calculate the employee fines for the total period. if the setting is off, your fines will be calculated separately for each day, otherwise, the fines for the entire period will be calculated as a single fine')());
+  makeDefinitionSettings('origin_penalty_late_time', t('setting to show origin penalty late time')(), t('This setting shows the late time value according to the fine policy. This may vary from your late time. you can get information about it through "origin penalty late time" column')());
+  makeDefinitionSettings('origin_penalty_early_time', t('setting to show origin penalty early time')(), t('This setting shows the early time value according to the fine policy. This may vary from your early time. you can get information about it through "origin penalty early time" column')());
+  makeDefinitionSettings('origin_penalty_lack_time', t('setting to show origin penalty lack time')(), t('This setting shows the lack time value according to the fine policy. This may vary from your lack time. you can get information about it through "origin penalty lack time" column')());
+  makeDefinitionSettings('origin_penalty_total_time', t('setting to show origin penalties total time')(), t('This setting shows the penalties value according to the fine policy. This may vary from your penalties. you can get information about it through "origin penalty total" column')());
+
+  makeDefinitionSettings('show_leave_by_coef', t('show leave by coef')(), t('this setting is used to calculate the employee leave times by coefficients. when this setting is on. "leave time by coef" appears instead of "leave time" column')());
+  makeDefinitionSettings('rest_free_time', t('setting rest free time')(), t('this setting is used to view free times on rest day. The free time on the rest day is calculated by the selected "setting rest free coef". You can find information about this in the "rest free time" column')());
+  makeDefinitionSettings('separate_leave_time', t('setting show leave time separately')(), t('this setting is used to view the amounts ​​of selected leave types for the employee. When this setting is enabled, the "leave and absence" column will be divided into the selected leave types and a corresponding report will be displayed for them.')());
+
+  scope.d = d;
+  scope.s = s;
+  scope.q = q;
+
+  scope.$watch('d.divisions', function(divisions) {
+    page.query('staffs').where(divisions.length > 0 ? ['division_id', '=', _.pluck(divisions, 'division_id')] : null);
+    d.employee_id = '';
+    d.employee_name = '';
+  });
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+    <button type="button" class="btn" ng-class="q.classSetting" ng-click="setFormMode('S')"><t>preferences</t></button>
+  </div>
+  <button type="button" class="btn btn-default" ng-if="page.isDialog()" ng-click="page.close()">{{ page.close.title }}</button>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+  <div class="btn-group" ng-show="q.formMode =='S'">
+    <button type="button" class="btn btn-primary" ng-click="savePreferences()"><t>save preferences</t></button>
+    <button type="button" class="btn btn-default" ng-click="clearPreferences()"><t>clear preferences</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <style>
+    .template-pinned {
+      transform: rotate(45deg);
+      opacity: 1;
+      color: #1b82e3;
+    }
+  </style>
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="d-flex mb-4">
+              <div>
+                <label><t>date</t></label><br/>
+                <b-date-range-picker begin="d.begin_date"
+                                     end="d.end_date"
+                                     on-change="onChangeDate(start, end)"
+                                     selectedRange="q.last_range_name"
+                                     setRange="setRange(range_name)"
+                                     half-month/>
+              </div>
+              <div class="ml-auto">
+                <label><t>templates</t></label><br/>
+                <div class="dropdown">
+                  <button class="btn btn-default dropdown-toggle"
+                          type="button"
+                          id="dropdownTemplate"
+                          data-toggle="dropdown"
+                          aria-haspopup="true"
+                          aria-expanded="false"
+                          ng-hide="q.active_template_name">
+                    <t>create template</t>
+                  </button>
+                  <button class="btn btn-default dropdown-toggle"
+                          type="button"
+                          id="dropdownTemplate"
+                          data-toggle="dropdown"
+                          aria-haspopup="true"
+                          ng-show="q.active_template_name"
+                          aria-expanded="false">
+                    {{ q.active_template_name }}
+                  </button>
+                  <div class="dropdown-menu" style="min-width: 20em;" aria-labelledby="dropdownTemplate">
+                    <div class="dropdown-item cursor-pointer py-2 px-4 ng-binding" ng-click="createNewTemplate($event)">
+                      <i class="fas fa-save mr-4"></i>
+                      <t>new template</t>
+                    </div>
+                    <div class="add-new-field-wrapper ng-hide" style="margin: 10px" ng-show="!q.create_new_template">
+                      <input type="text" class="form-control ng-valid ng-dirty ng-touched ng-empty" ng-model="q.new_template_name" b-maxlength="100">
+                      <div class="w-100 d-flex justify-content-between mt-2">
+                        <button type="button" class="btn btn-primary ng-binding" ng-click="saveNewTemplate()"><t>save</t></button>
+                        <button type="button" class="btn btn-default ng-binding" ng-click="cancelAddTemplate()"><t>cancel</t></button>
+                      </div>
+                    </div>
+                    <div class="dropdown-item cursor-pointer py-2 px-4 d-flex justify-content-between" ng-repeat="item in q.filter_templates track by $index" ng-click="selectFilterItem(item)">
+                      <span>
+                        <span ng-hide="item.editTextMode">{{ item.name }}</span>
+                        <input type="text" class="form-control" ng-model="item.name" ng-show="item.editTextMode">
+                      </span>
+                      <div class="dropdown-item-actions" ng-hide="item.editTextMode">
+                        <i class="fas fa-thumbtack cursor-pointer text-hover-primary mr-3" ng-class="{ 'template-pinned': item.pin == 'Y' }" ng-click="setPinned(item, $event)"></i>
+                        <i class="fas fa-pencil-alt cursor-pointer text-hover-primary mr-3" ng-click="editTemplate(item, $event)"></i>
+                        <i class="fas fa-trash cursor-pointer text-hover-danger" ng-click="removeTemplate(item)"></i>
+                      </div>
+                      <div class="dropdown-item-actions ng-hide" ng-show="item.editTextMode">
+                        <i class="fas fa-save cursor-pointer text-hover-primary mr-3" ng-click="saveEditFilter(item)"></i>
+                        <i class="fas fa-times cursor-pointer text-hover-danger" ng-click="cancelEditFilter(item)"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-if="fi.isFilial">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"
+                row-limit="2000"
+                option-check-childs/>
+            </div>
+            <div class="form-group" ng-if="fi.isFilial">
+              <label><t>jobs</t></label>
+              <div class="jobs">
+                <b-input
+                  multiple
+                  name="jobs"
+                  model="d.jobs"
+                  model-key="job_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group" ng-if="fi.isFilial">
+              <label><t>locations</t></label>
+              <div class="locations">
+                <b-input
+                  multiple
+                  name="locations"
+                  model="d.locations"
+                  model-key="location_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group" ng-if="fi.isFilial">
+              <label><t>staffs</t></label>
+              <b-input name="staffs"
+                       multiple
+                       model="d.staffs"
+                       model-key="staff_id"
+                       column="staff_number, staff_kind_name"
+                       label="name"
+                       on-change="changeStaff(query, value)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff()">
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                  <div class="col-sm-6"><t>staff kind</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number}}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group" ng-if="fi.isHead">
+              <label><t>filials</t></label>
+              <b-input
+                multiple
+                name="filials"
+                model="d.filials"
+                model-key="filial_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form ng-show="q.formMode == 'S'" name="settings">
+    <div class="row">
+      <div class="col-sm-18">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <div class="form-group">
+                    <b><t>employee info</t></b>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.staff_number" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting staff number</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group" ng-if="fi.isHead">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.filial" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting filial</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.job" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting job</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.rank" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting rank</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.division" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting division</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.location" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting location</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.schedule" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting schedule</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.manager" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting manager</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group" ng-show="s.manager == 'Y'">
+                    <label><t>manager division group</t></label>
+                    <b-input name="division_groups"
+                             model="s.division_group_name | name"
+                             model-key="s.division_group_id | division_group_id"
+                             is-view="fi.select_division_group"
+                             on-view="selectDivisionGroup()">
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <div class="form-group">
+                    <b><t>extra timesheet info</t></b>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.penalty_late_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting show if penalty late time</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.penalty_early_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting show if penalty early time</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.penalty_lack_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span><t>setting show if penalty lack time</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.penalty_total_time" ng-true-value="'Y'" ng-false-value="'N'"
+                            ng-disabled="s.penalty_late_time != 'Y' && s.penalty_early_time != 'Y' && s.penalty_lack_time != 'Y'"/>
+                      <span><t>setting show if penalty total time</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.removed_penalty_time" ng-true-value="'Y'" ng-false-value="'N'"
+                            ng-disabled="s.penalty_late_time != 'Y' && s.penalty_early_time != 'Y' && s.penalty_lack_time != 'Y'"/>
+                      <span>
+                        <t>setting show fact time removed penalty time</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="removed_penalty_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_removed_penalty_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.period_penalty_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span>
+                        <t>setting to show total penalty time for period</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="period_penalty_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_period_penalty_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.origin_penalty_late_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span>
+                        <t>setting to show origin penalty late time</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="origin_penalty_late_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_origin_penalty_late_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.origin_penalty_early_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span>
+                        <t>setting to show origin penalty early time</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="origin_penalty_early_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_origin_penalty_early_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.origin_penalty_lack_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span>
+                        <t>setting to show origin penalty lack time</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="origin_penalty_lack_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_origin_penalty_lack_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="s.origin_penalty_total_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                      <span>
+                        <t>setting to show origin penalties total time</t>
+                        <a class="w-100 b-right" style="cursor: pointer;" id="origin_penalty_total_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_origin_penalty_total_time }}" tabindex="0">
+                          <i class="far fa-question-circle"></i>
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <b><t>timesheet info</t></b>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.late_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting late input</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.early_output" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting early output</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.overtime" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>setting overtime</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.free_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting free time</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="free_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_free_time }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.fact_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting fact time</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="fact_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_fact_time }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.fact_coef" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting fact coef</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="fact_coef" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_fact_coef }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.worked_days" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting worked days</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="worked_days" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_worked_days }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.worked_coef" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting worked coef</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="worked_coef" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_worked_coef }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.daily_hours" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting daily fact hours</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="daily_hours" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_daily_hours }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.daily_leave_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting show daily leave time</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="daily_leave_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_daily_leave_time }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.request_letter_code" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting to hide request with letter code</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="request_letter_code" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_request_letter_code }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minutes" ng-true-value="'Y'" ng-false-value="'N'" ng-change="disableMinuteWords()"/>
+                    <span>
+                      <t>setting minutes</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="minutes" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_minutes }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minute_words" ng-true-value="'Y'" ng-false-value="'N'" ng-click="s.only_minute = 'N'" ng-disabled="s.minutes != 'Y'"/>
+                    <span>
+                      <t>setting minute words</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="minute_words" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_minute_words }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.only_minute" ng-true-value="'Y'" ng-false-value="'N'" ng-click="s.minute_words = 'N'" ng-disabled="s.minutes != 'Y'"/>
+                    <span>
+                      <t>setting show time in only minutes</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="only_minute" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_only_minute }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.input_output" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting input output</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="input_output" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_input_output }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.check_track" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting check track</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="check_track" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_check_track }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.check_track_schedule" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting check track schedule</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="check_track_schedule" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_check_track_schedule }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.dismissed_and_not_hired" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting show if dismissed or not hired</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="dismissed_and_not_hired" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_dismissed_and_not_hired }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.custom_fact_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><b><t>custom fact time</t></b></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.before_work_time" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.custom_fact_time == 'N'"/>
+                    <span><t>include before work time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.after_work_time" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.custom_fact_time == 'N'"/>
+                    <span><t>include after work time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.lunchtime" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.custom_fact_time == 'N'"/>
+                    <span><t>include lunchtime</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.include_rest_free" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.custom_fact_time == 'N'"/>
+                    <span><t>include rest free</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.track_schedule_time" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.custom_fact_time == 'N'"/>
+                    <span><t>setting show turnout time removed track schedule time</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.show_leave_by_coef" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>show leave by coef</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="show_leave_by_coef" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_show_leave_by_coef }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.rest_free_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span>
+                      <t>setting rest free time</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="rest_free_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_rest_free_time }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group form-inline" ng-if="s.rest_free_time == 'Y'">
+                  <label class="mr-2"><t>setting rest free coef</t></label>
+                  <input type="text" class="form-control" ng-model="s.rest_free_coef" b-number/>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.separate_leave_time" ng-true-value="'Y'" ng-false-value="'N'" ng-change="s.time_kinds = []"/>
+                    <span>
+                      <t>setting show leave time separately</t>
+                      <a class="w-100 b-right" style="cursor: pointer;" id="separate_leave_time" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_separate_leave_time }}" tabindex="0">
+                        <i class="far fa-question-circle"></i>
+                      </a>
+                    </span>
+                  </label>
+                </div>
+                <div class="form-group" ng-if="s.separate_leave_time == 'Y'">
+                  <label><t>time kinds</t></label>
+                  <b-input multiple
+                           name="time_kinds"
+                           model="s.time_kinds"
+                           model-key="time_kind_id"
+                           is-add="fi.add_role"
+                           is-view="fi.select_role"
+                           on-add="addRole(value)"
+                           on-view="selectRole()"
+                           label="name">
+                    {{ row.name }}
+                  </b-input>
+                  <p class="text-danger" ng-hide="s.time_kinds.length > 0 || q.setting_valid"><t>at least one time kind must be selected</t></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P' || q.formMode == 'S'" class="report-frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

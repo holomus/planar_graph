@@ -1,0 +1,23 @@
+{
+ "$1{application_number}": "Заявка №$1",
+ "application number": "Номер",
+ "change status from approved to completed?": "Завершить заявку?",
+ "change status from cancel to draft?": "Вернуть заявку?",
+ "change status from draft to waiting?": "Отправить заявку?",
+ "change status from waiting to approved?": "Подтвердить заявку?",
+ "change status from waiting to canceled?": "Отменить заявку?",
+ "create vacancy by application": "Создать заявку",
+ "created by": "Создал",
+ "created on": "Дата создания",
+ "division name": "Подразделение",
+ "edit": "Изменить",
+ "job name": "Должность",
+ "main": "Основная информация",
+ "modified by": "Изменил",
+ "modified on": "Дата изменения",
+ "note": "Примечание",
+ "quantity": "Сколько человек нужно нанять",
+ "requirements": "Требования",
+ "responsibilities": "Обязанности",
+ "wage": "Зарплата"
+}

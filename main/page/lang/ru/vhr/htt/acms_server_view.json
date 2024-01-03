@@ -1,0 +1,18 @@
+{
+ "attach $1": "Прикрепить $1",
+ "attach $1{company_count} company(s)?": "Прикрепить <b>$1</b> компанию(и)?",
+ "attach company $1{company_name}?": "Прикрепить компанию <b>$1</b>?",
+ "attached companies": "Прикрепленные",
+ "company": "Компания",
+ "detach $1": "Открепить $1",
+ "detach $1{company_count} company(s)?": "Открепить <b>$1</b> компанию(и)?",
+ "detach company $1{company_name}?": "Удалить компанию <b>$1</b>?",
+ "detached companies": "Доступные",
+ "main": "Основная информация",
+ "name": "Название",
+ "order no": "Порядковый номер",
+ "secret code": "Ключ",
+ "table_company.code": "Код",
+ "table_company.name": "Название",
+ "url": "URL-адрес"
+}

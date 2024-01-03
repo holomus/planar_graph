@@ -1,0 +1,15 @@
+{
+ "coefficient must be between 0 and 1": "Коэффициент должен быть в диапазоне от 0 до 1",
+ "timesheet coef": "Коэффициент",
+ "active": "Активный",
+ "color": "Цвет",
+ "digital code": "Цифровой код",
+ "letter code": "Буквенный код",
+ "name": "Название",
+ "parent time kind": "Родитель",
+ "passive": "Неактивный",
+ "plan load": "Нагрузка на план",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "state": "Статус"
+}

@@ -1,0 +1,10 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another language": "Код уже закреплен за другим языком",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

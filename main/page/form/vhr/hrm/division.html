@@ -1,0 +1,288 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, xparam, bHttp) {
+  var d = _.isUndefined(model.data.division_id) ? _.extend(model.data, xparam) : model.data;
+  var q = {};
+
+  // division group
+  function setDivisionGroup(row) {
+    if (!row) return;
+    d.division_group_id = row.division_group_id;
+    d.division_group_name = row.name;
+  }
+
+  function addDivisionGroup(value) {
+    fi.add_division_group(null, setDivisionGroup, { name: value });
+  }
+
+  function selectDivisionGroup() {
+    fi.select_division_group(null, setDivisionGroup, { where: ['state', '=', 'A'] });
+  }
+
+  // schedule
+  function setSchedule(row) {
+    if (!row) return;
+    d.schedule_id = row.schedule_id;
+    d.schedule_name = row.name;
+  }
+
+  function addSchedule(value) {
+    fi.add_schedule({ schedule_kind: q.sk_flexible }, setSchedule, { name: value });
+  }
+
+  function selectSchedule() {
+    fi.select_schedule(null, setSchedule, { where: ['state', '=', 'A'] });
+  }
+
+  // manager
+  function setManager(row) {
+    if (!row) return;
+    d.manager_id = row.robot_id;
+    d.manager_name = row.name;
+  }
+
+  function setStaff(row) {
+      if(!row) return;
+      d.manager_id = row.robot_id;
+      d.staff_id = row.staff_id;
+      d.manager_name = row.name;
+  }
+
+  function addManager(value) {
+    fi.add_manager(null, setManager, { name: value, division_id: d.division_id });
+  }
+
+  function selectManager(row) {
+    fi.select_manager(null, setManager, { where: ['state', '=', 'A'] });
+  }
+
+  function whereStaff() {
+    return ['status', '=', 'W'];
+  }
+
+  function selectStaff() {
+    fi.select_staff(null, setStaff, { where: whereStaff()});
+  }
+
+  function changeStaff(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function validateCode() {
+    if (d.code) {
+      if (d.code == q.code_origin) {
+        q.code_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':code_is_unique', { code: d.code }).then(function(result) {
+          q.code_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.code_is_unique = true;
+  }
+
+  function validateName() {
+    if (d.name) {
+      if (d.name.toLowerCase() == q.name_origin && d.parent_id == q.parent_origin) {
+        q.name_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':name_is_unique', { name: d.name, parent_id: d.parent_id }).then(function(result) {
+          q.name_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.name_is_unique = true;
+  }
+
+  function validateDates() {
+    if (d.closed_date) {
+      q.date_is_valid = moment(d.opened_date, 'DD.MM.YYYY') < moment(d.closed_date, 'DD.MM.YYYY');
+    } else q.date_is_valid = true;
+  }
+
+  function fixDivisionKind() {
+    if (!d.parent_id) {
+      d.is_department = 'Y';
+    }
+
+    validateName();
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  q.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  q.position_enable = model.position_enable;
+  q.date_is_valid = true;
+  q.sk_flexible = model.sk_flexible;
+
+  q.t_division_kind = {
+    'Y': model.t_division_kind_department,
+    'N': model.t_division_kind_team
+  };
+
+  q.advanced_org_structure = model.advanced_org_structure;
+
+  if(d.division_id) {
+    let query_type = q.position_enable == 'Y' ? ':managers' : ':staffs';
+    page.query(query_type).param({ division_id: d.division_id });
+
+    q.name_origin = d.name.toLowerCase();
+    q.parent_origin = d.parent_id;
+    q.code_origin = d.code;
+  }
+
+  validateCode();
+  validateName();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>code</t></label>
+              <input type="text" class="form-control" ng-model="d.code" ng-model-options="{ debounce: 500 }"
+                     ng-change="validateCode()" b-validate="{ s: q.code_is_unique || d.code.length == 0 }" b-maxlength="50"/>
+              <span class="text-danger" ng-hide="d.code.length == 0 || q.code_is_unique"><t>code is already used by another division</t></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>parent division</t></label>
+            <b-tree-select
+              origin="q.divisions"
+              id-key="division_id"
+              model="d.parent_id"
+              parent-key="parent_id"
+              on-change="fixDivisionKind()"/>
+          </div>
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" ng-model-options="{ debounce: 500 }"
+                   ng-change="validateName()" b-validate="{ s: q.name_is_unique || d.name.length == 0 }" b-maxlength="200" required/>
+            <span class="text-danger" ng-hide="d.name.length == 0 || q.name_is_unique">
+              <t>name should be unique</t>
+            </span>
+          </div>
+          <div class="form-group">
+            <label><t>division group name</t></label>
+            <b-input name="division_groups"
+                     model="d.division_group_name | name"
+                     model-key="d.division_group_id | division_group_id"
+                     is-add="fi.add_division_group"
+                     on-add="addDivisionGroup(value)"
+                     is-view="fi.select_division_group"
+                     on-view="selectDivisionGroup()">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>schedule name</t></label>
+            <b-input name="schedules"
+                     model="d.schedule_name | name"
+                     model-key="d.schedule_id | schedule_id"
+                     is-add="fi.add_schedule"
+                     on-add="addSchedule(value)"
+                     is-view="fi.select_schedule"
+                     on-view="selectSchedule()">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group" ng-if="q.position_enable == 'Y' && d.division_id">
+            <label><t>manager name</t></label>
+            <b-input name="managers"
+                     model="d.manager_name | name"
+                     model-key="d.manager_id | robot_id"
+                     is-add="fi.add_manager"
+                     on-add="addManager(value)"
+                     is-view="fi.select_manager"
+                     on-view="selectManager()">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group" ng-if="q.position_enable == 'N' && d.division_id">
+            <label><t>manager name</t></label>
+            <b-input name="staffs"
+                     model="d.manager_name | name"
+                     model-key="d.staff_id | staff_id"
+                     on-change="changeStaff(query, value)"
+                     search="staff_number, name"
+                     is-view="fi.select_manager"
+                     on-view="selectStaff()"
+                     on-select="setStaff(row)"
+                     on-delete="setStaff({})"
+                     column="staff_number, name, robot_id, job_name">
+                      <header>
+                        <div class="col-6"><t>staff number</t></div>
+                        <div class="col-12"><t>staff name</t></div>
+                        <div class="col-6"><t>job name</t></div>
+                      </header>
+                      <content>
+                        <div class="col-6">{{ row.staff_number }}</div>
+                        <div class="col-12">{{ row.name }}</div>
+                        <div class="col-6">{{ row.job_name }}</div>
+                      </content>
+            </b-input>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-sm-0 mb-4">
+              <label><t>opened date</t><r/></label>
+              <input class="form-control" ng-model="d.opened_date" ng-change="validateDates()" b-date-picker="DD.MM.YYYY" b-validate="{s: q.date_is_valid}" required/>
+            </div>
+            <div class="col-sm">
+              <label><t>closed date</t></label>
+              <input class="form-control" ng-model="d.closed_date" ng-change="validateDates()" b-date-picker="DD.MM.YYYY" b-validate="{s: q.date_is_valid}"/>
+            </div>
+          </div>
+          <div class="form-group mb-4">
+            <span class="text-danger mt-0" ng-hide="!d.closed_date || q.date_is_valid">
+              <t>cannot close division before it opens, change your opened or closed date</t>
+            </span>
+          </div>
+          <div class="form-group" ng-if="d.allow_use_subfilial == 'Y'">
+            <label><t>subfilial name</t></label>
+            <b-input name="subfilials"
+                     model="d.subfilial_name | name"
+                     model-key="d.subfilial_id | subfilial_id">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-12" ng-if="q.advanced_org_structure == 'Y'">
+              <div class="form-group">
+                <label><t>is department</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.is_department" ng-disabled="!d.parent_id"/>
+                  <span>{{ q.t_division_kind[d.is_department] }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

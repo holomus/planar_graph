@@ -1,0 +1,95 @@
+<script biruni>
+page.ctrl(function(scope, model, t, param) {
+  var d = model || {}, q = param || {};
+  d.document_types = _.mapRows(d.document_types, ['doc_type_id', 'name', 'is_required']);
+
+  q.is_edit_form = (param.division_id && param.job_id);
+  q.t_exclude_no_document = t('do you want to exclude no document types?')();
+  q.t_leave_without_saving = t('you have not excluded any document types, do you want to leave?')();
+
+  function reloadDocumentTypes() {
+    if (!d.division_id || !d.job_id) return;
+    page.post(':get_document_types', _.pick(d, 'division_id', 'job_id'))
+        .then(document_types => { d.document_types = _.mapRows(document_types, ['doc_type_id', 'name', 'is_required']); });
+  }
+
+  function setDivision(row) {
+    if (!row) return;
+    d.division_id = row.division_id;
+    d.division_name = row.name;
+    reloadDocumentTypes();
+  }
+
+  function setJob(row) {
+    if (!row) return;
+    d.job_id = row.job_id;
+    d.job_name = row.name;
+    reloadDocumentTypes();
+  }
+
+  function save() {
+    if (!page.valid(scope.form)) return;
+    var data = _.pick(d, 'division_id', 'job_id');
+    data.excluded_doc_type_ids = _.chain(d.document_types).filter(x => x.is_required == 'N').pluck('doc_type_id').value();
+    var postSave = () => page.post(':save', data).then(page.close, page.alert);
+    if (!data.excluded_doc_type_ids.length) return page.confirm(q.is_edit_form ? q.t_exclude_no_document : q.t_leave_without_saving, postSave);
+    postSave();
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="row form-group">
+            <div class="col-sm-12">
+              <label><t>divisions</t><r></label>
+              <b-input name="divisions"
+                       model="d.division_name | name"
+                       model-key="d.division_id | division_id"
+                       on-select="setDivision(row)"
+                       on-delete="setDivision({})"
+                       readonly="q.is_edit_form"
+                       required-key>
+                  {{ row.name }}
+                </b-input>
+            </div>
+            <div class="col-sm-12">
+              <label><t>job name</t><r></label>
+              <b-input name="jobs"
+                       model="d.job_name | name"
+                       model-key="d.job_id | job_id"
+                       on-select="setJob(row)"
+                       on-delete="setJob({})"
+                       readonly="q.is_edit_form"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>required document types</t></label><br/>
+            <div ng-repeat="doc in d.document_types">
+              <label class="switch" ng-show="d.division_id && d.job_id">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="doc.is_required"/>
+                <span>{{ doc.name }}</span>
+              </label>
+              <label class="switch" ng-hide="d.division_id && d.job_id">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="doc.is_required" disabled/>
+                <span>{{ doc.name }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

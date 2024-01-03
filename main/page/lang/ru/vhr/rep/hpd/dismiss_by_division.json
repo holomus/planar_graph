@@ -1,0 +1,10 @@
+{
+ "CSV": "CSV",
+ "date": "Период",
+ "Excel": "EXCEL",
+ "generate": "Составить отчет",
+ "Html": "HTML",
+ "parameters": "Фильтр",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

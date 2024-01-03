@@ -1,0 +1,20 @@
+{
+ "indicators": "Показатели",
+ "base wage": "Базовый тариф",
+ "main": "Основная информация",
+ "note": "Примечание",
+ "pg.ranks.coefficient": "Коэффициент",
+ "pg.ranks.rank_name": "Разряд (категория)",
+ "pg.ranks.rownum": "№",
+ "pg.ranks.wage_html": "Оклад",
+ "posted": "Проведен",
+ "register date": "Дата",
+ "register number": "Номер",
+ "round model": "Округление",
+ "round type": "Тип округления",
+ "unposted": "Не проведен",
+ "valid from": "Вступает в силу с",
+ "wage": "Оклад",
+ "wage scale": "Тарифная группа",
+ "with base wage": "Размеры тарифов уст. в привязке к базовому тарифу"
+}

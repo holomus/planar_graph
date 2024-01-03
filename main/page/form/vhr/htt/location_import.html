@@ -1,0 +1,227 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = model,
+      q = {};
+
+  function changeSection(active_section) {
+    q.active_section = active_section || 'I';
+  }
+
+  // Import file from excel
+  function importFile() {
+    if (d.template) {
+      page.confirm(t('do you want to import file?')(), function() {
+        let data = { template: d.template };
+        page.post(':import', data, 'excel').then(function(result) {
+          d.locations = _.mapRows(result.items, q.column_keys);
+          q.error_messages = result.errors;
+        }, page.alert);
+      });
+    }
+  }
+
+  // remove functions
+  function removeItem(row) {
+    d.locations = _.without(d.locations, row);
+  }
+
+  function clearLocations() {
+    d.locations = [];
+  }
+
+  // settings
+  function checkDuplicate() {
+    let obj = {};
+    return !_.any(_.filter(d.column_items, x => x.column_number), function(item, index) {
+      if (obj[item.column_number]) {
+        page.alert(t('more than one row cannot have one column number, row_index=$1 and row_index=$2')(obj[item.column_number], index + 1));
+        return true;
+      }
+
+      obj[item.column_number] = index + 1;
+    });
+  }
+
+  function saveSettings() {
+    if (page.valid(scope.form)) {
+      if (checkDuplicate()) {
+        var data = {
+          starting_row: d.starting_row,
+          keys: q.column_keys,
+          column_numbers: _.pluck(d.column_items, 'column_number'),
+          employee_identifier: d.employee_identifier
+        };
+        fi.save_settings(data).then(page.reload, page.alert);
+      }
+    }
+  }
+
+  function template() {
+    window.open(page.url('template'));
+  }
+
+  // save imported data
+  function importData() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save')(), function() {
+        page.post(':import_data', { items: d.locations }).then(function() {
+          notify(t('import succeeded!')());
+          page.dropzone('file').clear();
+          q.error_messages = [];
+          d.locations = [];
+          d.template = '';
+        }, page.alert);
+      });
+    }
+  }
+
+  d.column_items = _.mapRows(model.items, ['key', 'name', 'column_number', 'is_required']);
+  d.employee_identifiers = _.mapRows(model.employee_identifiers, ['employee_identifier', 'name']);
+
+  q.column_keys = _.pluck(d.column_items, 'key');
+  q.active_section = 'I';
+  q.tClear = t('clear?');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.active_section == 'I' ? 'btn-success' : 'btn-default'" ng-click="changeSection('I')"><t>import section</t></button>
+    <button type="button" class="btn" ng-class="q.active_section == 'S' ? 'btn-success' : 'btn-default'" ng-click="changeSection('S')"><t>setting section</t></button>
+  </div>
+  <button type="button" class="btn btn-primary" ng-click="importData()" ng-if="q.active_section == 'I' && d.locations.length"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="q.active_section == 'I'"><t>import</t></button>
+  <button type="button" class="btn btn-primary" ng-click="template()"><t>template</t></button>
+  <button type="button" class="btn btn-primary" ng-click="saveSettings()" ng-if="fi.save_settings && q.active_section == 'S'"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div ng-show="q.active_section == 'I'">
+        <div class="row">
+          <div class="col-sm-12 mb-4">
+            <h5><t>file</t></h5>
+            <b-dropzone name="file" model="d.template" accept="'.xls, .xlsx'"></b-dropzone>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <h5><t>errors</t></h5>
+            <div class="mb-2">
+              <b-pg-controller name="error_messages"/>
+            </div>
+            <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+              <b-pg-row>
+                <b-pg-col name="row_id" size=3/>
+                <b-pg-col name="error" size=21>
+                  <div ng-repeat="item in row.items">
+                    {{ item }}<br/><hr ng-if="!$last"/>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+        <h5><t>data</t></h5>
+         <div class="row">
+          <div class="col-sm-12 offset-sm-12 mb-2">
+            <b-pg-controller name="locations"/>
+          </div>
+        </div>
+         <b-pg-grid name="locations" local-data="d.locations" search="name" sort="rownum" current-limit="1000">
+          <b-pg-header name="action">
+            <div class="text-center">
+              <button type="button" class="btn btn-outline-danger btn-icon" b-toggle data-title="{{ q.tClear() }}" on-click-yes="clearLocations()" ng-if="d.locations.length">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1"/>
+            <b-pg-col name="name" size="4">
+              <input type="text" class="form-control" ng-model="row.name" maxlength="300" required/>
+            </b-pg-col>
+            <b-pg-col name="location_type" size="4">
+              <input type="text" class="form-control" ng-model="row.location_type_name" maxlength="300"/>
+            </b-pg-col>
+            <b-pg-col name="division_name" size="4">
+              <input type="text" class="form-control" ng-model="row.division_name" maxlength="300"/>
+            </b-pg-col>
+            <b-pg-col name="time_zone" size="4">
+              <input type="text" class="form-control" ng-model="row.time_zone"/>
+            </b-pg-col>
+            <b-pg-col name="region_name" size="4">
+              <input type="text" class="form-control" ng-model="row.region_name" maxlength="100"/>
+            </b-pg-col>
+            <b-pg-col name="address" size="4">
+              <input type="text" class="form-control" ng-model="row.address" maxlength="100"/>
+            </b-pg-col>
+            <b-pg-col name="latlng" size="4">
+              <input type="text" class="form-control" ng-model="row.latlng" maxlength="100" required/>
+            </b-pg-col>
+            <b-pg-col name="accuracy" size="4">
+              <input type="text" class="form-control" ng-model="row.accuracy" maxlength="100" required/>
+            </b-pg-col>
+            <b-pg-col name="code" size="4">
+              <input type="text" class="form-control" ng-model="row.code" maxlength="100"/>
+            </b-pg-col>
+            <b-pg-col name="prohibited" size="4">
+              <input type="text" class="form-control" ng-model="row.prohibited" maxlength="100"/>
+            </b-pg-col>
+            <b-pg-col name="state" size="4">
+              <input type="text" class="form-control" ng-model="row.state" maxlength="100"/>
+            </b-pg-col>
+            </b-pg-col>
+            <b-pg-col name="employees" size="6">
+              <textarea class="form-control" rows="2" ng-model="row.employees" b-maxlength="2000"></textarea>
+            </b-pg-col>
+            <b-pg-col name="action" size="1">
+              <div class="text-center">
+                <button type="button" class="btn btn-default btn-hover-text-danger btn-icon" ng-click="removeItem(row)"><i class="fa fa-trash"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div ng-if="q.active_section == 'S'">
+        <div class="form-group row">
+          <div class="col-sm-12">
+            <div class="sg mb-4 mb-sm-0">
+              <div class="sg-header">
+                <div class="sg-row">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16"><t>column name</t></div>
+                    <div class="sg-cell col-8"><t>column number</t></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="item in d.column_items">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16">{{ item.name }}</div>
+                    <div class="sg-cell col-8">
+                      <input type="text" class="form-control" ng-model="item.column_number" b-number scale="0" ng-required="item.is_required == 'Y'"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="form-group">
+              <label><t>starting row</t></label>
+              <input type="text" class="form-control" ng-model="d.starting_row" b-number scale="0"/>
+            </div>
+            <div class="form-group">
+              <label><t>employee identifier</t></label><br/>
+              <label class="radio" ng-repeat="item in d.employee_identifiers">
+                <input type="radio" name="employee_identifier" value="{{ item.employee_identifier }}" ng-model="d.employee_identifier"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

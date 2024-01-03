@@ -1,0 +1,18 @@
+{
+ "accept $1 facts(s)": "Принять $1 услуг",
+ "accept $1{facts_count} facts?": "Принять $1 услуг?",
+ "accept fact $1{fact_id}?": "Принять услугу, ИД услуги=$1?",
+ "return complete $1 facts(s)": "Отменить принятие для $1 услуг",
+ "return to complete $1{facts_count} facts?": "Отменить принятие для $1 услуг?",
+ "return to complete fact $1{fact_id}?": "Отменить принятие для услуги, ИД услуги=$1?",
+ "return to new $1{facts_count} facts?": "Отменить завершение для $1 услуг?",
+ "return to new fact $1{fact_id}?": "Отменить завершение для услуги, ИД услуги=$1?",
+ "table.contract_number": "Номер договора",
+ "table.division_name": "Подразделение",
+ "table.fact_id": "ИД",
+ "table.month": "Месяц",
+ "table.person_name": "Физическое лицо",
+ "table.status_name": "Состояние",
+ "table.total_amount": "Итого",
+ "to new $1 facts(s)": "Отменить завершение для $1 услуг"
+}

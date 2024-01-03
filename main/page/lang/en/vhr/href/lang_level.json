@@ -1,0 +1,11 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another language level": "The code is already assigned to another language level",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "order_no": "No.",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

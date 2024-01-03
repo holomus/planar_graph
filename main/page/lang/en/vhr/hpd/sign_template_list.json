@@ -1,0 +1,16 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1 template(s)?": "Delete $1 Sign Template(s)?",
+ "delete template $1?": "Delete Sign Template $1?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.journal_type_name": "Document Type",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.note": "Note",
+ "table.process_name": "Processes",
+ "table.sign_kind_name": "Signing",
+ "table.state_name": "Status",
+ "table.template_id": "ID"
+}

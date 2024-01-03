@@ -1,0 +1,11 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{wage_count} wages?": "Do you really want to delete <b>$1</b> average wage(s)?",
+ "delete wage?": "Do you really want to delete average wage?",
+ "select": "Select",
+ "table.job_name": "Job",
+ "table.rank_name": "Rank (category)",
+ "table.wage_begin": "From",
+ "table.wage_end": "To",
+ "table.wage_id": "ID"
+}

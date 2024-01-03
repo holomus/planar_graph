@@ -1,0 +1,12 @@
+{
+ "areas": "Зоны",
+ "drivers": "Драйверы",
+ "object": "Объект",
+ "predict": "Спрогнозировать",
+ "predict end": "Конец прогнозируемого периода",
+ "predict start": "Начало прогнозируемого периода",
+ "predict type": "Тип прогноза",
+ "successfully predicted $1{success_cnt} categories": "Успешно спрогнозировано <b>$1</b> категорий",
+ "train end": "Конец обучающего периода",
+ "train start": "Начало обучающего периода"
+}

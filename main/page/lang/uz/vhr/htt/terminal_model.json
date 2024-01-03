@@ -1,0 +1,12 @@
+{
+ "active": "Faol",
+ "name": "Nom",
+ "passive": "Faol emas",
+ "photo": "Fotosurat",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "state": "Holat",
+ "support face recognation": "Face ID",
+ "support fprint": "Barmoq izi",
+ "support rfid card": "RFID karta"
+}

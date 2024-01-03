@@ -1,0 +1,17 @@
+{
+ "files succesfully loaded": "Files successfully uploaded",
+ "folder": "Folder",
+ "how it works": "How it works",
+ "If in template has a Employee Number, function will be scan in filial level, otherwise function will be scan in company level. Succes means - these photos set in the same time for profile photo and identification photo.Warning means - these images are likely to correspond to these employees. Not Found means - these images not found employee for depends on this template.": "If there is an employee number in the template, the feature will be scanned at the branch level, otherwise the feature will be scanned at the company level. Successful - means that the pictures are set for profile and recognition. Warning - means that the images probably match these employees. Not found - means that no employees are found for these images, which depends on this template.",
+ "load": "Upload",
+ "not found ($1)": "Not found ($1)",
+ "pg.not_found.employee_names": "Employee names",
+ "pg.not_found.file_name": "File",
+ "pg.success.employee_names": "Employee names",
+ "pg.success.file_name": "File",
+ "pg.warning.employee_names": "Employee names",
+ "pg.warning.file_name": "File",
+ "success ($1)": "Successful ($1)",
+ "template": "Template",
+ "warning ($1)": "Warning ($1)"
+}

@@ -1,0 +1,22 @@
+{
+ "audit": "Audit Log",
+ "created by": "Created by",
+ "created on": "Created on",
+ "details": "Details",
+ "fte value": "Employment type value",
+ "main": "General Information",
+ "modified by": "Modified by",
+ "modified on": "Modified on",
+ "name": "Name",
+ "order no": "No.",
+ "table_audit.fte_value": "Employment type value",
+ "table_audit.name": "Name",
+ "table_audit.order_no": "No.",
+ "table_audit.t_audit_id": "Audit ID",
+ "table_audit.t_date": "Activity Date",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_source_project_name": "Project",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_id": "User ID",
+ "table_audit.t_user_name": "User"
+}

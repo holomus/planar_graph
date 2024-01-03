@@ -1,0 +1,17 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{vacancy_group_count} vacancy group(s)?": "$1ta Vakansiyalar uchun so'rovnoma(lar) o'chirilsinmi?",
+ "delete vacancy group $1{vacancy_group_name}?": "<b>$1</b> o'chirilsinmi?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.is_required_name": "Majburiy",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.multiple_select_name": "Bir nechta tanlov",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.state_name": "Holat",
+ "table.vacancy_group_id": "ID"
+}

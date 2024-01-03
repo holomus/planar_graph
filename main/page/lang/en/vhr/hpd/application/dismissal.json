@@ -1,0 +1,19 @@
+{
+ "division": "Department",
+ "job": "Job",
+ "manager": "Manager",
+ "person info": "Employee Info",
+ "phone number": "Phone",
+ "robot": "Position",
+ "application date": "Application Date",
+ "application number": "Number",
+ "dismissal date": "Dismissal Date",
+ "dismissal reason name": "Dismissal Reason",
+ "employee": "Employee",
+ "note": "Note",
+ "reason name": "Name",
+ "reason type": "Reason Type",
+ "save": "Save",
+ "staff name": "Employee",
+ "staff number": "PersNo"
+}

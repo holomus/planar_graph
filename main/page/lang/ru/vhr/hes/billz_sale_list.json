@@ -1,0 +1,17 @@
+{
+ "end date": "Дата окончания",
+ "get sales from Billz": "Загрузить данные о продажах с Billz",
+ "save": "Сохранить",
+ "secret_key": "SECRET_KEY",
+ "subject (username)": "SUBJECT (USERNAME)",
+ "table.billz_office_id": "ИД подразделения в Billz",
+ "table.billz_office_name": "Название подразделения в Billz",
+ "table.billz_seller_id": "ИД продавца в Billz",
+ "table.billz_seller_name": "Имя продавца в Billz",
+ "table.division_name": "Подразделение",
+ "table.employee_name": "Сотрудник",
+ "table.sale_amount": "Сумма продажи",
+ "table.sale_date": "Дата продажи",
+ "begin date": "Дата начала",
+ "Billz credentials": "Регистрационные данные Billz"
+}

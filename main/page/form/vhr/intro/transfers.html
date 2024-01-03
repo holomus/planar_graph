@@ -1,0 +1,300 @@
+<script biruni>
+page.require("jquery-ui",
+              "amcharts4",
+              "amcharts4-theme-animated");
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, ['transfers', 'wages', 'staffing_chart_type_by_divisions', 'staffing_chart_type_by_job_groups']),
+      q = {};
+
+  q.STAFFING_CHART_TYPE_BY_DIVISIONS = model.staffing_chart_type_by_divisions;
+  q.STAFFING_CHART_TYPE_BY_JOB_GROUPS = model.staffing_chart_type_by_job_groups;
+  q.staffing_chart_types = [{name: t('by divisions')(), type: q.STAFFING_CHART_TYPE_BY_DIVISIONS, chart_built: false}, 
+                            {name: t('by job groups')(), type: q.STAFFING_CHART_TYPE_BY_JOB_GROUPS, chart_built: false}]
+  q.staffing_chart_type = _.find(q.staffing_chart_types, chart_type => chart_type = chart_type.type == d.staffing_chart_type);
+
+  d.transfers = _.mapRows(model.transfers, ['from', 'to', 'value']);
+  d.wages = _.mapRows(model.wages, ['data', 'wage']);
+
+  am4core.useTheme(am4themes_animated);
+
+  function buildTransfersChart() {
+    var transfersChart = am4core.create("transfers", am4charts.ChordDiagram);
+    transfersChart.innerRadius = am4core.percent(80);
+    transfersChart.data = d.transfers;
+
+    transfersChart.dataFields.fromName = "from";
+    transfersChart.dataFields.toName = "to";
+    transfersChart.dataFields.value = "value";
+  }
+
+  function buildStaffingByDivisionsChart() {
+    var staffingByDivisionsChart = am4core.create("staffing_by_divisions", am4charts.XYChart);
+    staffingByDivisionsChart.data = d.staffing_by_divisions;
+
+    staffingByDivisionsChart.colors.list = [
+      am4core.color("#50BFE1"),
+      am4core.color("#1A7C9B"),
+      am4core.color("#FD817F")
+    ];
+
+    staffingByDivisionsChart.legend = new am4charts.Legend();
+    staffingByDivisionsChart.legend.useDefaultMarker = true;
+    staffingByDivisionsChart.legend.position = 'top';
+
+    var marker = staffingByDivisionsChart.legend.markers.template.children.getIndex(0);
+    marker.cornerRadius(12, 12, 12, 12);
+    marker.stroke = am4core.color("#ccc");
+
+    var categoryAxis = staffingByDivisionsChart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "name";
+    categoryAxis.renderer.grid.template.disabled = true;
+
+    var valueAxis = staffingByDivisionsChart.xAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color) {
+      var series = staffingByDivisionsChart.series.push(new am4charts.ColumnSeries());
+      series.columns.template.fill = am4core.color(color);
+
+      series.dataFields.valueX = field;
+      series.dataFields.categoryY = "name";
+      series.name = name;
+      series.columns.template.tooltipText = "{name}: [bold]{valueX}[/]";
+      series.stacked = true;
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.label.text = "{valueX}";
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.fill = am4core.color("white");
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.locationX = 0.5;
+    }
+
+    createSeries("staffs", t('staffs')(), '#50BFE1');
+    createSeries("dismissals", t('dismissals')(), '#1A7C9B');
+    createSeries("vacancies", t('vacancies')(), '#FD817F');
+  }
+
+  function buildStaffingByJobGroupsChart() {
+    var staffingByJobGroupsChart = am4core.create("staffing_by_job_groups", am4charts.XYChart);
+    staffingByJobGroupsChart.data = d.staffing_by_job_groups;
+
+    staffingByJobGroupsChart.colors.list = [
+      am4core.color("#50BFE1"),
+      am4core.color("#1A7C9B"),
+      am4core.color("#FD817F")
+    ];
+
+    staffingByJobGroupsChart.legend = new am4charts.Legend();
+    staffingByJobGroupsChart.legend.useDefaultMarker = true;
+    staffingByJobGroupsChart.legend.position = 'top';
+
+    var marker = staffingByJobGroupsChart.legend.markers.template.children.getIndex(0);
+    marker.cornerRadius(12, 12, 12, 12);
+    marker.stroke = am4core.color("#ccc");
+
+    var categoryAxis = staffingByJobGroupsChart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "name";
+    categoryAxis.renderer.grid.template.disabled = true;
+
+    var valueAxis = staffingByJobGroupsChart.xAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    function createSeries(field, name, color) {
+      var series = staffingByJobGroupsChart.series.push(new am4charts.ColumnSeries());
+      series.columns.template.fill = am4core.color(color);
+
+      series.dataFields.valueX = field;
+      series.dataFields.categoryY = "name";
+      series.name = name;
+      series.columns.template.tooltipText = "{name}: [bold]{valueX}[/]";
+      series.stacked = true;
+
+      var seriesBullet = series.bullets.push(new am4charts.LabelBullet());
+      seriesBullet.label.text = "{valueX}";
+      seriesBullet.label.fontSize = 20;
+      seriesBullet.label.fill = am4core.color("white");
+      seriesBullet.label.hideOversized = true;
+      seriesBullet.locationX = 0.5;
+    }
+
+    createSeries("staffs", t('staffs')(), '#50BFE1');
+    createSeries("dismissals", t('dismissals')(), '#1A7C9B');
+    createSeries("vacancies", t('vacancies')(), '#FD817F');
+  }
+
+  function buildFundChart() {
+    var fundChart = am4core.create("fund", am4charts.XYChart);
+
+    fundChart.paddingTop = 0;
+    fundChart.paddingBottom = 0;
+    fundChart.paddingLeft = 0;
+    fundChart.paddingRight = 0;
+
+    _.each(d.wages, x => {
+      x.data = new Date(x.data);
+    });
+
+    fundChart.data = d.wages;
+    fundChart.dateFormatter.inputDateFormat = "yyyy-mm-dd";
+
+    var dateAxis = fundChart.xAxes.push(new am4charts.DateAxis());
+    dateAxis.renderer.grid.template.disabled = true;
+    dateAxis.renderer.labels.template.disabled = false;
+    dateAxis.baseInterval = {
+      timeUnit: "yyyy",
+      count: 1
+    };
+
+    var valueAxis = fundChart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.grid.template.disabled = true;
+    valueAxis.renderer.labels.template.disabled = true;
+
+    var series = fundChart.series.push(new am4charts.LineSeries());
+    series.dataFields.dateX = "data";
+    series.name = "wage";
+    series.dataFields.valueY = "wage";
+    series.tooltipHTML = "<span style='font-size:14px; color:#000000;'><b>{valueY.value}</b></span>";
+    series.tooltip.getStrokeFromObject = true;
+    series.tooltip.background.strokeWidth = 3;
+    series.tooltip.getFillFromObject = false;
+    series.fillOpacity = 0.6;
+    series.strokeWidth = 2;
+    series.stacked = true;
+
+    fundChart.cursor = new am4charts.XYCursor();
+    fundChart.cursor.yAxis = dateAxis;
+
+    var valueLabel = series.bullets.push(new am4charts.LabelBullet());
+    valueLabel.label.text = "{valueY}";
+    valueLabel.label.fontSize = 12;
+    valueLabel.label.dx = -100;
+    valueLabel.label.align = 'center';
+    valueLabel.label.verticalCenter = 'bottom';
+  }
+
+  function buildAllCharts() {
+    buildTransfersChart();
+    buildFundChart();
+
+    switch (q.staffing_chart_type.type) {
+      case q.STAFFING_CHART_TYPE_BY_DIVISIONS:
+        buildStaffingByDivisionsChart();
+        break;
+      case q.STAFFING_CHART_TYPE_BY_JOB_GROUPS:
+        buildStaffingByJobGroupsChart();
+        break;
+    }
+    q.staffing_chart_type.chart_built = true;
+  }
+
+  function changeStaffingChartType() {
+    var data = { staffing_chart_type: q.staffing_chart_type.type, 
+                 chart_built: q.staffing_chart_type.chart_built ? 'Y' : 'N' };
+
+    page.post(':save_staffing_chart_type', data).then(res => {
+      if (!q.staffing_chart_type.chart_built) {
+        switch (q.staffing_chart_type.type) {
+          case q.STAFFING_CHART_TYPE_BY_DIVISIONS:
+            d.staffing_by_divisions = res.staffing_by_divisions;
+            debouncedBuildStaffingByDivisionsChart();
+            break;
+          case q.STAFFING_CHART_TYPE_BY_JOB_GROUPS:
+            d.staffing_by_job_groups = res.staffing_by_job_groups;
+            debouncedBuildStaffingByJobGroupsChart();
+            break;
+        }
+
+        q.staffing_chart_type.chart_built = true;
+      }
+    }, page.alert);
+  }
+
+  var debouncedBuildStaffingByDivisionsChart = _.debounce(buildStaffingByDivisionsChart, 700);
+  var debouncedBuildStaffingByJobGroupsChart = _.debounce(buildStaffingByJobGroupsChart, 700);
+  var debouncedBuildAllCharts = _.debounce(buildAllCharts, 700);
+  debouncedBuildAllCharts();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form" class="form-horizontal">
+  <div class="position-relative">
+    <div class="card card-custom card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>staffs total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.staffs_count }}</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>vacancies total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.vacancies_count }}</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>turnover total (of this year)</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.turnover }}%</h1>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md mb-4">
+            <div class="card h-100 bg-secondary">
+              <div class="card-body py-4">
+                <h3 class="card-text text-center"><t>payroll fund total</t></h3>
+                <h1 class="card-text text-center font-weight-bolder">{{ d.payroll_fund }}</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-24 col-md-12 mt-4 mb-8">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>transfers</t></h3>
+            </div>
+            <div id="transfers" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+          <div class="col-sm-24 col-md-12 mt-4 mb-8">
+            <div class="mb-4">
+              <div class="row">
+                <div class="col-sm-16">
+                  <h3 class="font-weight-bolder"><t>staffing</t></h3>
+                </div>
+                <div class="col-sm-8">
+                  <ui-select ng-model="q.staffing_chart_type" ng-change="changeStaffingChartType()">
+                    <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                    <ui-select-choices repeat="item in q.staffing_chart_types">
+                      {{ item.name }}
+                    </ui-select-choices>
+                  </ui-select>
+                </div>
+              </div>
+            </div>
+            <div id="staffing_by_divisions" ng-show="q.staffing_chart_type.type == q.STAFFING_CHART_TYPE_BY_DIVISIONS" style="min-height: 374px; height: 45vh;"/>
+            <div id="staffing_by_job_groups" ng-show="q.staffing_chart_type.type == q.STAFFING_CHART_TYPE_BY_JOB_GROUPS" style="min-height: 374px; height: 45vh;"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-24 col-md-12 mb-4">
+            <div class="mb-4">
+              <h3 class="font-weight-bolder"><t>payroll fund, thousand sum</t></h3>
+            </div>
+            <div id="fund" style="min-height: 374px; height: 45vh;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

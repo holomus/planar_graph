@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/hes/staff
+begin
+uis.lang_ru('#a:/vhr/hes/staff$change_approve','Подтвердить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$change_complete','Завершить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$change_delete','Удалить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$change_deny','Отклонить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$change_reset','Восстановить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$change_save_for_subordinate','Создать запрос на изменение графика для подчиненного');
+uis.lang_ru('#a:/vhr/hes/staff$day_statistics','Статистика дня');
+uis.lang_ru('#a:/vhr/hes/staff$hide_salary','Скрыт "Моя зарплата"');
+uis.lang_ru('#a:/vhr/hes/staff$request_approve','Подтвердить запрос на отсутствие');
+uis.lang_ru('#a:/vhr/hes/staff$request_complete','Завершить запрос на отсутствие');
+uis.lang_ru('#a:/vhr/hes/staff$request_delete','Удалить запрос на отсутствие');
+uis.lang_ru('#a:/vhr/hes/staff$request_deny','Отклонить запрос на изменение графика');
+uis.lang_ru('#a:/vhr/hes/staff$request_reset','Восстановить запрос на отсутствие');
+uis.lang_ru('#a:/vhr/hes/staff$set_invalid','Сделать недейств.');
+uis.lang_ru('#a:/vhr/hes/staff$set_valid','Сделать действ.');
+uis.lang_ru('#f:/vhr/hes/staff','Внешние системы (Verifix Staff)');
+uis.lang_ru('ui-vhr95:credit','Заем');
+uis.lang_ru('ui-vhr95:day skip amount','Пропуск дня');
+uis.lang_ru('ui-vhr95:early amount','Ранний уход');
+uis.lang_ru('ui-vhr95:fact_time','Отработано');
+uis.lang_ru('ui-vhr95:lack amount','Отсутствие');
+uis.lang_ru('ui-vhr95:late amount','Опоздание');
+uis.lang_ru('ui-vhr95:mark skip amount','Пропуск отметки');
+uis.lang_ru('ui-vhr95:onetime accrual','Премия');
+uis.lang_ru('ui-vhr95:onetime penalty','Штраф');
+uis.lang_ru('ui-vhr95:overtime amount','Сверхурочно');
+uis.lang_ru('ui-vhr95:person documents, document_type=$1','Тип документа: $1');
+uis.lang_ru('ui-vhr95:personal income tax','НДФЛ');
+uis.lang_ru('ui-vhr95:time on your phone is wrong! please fix it!','Время на устройстве не верно. Пожалуйста, исправьте его!');
+uis.lang_ru('ui-vhr95:transaction is invalid','Транзакция недействительна');
+uis.lang_ru('ui-vhr95:user cannot send track with face recognition','Пользователь не может отправить отметку с распознаванием лиц');
+uis.lang_ru('ui-vhr95:user cannot send track with mark_types other than $1, $2 and $3','Пользователь не может отправить отметку с типами идентификации, отличным от $1, $2 или $3');
+uis.lang_ru('ui-vhr95:wage amount','Оклад');
+uis.lang_ru('ui-vhr95:when face recognition is on there must be photo of staff','При включенном распознавании лица должно отправляться фото сотрудника');
+uis.lang_ru('ui-vhr95:you can not send input track','Вы не можете отправить "Приход"');
+uis.lang_ru('ui-vhr95:you can not send output track','Вы не можете отправить "Уход"');
+uis.lang_ru('ui-vhr95:you do not have access to input','Не доступа на приход');
+uis.lang_ru('ui-vhr95:you do not have access to location, location_id=$1','Нет доступа к локации, ИД=$1');
+uis.lang_ru('ui-vhr95:you do not have access to output','Нет доступа на уход');
+uis.lang_ru('ui-vhr95:you do not have access to send track','Нет доступа на осуществление отметки');
+uis.lang_ru('ui-vhr95:you do not have access to track','Нет доступа на отметки');
+commit;
+end;
+/

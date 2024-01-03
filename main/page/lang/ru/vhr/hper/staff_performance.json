@@ -1,0 +1,21 @@
+{
+ "mega performance": "Суперб",
+ "poor": "Неудовлетворительно",
+ "satsfactory": "Удовлетворительно",
+ "unsatisfactory": "Требует Улучшения",
+ "very satsfactory": "Превосходно",
+ "outstanding": "Выдающиеся",
+ "pg.staff_plans.type": "Тип",
+ "employee avarage efficiency indicator": "Cредняя эффективность за период",
+ "employee performance": "Эффективность сотрудника",
+ "employee performance for $1{first_month}": "Эффективность сотрудника за $1",
+ "employee performance for period ($1{first_month} - $2{last_month})": "Эффективность сотрудника за период ($1 - $2)",
+ "extra": "Дополнительная",
+ "main": "Основная",
+ "pg.staff_plans.amount": "Сумма",
+ "pg.staff_plans.division_name": "Подразделение",
+ "pg.staff_plans.job_name": "Должность",
+ "pg.staff_plans.month": "Месяц",
+ "pg.staff_plans.percent": "Факт (%)",
+ "There is no data to show on this chart": "Нет данных для отображения"
+}

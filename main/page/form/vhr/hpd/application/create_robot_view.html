@@ -1,0 +1,253 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var d = model || {}, q = {}, p = {};
+  var modal = page.$content.find("form[name=modal]>.modal");
+
+  function showModal() {
+    p.data = { application_id: d.application_id };
+    $timeout(() => modal.modal('show'));
+  }
+
+  function cancelTransfer() {
+    page.post(':waiting_to_canceled', { application_id: p.data.application_id, closing_note: p.data.closing_note }).then(page.reload, page.alert);
+  }
+
+  // change section
+  function changeSection(section) {
+    q.activeSection = section;
+    if (_.contains(q.enabledSections, section)) return;
+    q.enabledSections.push(section);
+  }
+
+  // page id
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  function edit() {
+    fi.edit({ application_id: d.application_id });
+  }
+
+  function bindRobot(row) {
+    if (!row) return;
+    page.post(':bind_robot', { application_id: d.application_id, robot_ids: row.robot_ids }).then(res => {
+      d.robot_ids.push(...row.robot_ids);
+    }, page.alert);
+  }
+
+  function addRobot() {
+    var data = _.pick(d, 'division_id', 'job_id', 'job_name', 'name', 'opened_date');
+    data.count = d.quantity;
+    data.by_application = true;
+    fi.add_robot(null, bindRobot, data);
+  }
+
+  function viewRobots() {
+    var xparam = { where: ['application_id', '=', d.application_id] };
+    xparam.by_application = true;
+    fi.view_robots(null, null, xparam);
+  }
+
+  function changeStatus(name, message) {
+    if (name == 'waiting_to_canceled') {
+      showModal();
+    } else {
+      page.confirm(message, function() {
+        page.post(':' + name, { application_id: d.application_id }).then(page.reload, page.alert);
+      });
+    }
+  }
+
+  d.robot_ids = model.robot_ids || [];
+
+  let actions = [
+    { has_access: d.grant_has_applicant == 'Y' && d.status == 'N', message: t('change status from new to waiting?')(),           translate_name: t('new_to_waiting')(), name: 'new_to_waiting' },
+    { has_access: d.grant_has_applicant == 'Y' && d.status == 'W', message: t('change status from waiting to new?')(),           translate_name: t('waiting_to_new')(), name: 'waiting_to_new' },
+    { has_access: d.grant_has_manager == 'Y'   && d.status == 'W', message: t('change status from waiting to approved?')(),      translate_name: t('waiting_to_approved')(), name: 'waiting_to_approved' },
+    { has_access: d.grant_has_manager == 'Y'   && d.status == 'W', message: t('change status from waiting to canceled?')(),      translate_name: t('waiting_to_canceled')(), name: 'waiting_to_canceled' },
+    { has_access: d.grant_has_manager == 'Y'   && d.status == 'A', message: t('change status from approved to waiting?')(),      translate_name: t('approved_to_waiting')(), name: 'approved_to_waiting' },
+    { has_access: d.grant_has_manager == 'Y'   && d.status == 'C', message: t('change status from canceled to waiting?')(),      translate_name: t('canceled_to_waiting')(), name: 'canceled_to_waiting' },
+    { has_access: d.grant_has_hr == 'Y'        && d.status == 'A', message: t('change status from approved to in progress?')(),  translate_name: t('approved_to_in_progress')(), name: 'approved_to_in_progress' },
+    { has_access: d.grant_has_hr == 'Y'        && d.status == 'P', message: t('change status from in progress to approved?')(),  translate_name: t('in_progress_to_approved')(), name: 'in_progress_to_approved' },
+    { has_access: d.grant_has_hr == 'Y'        && d.status == 'P', message: t('change status from in progress to completed?')(), translate_name: t('in_progress_to_completed')(), name: 'in_progress_to_completed' },
+    { has_access: d.grant_has_hr == 'Y'        && d.status == 'O', message: t('change status from completed to in progress?')(), translate_name: t('completed_to_in_progress')(), name: 'completed_to_in_progress' }
+  ];
+
+  q.actions = _.chain(actions)
+                .reject(x => !x.has_access)
+                .value();
+  q.enabledSections = ['main'];
+  q.enabledTabs = [];
+  q.activeSection = 'main';
+  q.statusClass = {
+    N: 'alert-secondary',
+    W: 'alert-warning',
+    A: 'alert-primary',
+    P: 'alert-info',
+    O: 'alert-success',
+    C: 'alert-danger',
+  };
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && d.status == 'N'" b-hotkey="edit"><t>edit</t></button>
+  <span ng-repeat="action in q.actions">
+    <button type="button" class="btn btn-default" ng-if="action.has_access" ng-click="changeStatus(action.name, action.message)">{{ action.translate_name }}</button>
+  </span>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3"><t p1="d.application_number" p2="d.application_date">$1{application_number} from $2{application_date}</t></span>
+                <span class="text-muted">&nbsp;({{ d.application_id }})</span>
+              </div>
+              <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.statusClass[d.status]">
+                {{ d.status_name }}
+              </div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>application date</t></label>
+                    <span class="form-view">{{ d.application_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>application number</t></label>
+                    <span class="form-view">{{ d.application_number }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>closing note</t></label>
+                  <span class="form-view">{{ d.closing_note }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>created by</t></label>
+                      <span class="form-view">{{ d.created_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>created on</t></label>
+                      <span class="form-view">{{ d.created_on }}</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>modified by</t></label>
+                      <span class="form-view">{{ d.modified_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>modified on</t></label>
+                      <span class="form-view">{{ d.modified_on }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>document</t></h5>
+            </div>
+            <div class="card-toolbar">
+              <button type="button" class="btn btn-default ml-1" ng-if="fi.view_robots && d.robot_ids.length" ng-click="viewRobots()"><t p1="d.robot_ids.length">view $1{robot count} robot(s)</t></button>
+              <button type="button" class="btn btn-success ml-1" ng-if="fi.add_robot && d.status == 'P'" ng-click="addRobot()"><t>add robot by application</t></button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>robot name</t></label>
+                  <span class="form-view">{{ d.name }}</span>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>division name</t></label>
+                    <span class="form-view">{{ d.division_name }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>job name</t></label>
+                    <span class="form-view">{{ d.job_name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>opened date</t></label>
+                    <span class="form-view">{{ d.opened_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>quantity</t></label>
+                    <span class="form-view">{{ d.quantity }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>note</t></label>
+                  <span class="form-view">{{ d.note }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>cancel transfer</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>closing note</t></label>
+              <textarea class="form-control" rows=3 ng-model="p.data.closing_note"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="cancelTransfer()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

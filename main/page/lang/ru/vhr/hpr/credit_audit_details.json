@@ -1,0 +1,5 @@
+{
+ "pg.award.before": "Старое значение",
+ "pg.award.current": "Новое значение",
+ "pg.award.field_name": "Поле"
+}

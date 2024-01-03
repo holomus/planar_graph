@@ -1,0 +1,15 @@
+{
+ "details": "Детали",
+ "journal": "Документ",
+ "page_audit": "История изменений страницы",
+ "rank_change_audit": "Изменение разряда",
+ "table_audit.change_date": "Дата",
+ "table_audit.rank_name": "Разряд (категория)",
+ "table_audit.t_audit_id": "ИД",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата события",
+ "table_audit.t_user_name": "Пользователь"
+}

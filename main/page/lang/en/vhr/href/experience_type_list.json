@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{experience_type_count} experience type(s)?": "Do you really want to delete <b>$1</b> experience type(s)?",
+ "delete experience type $1{experience_type_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.experience_type_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

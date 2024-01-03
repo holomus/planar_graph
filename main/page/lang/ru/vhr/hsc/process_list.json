@@ -1,0 +1,14 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{processs_count} process(s)?": "Удалить процессы в количестве <b>$1</b>?",
+ "delete process $1{process_name}?": "Удалить процесс <b>$1</b>?",
+ "select": "Выбрать",
+ "table.action_names": "Действия",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.process_id": "ИД",
+ "table.state_name": "Статус"
+}

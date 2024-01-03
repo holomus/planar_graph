@@ -1,0 +1,12 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another specialty": "Kod allaqachon boshqa Ixtisoslikga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi shart",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "specialty group add": "Ixtisoslik guruhi (yaratish)",
+ "specialty group edit": "Ixtisoslik guruhi (tahrirlash)",
+ "state": "Holat"
+}

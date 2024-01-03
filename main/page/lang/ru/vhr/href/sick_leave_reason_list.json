@@ -1,0 +1,15 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{sick_leave_reason_count} sick leave reason(s)?": "Вы действительно хотите удалить причины в количестве <b>$1</b>?",
+ "delete sick leave reason $1{sick_leave_reason_name}?": "Вы действительно хотите удалить <b$1</b> причину?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.coefficient": "Коэффициент",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.reason_id": "ИД причины",
+ "table.state_name": "Статус"
+}

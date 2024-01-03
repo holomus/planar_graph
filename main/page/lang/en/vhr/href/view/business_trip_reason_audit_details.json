@@ -1,0 +1,5 @@
+{
+ "pg.reason.before": "Previous Value",
+ "pg.reason.current": "Current Value",
+ "pg.reason.field_name": "Field"
+}

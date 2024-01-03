@@ -1,0 +1,132 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  page.grid('table').asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${ row.posted == 'Y' ? 'primary' : 'secondary' }">${ row.posted_name }</span>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {
+        to_post: {},
+        to_unpost: {},
+        to_delete: {}
+      };
+
+  function doAction(doFunc, doTrans, register_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ register_id: register_id }).then(function() {
+          page.query('table').fetch();
+
+          q.to_post = {};
+          q.to_unpost = {};
+          q.to_delete = {};
+        }, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post register No. $1{register_number} of $2{register_date}?')(row.register_number, row.register_date), row.register_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1{registers_count} register(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'register_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost register No. $1{register_number} of $2{register_date}?')(row.register_number, row.register_date), row.register_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1{registers_count} register(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'register_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete register No. $1{register_number} of $2{register_date}?')(row.register_number, row.register_date), row.register_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{register_count} register(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'register_id'));
+  }
+
+  function add() {
+    fi.add();
+  }
+
+  function edit(row) {
+    fi.edit({ register_id: row.register_id });
+  }
+
+  function view(row) {
+    fi.view({ register_id: row.register_id });
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N');
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y');
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N');
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add"><t>add</t></button>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="register_id, register_number, register_date, posted" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="-register_date"
+            search="register_number, wage_scale_name" searchable="register_id" extra-columns="register_id, round_model, note, created_by_name, modified_by_name, created_on, modified_on">
+      <b-row>
+        <b-col name="register_date" size=3/>
+        <b-col name="register_number" size=3/>
+        <b-col name="wage_scale_name" size=6/>
+        <b-col name="base_wage" size=4/>
+        <b-col name="valid_from" size=5/>
+        <b-col name="posted_name" as-html="posted_html" size=2/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view"><t>view</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit"><t>edit</t></button>
+        <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'">{{ fi.post.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'">{{ fi.unpost.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="register_id" directive="equal" extra/>
+      <b-filter name="register_date"/>
+      <b-filter name="register_number"/>
+      <b-filter name="wage_scale_id" decorate-with="wage_scale_name"/>
+      <b-filter name="valid_from"/>
+      <b-filter name="posted" decorate-with="posted_name"/>
+      <b-filter name="round_model" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+</div>

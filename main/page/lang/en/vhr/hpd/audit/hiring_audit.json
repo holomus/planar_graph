@@ -1,0 +1,22 @@
+{
+ "robots": "Positions",
+ "contratcs": "Contracts",
+ "details": "Details",
+ "hiring": "Hiring",
+ "indicators": "Variables",
+ "journal": "Document",
+ "oper types": "Wage Payments",
+ "page_audit": "Page Audit Log",
+ "schedules": "Work Schedules",
+ "table_audit.hiring_date": "Hiring Date",
+ "table_audit.page_id": "Page ID",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User",
+ "table_audit.trial_period": "Initial Assessment Period",
+ "jobs": "Jobs"
+}

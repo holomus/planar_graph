@@ -1,0 +1,181 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var tg = page.grid('table');
+  
+  tg.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageMedium(row.photo_sha) }"/>` : null;
+  });
+  tg.asHtml('matched_html', 'matched_sha', function(row) {
+    return row.matched_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageMedium(row.matched_sha) }"/>` : null;
+  });
+  tg.asHtml('vector_calculated_html', 'vector_calculated, vector_calculated_name', function(row) {
+    return `<div class="d-flex align-items-center justify-content-center h-100">
+              <i style="font-size: 16px;" class="${ row.vector_calculated == 'Y' ? 'fas fa-check-circle text-success' : 'far fa-times-circle text-danger' }"></i>
+            </div>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  let q = {
+        job_running: true,
+      },
+      p = {
+        matched_photos: [],
+      };
+
+  function fetchQuery() {
+    page.query('table').fetch();
+  }
+  
+  function addRecognitionJob(all_images) {
+    fi.add_recognition_job({ all_images: all_images })
+      .then(function() {
+        notify(t('successfully added vector calculation job')())
+      })
+      .catch(page.alert);
+  }
+
+  function checkRecognitionJob() {
+    page.post(':check_recognition')
+        .then(function(response) {
+          q.job_running = response.job_running == 'Y' ? true : false
+        })
+        .catch(page.alert);
+  }
+
+  // matched photos
+  let matched_photos = page.$content.find("form[name='matched_photos']>.modal");
+
+  function showMatchedModal() {
+    $timeout(function() {
+      matched_photos.modal('show');
+    });
+  }
+
+  function hideMatchedModal() {
+    matched_photos.modal('hide');
+  }
+
+  function calculateVector(row) {
+    fi.calculate_vector({ 
+      person_id: row.person_id,
+      photo_shas: [row.photo_sha]
+    }).then(function(response) {
+        fetchQuery();
+        p.matched_photos = _.chain(response.matched_photos || [])
+                            .mapRows(['person_id', 'person_name', 'matched_sha', 'match_score', 'match_percent'])
+                            .sortBy(x => +x.match_score)
+                            .value();
+        p.error = response.error;
+        if (!_.isEmpty(p.matched_photos) || !!p.error && !_.isEmpty(p.error)) {
+          showMatchedModal();
+        }
+      })
+      .catch(page.alert);
+  }
+
+  checkRecognitionJob();
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-disabled="q.job_running" ng-click="addRecognitionJob('Y')" ng-if="fi.add_recognition_job">
+      <t>calculate image vectors</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" 
+            required="person_id, photo_sha, matched_sha, vector_calculated"
+            on-dblclick="onDblclick(row)"
+            sort="-vector_calculated, match_score, person_id" 
+            search="person_name" 
+            searchable="matched_person_names"
+            extra-columns="person_id, match_score">
+      <b-row>
+        <b-col name="person_name" size=6/>
+        <b-col name="photo_sha" as-html="photo_html" img="100;100" size=4/>
+        <b-col name="matched_sha" as-html="matched_html" img="100;100" size=4/>
+        <b-col name="matched_person_names" size=6/>
+        <b-col name="match_score_percent" size=2/>
+        <b-col name="vector_calculated_name" as-html="vector_calculated_html"size=2/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="calculateVector(row)" ng-if="fi.calculate_vector">{{ fi.calculate_vector.title }}</button>
+      </b-action>
+
+      <b-filter name="person_id" decorate-with="person_name"/>
+      <b-filter name="matched_person_ids" decorate-with="matched_person_names"/>
+      <b-filter name="match_score"/>
+      <b-filter name="match_score_percent"/>
+      <b-filter name="vector_calculated" decorate-with="vector_calculated_name"/>
+    </b-grid>
+  </form>
+  
+  <form name="matched_photos">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog" ng-if="!!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">
+              <h4 class="mb-0 d-flex align-items-center">
+                <i class="fa fa-exclamation-circle text-warning my-n4 mr-4 opacity-50 h1 font-weight-bolder"></i>
+                <div>{{ p.error.code }} —  <span class="font-weight-bolder breakable" ng-bind-html="p.error.title"></span></div>
+              </h4>
+            </div>
+            <button type="button" class="close p-4 m-n4" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="error-message mb-5" style="font-weight: 400; line-height: 140%;">
+              <h5 style="color: rgba(12, 42, 62, 0.8);" ng-bind-html="p.error.message"></h5>
+            </div>
+            <div style="color: rgba(12, 42, 62, 0.8); font-weight: 400; line-height: 140%;" id="recoms" ng-if="p.error.solutions.length > 0">
+              <footer class="blockquote-footer h5 text-primary user-select-none">Solutions</footer>
+              <hr class="mt-0 border-primary" style="border-top-style: dashed;"/>
+              <div class="error-solutions">
+                <ul>
+                  <li class="mb-4" ng-repeat="solution in p.error.solutions" ng-bind-html="solution"></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-dialog modal-lg" style="max-width: 50vw;" ng-if="!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>matching photo found</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <b-pg-grid name="matched_photos" 
+                       local-data="p.matched_photos" 
+                       iterator="item"
+                       min-width="500"
+                       limit="1000">
+              <b-pg-row>
+                <b-pg-col name="person_name" size="8"/>
+                <b-pg-col name="photo" size="8">
+                  <img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" ng-src="{{ page.loadImageMedium(item.matched_sha) }}"/>
+                </b-pg-col>
+                <b-pg-col name="match_score" size="4"/>
+                <b-pg-col name="match_percent" size="4"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,17 @@
+{
+ "CSV": "CSV",
+ "date": "Period",
+ "dismissal": "Dismissal",
+ "division": "Department",
+ "division group": "Department group",
+ "Excel": "EXCEL",
+ "generate": "Generate",
+ "hiring (new)": "Hired (new)",
+ "Html": "HTML",
+ "jobs": "Jobs",
+ "parameters": "Filter",
+ "transfers arrivals": "Transfer (arrived)",
+ "transfers departed": "Transfer (departed)",
+ "view": "View",
+ "XML": "XML"
+}

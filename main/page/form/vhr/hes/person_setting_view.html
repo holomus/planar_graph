@@ -1,0 +1,152 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  scope.d = model;
+});
+</script>
+<div class="b-content card card-custom">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>person settings</t></h3>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="form-row">
+      <div class="col-sm-8">
+        <div class="form-group">
+          <label><t>login</t></label>
+          <span class="form-view">{{ d.login }}</span>
+        </div>
+      </div>
+      <div class="col-sm">
+        <div class="form-group">
+          <label><t>roles</t></label>
+          <span class="form-view">{{ d.roles }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-8">
+        <div class="form-row">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>state</t></label>
+              <div class="alert alert-custom text-center py-1 px-3 m-0" ng-class="d.state == 'A' ? 'alert-light-success' : 'alert-light-danger'">
+                <div class="alert-text">{{ d.state_name }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm" ng-if="d.divisions.length > 0">
+        <div class="form-group">
+          <label><t>divisions</t></label>
+          <span class="form-view">{{ d.divisions }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-header" ng-if="d.user_exists == 'Y'">
+    <div class="card-title">
+      <h3 class="card-label"><t>staff application settings</t></h3>
+    </div>
+  </div>
+  <div class="card-body card-custom card-stretch gutter-b" ng-if="d.user_exists == 'Y'">
+    <div class="form-row">
+      <div class="col-sm-6 mb-4">
+        <label><t>staff track user setting type</t></label>
+        <span class="form-view">{{ d.staff_track_user_setting_type }}</span>
+      </div>
+      <div class="col-sm form-row" ng-if="d.staff_track_user_settings == 'Y'">
+        <div class="col-sm-4 mb-4">
+          <label><t>staff last track type</t></label>
+          <span class="form-view">{{ d.staff_last_track_type }}</span>
+        </div>
+        <div class="col-sm-6 mb-4">
+          <label><t>track types</t></label>
+          <span class="form-view">{{ d.track_types }}</span>
+        </div>
+        <div class="col-sm-14 mb-4">
+          <label><t>track steps</t></label>
+          <span class="form-view">{{ d.track_steps }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-6 mb-4">
+        <label><t>staff gps tracking user settings type</t></label>
+        <span class="form-view">{{ d.staff_gps_tracking_user_settings_type }}</span>
+      </div>
+      <div class="col-sm form-row" ng-if="d.staff_gps_tracking_user_settings == 'Y'">
+        <div class="col-sm-8 mb-4">
+          <label><t>staff gps tracking type</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_type }}</span>
+        </div>
+        <div class="col-sm-8 mb-4" ng-if="d.staff_gps_tracking == 'Y'">
+          <label><t>staff gps tracking gps track collect</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_gps_track_collect }}</span>
+        </div>
+        <div class="col-sm-8 mb-4" ng-if="d.staff_gps_tracking == 'Y'">
+          <label><t>staff gps tracking auto output</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_auto_output }}</span>
+        </div>
+        <div class="col-sm-8 mb-4" ng-if="d.staff_gps_tracking == 'Y'">
+          <label><t>staff gps tracking quality kind name</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_quality_kind_name }}</span>
+        </div>
+        <div class="col-sm-8 mb-4" ng-if="d.staff_gps_tracking == 'Y'">
+          <label><t>staff gps tracking distance</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_distance | bNumber }}</span>
+        </div>
+        <div class="col-sm-8 mb-4" ng-if="d.staff_gps_tracking == 'Y'">
+          <label><t>staff gps tracking interval</t></label>
+          <span class="form-view">{{ d.staff_gps_tracking_interval | bNumber }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-6 mb-4">
+        <label><t>staff face register user settings type</t></label>
+        <span class="form-view">{{ d.staff_face_register_user_settings_type }}</span>
+      </div>
+      <div class="col-sm-6 mb-4" ng-if="d.staff_face_register_user_settings == 'Y'">
+        <label><t>staff face register</t></label>
+        <span class="form-view">{{ d.staff_face_register }}</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-6 mb-4">
+        <label><t>staff request manager approval settings type</t></label>
+        <span class="form-view">{{ d.request_status_user_settings_type }}</span>
+      </div>
+      <div class="col-sm-6 mb-4" ng-if="d.request_status_user_settings == 'Y'">
+        <label><t>staff request settings</t></label>
+        <span class="form-view">{{ d.request_status_settings }}</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-6 mb-4">
+        <label><t>staff change schedule manager approval settings type</t></label>
+        <span class="form-view">{{ d.change_status_user_settings_type }}</span>
+      </div>
+      <div class="col-sm-6 mb-4" ng-if="d.change_status_user_settings == 'Y'">
+        <label><t>change schedule settings</t></label>
+        <span class="form-view">{{ d.change_status_settings }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-header" ng-if="d.licensing_plans">
+    <div class="card-title">
+      <h3 class="card-label"><t>licensing plans</t></h3>
+    </div>
+  </div>
+  <div class="card-body" ng-if="d.licensing_plans">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="form-group">
+          <label><t>user licensing plans</t></label>
+          <span class="form-view">{{ d.licensing_plans }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

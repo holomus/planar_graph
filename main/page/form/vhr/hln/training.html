@@ -1,0 +1,205 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = model || { persons: [] },
+      q = {};
+
+  // subject
+  function setSubject(row) {
+    if (!row) return;
+    d.subjects.push(row);
+  }
+
+  function whereSubject() {
+    var subject_ids = _.pluck(d.subjects, 'subject_id');
+
+    return !_.isEmpty(subject_ids) ? ['subject_id', '<>', subject_ids] : null;
+  }
+
+  function addSubject(value) {
+    fi.add_subject(null, setSubject, { name: value });
+  }
+
+  function selectSubject() {
+    fi.select_subject(null, setSubject, { where: whereSubject() });
+  }
+
+  // mentor
+  function setMentor(row) {
+    if (!row) return;
+    d.mentor_id = row.person_id;
+    d.mentor_name = row.name;
+  }
+
+  function addMentor(value) {
+    fi.add_mentor(null, setMentor, { name: value });
+  }
+
+  function selectMentor() {
+    fi.select_mentor(null, setMentor);
+  }
+
+  // person
+  function wherePerson() {
+    let person_ids = _.chain(d.persons).pluck('person_id').compact().value(),
+        where = ['state', '=', 'A'];
+    if (!_.isEmpty(person_ids)) {
+      where = ['and', [['person_id', '<>', person_ids], where]];
+    }
+    return where;
+  }
+
+  function setPersons() {
+    fi.select_person(null, function(result) {
+      d.persons.push(...result);
+    }, { where: wherePerson(), multiple_select: true });
+  }
+
+  function removePersons() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.persons, item);
+      d.persons.splice(index, 1);
+    });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  // save
+  function save() {
+    q.has_subject = !_.isEmpty(d.subjects);
+
+    if (page.valid(scope.form) && q.has_subject) {
+      data = _.omit(d, 'persons', 'subjects');
+      data.subject_ids = _.pluck(d.subjects, 'subject_id');
+      data.persons = _.pluck(d.persons, 'person_id');
+
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  function setSubjectGroup(row) {
+    if (!row) return;
+
+    d.subject_group_id = row.subject_group_id;
+    d.subject_group_name = row.name;
+
+    page.post(':load_subjects', { subject_group_id: d.subject_group_id }).then(res => {
+      d.subjects = _.mapRows(res.subjects, ['subject_id', 'name']);
+      q.has_group_subjects = !_.isEmpty(d.subjects);
+    })
+  }
+
+  function selectSubjectGroup() {
+    fi.select_subject_group(null, setSubjectGroup);
+  }
+
+  q.has_subject = true;
+  q.has_group_subjects = true;
+  d.subjects = _.mapRows(d.subjects, ['subject_id', 'name']);
+  d.persons = _.mapRows(d.persons, ['person_id', 'name']);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom gutter-b">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>training number</t></label>
+                <input type="text" class="form-control" ng-model="d.training_number"/>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.begin_date" b-date-picker="DD.MM.YYYY HH:mm" required/>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>mentor name</t><r/></label>
+            <b-input name="mentors"
+                     model="d.mentor_name | name"
+                     model-key="d.mentor_id | person_id"
+                     is-add="fi.add_mentor"
+                     is-view="fi.select_mentor"
+                     on-add="addMentor(value)"
+                     on-view="selectMentor()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>address</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.address" b-maxlength="100"></textarea>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>subject group name</t></label>
+            <b-input name="subject_groups"
+                     model="d.subject_group_name | name"
+                     model-key="d.subject_group_id | subject_group_id"
+                     is-view="fi.select_subject_group"
+                     on-view="selectSubjectGroup()"
+                     on-select="setSubjectGroup(row)">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>subject name</t><r/></label>
+            <b-input multiple
+                     name="subjects"
+                     model="d.subjects"
+                     model-key="subject_id"
+                     is-add="fi.add_subject"
+                     is-view="fi.select_subject"
+                     on-add="addSubject(value)"
+                     on-view="selectSubject()"
+                     ng-if="!d.subject_group_id">
+              {{ row.name }}
+            </b-input>
+            <div class="form-group" ng-if="d.subject_group_id">
+              <span ng-repeat="subject in d.subjects" class="form-view mb-4">{{ subject.name }}</span>
+            </div>
+            <span class="text-danger" ng-hide="q.has_subject"><t>you must select at least one subject</t></span>
+            <span class="text-danger" ng-hide="q.has_group_subjects || !d.subject_group_id"><t>there is no subjects depends on for this subject group, select another one</t></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-success" ng-if="fi.select_person" ng-click="setPersons()"><t>select</t></button>
+          <button type="button" class="btn btn-danger" ng-click="removePersons()" ng-show="q.checked.has">
+            <t p1="q.checked.size">delete $1</t>
+          </button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-pg-controller name="persons"/>
+        </div>
+      </div>
+      <b-pg-grid name="persons" local-data="d.persons" iterator="item" search="name" on-check="onCheck(checked)" sort="name">
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1">
+            <div class="text-center">{{ item.rownum }}</div>
+          </b-pg-col>
+          <b-pg-col name="name" size="22"/>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

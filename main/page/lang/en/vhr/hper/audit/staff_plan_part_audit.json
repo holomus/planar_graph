@@ -1,0 +1,13 @@
+{
+ "details": "Details",
+ "table_audit.amount": "Amount",
+ "table_audit.plan_type_name": "Measures Type",
+ "table_audit.staff_plan_id": "Calculation ID",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User"
+}

@@ -1,0 +1,9 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "color": "Color",
+ "name": "Name",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

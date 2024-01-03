@@ -1,0 +1,262 @@
+<script biruni>
+page.init(function() {
+  var statusClass = { N: 'warning', A: 'success', D: 'danger', C: 'primary' };
+
+  function prepareGrid(grid) {
+    grid.asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+    });
+  }
+  prepareGrid(page.grid('director_changes'));
+  prepareGrid(page.grid('available_changes'));
+});
+page.ctrl(function(scope, model, t, fi, $timeout, bFrame, bStorage, AppSession) {
+  var q = {},
+      p = {},
+      modal = page.$content.find("form[name=modal]>.modal");
+
+  function setActiveTab(active_tab) {
+    if (q.active_tab == active_tab) return;
+    bStorage.json(storage_key, { active_tab: active_tab });
+    q.active_tab = active_tab;
+    q.checked = {};
+    onCheck({ rows: function() { return [] } });
+  }
+
+  function view(row) {
+    return fi.view({ filial_id: row.filial_id, change_id: row.change_id });
+  }
+
+  function doAction(doFunc, doTrans, changes) {
+    page.confirm(doTrans, function() {
+      doFunc({ changes: changes }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans, is_modal, action) {
+    return is_modal ? function(row) {
+      p.title = doTrans(row.change_kind_name, row.change_date);
+      p.data = _.pick(row, 'filial_id', 'change_id');
+      p.action = function() {
+        doFunc({ changes: [p.data] }).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      $timeout(() => modal.modal('show'));
+    } : function(row) {
+      doAction(doFunc, doTrans(row.change_kind_name, row.change_date), [_.pick(row, 'filial_id', 'change_id')]);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key, is_modal) {
+    return is_modal ? function(row) {
+      p.title = doTrans(q[key].size);
+      p.data = _.map(q[key].rows, x => _.pick(x, 'change_id', 'filial_id'));
+      p.action = function() {
+        doFunc({ changes: p.data }).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      $timeout(() => modal.modal('show'));
+    } : function() {
+      doAction(doFunc, doTrans(q[key].size), _.map(q[key].rows, x => _.pick(x, 'change_id', 'filial_id')));
+    }
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : null;
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {},
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_delete', checked, x => x.status == 'N');
+    prepChecked('to_approve', checked, x => x.status == 'N');
+    prepChecked('to_deny', checked, x => x.status == 'N');
+    prepChecked('to_complete', checked, x => x.status == 'A');
+    prepChecked('to_cancel', checked, x => x.status == 'A');
+    prepChecked('to_reset', checked, x => x.status != 'N');
+  }
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  q.active_tab = storage.active_tab || 'director';
+  q.user_id = AppSession.si.user.user_id;
+  q.to_delete = {};
+  q.to_approve = {};
+  q.to_deny = {};
+  q.to_complete = {};
+  q.to_cancel = {};
+  q.to_reset = {};
+
+  scope.q = q;
+  scope.p = p;
+  scope.approveOne = prepActionOne(fi.approve, t('approve change $1{change_kind_name} on $2{change_date}?'), true, t('approve'));
+  scope.approveMany = prepActionMany(fi.approve, t('approve change $1{change_count} changes?'), 'to_approve', true);
+  scope.denyOne = prepActionOne(fi.deny, t('deny change $1{change_kind_name} on $2{change_date}?'), true);
+  scope.denyMany = prepActionMany(fi.deny, t('deny $1{change_count} changes?'), 'to_deny', true);
+  scope.deleteOne = prepActionOne(fi.delete, t('delete change $1{change_kind_name} on $2{change_date}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{change_count} changes?'), 'to_delete');
+  scope.completeOne = prepActionOne(fi.complete, t('complete change $1{change_kind_name} on $2{change_date}?'));
+  scope.completeMany = prepActionMany(fi.complete, t('complete $1{change_count} changes?'), 'to_complete');
+  scope.cancelOne = prepActionOne(fi.cancel, t('cancel change $1{change_kind_name} on $2{change_date}?'));
+  scope.cancelMany = prepActionMany(fi.cancel, t('cancel $1{change_count} changes?'), 'to_cancel');
+  scope.resetOne = prepActionOne(fi.reset, t('reset change $1{change_kind_name} on $2{change_date}?'));
+  scope.resetMany = prepActionMany(fi.reset, t('reset $1{change_count} changes?'), 'to_reset');
+});
+</script>
+<div class="b-toolbar" ng-hide="page.isFirst()">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item">
+            <a href class="nav-link" ng-class="{'active': q.active_tab == 'director'}" data-toggle="tab" ng-click="setActiveTab('director')" role="tab">
+              <span><t>director</t></span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href class="nav-link" ng-class="{'active': q.active_tab == 'available'}" data-toggle="tab" ng-click="setActiveTab('available')" role="tab">
+              <span><t>available</t></span>
+            </a>
+          </li>
+        </ul>
+        <div class="tab-content mt-4">
+          <div class="tab-pane" ng-class="{'active': q.active_tab == 'director'}">
+            <div class="row">
+              <div class="col-sm-14 mb-2">
+                <button type="button" class="btn btn-primary" ng-click="approveMany()" ng-if="fi.approve" ng-show="q.to_approve.has"><t p1="q.to_approve.size">approve $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="denyMany()" ng-if="fi.deny" ng-show="q.to_deny.has"><t p1="q.to_deny.size">deny $1</t></button>
+                <button type="button" class="btn btn-primary" ng-click="completeMany()" ng-if="fi.complete" ng-show="q.to_complete.has"><t p1="q.to_complete.size">complete $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="cancelMany()" ng-if="fi.cancel" ng-show="q.to_cancel.has"><t p1="q.to_cancel.size">cancel $1</t></button>
+                <button type="button" class="btn btn-primary" ng-click="resetMany()" ng-if="fi.reset" ng-show="q.to_reset.has"><t p1="q.to_reset.size">reset $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+              </div>
+              <div class="col-sm-10 mb-2">
+                <b-grid-controller name="director_changes"/>
+              </div>
+            </div>
+            <b-grid name="director_changes" required="change_id, filial_id, change_kind_name, change_date, status, access_level" on-dblclick="onDblclick(row, true)" sort="-change_date"
+                    on-check="onCheck(checked, true)" search="change_kind_name, manager_note, note" searcheable="change_id, change_kind_name"
+                    extra-columns="change_id, change_kind_name, manager_note, division_name, job_name, approved_by_name, completed_by_name, created_by_name, created_on, modified_by_name, modified_on, access_level_name">
+              <b-row>
+                <b-col name="filial_name" size=3/>
+                <b-col name="staff_name" size=3/>
+                <b-col name="change_date" size=3/>
+                <b-col name="change_kind_name" size=4/>
+                <b-col name="change_dates" size=3/>
+                <b-col name="note" size=4/>
+                <b-col name="status_name" as-html="status_html" size=3/>
+              </b-row>
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view"><t>view</t></button>
+                <button type="button" class="btn btn-default" ng-click="approveOne(row)" ng-if="fi.approve && row.status == 'N'">{{ fi.approve.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="denyOne(row)" ng-if="fi.deny && row.status == 'N'">{{ fi.deny.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="completeOne(row)" ng-if="fi.complete && row.status == 'A'">{{ fi.complete.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="cancelOne(row)" ng-if="fi.cancel && row.status == 'A'">{{ fi.cancel.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N'">{{ fi.reset.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N'">{{ fi.delete.title }}</button>
+              </b-action>
+              <b-filter name="change_id" directive="equal" extra/>
+              <b-filter name="staff_id" decorate-with="staff_name"/>
+              <b-filter name="filial_id" decorate-with="filial_name"/>
+              <b-filter name="change_date"/>
+              <b-filter name="change_kind" decorate-with="change_kind_name"/>
+              <b-filter name="status" decorate-with="status_name"/>
+              <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id" extra/>
+              <b-filter name="job_id" decorate-with="job_name" extra/>
+              <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+              <b-filter name="completed_by" decorate-with="completed_by_name" extra/>
+              <b-filter name="created_by" decorate-with="created_by_name" extra/>
+              <b-filter name="created_on" extra/>
+              <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+              <b-filter name="modified_on" extra/>
+              <b-filter name="access_level" decorate-with="access_level_name" extra/>
+            </b-grid>
+          </div>
+          <div class="tab-pane" ng-class="{'active': q.active_tab == 'available'}">
+            <div class="row">
+              <div class="col-sm-14 mb-2">
+                <button type="button" class="btn btn-primary" ng-click="approveMany()" ng-if="fi.approve" ng-show="q.to_approve.has"><t p1="q.to_approve.size">approve $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="denyMany()" ng-if="fi.deny" ng-show="q.to_deny.has"><t p1="q.to_deny.size">deny $1</t></button>
+                <button type="button" class="btn btn-primary" ng-click="completeMany()" ng-if="fi.complete" ng-show="q.to_complete.has"><t p1="q.to_complete.size">complete $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="cancelMany()" ng-if="fi.cancel" ng-show="q.to_cancel.has"><t p1="q.to_cancel.size">cancel $1</t></button>
+                <button type="button" class="btn btn-primary" ng-click="resetMany()" ng-if="fi.reset" ng-show="q.to_reset.has"><t p1="q.to_reset.size">reset $1</t></button>
+                <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+              </div>
+              <div class="col-sm-10 mb-2">
+                <b-grid-controller name="available_changes"/>
+              </div>
+            </div>
+            <b-grid name="available_changes" required="change_id, filial_id, change_kind_name, change_date, status, access_level" sort="-change_date" on-check="onCheck(checked)"
+                    on-dblclick="onDblclick(row)" search="staff_name, change_kind_name, manager_note, note" searchable="change_id, change_kind_name"
+                    extra-columns="change_id, change_kind_name, manager_note, division_name, job_name, approved_by_name, completed_by_name, created_by_name, created_on, modified_by_name, modified_on, access_level_name">
+              <b-row>
+                <b-col name="filial_name" size=3/>
+                <b-col name="staff_name" size=3/>
+                <b-col name="change_date" size=3/>
+                <b-col name="change_kind_name" size=4/>
+                <b-col name="change_dates" size=3/>
+                <b-col name="note" size=4/>
+                <b-col name="status_name" as-html="status_html" size=3/>
+              </b-row>
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view"><t>view</t></button>
+                <button type="button" class="btn btn-default" ng-click="approveOne(row)" ng-if="fi.approve && row.status == 'N'">{{ fi.approve.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="denyOne(row)" ng-if="fi.deny && row.status == 'N'">{{ fi.deny.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="completeOne(row)" ng-if="fi.complete && row.status == 'A'">{{ fi.complete.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="cancelOne(row)" ng-if="fi.cancel && row.status == 'A'">{{ fi.cancel.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N'">{{ fi.reset.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N'">{{ fi.delete.title }}</button>
+              </b-action>
+              <b-filter name="change_id" directive="equal" extra/>
+              <b-filter name="staff_id" decorate-with="staff_name"/>
+              <b-filter name="filial_id" decorate-with="filial_name"/>
+              <b-filter name="change_date"/>
+              <b-filter name="change_kind" decorate-with="change_kind_name"/>
+              <b-filter name="status" decorate-with="status_name"/>
+              <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id" extra/>
+              <b-filter name="job_id" decorate-with="job_name" extra/>
+              <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+              <b-filter name="completed_by" decorate-with="completed_by_name" extra/>
+              <b-filter name="created_by" decorate-with="created_by_name" extra/>
+              <b-filter name="created_on" extra/>
+              <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+              <b-filter name="modified_on" extra/>
+              <b-filter name="access_level" decorate-with="access_level_name" extra/>
+            </b-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>manager note</t></label>
+              <textarea class="form-control" rows=3 ng-model="p.data.manager_note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="p.action()">{{ p.action_title }}</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,219 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, $timeout, t) {
+  var d = _.omit(model, 'items'),
+      q = { is_view: true, total_quantity: 0, total_amount: 0 };
+
+  if (window.location.href.includes("+view"))
+    q.is_view = true;
+  else
+    q.is_view = false;
+
+  function getData() {
+    var data = {};
+    var items = _.filter(d.items, x => (x.contract_item_id) || (x.name && x.fact_amount));
+
+    data.fact_id       = d.fact_id;
+    data.fact_item_ids = _.pluck(items, "fact_item_id");
+    data.names         = _.pluck(items, "name");
+    data.quantities    = _.pluck(items, "fact_quantity");
+    data.amounts       = _.pluck(items, "fact_amount");
+
+    return data;
+  }
+
+  function save() {
+    if (page.valid(scope.form)){
+      page.confirm(t('save facts ?')(), () => {
+        fi.save(getData()).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function complete() {
+    if (page.valid(scope.form)){
+      page.confirm(t('complete facts ?')(), () => {
+        fi.complete(getData()).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function addService() {
+    d.items.push({});
+  }
+
+  function deleteItem(item) {
+    let index = _.indexOf(d.items, item);
+    d.items.splice(index, 1);
+  }
+
+  function isNull(num) {
+    return _.isUndefined(num) || _.isNull(num) || _.isNaN(num) || String(num) == '';
+  }
+
+  function pf(num) {
+    if (isNull(num)) return 0;
+    return parseFloat(num);
+  }
+
+  function changeQuantity(item) {
+    if (item.contract_item_id) {
+      if (item.fact_quantity) item.fact_amount = pf(item.plan_amount) * pf(item.fact_quantity) / pf(item.plan_quantity);
+      else item.fact_amount = 0;
+    }
+  }
+
+  function changeAmount(item) {
+    if (item.contract_item_id) {
+      if (item.fact_amount) item.fact_quantity = pf(item.fact_amount) * pf(item.plan_quantity) / pf(item.plan_amount);
+      else item.fact_quantity = 0;
+    }
+  }
+
+  d.items = _.mapRows(model.items, ['fact_item_id', 'contract_item_id', 'plan_quantity', 'plan_amount', 'fact_quantity', 'fact_amount', 'name']);
+
+  if (q.is_view)
+    _.each(d.items, x => { q.total_quantity += +x.fact_quantity; q.total_amount += +x.fact_amount });
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-if="!q.is_view && fi.save" ng-click="save()"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-if="!q.is_view && fi.complete" ng-click="complete()"><t>complete</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>contract number</t></label>
+            <span class="form-view">{{ d.contract_number }}</span>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-12">
+              <label><t>division</t><r/></label>
+            <span class="form-view">{{ d.division_name }}</span>
+            </div>
+            <div class="col-sm-12">
+              <label><t>person</t><r/></label>
+              <span class="form-view">{{ d.person_name }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <label><t>contract kind</t></label><br/>
+              <span class="form-view">{{ d.contract_kind_name }}</span>
+            </div>
+            <div class="col-sm-12">
+              <label><t>access to add item</t></label><br/>
+              <span class="form-view" ng-if="d.access_to_add_item == 'Y'"><t>yes</t></span>
+              <span class="form-view" ng-if="d.access_to_add_item == 'N'"><t>no</t></span>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>begin date</t><r/></label>
+              <span class="form-view">{{ d.begin_date }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>end date</t><r/></label>
+              <span class="form-view">{{ d.end_date }}</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" ng-model="d.note" rows=3 readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>services</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <div class="mb-2">
+          <button type="button" class="btn btn-default" ng-if="!q.is_view && d.access_to_add_item == 'Y'" ng-click="addService()"><t>add</t></button>
+        </div>
+      </div>
+      <div class="form-group">
+        <table class="table table-hover bg-white">
+          <thead class="text">
+            <tr class="form-row">
+              <td class="col-14 pl-6"><t>serice name</t></td>
+              <td ng-class="{'col-5': q.is_view, 'col-4': !q.is_view}"><t>quantity</t></td>
+              <td ng-class="{'col-5': q.is_view, 'col-4': !q.is_view}"><t>amount</t></td>
+              <td ng-if="!q.is_view" class="col-2 text-center"><t>actions</t></td>
+            </tr>
+          </thead>
+          <tbody ng-if="q.is_view">
+            <tr class="form-row" ng-repeat="item in d.items">
+              <td class="col-14 pl-6">
+                <div class="row" ng-if="item.plan_quantity">
+                  <div class="col-sm-12">
+                    <p>{{ item.name }}</p>
+                  </div>
+                  <div class="col-sm-6">
+                    <t>quant: </t><span class="badge badge-light">{{ item.plan_quantity }}</span>
+                  </div>
+                  <div class="col-sm-6">
+                    <t>amount: </t><span class="badge badge-light">{{ item.plan_amount | bNumber }}</span>
+                  </div>
+                </div>
+                <div class="form-group" ng-if="!item.plan_quantity">
+                  <p>{{ item.name }}</p>
+                </div>
+              </td>
+              <td class="col-5">{{ item.fact_quantity }}</td>
+              <td class="col-5">{{ item.fact_amount }}</td>
+            </tr>
+            <tr class="form-row font-weight-bolder bg-secondary" >
+              <td class="col-14 pl-6"><t>total</t></td>
+              <td class="col-5">{{ q.total_quantity }}</td>
+              <td class="col-5">{{ q.total_amount }}</td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!q.is_view" ng-repeat="item in d.items">
+            <tr class="form-row" ng-if="item.contract_item_id">
+              <td class="col-14 pl-6">
+                <div class="row">
+                  <div class="col-sm-12">
+                    <p>{{ item.name }}</p>
+                  </div>
+                  <div class="col-sm-6">
+                    <t>quant: </t><span class="badge badge-light">{{ item.plan_quantity }}</span>
+                  </div>
+                  <div class="col-sm-6">
+                    <t>amount: </t><span class="badge badge-light">{{ item.plan_amount | bNumber }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="col-4"><input type="text" class="form-control" ng-change="changeQuantity(item)" ng-model="item.fact_quantity" b-number/></td>
+              <td class="col-4"><input type="text" class="form-control" ng-change="changeAmount(item)" ng-model="item.fact_amount" b-number/></td>
+              <td class="col-2"></td>
+            </tr>
+            <tr class="form-row" ng-if="!item.contract_item_id">
+              <td class="col-14 pl-6">
+                <b-input name="services" model="item.name | name">{{ row.name }}</b-input>
+              </td>
+              <td class="col-4 text-right">1</td>
+              <td class="col-4">
+                <input type="text" class="form-control" ng-model="item.fact_amount" b-number/>
+              </td>
+              <td class="col-2 text-center">
+                <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteItem(item)"><i class="fa fa-trash"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</form></div>

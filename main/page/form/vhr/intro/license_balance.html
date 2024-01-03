@@ -1,0 +1,414 @@
+<script biruni>
+page.require("nicescrollbar",
+             "amcharts4",
+             "amcharts4-theme-animated");
+
+page.init(function(bUtil, t) {
+  page.query('table').param({ "date": moment().format("DD.MM.YYYY") });
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe' : '' }male.png`;
+  }
+
+  var tg = page.grid('table');
+
+  tg.asHtml('licensed_html', 'licensed, licensed_name', row => {
+    return `<div class="alert alert-custom alert-${ row.licensed == 'Y' ? 'primary' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.licensed_name }</div></div>`;
+  });
+  tg.asHtml('employee', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }"
+                      class="rounded-circle"
+                      style="width: 40px;
+                              height: 40px;
+                              border: 1px solid rgba(230, 230, 240, 0.8);"/>
+              &emsp;<a href class="b-grid-cell" cn="name">${ row.name }</a>
+            </div>`;
+  });
+  tg.disable();
+})
+page.ctrl(function(scope, model, fi, t, $timeout, bConfig) {
+  moment.locale(bConfig.langCode());
+  var d = model,
+      q = {},
+      t_used = t('used')(),
+      t_required = t('required')();
+
+  function licensePieChart(data) {
+    if (licensePieChart.chart) licensePieChart.chart.dispose();
+    let isEmpty;
+
+    if (isEmpty = _.every(data, x => x.value == 0)) {
+      data = [{
+        title: "empty",
+        disabled: true,
+        value: 1000,
+        color: am4core.color("#dadada"),
+        opacity: 0.3,
+        strokeDasharray: "4,4",
+        tooltip: ""
+      }];
+    }
+
+    let elem = page.$content.find('.license-pie-chart');
+
+    assert(elem.length, "license pie chart element is not found");
+
+    let chart = am4core.create(elem[0], am4charts.PieChart);
+    // Set inner radius
+    chart.innerRadius = am4core.percent(50);
+    chart.data = data;
+    // Add and configure Series
+    let pieSeries = chart.series.push(new am4charts.PieSeries());
+
+    pieSeries.dataFields.value = "value";
+    pieSeries.dataFields.category = "title";
+
+    if (isEmpty) {
+      let slice = pieSeries.slices.template;
+
+      slice.propertyFields.fill = "color";
+      slice.propertyFields.fillOpacity = "opacity";
+      slice.propertyFields.stroke = "color";
+      slice.propertyFields.strokeDasharray = "strokeDasharray";
+      slice.propertyFields.tooltipText = "tooltip";
+      slice.clickable = false;
+
+      pieSeries.labels.template.propertyFields.disabled = "disabled";
+      pieSeries.ticks.template.propertyFields.disabled = "disabled"
+    } else {
+      pieSeries.alignLabels = false;
+      pieSeries.labels.template.padding(0,0,0,0);
+      pieSeries.labels.template.text = "{value}"
+
+      pieSeries.labels.template.adapter.add("text", function(text, target) {
+        if (target.dataItem.dataContext.value != 0) return text;
+        else return "";
+      });
+
+      pieSeries.slices.template.events.on("hit", function(ev) {
+        if (ev.target.isActive) page.query("table").filter("licensed", "=", ev.target.dataItem.dataContext.licensed).fetch();
+        else page.query("table").filterClear().fetch();
+
+        let series = ev.target.dataItem.component;
+        series.slices.each(function(item) {
+          if (item.isActive && item != ev.target) {
+            item.isActive = false;
+          }
+        });
+      });
+
+      pieSeries.slices.template.stroke = am4core.color("#fff");
+      pieSeries.slices.template.cornerRadius = 5;
+      pieSeries.slices.template.propertyFields.fill = "color";
+      pieSeries.slices.template.tooltipHTML = `<div class="text-center">{title} {value.percent.formatNumber('#.#')} %<br><span style="font-size:14px"><b>{value}</b></span></div>`;
+
+      pieSeries.slices.template.strokeWidth = 2;
+      pieSeries.slices.template.strokeOpacity = 1;
+
+      pieSeries.colors.step = 3;
+      // This creates initial animation
+      pieSeries.hiddenState.properties.opacity = 1;
+      pieSeries.hiddenState.properties.endAngle = -90;
+      pieSeries.hiddenState.properties.startAngle = -90;
+    }
+
+
+    let label = chart.seriesContainer.createChild(am4core.Label);
+
+    label.text = d.license_pie.licensable_cnt;
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.fill = "#A0B1BA";
+    label.dy = -10;
+    label.fontSize = 25
+    label.fontWeight = "bold";
+
+    label = chart.seriesContainer.createChild(am4core.Label);
+    label.text = t("licensable")();
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.dy = 10;
+    label.fontSize =14
+
+    licensePieChart.chart = chart;
+  }
+
+  function reloadLicensePie(result) {
+    d.available_cnt = result.available_cnt;
+    d.license_pie.licensable_cnt = +result.used_cnt + +result.required_cnt;
+
+    var data = _.mapRows([
+                [t('used')(), result.used_cnt, "#5C9BD1", "Y"],
+                [t('required')(), result.required_cnt, "#F18A97", "N"],
+                [t('free')(), result.free_cnt, "#2EB330", "U"]
+              ], ["title", "value", "color", "licensed"]);
+    licensePieChart(data);
+  }
+
+  function dayStatsXYChart(data) {
+    if (dayStatsXYChart.chart) {
+      dayStatsXYChart.chart.data = data;
+      dayStatsXYChart.chart.invalidateData();
+      return;
+    }
+
+    let elem = page.$content.find('.day-stats-xy-chart');
+
+    assert(elem.length, "day stats xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create category axis
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "balance_date";
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = t('quantity')();
+    valueAxis.renderer.minLabelPosition = 0;
+    valueAxis.maxPrecision = 0;
+
+    function addLineSeries(name, value, color) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "balance_date";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.8;
+      series.bullets.push(new am4charts.CircleBullet());
+      series.fill = color;
+      series.stroke = color;
+
+      if (value == 'available') {
+        series.tooltipText = "{valueY}";
+        series.legendSettings.valueText = "{valueY}";
+      } else {
+        series.dataFields.used = 'used';
+        series.dataFields.required = 'required';
+
+        series.tooltipText = "{valueY}";
+        series.legendSettings.valueText = "{valueY} (" + t_used + ": {used}; " + t_required + ": {required})";
+
+        series.adapter.add('tooltipText', function(text, target, key) {
+          let data = target.tooltipDataItem.dataContext;
+          if (data && (+data.required > 0)) {
+            return text + " (" + t_used + ": {used}; [bold #a00]" + t_required + ": {required}[/])";
+          } else {
+            return text;
+          }
+        });
+      }
+    }
+
+    addLineSeries(t("available")(), "available", "#7DDC67");
+    addLineSeries(t("licensable")(), "licensable", "#5C9BD1");
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    dayStatsXYChart.chart = chart;
+  }
+
+  function reloadDayStatsXyChart(result) {
+    var data = _.chain(result)
+                .mapRows(["balance_date", "available", "licensable", "used", "required"])
+                .each(x => x.sort_date = x.balance_date.split('.').reverse().join(''))
+                .sortBy(x => x.sort_date)
+                .value();
+
+    dayStatsXYChart(data);
+  }
+
+  function loadDayStatsXyChartPieChart() {
+    if (q.is_all_holders_in_one_day) {
+      let data = { date: d.end_date };
+      if (fi.isFilial) {
+        data.division_id = d.division_ids;
+        data.job_id = _.pluck(d.jobs, 'job_id');
+        data.rank_id = _.pluck(d.ranks, 'rank_id');
+      }
+      page.post(':load_day_stats_piechart', data).then(reloadLicensePie, page.alert);
+      page.query("table").param(data).filterClear();
+      page.grid("table").fetch();
+      page.grid("table").enable(); 
+    }
+  }
+
+  function loadDayStatsXyChart() {
+    if (q.is_all_holders_in_range_dates) {
+      let data = {
+        begin_date: d.begin_date,
+        end_date: d.end_date
+      };
+      if (fi.isFilial) {
+        data.division_id = d.division_ids;
+        data.job_id = _.pluck(d.jobs, 'job_id');
+        data.rank_id = _.pluck(d.ranks, 'rank_id');
+      }
+      page.post(':load_day_stats_xychart', data).then(reloadDayStatsXyChart, page.alert);
+    }
+  }
+
+  function viewHolder(row) {
+    if (fi.view_holder) fi.view_holder({ employee_id: row.person_id });
+  }
+
+  function changeFilter() {
+    q.is_all_holders_in_one_day = d.begin_date == d.end_date;
+    q.is_all_holders_in_range_dates = d.begin_date != d.end_date;
+    $timeout(function() {
+      // am4core.options.queue = true;
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        loadDayStatsXyChartPieChart();
+        loadDayStatsXyChart();
+      });
+    });
+  }
+
+  d.divisions = _.mapRows(d.divisions, ['division_id', 'name', 'parent_id']);
+  d.license_pie = {};
+  d.jobs = [];
+  d.ranks = [];
+
+  changeFilter();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-18">
+      <div class="card card-custom card-stretch gutter-b" ng-show="q.is_all_holders_in_one_day">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t p1="d.end_date" p2="d.available_cnt">license balance on $1{date}, available: $2{count}</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="mb-4 col-sm-10" style="height: 100%; align-items: center;">
+              <div class="license-pie-chart" style="min-height: 374px; height: 45vh;"></div>
+            </div>
+            <div class="mb-4 col-sm-14">
+              <div class="mb-2">
+                <b-grid-controller name="table"/>
+              </div>
+              <b-grid name="table" min-width="0" required="person_id, licensed" on-dblclick="viewHolder(row)"
+                      sort="name" search="name" searchable="employee_number, tin, iapa"
+                      extra-columns="person_id, first_name, last_name, middle_name, responsible_person_name, gender_name,
+                      birthday, region_name, address, tin, iapa, npin, main_phone, email, web, fax, telegram, post_address, bank_account_name,
+                      employee_number, division_name, job_name, rank_name">
+                <b-row>
+                  <b-col name="name" size=13 as-html="employee"/>
+                  <b-col name="login" size=4/>
+                  <b-col name="code" size=4/>
+                  <b-col name="licensed_name" as-html="licensed_html" size=3/>
+                </b-row>
+
+                <b-filter name="person_id" directive="equal" extra/>
+                <b-filter name="name"/>
+                <b-filter name="login"/>
+                <b-filter name="code"/>
+                <b-filter name="licensed" decorate-with="licensed_name"/>
+                <b-filter name="tin" directive="equal" extra/>
+                <b-filter name="iapa" directive="equal" extra/>
+                <b-filter name="email" extra/>
+                <b-filter name="first_name" extra/>
+                <b-filter name="last_name" extra/>
+                <b-filter name="middle_name" extra/>
+                <b-filter name="gender" decorate-with="gender_name" extra/>
+                <b-filter name="birthday" extra/>
+                <b-filter name="region_id" decorate-with="region_name" tree-with-parent="parent_id" extra/>
+                <b-filter name="responsible_person_id" decorate-with="responsible_person_name" extra/>
+                <b-filter name="address" extra/>
+                <b-filter name="post_address" extra/>
+                <b-filter name="main_phone" extra/>
+                <b-filter name="web" extra/>
+                <b-filter name="telegram" extra/>
+                <b-filter name="employee_number" extra/>
+                <b-filter name="division_id" decorate-with="division_name" extra/>
+                <b-filter name="job_id" decorate-with="job_name" extra/>
+                <b-filter name="rank_id" decorate-with="rank_name" extra/>
+              </b-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom card-stretch gutter-b" ng-show="q.is_all_holders_in_range_dates">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t p1="d.begin_date" p2="d.end_date">license balance from $1{begin_date} to $2{end_date}</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="day-stats-xy-chart" style="min-height: 60vh;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>filter</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>date</t></label><br/>
+            <b-date-range-picker begin="d.begin_date" end="d.end_date"></b-date-range-picker>
+          </div>
+          <div ng-if="fi.isFilial">
+            <div class="form-group">
+              <div class="divisions">
+                <label><t>divisions</t></label>
+                <b-tree-select
+                  multiple
+                  origin="d.divisions"
+                  id-key="division_id"
+                  model="d.division_ids"
+                  parent-key="parent_id"
+                  hide-limit="5"
+                  option-check-childs/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>jobs</t></label>
+              <div class="jobs">
+                <b-input
+                  multiple
+                  name="jobs"
+                  model="d.jobs"
+                  model-key="job_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>ranks</t></label>
+              <div class="ranks">
+                <b-input
+                  multiple
+                  name="ranks"
+                  model="d.ranks"
+                  model-key="rank_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-block btn-primary" ng-click="changeFilter()"><t>reload</t></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

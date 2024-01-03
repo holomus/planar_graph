@@ -1,0 +1,10 @@
+{
+ "change days": "Details",
+ "changes": "Main information",
+ "pg.change_days.before": "Previous Value",
+ "pg.change_days.current": "Current Value",
+ "pg.change_days.field_name": "Field",
+ "pg.changes.before": "Previous Value",
+ "pg.changes.current": "Current Value",
+ "pg.changes.field_name": "Field"
+}

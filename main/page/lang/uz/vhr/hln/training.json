@@ -1,0 +1,15 @@
+{
+ "address": "Manzil",
+ "begin date": "Boshlanish sanasi",
+ "delete $1": "O'chirish $1",
+ "mentor name": "Mentor",
+ "pg.persons.name": "F. I. O.",
+ "pg.persons.rownum": "№",
+ "save": "Saqlash",
+ "select": "Tanlash",
+ "subject group name": "Mavzular guruhi",
+ "subject name": "Mavzu",
+ "there is no subjects depends on for this subject group, select another one": "Ushbu mavzu guruhi uchun hech qanday mavzu tanlanmagan. Treninglarni muvaffaqiyatli shakllantirish uchun ushbu guruh uchun tegishli trening mavzularini ko'rsating.",
+ "training number": "Trening raqami",
+ "you must select at least one subject": "Kamida bitta mavzu tanlanishi kerak!"
+}

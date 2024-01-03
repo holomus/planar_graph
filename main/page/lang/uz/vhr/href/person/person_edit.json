@@ -1,0 +1,15 @@
+{
+ "add photo": "Fotosurat qo'shish",
+ "attach employee": "Tashkilotga biriktirish",
+ "attach employee $1{person name}?": "$1ni tashkilotga biriktirmoqchimisiz?",
+ "close": "Yopish",
+ "delete": "O'chirish",
+ "edit image": "Fotosuratni o'zgartirish",
+ "edit photo": "Fotosuratni o'zgartirish",
+ "email": "E-mail",
+ "location": "Joylashuv",
+ "more": "Qo'shimcha",
+ "pasport_series and number": "Pasport ma'lumotlari",
+ "phone number": "Telefon raqami",
+ "save photo": "Saqlash"
+}

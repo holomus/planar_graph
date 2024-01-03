@@ -1,0 +1,23 @@
+{
+ "active": "Active",
+ "add": "Add",
+ "begin time": "Start Time",
+ "coefficient": "Coefficient",
+ "coefficient must be greater than 1 for $1 rule(s)": "Coefficient must be greater than 1 for $1 rule(s)",
+ "delete $1": "Delete $1",
+ "division": "Department",
+ "end time": "End Time",
+ "main info": "General Information",
+ "name": "Name",
+ "passive": "Inactive",
+ "pg.rules.begin_time": "Start Time",
+ "pg.rules.end_time": "End Time",
+ "pg.rules.nighttime_coef": "Night-time Coefficient",
+ "pg.rules.rownum": "No.",
+ "policy month": "Policy month",
+ "policy rules": "Policy rules",
+ "save": "Save",
+ "save?": "Save?",
+ "state": "Status",
+ "there is intersection between $1 rule(s)": "There is intersection between $1 rule(s)"
+}

@@ -1,0 +1,17 @@
+{
+ "table.division_name": "Department",
+ "table.employee_name": "Employee",
+ "begin date": "Start Date",
+ "Billz credentials": "Billz Registration Data",
+ "end date": "End Date",
+ "get sales from Billz": "Get sales data from Billz",
+ "save": "Save",
+ "secret_key": "SECRET_KEY",
+ "subject (username)": "SUBJECT (USERNAME)",
+ "table.billz_office_id": "Department ID in Billz",
+ "table.billz_office_name": "Department name in Billz",
+ "table.billz_seller_id": "Seller ID in Billz",
+ "table.billz_seller_name": "Seller name in Billz",
+ "table.sale_amount": "Amount",
+ "table.sale_date": "Date"
+}

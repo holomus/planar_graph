@@ -1,0 +1,745 @@
+<script biruni>
+page.require("amcharts4",
+             "amcharts4-theme-animated");
+page.init(function(param) {
+  var eventClass = { I: '#1bc5bd', U: '#6993ff', D: '#f64e60' };
+  
+  function eventBadge(row) {
+    return `<span class="row m-0"><span class="fa fa-circle mt-1" style="color:${ eventClass[row.event] }"></span>`;
+  }
+
+  _.each(['table_personal_audit', 'table_contact_audit'], x => {
+    var pq = page.query(x);
+
+    pq.param(param);
+    pq.limit(10);
+    page.grid(x).disable();
+
+    page.grid(x).asHtml('event_html', 'event, event_name', row => {
+      return `${ eventBadge(row) }&nbsp;<span>${ row.event_name }</span>`;
+    });
+  })
+});
+page.ctrl(function(scope, fi, t, model, bHttp, $timeout, bConfig) {
+  moment.locale(bConfig.langCode());
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = { data: {} },
+      xy_chart;
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // audit model
+  var auditModal = page.$content.find("form[name='auditModal']>.modal");
+
+  function showAuditModal() {
+    $timeout(function() {
+      page.untouch(scope.auditModal);
+      auditModal.modal('show');
+    });
+  }
+
+  function hideAuditModal() {
+    auditModal.modal('hide');
+  }
+
+  function auditInfo(audit_type) {
+    var table_name = 'table_' + audit_type + '_audit';
+    
+    q.audit_type = audit_type;
+    p.title = audit_type == 'personal' ? t("personal audit info")() : t("contact audit info")();
+
+    page.grid(table_name).fetch();
+    page.grid(table_name).enable();
+    
+    showAuditModal();
+  }
+
+  // edit
+  function editPersonal() {
+    scope.modal_content = 'personal_vhr321';
+    p.title = t('edit personal info')();
+    p.data = _.pick(d, 'first_name', 'last_name', 'middle_name', 'birthday', 'gender', 'nationality_id', 'nationality_name', 'tin', 'iapa', 'npin', 'note');
+    p.saveFunc = fi.save_personal;
+    q.npin_valid = true;
+
+    showModal();
+  }
+
+  function editContacts() {
+    scope.modal_content = 'contacts_vhr321';
+    p.title = t('edit contacts')();
+    p.data = _.pick(d, 'main_phone', 'email', 'address', 'legal_address', 'region_id', 'extra_phone', 'corporate_email');
+    p.saveFunc = fi.save_contacts;
+    q.phone_is_unique = true;
+    q.email_is_unique = true;
+
+    showModal();
+  }
+
+  // nationality
+  function setNationality(row) {
+    if (!row) return;
+    p.data.nationality_id = row.nationality_id;
+    p.data.nationality_name = row.name;
+  }
+
+  function addNationality(value) {
+    fi.add_nationality(null, setNationality, { name: value });
+  }
+
+  function selectNationality() {
+    fi.select_nationality(null, setNationality);
+  }
+
+  function validatePhone() {
+    if (p.data.main_phone) {
+      if (p.data.main_phone == q.phone_origin) {
+        q.phone_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':phone_is_unique', { main_phone: p.data.main_phone, person_id: d.employee_id }).then(function(result) {
+          q.phone_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else {
+      q.phone_is_unique = true;
+    }
+  }
+
+  function validateNpin() {
+    if (p.data.npin) {
+      if (p.data.npin == d.npin) {
+        q.npin_valid = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':npin_validate', { npin: p.data.npin }).then(function(result) {
+          q.npin_valid = result == "Y";
+        }, page.alert);
+      }
+    } else {
+      q.npin_valid = true;
+    }
+  }
+
+  function validateEmail() {
+    if (p.data.email) {
+      if (p.data.email == q.email_origin) {
+        q.email_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':email_is_unique', { email: p.data.email }).then(function(result) {
+          q.email_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.email_is_unique = true;
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.modal)) {
+      p.data.employee_id = d.employee_id;
+
+      p.saveFunc(p.data).then(function() {
+        _.extend(d, p.data);
+        d.region_name = q.regions_dict[d.region_id];
+        d.gender_name = q.genders_dict[d.gender];
+        q.email_origin = p.data.email;
+
+        hideModal();
+
+        page.emit('person_change');
+      }, page.alert);
+    }
+  }
+
+  // chart
+  function xyChart(data, this_month) {
+    if (xy_chart) {
+      xy_chart.data = data;
+      xy_chart.invalidateData();
+    }
+
+    let elem = page.$content.find('.xy-chart');
+
+    assert(elem.length, "day stats xy chart element is not found");
+    // Create chart instance
+    let chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+
+    chart.paddingBottom = 0;
+    chart.paddingLeft = 0;
+
+    // Create category axis
+    let categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.dataFields.category = "month";
+    categoryAxis.startLocation = 0.5;
+
+    // Create value axis
+    let valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    if (chart.data.length > 0) {
+      valueAxis.renderer.minLabelPosition = 0.01;
+      valueAxis.maxPrecision = 0;
+      valueAxis.min = 0;
+      valueAxis.max = 32;
+      valueAxis.strictMinMax = true;
+    } else {
+      let noDataContainer = chart.chartContainer.createChild(am4core.Container);
+      noDataContainer.align = 'center';
+      noDataContainer.isMeasured = false;
+      noDataContainer.x = am4core.percent(50);
+      noDataContainer.horizontalCenter = 'middle';
+      noDataContainer.y = am4core.percent(35);
+      noDataContainer.verticalCenter = 'middle';
+      noDataContainer.layout = 'vertical';
+
+      let messageLabel = noDataContainer.createChild(am4core.Label);
+      messageLabel.html = `
+      <div style="width: 50vw;">
+        <div class="text-center">
+          <i style="font-size: 6rem; color: #e0e0e0" class="far fa-chart-bar"></i>
+        </div>
+        <div class="font-weight-bolder text-center">
+          <h5>${ q.t_no_data }</h5>
+        </div>
+      </div>
+      `;
+      messageLabel.maxWidth = 300;
+      messageLabel.wrap = true;
+    }
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "month";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.tooltipText = "{valueY}";
+      series.tooltip.pointerOrientation = "vertical";
+      series.tooltip.getFillFromObject = false;
+      series.tooltip.background.fill = color;
+      series.fill = color;
+      series.fillOpacity = 0.3;
+      series.stroke = color;
+      series.legendSettings.valueText = " ";
+      series.hidden = hidden;
+      series.sequencedInterpolation = true;
+      series.hiddenState.sequencedInterpolation  = false;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+
+      // range for this month
+      if (this_month) {
+        let seriesRange = categoryAxis.createSeriesRange(series);
+        seriesRange.contents.strokeDasharray = "3";
+        seriesRange.contents.stroke = color
+        seriesRange.contents.strokeWidth = 2;
+
+        let pattern = new am4core.LinePattern();
+        pattern.rotation = 45;
+        pattern.stroke = am4core.color(color);
+        pattern.width = 4;
+        pattern.height = 4;
+        pattern.gap = 3;
+
+        seriesRange.contents.fill = pattern;
+        seriesRange.contents.fillOpacity = 0.3;
+
+        seriesRange.category = this_month;
+        seriesRange.endCategory = this_month;
+
+        // this bullet animation is going to be used in prediction
+
+        // bullet = series.bullets.push(new am4charts.CircleBullet());
+        // bullet.disabled = true;
+        // bullet.propertyFields.disabled = "disabled";
+        // bullet.fill = color;
+
+        // function animateBullet(bullet) {
+        //   let animation = bullet.animate([{ property: "scale", from: 1, to: 3 }, { property: "opacity", from: 1, to: 0 }], 1000, am4core.ease.circleOut);
+        //   animation.events.on("animationended", function(event){
+        //     animateBullet(event.target.object);
+        //   });
+        // }
+
+        // bullet.events.on("inited", function(event){
+        //   animateBullet(event.target.circle);
+        // });
+
+        // if (this_month && data.length > 0) {
+        //   _.last(chart.data).disabled = false;
+        // }
+      }
+    }
+
+    _.each(q.xy_series, (v, k) => {
+      addLineSeries(v.name, v.value, v.color, v.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    // legend
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'bottom';
+
+    chart.legend.itemContainers.template.events.on("hit", function(ev) {
+      let key = ev.target.dataItem.dataContext.dataFields.valueY;
+      q.xy_series[key].hidden = !q.xy_series[key].hidden;
+    });
+
+    xy_chart = chart;
+  }
+
+  function reloadXyChart(result) {
+    let format = result.is_one_year == 'Y' ? 'MMM' : 'MMM YYYY';
+
+    d.staff_id = result.staff_id;
+    d.months = _.mapRows(result.months, ['month', 'late', 'early', 'intime', 'not_come']);
+
+    let last_month = (_.last(d.months) || {}).month;
+
+    _.each(d.months, x => {
+      let month = moment(x.month, 'DD.MM.YYYY');
+
+      x.full_month = month.format('MMMM YYYY');
+      x.full_month = x.full_month[0].toUpperCase() + x.full_month.slice(1);
+
+      x.month = month.format('MMM');
+      x.month = x.month[0].toUpperCase() + x.month.slice(1);
+    });
+
+    d.first_month = (_.first(d.months) || {}).full_month || '';
+    d.last_month = (_.last(d.months) || {}).full_month || '';
+
+    let this_month = ('01.' + moment().format('MM.YYYY')) == last_month ? (_.last(d.months) || {}).month : null;
+
+    $timeout(function() {
+      // am4core.options.queue = true;
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        xyChart(d.months, this_month);
+      });
+    });
+  }
+
+  function changeFilter() {
+    page.post(':load_xy_chart_stats', _.pick(d, 'employee_id', 'period_kind')).then(reloadXyChart, page.alert);
+  }
+
+  q.regions_dict = _.object(q.regions);
+  q.genders_dict = _.object(q.genders);
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  q.genders = _.mapRows(q.genders, ['kind', 'name']);
+  q.phone_origin = d.main_phone;
+  q.email_origin = d.email;
+  q.period_kinds = _.mapRows(q.period_kinds, ['kind', 'name']);
+  q.t_no_data = t('There is no data to show on this chart')();
+
+  d.region_name = q.regions_dict[d.region_id];
+  d.gender_name = q.genders_dict[d.gender];
+
+  q.xy_series = {};
+  _.chain([
+    [t("intime")(), "intime", "#06D6A0", false],
+    [t("late")(), "late", "#FFD166", true],
+    [t("early")(), "early", "#F4A261", true],
+    [t("not come")(), "not_come", "#EF476F", true]
+  ]).mapRows(['name', 'value', 'color', 'hidden']).each(x => {
+    q.xy_series[x.value] = x;
+  });
+
+  reloadXyChart(d);
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>personal</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-secondary mr-2" ng-if="fi.personal_audit" ng-click="auditInfo('personal')"><t>audit</t></button>
+          <button type="button" class="btn btn-outline-secondary" ng-if="fi.save_personal" ng-click="editPersonal()"><t>edit</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>first name</t></label>
+              <span class="form-view">{{ d.first_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>last name</t></label>
+              <span class="form-view">{{ d.last_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>middle name</t></label>
+              <span class="form-view">{{ d.middle_name }}</span>
+            </div>
+            <div class="form-group" ng-if="d.note">
+              <label><t>note</t></label>
+              <span class="form-view">{{ d.note }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>nationality</t></label>
+              <span class="form-view">{{ d.nationality_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>birthday</t></label>
+              <span class="form-view">{{ d.birthday }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>gender</t></label>
+              <span class="form-view">{{ d.gender_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>npin</t></label>
+              <span class="form-view">{{ d.npin }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>iapa</t></label>
+              <span class="form-view">{{ d.iapa }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>tin</t></label>
+              <span class="form-view">{{ d.tin }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>contacts</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-secondary mr-2" ng-if="fi.contact_audit" ng-click="auditInfo('contact')"><t>audit</t></button>
+          <button type="button" class="btn btn-outline-secondary" ng-if="fi.save_contacts" ng-click="editContacts()"><t>edit</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>main phone</t></label>
+              <span class="form-view">{{ d.main_phone }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>extra phone</t></label>
+              <span class="form-view">{{ d.extra_phone }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>email</t></label>
+              <span class="form-view">{{ d.email }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>corporate email</t></label>
+              <span class="form-view">{{ d.corporate_email }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>region</t></label>
+              <span class="form-view">{{ d.region_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>address</t></label>
+              <span class="form-view">{{ d.address }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>legal address</t></label>
+              <span class="form-view">{{ d.legal_address }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom gutter-b" ng-show="d.staff_id">
+      <div class="card-header" style="display: block;">
+        <div class="row">
+          <div class="col-sm-24 col-md col-lg col-xxl mt-md-3">
+            <div class="card-title">
+              <h3 class="card-label">
+                <t p1="d.first_month" ng-if="d.first_month && d.first_month == d.last_month">employee attendence for $1{first_month}</t>
+                <t p1="d.first_month" p2="d.last_month" ng-if="d.first_month != d.last_month">employee attendence for period ($1{first_month} - $2{last_month})</t>
+                <t ng-if="!d.first_month">employee attendence</t>
+              </h3>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md-10 col-lg-8 col-xxl-5 mt-3">
+            <ui-select ng-model="d.period_kind" ng-change="changeFilter()">
+              <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+              <ui-select-choices repeat="item.kind as item in q.period_kinds | filter: $select.search">
+                {{ item.name }}
+              </ui-select-choices>
+            </ui-select>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="xy-chart" style="min-height: 300px;"></div>
+      </div>
+    </div>
+  </form>
+
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div ng-include="modal_content"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="auditModal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>created by</t></label>
+                  <span class=form-view>{{ d.created_by_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>created on</t></label>
+                  <span class=form-view>{{ d.created_on }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>modified by</t></label>
+                  <span class=form-view>{{ d.modified_by_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>modified on</t></label>
+                  <span class=form-view>{{ d.modified_on }}</span>
+                </div>
+                <div class="b-right mb-4">
+                  <b-grid-controller name="table_personal_audit" ng-if="q.audit_type == 'personal'"/>
+                  <b-grid-controller name="table_contact_audit" ng-if="q.audit_type == 'contact'"/>
+                </div>
+              </div>
+            </div>
+            <div ng-if="q.audit_type == 'personal'">
+              <b-grid name="table_personal_audit" required="context_id" on-dblclick="auditDetail(row)" sort="-timestamp" search="column_name">
+                <b-row>
+                  <b-col name="column_name" size=5/>
+                  <b-col name="event_name" as-html="event_html" size=5/>
+                  <b-col name="timestamp" size=4/>
+                  <b-col name="value" size=5/>
+                  <b-col name="user_name" size=5/>
+                </b-row>
+  
+                <b-action>
+                  <button type="button" class="btn btn-default" ng-click="auditDetail(row)" ng-if="page.isDialog()"><t>detail</t></button>
+                </b-action>
+  
+                <b-filter name="column_key" decorate-with="column_name"/>
+                <b-filter name="event" decorate-with="event_name"/>
+                <b-filter name="timestamp"/>
+                <b-filter name="user_id" decorate-with="user_name"/>
+              </b-grid>
+            </div>
+            <div ng-if="q.audit_type == 'contact'">
+              <b-grid name="table_contact_audit" required="context_id" on-dblclick="auditDetail(row)" sort="-timestamp" search="column_name">
+                <b-row>
+                  <b-col name="column_name" size=5/>
+                  <b-col name="event_name" as-html="event_html" size=5/>
+                  <b-col name="timestamp" size=4/>
+                  <b-col name="value" size=5/>
+                  <b-col name="user_name" size=5/>
+                </b-row>
+  
+                <b-action>
+                  <button type="button" class="btn btn-default" ng-click="auditDetail(row)" ng-if="page.isDialog()"><t>detail</t></button>
+                </b-action>
+  
+                <b-filter name="column_key" decorate-with="column_name"/>
+                <b-filter name="event" decorate-with="event_name"/>
+                <b-filter name="timestamp"/>
+                <b-filter name="user_id" decorate-with="user_name"/>
+              </b-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script type="text/ng-template" id="personal_vhr321">
+    <div class="form-group">
+      <label><t>first name</t><r/></label>
+      <input type="text" class="form-control" ng-model="p.data.first_name" b-maxlength="250" required>
+    </div>
+    <div class="form-group">
+      <label><t>last name</t><r ng-if="q.crs.last_name == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.last_name" ng-required="q.crs.last_name == 'Y'" b-maxlength="250">
+    </div>
+    <div class="form-group">
+      <label><t>middle name</t><r ng-if="q.crs.middle_name == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.middle_name" ng-required="q.crs.middle_name == 'Y'" b-maxlength="250">
+    </div>
+    <div class="form-group">
+      <label><t>nationality</t></label>
+      <b-input name="nationalities"
+               model="p.data.nationality_name | name"
+               model-key="p.data.nationality_id | nationality_id"
+               is-add="fi.add_nationality"
+               is-view="fi.select_nationality"
+               on-add="addNationality(value)"
+               on-view="selectNationality()">
+        {{ row.name }}
+      </b-input>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-12 form-group">
+        <label><t>birthday</t><r ng-if="q.crs.birthday == 'Y'"/></label>
+        <input type="text" class="form-control" ng-model="p.data.birthday" ng-required="q.crs.birthday == 'Y'" b-date-picker="DD.MM.YYYY"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label><t>gender</t></label><br/>
+      <label class="radio" ng-repeat="gender in q.genders">
+        <input type="radio" name="gender" value="{{ gender.kind }}" ng-model="p.data.gender"/>
+        <span>{{ gender.name }}</span>
+      </label>
+    </div>
+    <div class="form-group">
+      <label><t>npin</t><r ng-if="q.crs.npin == 'Y'"/></label>
+      <input type="text"
+             class="form-control"
+             ng-model="p.data.npin"
+             ng-change="validateNpin()"
+             ng-model-options="{ debounce: 500 }"
+             b-validate="{ s: q.npin_valid || p.data.npin.length == 0 }"
+             ng-required="q.crs.npin == 'Y'"
+             b-maxlength="14"/>
+      <span class="text-danger" ng-hide="q.npin_valid"><t>this npin is already used</t></span>
+    </div>
+    <div class="form-group">
+      <label><t>iapa</t><r ng-if="q.crs.iapa == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.iapa" ng-required="q.crs.iapa == 'Y'" b-maxlength="14"/>
+    </div>
+    <div class="form-group">
+      <label><t>tin</t></label>
+      <input type="text" class="form-control" ng-model="p.data.tin" b-maxlength="18"/>
+    </div>
+    <div class="form-group">
+      <label><t>note</t></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.note" b-maxlength="500"></textarea>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="contacts_vhr321">
+    <div class="form-group">
+      <label><t>main phone</t><r ng-if="q.crs.phone_number == 'Y'"/></label>
+      <input type="text"
+             class="form-control"
+             ng-model="p.data.main_phone"
+             ng-change="validatePhone()"
+             ng-model-options="{ debounce: 500 }"
+             ng-required="q.crs.phone_number == 'Y'"
+             b-validate="{ s: q.phone_is_unique || p.data.main_phone.length == 0 }"
+             b-telinput
+             b-maxlength="100"/>
+      <span class="text-danger" ng-hide="p.data.main_phone.length == 0 || q.phone_is_unique"><t>main phone should be unique</t></span>
+    </div>
+    <div class="form-group" >
+      <label><t>extra phone</t></label>
+      <input type="text" class="form-control" ng-model="p.data.extra_phone" b-maxlength="100"/>
+    </div>
+    <div class="form-group">
+      <label><t>email</t><r ng-if="q.crs.email == 'Y'"/></label>
+      <input type="email"
+             class="form-control"
+             ng-model="p.data.email"
+             ng-change="validateEmail()"
+             ng-model-options="{ debounce: 500 }"
+             ng-required="q.crs.email == 'Y'"
+             b-validate="{ s: q.email_is_unique || p.data.email.length == 0 }"
+             b-maxlength="300">
+      <span class="text-danger" ng-hide="p.data.email.length == 0 || q.email_is_unique"><t>email phone should be unique</t></span>
+    </div>
+    <div class="form-group">
+      <label><t>corporate email</t></label>
+      <input type="email" class="form-control" ng-model="p.data.corporate_email" b-maxlength="300">
+    </div>
+    <div class="form-group" ng-if="q.crs.region == 'N'">
+      <label><t>region</t></label>
+      <b-tree-select
+        origin="q.regions"
+        id-key="region_id"
+        model="p.data.region_id"/>
+    </div>
+    <div class="form-group" ng-if="q.crs.region == 'Y'">
+      <label><t>region</t><r/></label>
+      <b-tree-select
+        origin="q.regions"
+        id-key="region_id"
+        model="p.data.region_id"
+        required/>
+    </div>
+    <div class="form-group">
+      <label><t>address</t><r ng-if="q.crs.address == 'Y'"/></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.address" ng-required="q.crs.address == 'Y'" b-maxlength="500"></textarea>
+    </div>
+    <div class="form-group">
+      <label><t>legal address</t><r ng-if="q.crs.legal_address == 'Y'"/></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.legal_address" ng-required="q.crs.legal_address == 'Y'" b-maxlength="300"></textarea>
+    </div>
+  </script>
+</div>

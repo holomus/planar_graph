@@ -1,0 +1,14 @@
+{
+ "copiable tracks are succesfully copied": "Отметки успешно скопированы",
+ "fill": "Заполнить",
+ "no copiable tracks found for any employees": "Не найдены отметки для копирования",
+ "no copiable tracks found for selected $1{employee count} employees": "Не найдены отметки для $1 сотрудник(ов)",
+ "pg.employees.division_name": "Подразделение",
+ "pg.employees.employee_number": "Таб. номер",
+ "pg.employees.hiring_date": "Дата приема",
+ "pg.employees.job_name": "Должность",
+ "pg.employees.name": "ФИО",
+ "pg.employees.tracks_count": "Кол-во отметок",
+ "successfully data loaded, $1{loaded employee count} employee(s) have(s) copiable tracks": "У $1 сотрудник(ов) есть отметки для копирования",
+ "successfully data loaded, $1{loaded employee count} out of $2{selected employee count} employee(s) have(s) copiable tracks": "У $1 сотрудник(ов) есть отметки для копирования из $2"
+}

@@ -1,0 +1,9 @@
+{
+ "$1{exceed_amount} licenses required to open access": "Требуется $1 подписок для восстановления доступа",
+ "$1{lic_cnt} licenses required": "Требуется $1 подписок",
+ "available": "Доступно",
+ "buy license": "Продлить подписку",
+ "dismissing nonworking employees will open access": "Увольте неработающих сотрудников для восстановления доступа",
+ "montly license balance analysis": "Помесячный анализ подписки",
+ "required": "Требуется"
+}

@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{relation_degree_count} relation degree(s)?": "<b>$1</b>ta qarindoshlik daraja(lari)ni o'chirib tashlash?",
+ "delete $1{relation_degree_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.name": "Nomi",
+ "table.relation_degree_id": "ID",
+ "table.state_name": "Holat"
+}

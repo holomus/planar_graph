@@ -1,0 +1,8 @@
+{
+ "pg.person_references.end_date": "Valid Until",
+ "pg.person_references.name": "Name",
+ "pg.person_references.ref_date": "Reference Date",
+ "pg.person_references.ref_number": "Reference Number",
+ "pg.person_references.reference_type_name": "Reference Type",
+ "pg.person_references.start_date": "Valid From"
+}

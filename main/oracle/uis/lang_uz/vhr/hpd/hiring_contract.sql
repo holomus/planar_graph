@@ -1,0 +1,45 @@
+prompt PATH TRANSLATE /vhr/hpd/hiring_contract
+begin
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_accrual','Hisoblash yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_deduction','Ushlab qolish yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_employee','Xodim yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_employment_source','Bandlik manbasi yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_fte','Ish vaqti turi qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_job','Lavozim yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_rank','Malaka darajasini yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_schedule','Ish jadvali qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$add_wage_scale','Tarif setkasi qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_accrual','Hisoblashni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_deduction','Ushlab qolishni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_employee','Xodimni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_employment_source','Bandlik manbasi tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_fte','Ish vaqti turi tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_job','Lavozim tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_rank','Daraja tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_robot','Ish o''rni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_schedule','Ish jadvali tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+add$select_wage_scale','Tarif setkasini tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_accrual','Hisoblash yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_deduction','Ushlab qolish yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_employee','Xodim yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_employment_source','Bandlik manbasi yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_fte','Ish vaqti turi qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_job','Lavozim yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_rank','Malaka darajasini yaratish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_schedule','Ish jadvali qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$add_wage_scale','Tarif setkasi qo''shish');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_accrual','Hisoblashni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_deduction','Ushlab qolishni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_employee','Xodimni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_employment_source','Bandlik manbasi tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_fte','Ish vaqti turi tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_job','Lavozim tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_rank','Daraja tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_robot','Ish o''rni tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_schedule','Ish jadvali tanlash');
+uis.lang_uz('#a:/vhr/hpd/hiring_contract+edit$select_wage_scale','Tarif setkasini tanlash');
+uis.lang_uz('#f:/vhr/hpd/hiring_contract+add','Fuqarolik-huquqiy tusdagi shartnoma asosida qabul qilish (yaratish)');
+uis.lang_uz('#f:/vhr/hpd/hiring_contract+edit','Fuqarolik-huquqiy tusdagi shartnoma asosida qabul qilish (tahrirlash)');
+commit;
+end;
+/

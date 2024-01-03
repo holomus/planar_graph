@@ -1,0 +1,5 @@
+{
+ "pg.labor_function.before": "Previous Value",
+ "pg.labor_function.current": "Current Value",
+ "pg.labor_function.field_name": "Field"
+}

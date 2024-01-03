@@ -1,0 +1,38 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+
+  d.person_documents = _.mapRows(d.person_documents, ['document_id', 'doc_type_name', 'doc_series', 'doc_number', 'issued_by', 'issued_date', 'begin_date','expiry_date','note', 'file_names']);
+
+  function downloadDocs(row) {
+    window.open(page.url("download_files", { document_id: row.document_id }));
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-body">
+    <div class="row mb-2">
+      <div class="offset-sm-12 col-sm-12">
+        <b-pg-controller name="person_documents"/>
+      </div>
+    </div>
+    <b-pg-grid name="person_documents" local-data="d.person_documents" min-height="'auto'" search="doc_series" sort="doc_series">
+      <b-pg-row>
+        <b-pg-col name="doc_type_name" size="8"/>
+        <b-pg-col name="doc_series" size="3"/>
+        <b-pg-col name="doc_number" size="7"/>
+        <b-pg-col name="issued_by" size="3"/>
+        <b-pg-col name="action" size="3">
+          <div class="text-center" ng-if="row.file_names">
+            <button type="button" class="btn btn-icon btn-default" ng-click="downloadDocs(row)">
+              <i class="fa fa-download"/>
+            </button>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+      <b-pg-extra-col name="file_names"/>
+    </b-pg-grid>
+  </div>
+</div>

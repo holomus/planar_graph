@@ -1,0 +1,20 @@
+{
+ "accuracy": "Aniqlik (metrlarda)",
+ "accuracy $1 m": "Aniqlik (metrlarda): $1 m",
+ "active": "Faol",
+ "address": "Manzil",
+ "bssids": "BSSID",
+ "code": "Kod",
+ "if you have several bssids, you must seperate with ; (semicolon)": "Agar bir nechta BSSID bo'lsa, ularni ajratish uchun \";\" dan foydalaning.",
+ "latlng": "Koordinatalar",
+ "location type": "Joylashuv turi",
+ "name": "Nom",
+ "no": "Yo'q",
+ "passive": "Faol emas",
+ "prohibited": "Qaydlar cheklovi mavjudmi",
+ "region name": "Hudud",
+ "save": "Saqlash",
+ "state": "Holat",
+ "timezone name": "Vaqt zonasi",
+ "yes": "Ha"
+}

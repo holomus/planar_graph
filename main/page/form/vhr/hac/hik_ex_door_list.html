@@ -1,0 +1,108 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+
+  let tg = page.grid('table');
+  let status_class = { 0: 'success', 1: 'success', 2: 'success', 3: 'success', 4: 'danger' };
+  
+  tg.asHtml('state_html', 'door_state, door_state_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ status_class[row.door_state] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.door_state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, $timeout, fi, t, param, bAlert) {
+  var q = {
+    is_subpage: scope.bPage.pageType() == 'subpage',
+  };
+
+  function deleteAction(message, door_code) {
+    page.confirm(message, function() {
+      fi.delete({ door_code: door_code, server_id: param.server_id })
+        .then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete door $1{door_name}?')(row.door_name), row.door_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{door_count} door(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'door_code'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  async function getDoors() {
+    let data = { 
+      server_id: param.server_id,
+      pageNo: 1,
+    };
+    try {
+      let result = { item_count: 1, };
+      while (result.item_count > 0) {
+        result = await page.post(':get_doors', data);
+        data.pageNo += 1;
+      }
+      page.reload();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="getDoors()">get doors from HCP</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-12">
+        <button type="button" class="btn btn-primary" ng-click="getDoors()"><t>get doors from HCP</t></button>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table"
+            required="door_code, door_name"
+            on-check="onCheck(checked)"
+            sort="-modified_on"
+            search="door_name, device_code"
+            searchable="door_code"
+            extra-columns="created_on">
+      <b-row>
+        <b-col name="door_code" size=4/>
+        <b-col name="door_name" size=4/>
+        <b-col name="door_no" size=3/>
+        <b-col name="device_code" size=3/>
+        <b-col name="region_code" size=3/>
+        <b-col name="door_state_name" as-html="state_html" size=3/>
+        <b-col name="modified_on" size=3/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+      
+      <b-filter name="device_code"/>
+      <b-filter name="region_code"/>
+      <b-filter name="door_state"/>
+      <b-filter name="door_state" decorate-with="door_state_name"/>
+    </b-grid>
+  </div>
+</div>

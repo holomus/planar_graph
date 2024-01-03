@@ -1,0 +1,12 @@
+{
+ "areas": "Zones",
+ "drivers": "Drivers",
+ "object": "Object",
+ "predict": "Predict",
+ "predict end": "End of forecast period",
+ "predict start": "Beginning of forecast period",
+ "predict type": "Forecast type",
+ "successfully predicted $1{success_cnt} categories": "Successfully predicted <b>$1</b> categories",
+ "train end": "End of training period",
+ "train start": "Beginning of the training period"
+}

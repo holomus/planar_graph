@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another funnel": "Kod noyob bo'lishi kerak",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi kerak",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "stages": "Bosqichlar",
+ "state": "Holat"
+}

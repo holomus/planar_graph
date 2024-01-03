@@ -1,0 +1,27 @@
+select p.Device_Id Old_Device_Id, Qr.Device_Id New_Device_Id
+  from Htt_Devices p
+  join (select q.Device_Id, q.Location_Id
+          from Htt_Devices q
+         where q.Company_Id = 181
+           and q.Device_Id in (8444, 8447, 8467, 8469, 8502, 9001, 9541, 9581, 9643, 10102, 11761)) Qr
+    on Qr.Location_Id = p.Location_Id
+   and Qr.Device_Id <> p.Device_Id
+ where p.Company_Id = 181
+   and p.Device_Type_Id = 2
+   and p.Location_Id in (285, 293, 297, 301, 305, 313, 321, 337, 341, 345, 2983)
+   and p.Device_Id not in (8444,
+                           8447,
+                           8467,
+                           8469,
+                           8502,
+                           9001,
+                           9541,
+                           9581,
+                           9643,
+                           10102,
+                           11761,
+                           931,
+                           11741,
+                           10101,
+                           9686,
+                           8616);

@@ -1,0 +1,23 @@
+{
+ "$1{application_number}": "Application №$1",
+ "application number": "Number",
+ "change status from approved to completed?": "Complete application?",
+ "change status from cancel to draft?": "Send to draft application?",
+ "change status from draft to waiting?": "Send aapplication?",
+ "change status from waiting to approved?": "Approve application?",
+ "change status from waiting to canceled?": "Do you really want to cancel application?",
+ "create vacancy by application": "Create application",
+ "created by": "Created by",
+ "created on": "Created on",
+ "division name": "Department",
+ "edit": "Edit",
+ "job name": "Job",
+ "main": "Main",
+ "modified by": "Modified by",
+ "modified on": "Modified on",
+ "note": "Note",
+ "quantity": "Qty people to hire",
+ "requirements": "Requirements",
+ "responsibilities": "Responsibilities",
+ "wage": "Salary"
+}

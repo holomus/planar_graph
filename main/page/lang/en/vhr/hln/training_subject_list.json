@@ -1,0 +1,14 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{subject_count} subject(s)?": "Do you really want to delete <b>$1</b> subject(s)?",
+ "delete subject $1{subject_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.subject_id": "ID"
+}

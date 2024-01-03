@@ -1,0 +1,19 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1 job(s)?": "Удалить должности в количестве <b>$1</b>?",
+ "delete job $1?": "Удалить должность <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.division_names": "Отделы",
+ "table.expense_coa_name": "Счет затрат",
+ "table.expense_ref_set_names": "Детали затрат",
+ "table.job_group_name": "Группа должностей",
+ "table.job_id": "ИД",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата последнего изменения",
+ "table.name": "Название",
+ "table.role_names": "Роли",
+ "table.state_name": "Статус"
+}

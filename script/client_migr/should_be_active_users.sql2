@@ -1,0 +1,19 @@
+select *
+  from Md_Users p
+ where p.Company_Id = 580
+   and exists (select *
+          from Href_Staffs q
+         where q.Company_Id = 580
+           and q.Employee_Id = p.User_Id
+           and q.Dismissal_Date is null)
+   and exists (select *
+          from Mhr_Employees q
+         where q.Company_Id = 580
+           and q.Employee_Id = p.User_Id
+           and q.State = 'A')
+   and exists (select *
+          from Htt_Tracks Tr
+         where Tr.Company_Id = 580
+           and Tr.Person_Id = p.User_Id
+           and Tr.Track_Date >= to_date('01.02.2023', 'dd.mm.yyyy'))
+   and p.State = 'P';

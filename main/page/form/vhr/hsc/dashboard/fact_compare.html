@@ -1,0 +1,282 @@
+<script biruni>
+page.header(true);
+page.require("amcharts4", "amcharts4-theme-animated");
+page.ctrl(function(scope, model, t, $timeout) {
+  let d = _.omit(model, 'references'), q = model.references, xy_chart;
+
+  q.months = [
+    { id: '1', name: t('january')() },
+    { id: '2', name: t('february')() },
+    { id: '3', name: t('march')() },
+    { id: '4', name: t('april')() },
+    { id: '5', name: t('may')() },
+    { id: '6', name: t('june')() },
+    { id: '7', name: t('july')() },
+    { id: '8', name: t('august')() },
+    { id: '9', name: t('september')() },
+    { id: '10', name: t('october')() },
+    { id: '11', name: t('november')() },
+    { id: '12', name: t('december')() }
+  ];
+  q.types_dict = _.object(q.plan_types);
+  q.plan_types = _.mapRows(q.plan_types, ['type', 'name']);
+  q.t_no_data_message = t('there is no data to show on this chart.')();
+
+  am4core.ready(() => am4core.useTheme(am4themes_animated));
+  reloadCharts([]);
+
+  // area
+  function setArea(row) {
+    if (!row) return;
+    d.area_id = row.area_id;
+    d.area_name = row.name;
+
+    setDriver({});
+  }
+
+  // driver
+  function changeDriverQuery(query, value) {
+    query.param({ area_id: d.area_id });
+    query.searchValue(value);
+  }
+
+  function setDriver(row) {
+    d.driver_id = row.driver_id;
+    d.driver_name = row.name;
+  }
+
+  function xyChart() {
+    if (xy_chart) {
+      xy_chart.data = d.facts;
+      xy_chart.invalidateData();
+    }
+
+    let elem = page.$content.find('.facts-xy-chart');
+
+    assert(elem.length, "facts xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+    chart.data = d.facts;
+
+    // Create category axis
+    var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+    dateAxis.events.on("dataitemsvalidated", function(ev) {
+      if (d.facts.length < 35) {
+        dateAxis.renderer.minGridDistance = 20;
+        dateAxis.renderer.labels.template.rotation = 25;
+      }
+      else {
+        dateAxis.renderer.minGridDistance = 50;
+        dateAxis.renderer.labels.template.rotation = 0;
+      }
+    });
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+
+      series.showOnInit = true;
+      series.dataFields.valueY = value;
+      series.dataFields.dateX = "fact_date";
+      series.strokeWidth = 2;
+      series.name = name;
+      series.tooltipText = "{name} - [bold]{valueY}[/]";
+      series.tooltip.getFillFromObject = false;
+      series.tooltip.background.fill = color;
+      series.tensionX = 0.8;
+      series.stroke = color;
+      series.hidden = hidden;
+      series.dataItems.template.locations.dateX = 0;
+
+      series.events.on("dataitemsvalidated", function(ev) {
+        series.hiddenInLegend = !(series.dataItem.values.valueY.count > 0);
+      });
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+    }
+
+    _.each(q.series, x => {
+      addLineSeries(x.name, x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.xAxis = dateAxis;
+    chart.cursor.behavior = "zoomY";
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    xy_chart = chart;
+  }
+
+  function randomDarkColor() {
+    return '#' +
+      Math.floor(Math.random() * 100 + 50).toString(16) +
+      Math.floor(Math.random() * 100 + 50).toString(16) +
+      Math.floor(Math.random() * 100 + 50).toString(16);
+  }
+
+  function prepareSeries() {
+    q.series = {};
+
+    let years = [];
+    for (i = d.begin_year; i <= d.end_year; i++) {
+      years.push([i + ' ' + q.types_dict[q.actual_type], i, i == d.end_year ? '#E76F51' : randomDarkColor(), false]);
+    }
+
+    _.chain([
+      ...years,
+      [d.end_year + ' ' + q.types_dict[q.weekly_type], q.weekly_type, "#2A9D8F", false],
+      [d.end_year + ' ' + q.types_dict[q.monthly_type], q.monthly_type, "#264653", true],
+      [d.end_year + ' ' + q.types_dict[q.quarterly_type], q.quarterly_type, "#A44A3F", true],
+      [d.end_year + ' ' + q.types_dict[q.yearly_type], q.yearly_type, "#3A6EA5", true],
+    ])
+    .mapRows(['name', 'value', 'color', 'hidden'])
+    .each(x => {
+      x.state = !x.hidden;
+      q.series[x.value] = x;
+    });
+  }
+
+  function reloadCharts(result) {
+    let last_year = !!result.length ? result[result.length - 1].fact_date.slice(6) : null;
+    d.facts = _.chain(result)
+      .map(x => {
+        // renamed Object key from q.actual_type => year
+        if (x.hasOwnProperty(q.actual_type)) {
+          Object.defineProperty(x, x.fact_date.slice(6), Object.getOwnPropertyDescriptor(x, q.actual_type));
+          delete x[q.actual_type];
+          x.fact_date = x.fact_date.slice(0, 6) + last_year;
+        }
+        x.fact_date = moment(x.fact_date, 'DD.MM.YYYY').format('YYYY-MM-DD');
+        return x;
+      })
+      .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x.fact_date))
+      .groupBy('fact_date')
+      .map((group, date) => {
+        let row = { fact_date: date };
+        _.each(group, x => {
+          delete x.fact_date;
+          row = { ...row, ...x };
+        });
+        return row;
+      })
+      .sortBy(x => new Date(x.fact_date))
+      .value();
+
+    prepareSeries();
+    xyChart();
+  }
+
+  function reload() {
+    if (!page.valid(scope.form)) return;
+    let data = _.pick(d, 'object_id', 'area_id', 'driver_id', 'begin_year', 'end_year', 'begin_month', 'end_month');
+    page.post(':filter', data).then(reloadCharts).catch(page.alert);
+    toggleFilter();
+  }
+
+  function toggleFilter() {
+    page.$content.find('.filter-panel').animate({ width: !q.show_filter ? 330 : 0 });
+    q.show_filter = !q.show_filter
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <form name="form" class="form-horizontal">
+    <div class="form-row mt-4">
+      <div class="col-sm-18">
+        <div class="card card-custom card-custom">
+          <div class="card-body">
+            <div class="facts-xy-chart" style="width: 100%; height: 400px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="card card-custom gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h3 class="card-label"><t>filter</t></h3>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-xl-12 mb-4">
+                <label><t>begin year</t></label><br/>
+                <input type="text" class="form-control" style="text-transform: capitalize;" b-date-picker="YYYY" view-format="YYYY" ng-model="d.begin_year" />
+              </div>
+              <div class="col-xl-12 mb-4">
+                <label><t>end year</t></label><br/>
+                <input type="text" class="form-control" style="text-transform: capitalize;" b-date-picker="YYYY" view-format="YYYY" ng-model="d.end_year" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xl-12 mb-4">
+                <label><t>begin month</t></label><br/>
+                <ui-select ng-model="d.begin_month">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.id as item in q.months | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+              <div class="col-xl-12 mb-4">
+                <label><t>end month</t></label><br/>
+                <ui-select ng-model="d.end_month">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.id as item in q.months | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>object</t><r/></label>
+              <b-input name="objects"
+                      model="d.object_name | name"
+                      model-key="d.object_id | object_id"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>area</t><r/></label>
+              <b-input name="areas"
+                      model="d.area_name | name"
+                      model-key="d.area_id | area_id"
+                      on-select="setArea(row)"
+                      on-delete="setArea({})"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>driver</t><r/></label>
+              <b-input name="drivers"
+                      model="d.driver_name | name"
+                      model-key="d.driver_id | driver_id"
+                      on-change="changeDriverQuery(query, value)"
+                      readonly="!d.area_id"
+                      required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <button type="button" ng-click="reload()" class="btn btn-primary w-100"><t>reload</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

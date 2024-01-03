@@ -1,0 +1,5 @@
+{
+ "pg.track.before": "Previous Value",
+ "pg.track.current": "Current Value",
+ "pg.track.field_name": "Field"
+}

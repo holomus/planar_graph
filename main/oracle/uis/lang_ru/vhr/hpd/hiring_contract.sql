@@ -1,0 +1,45 @@
+prompt PATH TRANSLATE /vhr/hpd/hiring_contract
+begin
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_accrual','Создать начисление');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_deduction','Создать удержание');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_employee','Создать сотрудника');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_employment_source','Создать источник занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_fte','Создать тип занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_job','Создать должность');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_rank','Создать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_schedule','Создать график работы');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$add_wage_scale','Добавить тарифную группу');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_accrual','Выбрать начисление');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_deduction','Выбрать удержание');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_employee','Выбрать сотрудника');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_employment_source','Выбрать источник занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_fte','Выбрать тип занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_job','Выбрать должность');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_rank','Выбрать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_robot','Выбрать позицию');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_schedule','Выбрать график работы');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+add$select_wage_scale','Выбрать тарифную группу');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_accrual','Создать начисление');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_deduction','Создать удержание');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_employee','Создать сотрудника');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_employment_source','Создать источник занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_fte','Создать тип занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_job','Создать должность');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_rank','Создать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_schedule','Создать график работы');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$add_wage_scale','Добавить тарифную группу');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_accrual','Выбрать начисление');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_deduction','Выбрать удержание');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_employee','Выбрать сотрудника');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_employment_source','Выбрать источник занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_fte','Выбрать тип занятости');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_job','Выбрать должность');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_rank','Выбрать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_robot','Выбрать позицию');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_schedule','Выбрать график работы');
+uis.lang_ru('#a:/vhr/hpd/hiring_contract+edit$select_wage_scale','Выбрать тарифную группу');
+uis.lang_ru('#f:/vhr/hpd/hiring_contract+add','Прием на договор ГПХ (создание)');
+uis.lang_ru('#f:/vhr/hpd/hiring_contract+edit','Прием на договор ГПХ (изменить)');
+commit;
+end;
+/

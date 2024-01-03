@@ -1,0 +1,360 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  t.param(_.pick(xparam, 'filial_id'));
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, $timeout, bRequire, bUtil, fi, t) {
+  model = model || {};
+  var q = { default_limit_time: model.qr_code_limit_time * 60 },
+      pickerInterval,
+      $time_picker = page.$content.find('.time-picker'),
+      p = {};
+
+  function doAction(action, message, location_id) {
+    page.confirm(message, function() {
+      action({ location_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete location $1{location_name}?')(row.name), row.location_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{location_count} location(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'location_id'));
+  }
+
+  function attachOne(row) {
+    doAction(fi.attach, t('attach location $1{location_name}?')(row.name), row.location_id);
+  }
+
+  function attachMany() {
+    doAction(fi.attach, t('attach $1{locations_count} location(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'location_id'));
+  }
+
+  function detachOne(row) {
+    detachConfirm(t('detach location $1{location_name}?')(row.name), row.location_id, false, row.name);
+  }
+
+  function detachMany() {
+    detachConfirm(t('detach $1{locations_count} location(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'location_id'), true);
+  }
+
+  function doDetach(){
+    fi.detach(p.data).then(page.reload, page.alert);
+  }
+
+  function detachConfirm(msg, location_id, is_multiple, location_name) {
+    page.confirm(msg, function() {
+      p.data =  { location_id };
+      p.is_multiple = is_multiple;
+      p.name = location_name
+
+      page.post(':get_influences', p.data).then(res => {
+        _.extend(p, res);
+
+        if (p.division_count > 0 || p.person_count > 0) {
+          showDetachModal();
+        } else {
+          doDetach();
+        }
+      }, page.alert);
+    });
+  }
+
+  function devices(row) {
+    fi.devices({ location_id: row.location_id });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ location_id: row.location_id }, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ location_id: row.location_id }, closeIfDialog);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : fi.attach ? attachOne(row) : fi.detach ? detachOne(row) : null;
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  // Qr Code
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function generateQrCode(row) {
+    fi.generate_qr_code({ location_id: row.location_id }).then(res => {
+      var unique_key = '["' + window.location.origin + window.location.pathname + '", "' + res.unique_key + '"]';
+      q.qr_code_limit_time = q.default_limit_time;
+
+      if (q.is_first) {
+        bRequire.load('qrcode').then(function() {
+          qrcode = new QRCode(page.$content.find('.location-qrcode')[0], { width: 200, height: 200 });
+          qrcodeImage = $(qrcode._el).find('img')[0];
+          qrcode.makeCode(unique_key);
+        });
+        q.is_first = false;
+      } else {
+        qrcode.makeCode(unique_key);
+      }
+
+      if ($time_picker.hasClass('font-red')) $time_picker.removeClass('font-red');
+
+      printDuration();
+      pickerInterval = setInterval(printDuration, 1000);
+
+      showModal();
+    }, page.alert);
+  }
+
+  function downloadQrCode() {
+    var a = document.createElement("a");
+    a.href = qrcodeImage.src;
+    a.download = "QrCode.png";
+    a.click();
+  }
+
+  function timeFormat(value) {
+    let hour, minut, second;
+    hour = Math.floor(value / 3600);
+    value = value % 3600;
+    minut = Math.floor(value / 60);
+    second = value % 60;
+
+    return { hour: hour, minut: minut, second: second };
+  }
+
+  function printTime(val) {
+    if (val < 10) return "0" + val;
+    return val;
+  }
+
+  // -------------------- modal detach --------------------- //
+  var modalDetach = page.$content.find('form[name=modalDetach]>.modal');
+
+  function showDetachModal() {
+    $timeout(function() {
+      modalDetach.modal('show');
+    });
+  }
+
+  function printDuration() {
+    let format = timeFormat(q.qr_code_limit_time);
+    $time_picker[0].innerHTML = t('limit time:')() + ' ' + printTime(format.hour) + ":" + printTime(format.minut) + ":" + printTime(format.second);
+    if (q.qr_code_limit_time < 60 && !$time_picker.hasClass('font-red')) $time_picker.removeClass('font-blue-steel').addClass('font-red');
+    if (q.qr_code_limit_time == 0) timeOff();
+    q.qr_code_limit_time --;
+  }
+
+  function timeOff() {
+    clearInterval(pickerInterval);
+    hideModal();
+  }
+
+  modal.on('hidden.bs.modal', function (e) {
+    clearInterval(pickerInterval);
+  });
+
+  var sc = [ // success
+    { grant: fi.add, fn: add },
+    { grant: fi.open_attach, fn: fi.open_attach },
+    { grant: fi.import, fn: importData }
+  ];
+
+  q.is_first = true;
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.first = q.sc.acc[0].grant;
+  }
+
+  var dg = [ // danger
+    { grant: fi.detach, fn: detachMany },
+    { grant: fi.delete, fn: deleteMany }
+  ];
+
+  q.dg = {};
+  q.dg.acc = _.filter(dg, x => x.grant);
+  q.dg.length = q.dg.acc.length;
+  if (q.dg.length > 0) {
+    q.dg.firstFn = q.dg.acc[0].fn;
+    q.dg.first = q.dg.acc[0].grant;
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.first" b-hotkey="add">{{ q.sc.first.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }}</a>
+      </div>
+    </div>
+    <div class="btn-group" ng-if="q.dg.length && q.checked.has">
+      <button type="button" class="btn btn-sm btn-danger" ng-click="q.dg.firstFn()" ng-if="q.dg.first">{{ q.dg.first.title }} {{ q.checked.size }}</button>
+      <button type="button" class="btn btn-danger dropdown-toggle" ng-if="q.dg.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.dg.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.dg.acc | limitTo: (1 - q.dg.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }} {{ q.checked.size }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="attachMany()" ng-show="q.checked.has" ng-if="fi.attach">
+      <t p1="q.checked.size">attach $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="location_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name" search="name, address, code" searchable="region_name"
+            extra-columns="location_id, region_name, timezone_name, latlng, accuracy, bssids, prohibited_name, code, created_by_name, created_on, modified_by_name, modified_on, has_polygon_name">
+      <b-row>
+        <b-col name="name" size=5/>
+        <b-col name="address" size=6/>
+        <b-col name="location_type_name" size=3/>
+        <b-col name="device_count" size=3/>
+        <b-col name="has_offline_device_name" size=3/>
+        <b-col name="user_count" size=3>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="state_name" as-html="state_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="devices(row)" ng-if="fi.devices">{{ fi.devices.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="fi.attach">{{ fi.attach.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="fi.detach">{{ fi.detach.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="generateQrCode(row)" ng-if="fi.generate_qr_code">{{ fi.generate_qr_code.title }}</button>
+      </b-action>
+
+      <b-filter name="location_id" directive="equal" extra/>
+      <b-filter name="name"/>
+      <b-filter name="location_type_id" decorate-with="location_type_name"/>
+      <b-filter name="timezone_code" decorate-with="timezone_name"/>
+      <b-filter name="region_id" decorate-with="region_name" tree-with-parent="parent_id"/>
+      <b-filter name="state" decorate-with="state_name"/>
+      <b-filter name="has_offline_device" decorate-with="has_offline_device_name"/>
+      <b-filter name="device_count"/>
+      <b-filter name="user_count"/>
+      <b-filter name="bssids" extra/>
+      <b-filter name="prohibited" decorate-with="prohibited_name" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+      <b-filter name="has_polygon" decorate-with="has_polygon_name" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>Qr Code for logon</t></h4>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group text-center">
+              <h4 class="time-picker font-weight-bolder mt-3 ml-4"></h4>
+            </div>
+            <div class="d-flex justify-content-center mb-4">
+              <div class="location-qrcode"></div>
+            </div>
+            <div class="form-group text-center">
+              <h4><b><t>Logon Timepad with Qr Code</t></b></h4>
+            </div>
+            <div class="d-flex justify-content-center mb-4">
+              <div class="form-group">
+                <h5><span class="label label-primary mr-2">1</span>&nbsp;<t>Open Verifix on your Device</t></h5>
+                <h5><span class="label label-primary mr-2">2</span>&nbsp;<t>Press on your device</t>&nbsp;<b><t>Scan Qr Code</t></b></h5>
+                <h5><span class="label label-primary mr-2">3</span>&nbsp;<t>Scan Qr Code</t></h5>
+              </div>
+            </div>
+            <div class="form-group text-center">
+              <button type="button" class="btn btn-default" ng-click="downloadQrCode()">
+                <t>download</t>&nbsp;<span class="fa fa-download"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modalDetach">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="row">
+              <div class="col-sm-2 mt-auto mb-auto"><i class="fas fa-exclamation-triangle fa-2x text-warning"></i></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="!p.is_multiple"><t p1="p.name">after detach $1, we will do these actions</t></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="p.is_multiple"><t>after detach locations, we will do these actions</t></div>
+            </div>
+          </div>
+          <div class="modal-body">
+            <ul ng-if="p.is_multiple">
+              <li ng-if="p.person_count > 0"><t>all users will detach from these locations</t></li>
+              <li ng-if="p.division_count > 0"><t>all divisions will detach from these locations</t></li>
+            </ul>
+            <ul ng-if="!p.is_multiple">
+              <li ng-if="p.person_count > 0"><t p1="p.person_count">$1 user(s) will detach from this location</t></li>
+              <li ng-if="p.division_count > 0"><t p1="p.division_count">$1 division(s) will detach from this location</t></li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="doDetach()"><t>confirm</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>reject</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

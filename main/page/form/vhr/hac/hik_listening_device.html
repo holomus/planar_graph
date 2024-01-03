@@ -1,0 +1,70 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  let d = _.omit(model, 'references'),
+      q = model.references;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  function copyListeningRoute() {
+    let route_uri = q.listening_route_uri + '?token=' + d.device_token;
+    navigator.clipboard.writeText(route_uri).then(() => { notify(t('copied to clipboard')()); }, page.alert);
+  }
+
+  q.auth_types = _.mapRows(q.auth_types, ['value', 'name']);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>company</t><r/></label>
+            <b-input name="companies"
+                     model="d.company_name | name"
+                     model-key="d.company_id | company_id"
+                     column="code"
+                     search="code"
+                     required-key>
+              <div class="col-sm">{{ row.name }}</div>
+              <div class="col-sm">{{ row.code }}</div>
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>serial number</t><r ng-if="!d.device_id"/></label>
+            <input type="text" class="form-control" ng-model="d.serial_number" b-maxlength="100" required/>
+          </div>
+          <div class="form-group">
+            <label><t>device name</t></label>
+            <div class="input-group">
+              <span class="form-view">{{ d.device_token }}</span>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-default btn-icon" ng-click="copyListeningRoute()">
+                  <i class="far fa-copy"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>person auth type</t></label><br/>
+            <label class="radio" ng-repeat="type in q.auth_types">
+              <input type="radio" name="auth_type" value="{{ type.value }}" ng-model="d.person_auth_type"/>
+              <span>{{ type.name }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

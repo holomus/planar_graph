@@ -1,0 +1,390 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  let d = _.omit(model, 'references') || {},
+      q = model.references,
+      p = {
+        data: {},
+      },
+      dt_format = 'DD.MM.YYYY';
+
+  // save
+  function save(approved) {
+    let t_confirm_message = approved == 'Y' ? t('save and approve?')() : t('save?')();
+    if (page.valid(scope.form)) {
+      page.confirm(t_confirm_message, function() {
+        let data = _.pick(d, 'document_id');
+            data.approved = approved;
+            data.staffs = _.chain(d.staffs)
+                           .map(x => _.pick(x, ['staff_id', 'increment_status', 'indicators']))
+                           .value();
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function fixStatus(item) {
+    let first_change_date = moment(item.first_change_date, dt_format),
+        new_change_date = moment(item.new_change_date, dt_format);
+    item.diff_days = new_change_date.diff(first_change_date, 'days') - (+item.old_penalty_period || 0);
+
+    [item.diff_days_class, item.status_name] = item.diff_days == 0 ? ['badge-success', q.t_intime] : item.diff_days > 0 ? ['badge-danger', q.t_overtime] : ['badge-warning', q.t_nearest];
+  }
+
+  function rowStatus(row) {
+    if (row.is_dismissed) return 'label-danger';
+    if (row.career_deleted || row.is_rotated) return 'label-info'; 
+
+    return row.attempt_no > 1 ? 'label-warning' : 'label-success';
+  }
+
+  function onSelectSubject(staff, row) {
+    if (!row) return;
+    staff.subjects.push(row);
+
+    staff.subject_names = _.pluck(staff.subjects, 'name').join(', ');
+  }
+
+  function onDeleteSubject(staff, row) {
+    if (!row) return;
+    staff.subjects.splice(_.findIndex(staff.subjects, row), 1);
+    
+    staff.subject_names = _.pluck(staff.subjects, 'name').join(', ');
+  }
+
+  function changeSubjectQuery(query, value) {
+    query.where({}).searchValue(value);
+  }
+
+  function changeExamQuery(query, value) {
+    query.where({}).searchValue(value);
+  }
+
+  // ------------------------------ indicators modal ------------------------------ //
+  let modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function openIndicatorsModal(row) {
+    p.data = row;
+    showModal();
+  }
+
+  function roundToDecimal(num) {
+    return Math.round((+num + Number.EPSILON) * 100) / 100
+  }
+
+  function calcOverallScore(row) {
+    if (!row.indicators || row.indicators.length == 0) {
+      row.overall_score = 0;
+    }
+
+    row.overall_score = roundToDecimal(_.reduce(row.indicators, (sum, x) => sum + (+x.indicator_value || 0), 0) / row.indicators.length) || 0;
+  }
+
+  function recommendIncrementStatus(row) {
+    calcOverallScore(row);
+
+    if (row.is_dismissed || row.career_deleted || row.is_rotated) {
+      row.increment_status = q.increment_status_ignore;
+      return;
+    }
+
+    if (!!row.success_score && +row.success_score <= +row.overall_score) {
+      row.increment_status = q.increment_status_success;
+    }
+    else if ((!row.ignore_score || +row.overall_score < +row.ignore_score) && row.recommend_failure == 'Y') {
+      row.increment_status = q.increment_status_failure;
+    }
+    else {
+      row.increment_status = q.increment_status_ignore;
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  let staffsGrid = page.pgGrid('staffs');
+    
+  function recalcIndicators(staff_id) {
+    if (!q.checked.has && !staff_id) return;
+    let staff_ids = !!staff_id ? [staff_id] : _.pluck(q.checked.rows(), 'staff_id');
+    let data = {
+      document_id: d.document_id,
+      staff_ids: staff_ids,
+    }
+    q.checked = {};
+    staffsGrid.uncheckAll();
+    page.post(':recalc_indicators', data)
+        .then(result => {
+          _.each(result, x => {
+            let staff = d.staffs_map[x.staff_id];
+            let staff_indicators = d.indicators_map[x.staff_id];
+            if (_.isUndefined(staff) || _.isUndefined(staff_indicators)) return;
+            _.each(x.indicators, row => {
+              let indicator = staff_indicators[row.indicator_id];
+              if (_.isUndefined(indicator) || indicator.indicator_used != q.indicator_used_automatically) return;
+              indicator.indicator_value = roundToDecimal(row.indicator_value);
+            });
+            recommendIncrementStatus(staff);
+          });
+        });
+  }
+
+  q.t_intime = t('intime')();
+  q.t_overtime = t('overtime')();
+  q.t_nearest = t('nearest')();
+  q.t_percent_input_placeholder = t('percent (%)')();
+
+  q.increment_statuses = _.chain(q.increment_statuses)
+                          .mapRows(['value', 'name'])
+                          .each(x => {
+                            x.color = x.value == q.increment_status_success ? '#1bc5bd'
+                                    : x.value == q.increment_status_failure ? '#f64e60'
+                                    : '#ecf0f3'
+                          })
+                          .value();
+  q.increment_statuses_map = _.indexBy(q.increment_statuses, 'value');
+
+  let indicators = _.chain(d.indicators)
+                    .mapRows(['staff_id',
+                              'indicator_id',
+                              'indicator_name',
+                              'indicator_used',
+                              'indicator_value'])
+                    .groupBy('staff_id')
+                    .value(),
+      subjects = _.chain(d.subjects)
+                  .mapRows(['staff_id',
+                            'name'])
+                  .groupBy('staff_id')
+                  .value();
+  d.staffs = _.chain(d.staffs)
+              .mapRows(['staff_id',
+                        'staff_number',
+                        'staff_name',
+                        'dismissal_date',
+                        'last_change_date',
+                        'new_change_date',
+                        'period',
+                        'nearest',
+                        'old_penalty_period',
+                        'success_score',
+                        'ignore_score',
+                        'recommend_failure',
+                        'increment_status',
+                        'robot_name',
+                        'from_rank_id',
+                        'from_rank_name',
+                        'to_rank_name',
+                        'division_name',
+                        'job_name',
+                        'attempt_no',
+                        'exam_name',
+                        'old_experience_id',
+                        'new_experience_id',
+                        'new_from_rank_id',
+                        'note'])
+              .each(x => {
+                x.subjects = subjects[x.staff_id] || [];
+                x.indicators = indicators[x.staff_id] || [];
+
+                let dismissal_date = moment(x.dismissal_date, dt_format),
+                    new_change_date = moment(x.new_change_date, dt_format);
+
+                x.is_dismissed = dismissal_date < new_change_date;
+                x.career_deleted = !x.old_experience_id || !x.new_experience_id;
+                x.is_rotated = x.old_experience_id != x.new_experience_id || x.from_rank_id != x.new_from_rank_id;
+
+                x.first_change_date = moment(x.last_change_date, dt_format).add(parseFloat(x.period), 'days').format(dt_format)
+              })
+              .each(fixStatus)
+              .each(calcOverallScore)
+              .value();            
+
+  d.staffs_map = _.indexBy(d.staffs, 'staff_id');
+  d.indicators_map = _.mapObject(indicators, x => _.indexBy(x, 'indicator_id'));
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>save and approve</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>document date</t></label>
+                <span class="form-view">{{ d.document_date }}</span>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>document number</t></label>
+                <span class="form-view">{{ d.document_number }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <span class="form-view">{{ d.division_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>note</t></label>
+              <span class="form-view">{{ d.note }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="separator separator-solid my-4"></div>
+        <div class="form-row mb-2">
+          <div class="col-sm-14">
+            <button type="button" class="btn btn-success" ng-click="recalcIndicators()" ng-show="q.checked.has"><t p1="q.checked.size">recalc $1 staffs</t>{{ fi.sync_all.title }}</button>
+          </div>
+          <div class="col-sm-10">
+            <b-pg-controller name="staffs">
+          </div>
+        </div>
+        <b-pg-grid name="staffs" 
+                   search="staff_name, robot_name, from_rank_name, to_rank_name" 
+                   searchable="staff_number, division_name, job_name"
+                   sort="staff_name" 
+                   local-data="d.staffs"
+                   on-check="onCheck(checked)">
+          <b-pg-header name="ranks">
+            <div><t>old rank</t>&nbsp;<i class="fas fa-arrow-right"></i>&nbsp;<t>new rank</t></div>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="staff_name" size="4"/>
+            <b-pg-col name="attempt_status" size="2">
+              <span class="label label-pill label-inline mr-2" ng-class="rowStatus(row)">
+                <t ng-if="row.is_dismissed">staff dismissed</t>
+                <t ng-if="!row.is_dismissed && row.career_deleted">career deleted</t>
+                <t ng-if="!row.is_dismissed && !row.career_deleted && row.is_rotated">staff rotated</t>
+                <t ng-if="!row.is_dismissed && !row.career_deleted && !row.is_rotated" p1="{{ row.attempt_no }}">attempt no $1</t>
+              </span>
+            </b-pg-col>
+            <b-pg-col name="robot_name" size="3"/>
+            <b-pg-col name="ranks" size="4">
+              <div class="row ml-0">
+                <div class="badge badge-primary">{{ row.from_rank_name }}</div>
+                &nbsp;<i class="fas fa-arrow-right pt-1"></i>&nbsp;
+                <div class="badge badge-success">{{ row.to_rank_name }}</div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="new_change_date" size="3"/>
+            <b-pg-col name="overall_score" format="number" size="1"/>
+            <b-pg-col name="increment_status" size="4">
+              <ui-select ng-model="row.increment_status">
+                <ui-select-match>
+                  <span class="fa fa-circle align-middle" style="width: auto;" ng-style="{ color: q.increment_statuses_map[row.increment_status].color }"></span>&nbsp;{{ $select.selected.name }}
+                </ui-select-match>
+                <ui-select-choices repeat="item.value as item in q.increment_statuses | filter: $select.search">
+                  <span class="fa fa-circle align-middle" ng-style="{ color: item.color }"></span>&nbsp;{{ item.name }}
+                </ui-select-choices>
+              </ui-select>
+            </b-pg-col>
+            <b-pg-col name="actions" size="2">
+              <div class="text-center" ng-if="row.indicators.length > 0">
+                <button type="button" class="btn btn-default btn-icon mr-4" ng-click="recalcIndicators(row.staff_id)">
+                  <i class="fa fa-sync"></i>
+                </button>
+                <button type="button" class="btn btn-default btn-icon" ng-click="openIndicatorsModal(row)">
+                  <i class="fa fa-eye"></i>
+                </button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+
+          <b-pg-extra-col name="note" size="3"/>
+          <b-pg-extra-col name="status" size="2">
+            <div class="row ml-0" ng-if="row.new_change_date">
+              <div class="badge" ng-class="row.diff_days_class">{{ row.diff_days }}</div>
+              &nbsp;
+              <div>{{ row.status_name }}</div>
+            </div>
+          </b-pg-extra-col>
+          <b-pg-extra-col name="staff_number" size="3"/>
+          <b-pg-extra-col name="division_name" size="3"/>
+          <b-pg-extra-col name="job_name" size="3"/>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>edit indicators</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <label><t>staff name</t></label>
+                  <span class="form-view">{{ p.data.staff_name }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>overall score</t></label>
+                  <span class="form-view text-right">{{ p.data.overall_score }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-4"></div>
+            <div class="form-group" ng-repeat-start="indicator in p.data.indicators">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <label>{{ indicator.indicator_name }}</label>
+                  <input type="text" class="form-control" 
+                         b-number
+                         ng-model="indicator.indicator_value"  
+                         ng-change="recommendIncrementStatus(p.data)"
+                         ng-readonly="indicator.indicator_used == q.indicator_used_automatically"
+                         placeholder="{{ q.t_percent_input_placeholder }}">
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-repeat-end>
+              <div class="form-row">
+                <div class="col-sm-12" ng-if="indicator.indicator_id == q.exam_score_indicator">
+                  <label><t>exam name</t></label>
+                  <span class="form-view">{{ p.data.exam_name }}</span>
+                </div>
+                <div class="col-sm-24" ng-if="indicator.indicator_id == q.training_subjects_indicator">
+                  <label><t>subject names</t></label>
+                  <span class="form-view" style="white-space: nowrap">
+                    <ol class="pl-4 mb-0">
+                      <li ng-repeat="subject in p.data.subjects">
+                        {{ subject.name }}
+                      </li>
+                    </ol>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

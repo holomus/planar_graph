@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{experience_type_count} experience type(s)?": "Удалить виды стажа в количестве <b>$1</b>?",
+ "delete experience type $1{experience_type_name}?": "Удалить вид стажа <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.experience_type_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

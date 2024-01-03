@@ -1,0 +1,5 @@
+{
+ "pg.requests.before": "Previous Value",
+ "pg.requests.current": "Current Value",
+ "pg.requests.field_name": "Field"
+}

@@ -1,0 +1,81 @@
+<script biruni>
+page.init(function(param) {
+  var t = page.query('table').param(param),
+      statusClass = { N: 'primary', C: 'success', F: 'danger' };
+
+  if (page.isInit()) t.filter('status', '=', 'F');
+
+  page.grid('table').asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(param, scope, fi, t) {
+  var q = {};
+
+  function integrate(message, track_ids) {
+    page.confirm(message, function() {
+      fi.integrate({ track_id: track_ids, device_id: param.device_id }).then(function() {
+        page.query('table').fetch();
+        q.checked = {};
+      }, page.alert);
+    })
+  }
+
+  function integrateMany() {
+    integrate(t('integrate $1{tracks_count} track(s)')(q.checked.size), _.pluck(q.checked.rows, 'track_id'));
+  }
+
+  function integrateOne(row) {
+    integrate(t('integrate track on $1{track_date} for $2{person_name}')(row.track_datetime, row.person_name), [row.track_id]);
+  }
+
+  function onCheck(checked) {
+    q.checked = {};
+    q.checked.rows = _.filter(checked.rows(), x => x.status == 'N' || x.status == 'F');
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+  }
+
+  function onDblclick(row) {
+    fi.integrate && (row.status == 'N' || row.status == 'F') ? integrateOne(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-if="fi.integrate" ng-show="q.checked.has" ng-click="integrateMany()"><t p1="q.checked.size">integrate $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="track_id, track_datetime, person_name, status" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-track_datetime" search="person_name" extra-columns="track_id">
+    <b-row>
+      <b-col name="track_datetime" size=3/>
+      <b-col name="person_name" size=4/>
+      <b-col name="mark_type_name" size=4/>
+      <b-col name="track_type_name" size=3/>
+      <b-col name="error_text" size=9/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="status_name" as-html="status_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="integrateOne(row)" ng-if="fi.integrate && (row.status == 'N' || row.status == 'F')"><t>integrate</t></button>
+    </b-action>
+
+    <b-filter name="track_id" directive="equal" extra/>
+    <b-filter name="person_id" decorate-with="person_name"/>
+    <b-filter name="track_datetime"/>
+    <b-filter name="mark_type" decorate-with="mark_type_name"/>
+    <b-filter name="track_type" decorate-with="track_type_name"/>
+    <b-filter name="status" decorate-with="status_name"/>
+  </b-grid>
+</form></div>

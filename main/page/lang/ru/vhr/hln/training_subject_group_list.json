@@ -1,0 +1,14 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{subject_group_count} subject group(s)?": "Удалить $1 группу(ы) тематик?",
+ "delete subject group $1{subject_group_name}?": "Удалить группу тематик $1?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.subject_group_id": ""
+}

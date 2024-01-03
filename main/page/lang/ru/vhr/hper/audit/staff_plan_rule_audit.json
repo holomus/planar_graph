@@ -1,0 +1,15 @@
+{
+ "details": "Детали",
+ "table_audit.fact_amount": "Факт (сумма)",
+ "table_audit.from_percent": "От",
+ "table_audit.plan_type_name": "Тип показателей",
+ "table_audit.staff_plan_id": "ИД расчета",
+ "table_audit.t_audit_id": "ИД",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата события",
+ "table_audit.t_user_name": "Пользователь",
+ "table_audit.to_percent": "До"
+}

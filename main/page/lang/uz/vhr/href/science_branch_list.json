@@ -1,0 +1,10 @@
+{
+ "delete $1{science_branch_count} science branch(s)?": "Haqiqatan ham <b>$1</b> fan soha(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete science branch $1{science_branch_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.name": "Nomi",
+ "table.science_branch_id": "ID",
+ "table.state_name": "Holat",
+ "delete $1": "O'chirish $1"
+}

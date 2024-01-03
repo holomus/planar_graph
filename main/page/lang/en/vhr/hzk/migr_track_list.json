@@ -1,0 +1,13 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1?": "Do you really want to delete <b>$1</b> user(s)?",
+ "delete?": "Do you really want to delete track?",
+ "migr $1": "Transfer $1",
+ "migr $1?": "Do you want to transfer <b>$1</b> track(s)?",
+ "migr?": "Do you want to transfer track?",
+ "table.location_name": "Location",
+ "table.mark_type_name": "Identification Type",
+ "table.pin": "PIN",
+ "table.track_time": "Time",
+ "table.track_type_name": "Track Type"
+}

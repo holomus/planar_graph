@@ -1,0 +1,20 @@
+{
+ "details": "Tafsilotlar",
+ "table_audit.concluding_term": "Yakunlovchi muddat",
+ "table_audit.contract_date": "Shartnoma sanasi",
+ "table_audit.contract_number": "Shartnoma raqami",
+ "table_audit.expiry_date": "Amal qilish muddati",
+ "table_audit.fixed_term_base_name": "Muddatli sharnoma asosi",
+ "table_audit.hiring_conditions": "Ishga qabul qilish shartlari",
+ "table_audit.other_conditions": "Boshqa shartlar",
+ "table_audit.page_id": "Sahifa ID",
+ "table_audit.representative_basis": "Vakillik asosi",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Hodisa sanasi",
+ "table_audit.t_event_name": "Hodisa",
+ "table_audit.t_filial_name": "Tashkilot",
+ "table_audit.t_source_project_name": "Ilova",
+ "table_audit.t_timestamp": "Hodisa sanasi va vaqti",
+ "table_audit.t_user_name": "Foydalanuvchi",
+ "table_audit.workplace_equipment": "Ish joyidagi jihozlar"
+}

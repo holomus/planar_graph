@@ -1,0 +1,13 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1?": "Haqiqatan ham <b>$1</b> qayd(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete?": "Haqiqatan ham qaydni o'chirib tashlamoqchimisiz?",
+ "migr $1": "O'tkazish $1",
+ "migr $1?": "<b>$1</b> qayd(lar)ni o'tkazmoqchimisiz?",
+ "migr?": "Qaydni uzatmoqchimisiz?",
+ "table.location_name": "Joylashuv",
+ "table.mark_type_name": "Identifikatsiya turi",
+ "table.pin": "PIN",
+ "table.track_time": "Vaqt",
+ "table.track_type_name": "Qayd turi"
+}

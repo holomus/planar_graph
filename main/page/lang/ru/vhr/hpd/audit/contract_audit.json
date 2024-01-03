@@ -1,0 +1,20 @@
+{
+ "details": "Детали",
+ "table_audit.concluding_term": "Срок заключения договора",
+ "table_audit.contract_date": "Дата договора",
+ "table_audit.contract_number": "Номер договора",
+ "table_audit.expiry_date": "Дата истечения договора",
+ "table_audit.fixed_term_base_name": "Основание срочного договора",
+ "table_audit.hiring_conditions": "Условия приема",
+ "table_audit.other_conditions": "Иные условия",
+ "table_audit.page_id": "ИД страницы",
+ "table_audit.representative_basis": "Основание представителя",
+ "table_audit.t_audit_id": "ИД",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата события",
+ "table_audit.t_user_name": "Пользователь",
+ "table_audit.workplace_equipment": "Оборудование рабочего места"
+}

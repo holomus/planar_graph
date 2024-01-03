@@ -1,0 +1,15 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{experience_count} experience(s)?": "<b>$1</b>ta malaka(lar)ni o'chirmoqchimisiz?",
+ "delete experience $1{experience_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.experience_id": "ID",
+ "table.job_count": "Lavozimlar soni",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.state_name": "Holat"
+}

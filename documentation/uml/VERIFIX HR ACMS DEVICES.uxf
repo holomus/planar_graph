@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.0.0">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>390</x>
+      <y>190</y>
+      <w>180</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>HAC_SERVERS
+--
+**SERVER_ID**
+HOST_URL
+NAME
+ORDER_NO</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>730</x>
+      <y>200</y>
+      <w>280</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>HAC_DEVICES
+--
+**DEVICE_ID**
+**SERVER_ID**
+DEVICE_TYPE_ID
+DEVICE_NAME
+DEVICE_IP
+READY
+STATUS UNKNOWN | ONLINE | OFFLINE</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>560</x>
+      <y>230</y>
+      <w>190</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;170.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>750</x>
+      <y>370</y>
+      <w>220</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>HAC_COMPANY_DEVICES
+--
+**COMPANY_ID**
+**DEVICE_ID**
+ATTACH_KIND
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>230</x>
+      <y>390</y>
+      <w>230</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_SERVERS
+--
+**SERVER_ID**
+PARTNER_KEY
+PARTNER_SECRET
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>830</x>
+      <y>330</y>
+      <w>30</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;40.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>510</x>
+      <y>520</y>
+      <w>240</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_COMPANY_SERVERS
+--
+**COMPANY_ID**
+SERVER_ID
+DEPARTMENT_CODE
+PERSON_GROUP_CODE
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>280</y>
+      <w>150</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;70.0;130.0;70.0;130.0;110.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>360</x>
+      <y>280</y>
+      <w>130</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>110.0;10.0;110.0;70.0;10.0;70.0;10.0;110.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>590</x>
+      <y>60</y>
+      <w>200</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_DEVICES
+--
+**DEVICE_ID**
+**SERVER_ID**
+SERIAL_NUMBER
+/DEVICE_CODE/
+ACCESS_GROUP_CODE</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>890</x>
+      <y>30</y>
+      <w>370</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_DEVICES
+--
+**DEVICE_ID**
+**SERVER_ID**
+SERIAL_NUMBER
+ISUP_DEVICE_CODE := COMPANY_CODE:DEVICE_ID
+ISUP_PASSWORD
+/DEVICE_CODE/
+/DOOR_CODE/
+/ACCESS_LEVEL_CODE/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>830</x>
+      <y>80</y>
+      <w>80</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;120.0;10.0;10.0;60.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>780</x>
+      <y>80</y>
+      <w>80</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>60.0;120.0;60.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1060</x>
+      <y>240</y>
+      <w>240</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_EX_DEVICES
+--
+**SERVER_ID**
+**DEVICE_CODE**
+DEVICE_NAME
+DEVICE_IP
+DEVICE_PORT
+TREATY_TYPE
+SERIAL_NUMBER | DEVICE_CODE
+STATUS
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>520</x>
+      <y>390</y>
+      <w>170</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_SERVERS
+--
+**SERVER_ID**
+USERNAME
+PASSWORD
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>580</x>
+      <y>460</y>
+      <w>30</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;60.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>230</x>
+      <y>520</y>
+      <w>230</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_COMPANY_SERVERS
+--
+**COMPANY_ID**
+SERVER_ID
+ORGANIZATION_CODE
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>360</x>
+      <y>460</y>
+      <w>30</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;60.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1060</x>
+      <y>440</y>
+      <w>240</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_EX_DOORS
+--
+**SERVER_ID**
+**DOOR_CODE**
+DEVICE_CODE
+REGION_CODE
+DOOR_NO
+DOOR_NAME
+DOOR_STATE
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1060</x>
+      <y>630</y>
+      <w>240</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_EX_ACCESS_LEVELS
+--
+**SERVER_ID**
+**ACCESS_LEVEL_CODE**
+ACCESS_LEVEL_NAME
+DESCRIPTION
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1310</x>
+      <y>270</y>
+      <w>240</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_EX_DEVICES
+--
+**SERVER_ID**
+**DEVICE_CODE**
+REGISTER_CODE
+DEPARTMENT_CODE
+DEVICE_NAME
+DEVICE_IP
+EXTRA_INFO
+STATUS
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1310</x>
+      <y>470</y>
+      <w>240</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_EX_ACCESS_GROUPS
+--
+**SERVER_ID**
+**ACCESS_GROUP_CODE**
+ACCESS_GROUP_NAME
+PERSON_COUNT
+EXTRA_INFO
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1060</x>
+      <y>770</y>
+      <w>240</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>HAC_HIK_EX_ORGANIZATIONS
+--
+**SERVER_ID**
+**ORGANIZATION_CODE**
+ORGANIZATION_NAME
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1310</x>
+      <y>630</y>
+      <w>240</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_EX_DEPARTMENTS
+--
+**SERVER_ID**
+**DEPARTMENT_CODE**
+DEPARTMENT_NAME
+EXTRA_INFO
+CREATED_ON
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1310</x>
+      <y>770</y>
+      <w>240</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>HAC_DSS_EX_PERSON_GROUPS
+--
+**SERVER_ID**
+**PERSON_GROUP_CODE**
+PERSON_GROUP_NAME
+EXTRA_INFO
+CREATED_ON
+MODIFIED_ON
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>

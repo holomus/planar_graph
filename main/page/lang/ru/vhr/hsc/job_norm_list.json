@@ -1,0 +1,19 @@
+{
+ "add": "Создать",
+ "delete $1": "Удалить $1",
+ "delete $1{norms_count} norm(s)?": "Удалить нормы в количестве <b>$1</b>?",
+ "delete norm?": "Удалить норму?",
+ "select": "Выбрать",
+ "table.absense_margin": "Отпуска и больничные (%)",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.idle_margin": "Простой (%)",
+ "table.job_name": "Должность",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.month": "Месяц",
+ "table.monthly_days": "Норма дней",
+ "table.monthly_hours": "Норма часов",
+ "table.norm_id": "ИД",
+ "table.object_name": "Объект"
+}

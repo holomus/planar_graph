@@ -1,0 +1,11 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{dismissal_reason_count} dismissal reason(s)?": "Haqiqatan ham <b>$1</b> ishdan boʻshash sabab(lar)ini oʻchirib tashlamoqchimisiz?",
+ "delete dismissal reason $1{dismissal_reason_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "select $1": "Tanlash $1",
+ "table.description": "Tavsif",
+ "table.dismissal_reason_id": "ID",
+ "table.name": "Nomi",
+ "table.reason_type_name": "Ishdan bo'shash sababi"
+}

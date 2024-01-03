@@ -1,0 +1,22 @@
+{
+ "table.code": "Код",
+ "table.company_id": "ИД сервера",
+ "table.email": "E-mail",
+ "table.employee_count": "Кол-во сотрудников",
+ "table.last_15_days_avg_active_count": "Среднее кол-во активных за последние 15 (д.)",
+ "table.last_15_days_avg_active_perc": "Средний процент активных за последние 15 (д.)",
+ "table.last_30_days_max_active_count": "Максимальное кол-во активных за последние 30 (д.)",
+ "table.last_3_days_avg_active_count": "Среднее кол-во активных за последние 3 (д.)",
+ "table.last_3_days_avg_active_perc": "Средний процент активных за последние 3 (д.)",
+ "table.last_7_days_avg_active_count": "Среднее кол-во активных за последние 7 (д.)",
+ "table.last_7_days_avg_active_perc": "Средний процент активных за последние 7 (д.)",
+ "table.last_month_avg_active_count": "Среднее кол-во активных за последний месяц",
+ "table.last_month_avg_active_perc": "Средний процент активных за последний месяц",
+ "table.name": "Название",
+ "table.phone": "Номер телефона",
+ "table.rownum": "№",
+ "table.today_active_count": "Кол-во активных за сегодня",
+ "table.today_active_perc": "Процент активных за сегодня",
+ "table.yesterday_active_count": "Кол-во активных за вчерашний день",
+ "table.yesterday_active_perc": "Процент активных за вчерашний день"
+}

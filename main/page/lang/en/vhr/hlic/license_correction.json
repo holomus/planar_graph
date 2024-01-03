@@ -1,0 +1,9 @@
+{
+ "$1{exceed_amount} licenses required to open access": "Requires $1 subscriptions to restore access",
+ "$1{lic_cnt} licenses required": "$1 subscriptions required",
+ "available": "Available",
+ "buy license": "Renew your subscription",
+ "dismissing nonworking employees will open access": "Dismiss nonworking employees to restore access",
+ "montly license balance analysis": "Monthly subscription analysis",
+ "required": "Required"
+}

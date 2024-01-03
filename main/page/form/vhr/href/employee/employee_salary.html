@@ -1,0 +1,349 @@
+<script biruni>
+page.require("amcharts4", "amcharts4-theme-animated");
+page.ctrl(function(scope, model, t, $timeout, bConfig, $filter) {
+  moment.locale(bConfig.langCode());
+  var d = model || {},
+      q = { xy_series: {} },
+      bNumber = $filter('bNumber'),
+      xy_chart;
+
+  d.month = d.month.slice(3);
+  q.t_no_chart_data = t('there is no data to show on this chart')();
+  q.t_no_data = t('there is no data to show on this card')();
+
+  _.chain([
+    [t("payoff")(), "payoff", "#FFD166", false],
+    [t("payment")(), "payment", "#06D6A0", true],
+  ]).mapRows(['name', 'value', 'color', 'hidden']).each(x => {
+    q.xy_series[x.value] = x;
+  });
+
+  fetchPayroll();
+  fetchYearlyPayrolls();
+
+  function fetchPayroll() {
+    $timeout(() => {
+      page
+        .post(':get_payroll', { employee_id: d.employee_id, month: '01.' + d.month })
+        .then(result => {
+          d.access_to_hidden_salary_job = result.access_to_hidden_salary_job;
+          d.currency = result.currency;
+          d.has_data = result.has_data;
+          d.is_pro = result.is_pro;
+          d.payroll = result.payroll;
+        }, page.alert);
+    });
+  }
+
+  function fetchYearlyPayrolls() {
+    $timeout(() => {
+      page
+        .post(':get_yearly_payrolls', { employee_id: d.employee_id, year: d.year })
+        .then(result => {
+          d.begin_date = result.begin_date;
+          d.end_date = result.end_date;
+          d.yearly_payrolls = result.yearly_payrolls;
+          reloadXyChart(d.yearly_payrolls);
+        }, page.alert);
+    });
+  }
+
+  // chart
+  function xyChart(data, this_month) {
+    if (xy_chart) {
+      xy_chart.data = data;
+      xy_chart.invalidateData();
+    }
+
+    let elem = page.$content.find('.xy-chart');
+    assert(elem.length, "day stats xy chart element is not found");
+
+    // Create chart instance
+    let chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+    chart.paddingBottom = 0;
+    chart.paddingLeft = 0;
+
+    // Create category axis
+    let categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.dataFields.category = "month";
+    categoryAxis.startLocation = 0.5;
+
+    // Create value axis
+    let valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    if (chart.data.length > 0) {
+      let max_salary = Math.max(..._.map(chart.data, x => Math.max(parseFloat(x.payoff), parseFloat(x.payment))));
+      let min_salary = Math.min(..._.map(chart.data, x => Math.min(parseFloat(x.payoff), parseFloat(x.payment))));
+      valueAxis.renderer.minLabelPosition = 0.01;
+      valueAxis.maxPrecision = 0;
+      valueAxis.min = min_salary * 0.999;
+      valueAxis.max = max_salary * 1.001;
+      valueAxis.strictMinMax = false;
+    } else {
+      let noDataContainer = chart.chartContainer.createChild(am4core.Container);
+      noDataContainer.align = 'center';
+      noDataContainer.isMeasured = false;
+      noDataContainer.x = am4core.percent(50);
+      noDataContainer.horizontalCenter = 'middle';
+      noDataContainer.y = am4core.percent(35);
+      noDataContainer.verticalCenter = 'middle';
+      noDataContainer.layout = 'vertical';
+
+      let messageLabel = noDataContainer.createChild(am4core.Label);
+      messageLabel.html = `
+      <div style="width: 40vw;">
+        <div class="text-center">
+          <i style="font-size: 6rem; color: #e0e0e0" class="far fa-chart-bar"></i>
+        </div>
+        <div class="font-weight-bolder text-center">
+          <h5>${ q.t_no_chart_data }</h5>
+        </div>
+      </div>
+      `;
+      messageLabel.maxWidth = 300;
+      messageLabel.wrap = true;
+    }
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "month";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.tooltipText = "{valueY}";
+      series.tooltip.pointerOrientation = "vertical";
+      series.tooltip.getFillFromObject = false;
+      series.tooltip.background.fill = color;
+      series.fill = color;
+      series.fillOpacity = 0.3;
+      series.stroke = color;
+      series.legendSettings.valueText = " ";
+      series.hidden = hidden;
+      series.sequencedInterpolation = true;
+      series.hiddenState.sequencedInterpolation  = false;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+
+      // range for this month
+      if (this_month) {
+        let seriesRange = categoryAxis.createSeriesRange(series);
+        seriesRange.contents.strokeDasharray = "3";
+        seriesRange.contents.stroke = color
+        seriesRange.contents.strokeWidth = 2;
+
+        let pattern = new am4core.LinePattern();
+        pattern.rotation = 45;
+        pattern.stroke = am4core.color(color);
+        pattern.width = 4;
+        pattern.height = 4;
+        pattern.gap = 3;
+
+        seriesRange.contents.fill = pattern;
+        seriesRange.contents.fillOpacity = 0.3;
+
+        seriesRange.category = this_month;
+        seriesRange.endCategory = this_month;
+      }
+    }
+
+    _.each(q.xy_series, (v, k) => {
+      addLineSeries(v.name, v.value, v.color, v.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    // legend
+    chart.legend = new am4charts.Legend();
+    chart.legend.position = 'bottom';
+
+    chart.legend.itemContainers.template.events.on("hit", function(ev) {
+      let key = ev.target.dataItem.dataContext.dataFields.valueY;
+      q.xy_series[key].hidden = !q.xy_series[key].hidden;
+    });
+
+    xy_chart = chart;
+  }
+
+  function reloadXyChart(result) {
+    // let has_any_data = _.any(result, x => x.has_data == 'Y' && x.access_to_hidden_salary_job == 'Y');
+    let chart_data = _.chain(result)
+      .filter(x => x.has_data == 'Y' && x.access_to_hidden_salary_job == 'Y')
+      .map(x => {
+        let data = { currency: d.currency, is_approximately: 'Y' };
+        let month = moment(x.month, 'DD.MM.YYYY');
+        // capitalizing
+        data.full_month = month.format('MMMM YYYY');
+        data.full_month = data.full_month[0].toUpperCase() + data.full_month.slice(1);
+        // capitalizing
+        data.month = month.format('MMM');
+        data.month = data.month[0].toUpperCase() + data.month.slice(1);
+        // return empty rows
+        if (x.has_data != 'Y' || x.access_to_hidden_salary_job != 'Y') return data;;
+        // return with payyroll
+        data.is_approximately = x.payroll.is_approximately;
+        data.payoff = x.payroll.payoff;
+        data.payment = x.payroll.payment;
+        return data;
+      })
+      .value();
+
+    let this_month = ('01.' + moment().format('MM.YYYY')) == (_.last(chart_data) || {}).month;
+
+    $timeout(function() {
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        xyChart(chart_data, this_month);
+      });
+    });
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.bNumber = bNumber;
+});
+</script>
+<div class="b-content ui-vhr610">
+  <style>
+    .ui-vhr610 .sg.grid .sg-row {
+      border-bottom: 0;
+      display: block;
+      -webkit-transition: all .3s;
+      transition: all .3s;
+    }
+  </style>
+  <form name="form">
+    <div class="form-row">
+      <div class="col-md-12">
+        <div class="card card-custom gutter-b" style="height: 100%;">
+          <div class="card-header">
+            <div class="card-title">
+              <h3 class="card-label"><t>employee payroll</t></h3>
+              <span style="font-size: .7em;" class="badge badge-pill alert-warning" ng-if="d.payroll.is_approximately == 'Y'"><t>approximately</t></span>
+            </div>
+            <div class="card-toolbar d-block my-auto" style="min-width: 48%;">
+              <div class="row">
+                <div class="col-8 b-right my-auto">
+                  <label><t>month</t></label>
+                </div>
+                <div class="col-16">
+                  <input type="text" class="form-control" style="text-transform: capitalize;" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="fetchPayroll()"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" ng-if="d.has_data != 'Y' || d.access_to_hidden_salary_job != 'Y'">
+            <div style="min-height: 30vh; width: 100%;">
+              <div class="text-center" style="margin-top: 1vh;">
+                <i style="font-size: 6rem; color: #e0e0e0" class="far fa-chart-bar"></i>
+              </div>
+              <div class="font-weight-bolder text-center">
+                <h5>{{ q.t_no_data }}</h5>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" ng-if="d.has_data == 'Y' && d.access_to_hidden_salary_job == 'Y'">
+            <div class="row mt-1">
+              <div class="col-16">
+                <span class="pl-3 font-weight-bolder"><t>payoff</t></span>
+              </div>
+              <div class="col-8">
+                <span class="form-view b-right">{{ bNumber(d.payroll.payoff, 2, true) }} {{ d.currency }}</span>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <div class="col-16">
+                <span class="pl-3 font-weight-bolder"><t>payment</t></span>
+              </div>
+              <div class="col-8">
+                <span class="form-view b-right">{{ bNumber(d.payroll.payment, 2, true) }} {{ d.currency }}</span>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <div class="col-16">
+                <span class="pl-3 font-weight-bolder"><t>left amount</t></span>
+              </div>
+              <div class="col-8">
+                <span class="form-view b-right">{{ bNumber(d.payroll.left_amount, 2, true) }} {{ d.currency }}</span>
+              </div>
+            </div>
+            <div class="row mt-7 mb-1">
+              <div class="col-16">
+                <span class="pl-3 font-weight-bolder"><t>total accrual</t></span>
+              </div>
+              <div class="col-8">
+                <span class="form-view b-right" style="background-color: rgba(27, 197, 189, .2);">{{ bNumber(d.payroll.total_accrual, 2, true) }} {{ d.currency }}</span>
+              </div>
+            </div>
+            <div class="sg grid">
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="row in d.payroll.accrual_oper_types">
+                  <div class="sg-sub-row" style="border-top: 1px solid rgba(230,230,240,.6); font-size: .95em;">
+                    <div class="sg-cell col-16 px-3 py-2">{{ row.name }}</div>
+                    <div class="sg-cell col-8 px-3 py-2">
+                      <div class="b-right">{{ bNumber(row.amount, 2, true) }} {{ d.currency }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row mt-7 mb-1">
+              <div class="col-16 ">
+                <span class="pl-3 font-weight-bolder"><t>total deduction</t></span>
+              </div>
+              <div class="col-8">
+                <span class="form-view b-right" style="background-color: rgba(246, 78, 96, .2);">{{ bNumber(d.payroll.total_deduction, 2, true) }} {{ d.currency }}</span>
+              </div>
+            </div>
+            <div class="sg grid">
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="row in d.payroll.deduction_oper_types">
+                  <div class="sg-sub-row" style="border-top: 1px solid rgba(230,230,240,.6); font-size: .95em;">
+                    <div class="sg-cell col-16 px-3 py-2">{{ row.name }}</div>
+                    <div class="sg-cell col-8 px-3 py-2">
+                      <div class="b-right">{{ bNumber(row.amount, 2, true) }} {{ d.currency }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="card card-custom gutter-b" style="height: 100%;">
+          <div class="card-header">
+            <div class="card-title">
+              <h3 class="card-label"><t p1="d.year">employee payrolls $1</t></h3>
+            </div>
+            <div class="card-toolbar d-block my-auto" style="min-width: 50%;">
+              <div class="row">
+                <div class="col-8 b-right my-auto">
+                  <label><t>year</t></label>
+                </div>
+                <div class="col-16">
+                  <input type="text" class="form-control" style="text-transform: capitalize;" b-date-picker="YYYY" view-format="YYYY" ng-model="d.year" ng-change="fetchYearlyPayrolls()"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-body">
+              <div class="xy-chart" style="min-height: 300px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

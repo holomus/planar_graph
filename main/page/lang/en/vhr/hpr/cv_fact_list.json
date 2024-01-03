@@ -1,0 +1,18 @@
+{
+ "accept $1 facts(s)": "Accept $1 service(s)",
+ "accept $1{facts_count} facts?": "Accept $1 service(s)?",
+ "accept fact $1{fact_id}?": "Accept service, Service ID = $1?",
+ "return complete $1 facts(s)": "Cancel $1 service(s)",
+ "return to complete $1{facts_count} facts?": "Cancel $1 service(s) ?",
+ "return to complete fact $1{fact_id}?": "Cancel $1 service(s), service ID = $1?",
+ "return to new $1{facts_count} facts?": "Reset $1 service(s)?",
+ "return to new fact $1{fact_id}?": "Reset $1 service(s), service ID = $1?",
+ "table.contract_number": "Contract Number",
+ "table.division_name": "Department",
+ "table.fact_id": "ID",
+ "table.month": "Month",
+ "table.person_name": "Natural Person",
+ "table.status_name": "Status",
+ "table.total_amount": "Total",
+ "to new $1 facts(s)": "Reset $1 service(s) ?"
+}

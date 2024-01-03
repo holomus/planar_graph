@@ -1,0 +1,29 @@
+create or replace Function Test_Sysdate return date is
+begin
+  Dbms_Output.Put_Line('1');
+
+  return Trunc(sysdate);
+end;
+/
+
+set serveroutput on
+declare
+  v_Count number;
+begin
+Dbms_Output.Put_Line(Rpad('-', 100, '-'));
+select count(*)
+  into v_Count
+  from Md_Persons p
+ where p.Created_On > (select Test_Sysdate
+                         from Dual);
+Dbms_Output.Put_Line(Rpad('-', 100, '-'));
+
+Dbms_Output.Put_Line(Rpad('-', 100, '-'));
+select count(*)
+  into v_Count
+  from Md_Persons p
+ where p.Created_On > Test_Sysdate
+   and p.Person_Id < 200;
+Dbms_Output.Put_Line(Rpad('-', 100, '-'));
+end;
+/

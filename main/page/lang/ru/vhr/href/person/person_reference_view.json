@@ -1,0 +1,8 @@
+{
+ "pg.person_references.end_date": "Действует по",
+ "pg.person_references.name": "Название",
+ "pg.person_references.ref_date": "Дата справки",
+ "pg.person_references.ref_number": "Номер справки",
+ "pg.person_references.reference_type_name": "Вид справки",
+ "pg.person_references.start_date": "Действует с"
+}

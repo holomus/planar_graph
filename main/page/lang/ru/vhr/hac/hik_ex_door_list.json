@@ -1,0 +1,15 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{door_count} door(s)?": "Удалить <b>$1</b> дверей?",
+ "delete door $1{door_name}?": "Удалить дверь  <b>$1</b>?",
+ "get doors from HCP": "Загрузить",
+ "table.created_on": "Дата создания",
+ "table.device_code": "Код устройства",
+ "table.door_code": "Код",
+ "table.door_name": "Название",
+ "table.door_no": "Номер",
+ "table.door_state": "Статус",
+ "table.door_state_name": "Название статуса",
+ "table.modified_on": "Дата изменения",
+ "table.region_code": "Код региона"
+}

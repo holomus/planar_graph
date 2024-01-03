@@ -1,0 +1,14 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{processs_count} process(s)?": "Delete processes in the amount of <b>$1</b>?",
+ "delete process $1{process_name}?": "Delete process <b>$1</b>?",
+ "select": "Pick-up",
+ "table.action_names": "Actions",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.process_id": "ID",
+ "table.state_name": "Status"
+}

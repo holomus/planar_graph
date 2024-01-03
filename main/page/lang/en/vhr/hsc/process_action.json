@@ -1,0 +1,9 @@
+{
+ "active": "Active",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "process": "Process",
+ "save": "Save",
+ "state": "Status"
+}

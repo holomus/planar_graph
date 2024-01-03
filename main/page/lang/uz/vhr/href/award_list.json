@@ -1,0 +1,9 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{awards_count} award(s)?": "Haqiqatan ham <b>$1</b>ta mukofot(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete award $1{award_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.award_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

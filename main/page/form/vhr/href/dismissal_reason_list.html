@@ -1,0 +1,94 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  page.grid('table').asHtml('reason_type_html', 'reason_type, reason_type_name', row => {
+    return `<span class="badge badge-${ row.reason_type == 'P' ? 'primary' : 'danger' }">${ row.reason_type_name }</span>`;
+  });
+});
+page.ctrl(function(scope, fi, t, xparam) {
+  var q = {};
+
+  function deleteAction(message, dismissal_reason_id) {
+    page.confirm(message, function() {
+      fi.delete({ dismissal_reason_id: dismissal_reason_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete dismissal reason $1{dismissal_reason_name}?')(row.name), row.dismissal_reason_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{dismissal_reason_count} dismissal reason(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'dismissal_reason_id'));
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ dismissal_reason_id: row.dismissal_reason_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : fi.edit ? edit(row) : null;
+  }
+
+  q.multiple_select = xparam.multiple_select;
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="dismissal_reason_id, name, reason_type" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name" searchable="dismissal_reason_id" extra-columns="dismissal_reason_id">
+    <b-row>
+      <b-col name="name" size=9/>
+      <b-col name="description" size=11/>
+      <b-col name="reason_type_name" as-html="reason_type_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="dismissal_reason_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="reason_type" decorate-with="reason_type_name"/>
+  </b-grid>
+</form></div>

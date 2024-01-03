@@ -1,0 +1,44 @@
+<script biruni>
+page.init(function(param) {
+  page.grid('table_audit').asHtml('posted_html', 'posted,posted_name', row => {
+    return `<span class="badge badge-${ row.posted == 'Y' ? 'primary' : 'secondary' }">${ row.posted_name }</span>`;
+  });
+  page.query(':table_audit').param(param);
+});
+page.ctrl(function(scope, fi) {
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ journal_id: row.journal_id, context_id: row.t_context_id });
+  }
+});
+</script>
+<div class="b-content">
+  <div class="row mb-2">
+    <div class="offset-sm-14 col-sm-10">
+      <b-grid-controller name="table_audit"/>
+    </div>
+  </div>
+  <b-grid name="table_audit" required="t_context_id, journal_id" on-dblclick="auditDetails(row)"
+          sort="-t_timestamp" search="t_user_name, t_event_name, journal_type_name"
+          extra-columns="t_audit_id, t_source_project_name, t_date, t_filial_name, journal_id">
+    <b-row>
+      <b-col name="t_timestamp" size="5"/>
+      <b-col name="t_user_name" size="5"/>
+      <b-col name="t_event_name" size="5"/>
+      <b-col name="journal_type_name" size="5"/>
+      <b-col name="posted_name" as-html="posted_html" size="4"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+    </b-action>
+
+    <b-filter name="t_date"/>
+    <b-filter name="t_user_id" decorate-with="t_user_name"/>
+    <b-filter name="t_event" decorate-with="t_event_name"/>
+    <b-filter name="t_filial_id" decorate-with="t_filial_name"/>
+    <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+    <b-filter name="journal_type_id" decorate-with="journal_type_name"/>
+    <b-filter name="posted" decorate-with="posted_name"/>
+  </b-grid>
+</div>

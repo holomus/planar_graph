@@ -1,0 +1,14 @@
+{
+ "check": "Track",
+ "input": "Check In",
+ "is_valid": "Valid",
+ "location": "Location",
+ "no": "No",
+ "note": "Note",
+ "output": "Check Out",
+ "person": "Natural Person",
+ "save": "Save",
+ "track time": "Time",
+ "track type": "Track Type",
+ "yes": "Yes"
+}

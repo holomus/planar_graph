@@ -1,0 +1,477 @@
+<script biruni>
+page.ctrl(function(scope, model, param, fi, t, $timeout) {
+  var d = model.data, q = {}, p = {},
+      division_inited = false,
+      MAX_VALUE = 1000000000;
+
+  function nvl(a, b) {
+    return parseFloat(a ? a : b);
+  }
+
+  function nullif(a, b) {
+    return a == b ? null : a;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // penalty
+  function penaltyTimeName(from, to) {
+    return ((from ? t('from $1 min')(from) : '') + ' ' + (to ? t('to $1 min')(to) : '')).trim();
+  }
+
+  function penaltyTimesName(from, to) {
+    return ((from ? t('from $1 times')(from) : '') + ' ' + (to ? t('to $1 times')(to) : '')).trim();
+  }
+
+
+  function penaltyDayName(from, to) {
+    return ((from ? t('from $1 dd')(from) : '') + ' ' + (to ? t('to $1 dd')(to) : '')).trim();
+  }
+
+  function penaltyPerTimeName(time) {
+    return time ? t('per $1 min(s)')(time) : t('each time')();
+  }
+
+  function addPenalty(penalty_kind) {
+    scope.modal_content = 'penalty_vhr307.html';
+    p.title = _.findWhere(q.penalty_kinds, { penalty_kind: penalty_kind }).name;
+    p.row = null;
+    p.data = {
+      penalty_kind: penalty_kind,
+      penalty_type: penalty_kind == 'M' ? 'A' : 'C'
+    };
+    p.error = {};
+    showModal();
+  }
+
+  function isDaySkip(item) {
+    return item.penalty_kind == 'S';
+  }
+
+  function editPenalty(penalty_kind, row) {
+    scope.modal_content = 'penalty_vhr307.html';
+    p.title = _.findWhere(q.penalty_kinds, { penalty_kind: penalty_kind }).name;
+    p.row = row;
+    p.data = angular.copy(row);
+    p.error = {};
+    showModal();
+  }
+
+  function savePenalty() {
+    if (page.valid(scope.modal)) {
+      // check
+      p.error.found = false;
+
+      let penalty_kind = p.data.penalty_kind;
+      let from_time = nvl(p.data.from_time, 0);
+      let to_time = nvl(p.data.to_time, MAX_VALUE);
+      let from_day = nvl(p.data.from_day, 0);
+      let to_day = nvl(p.data.to_day, MAX_VALUE);
+
+      for (let i = 0; i < d.penalties[penalty_kind].length; i++) {
+        let x = d.penalties[penalty_kind][i];
+        if (p.row && angular.equals(x, p.row)) continue;
+
+        let from_time_2 = nvl(x.from_time, 0);
+        let to_time_2 = nvl(x.to_time, MAX_VALUE);
+        let from_day_2 = nvl(x.from_day, 0);
+        let to_day_2 = nvl(x.to_day, MAX_VALUE);
+
+        if (from_time_2 == from_time && to_time_2 == to_time) {
+          if (to_day > from_day_2 && from_day < to_day_2) {
+            p.error.found = true;
+            p.error.message = t('penalty time (borders) intersaction with row $1')(i + 1);
+            break;
+          }
+        } else if (to_time > from_time_2 && from_time < to_time_2) {
+          p.error.found = true;
+          p.error.message = t('penalty day intersaction with row $1')(i + 1);
+          break;
+        }
+      }
+
+      if (!p.error.found) {
+        // save
+        let data = angular.copy(_.omit(p.data, 'penalty_coef', 'penalty_per_time',
+                                               'penalty_amount', 'penalty_time'));
+
+        if (data.penalty_type == 'C')
+          data.penalty_coef = p.data.penalty_coef;
+        if (data.penalty_type == 'T')
+          data.penalty_time = p.data.penalty_time;
+        if (data.penalty_type == 'A') {
+          data.penalty_per_time = p.data.penalty_per_time;
+          data.penalty_amount = p.data.penalty_amount;
+        }
+
+        data.from_day = nullif(data.from_day, 0);
+        data.from_time = nullif(data.from_time, 0);
+        data.penalty_per_time = nullif(data.penalty_per_time, 0);
+        data.penalty_time_name = penaltyTimeName(data.from_time, data.to_time);
+        data.penalty_times_name = penaltyTimesName(data.from_time, data.to_time);
+        data.penalty_day_name = penaltyDayName(data.from_day, data.to_day);
+        data.penalty_per_name = penaltyPerTimeName(data.penalty_per_time);
+
+        if (p.row) {
+          let index = _.findIndex(d.penalties[penalty_kind], p.row);
+          d.penalties[penalty_kind][index] = data;
+        } else {
+          d.penalties[penalty_kind].push(data);
+        }
+
+        hideModal();
+      }
+    }
+  }
+
+  function removePenalty(event, penalty_kind, row) {
+    if (row) {
+      event.stopPropagation();
+      let index = _.findIndex(d.penalties[penalty_kind], row);
+      d.penalties[penalty_kind].splice(index, 1);
+    } else {
+      d.penalties[penalty_kind] = [];
+    }
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'name', 'penalty_id', 'month', 'division_id', 'state');
+
+        data.penalties = _.chain(d.penalties)
+                          .values()
+                          .flatten()
+                          .map(x => x = _.pick(x, 'penalty_kind', 'penalty_type', 'from_day', 'to_day', 'from_time', 'to_time', 'penalty_coef' , 'penalty_per_time',
+                                                  'penalty_amount', 'penalty_time', 'calc_after_from_time'))
+                          .value();
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  q.form_type = param.form_type;
+  q.penalty_undefined = _.isUndefined(d.penalty_id);
+  q.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  q.penalty_kinds = _.mapMatrix(model.penalty_kinds, ['penalty_kind', 'name']);
+  q.t_add_rule_title = t('add rule title')();
+  q.t_edit_rule_title = t('edit rule title')();
+  q.t_remove_rule_title = t('remove rule title')();
+  q.t_from_placeholder = t('from placehodler')();
+  q.t_to_placeholder = t('to placehodler')();
+  q.t_remove_all_confirm = t('delete all?')();
+
+  d.penalties = _.chain(d.penalties)
+                 .mapRows(['penalty_kind', 'from_day', 'to_day', 'from_time', 'to_time', 'penalty_coef', 'penalty_per_time', 'penalty_amount', 'penalty_time', 'calc_after_from_time'])
+                 .each(function(x) {
+                   x.penalty_time_name = penaltyTimeName(x.from_time, x.to_time);
+                   x.penalty_times_name = penaltyTimesName(x.from_time, x.to_time);
+                   x.penalty_day_name = penaltyDayName(x.from_day, x.to_day);
+                   x.penalty_type = x.penalty_coef ? 'C' : x.penalty_amount ? 'A' : 'T';
+                   x.penalty_per_name = penaltyPerTimeName(x.penalty_per_time);
+                 })
+                 .groupBy('penalty_kind')
+                 .value();
+
+  _.each(q.penalty_kinds, function(x) {
+    if (!d.penalties[x.penalty_kind]) d.penalties[x.penalty_kind] = [];
+  });
+
+  if (!q.penalty_undefined) {
+    d.month_view = moment(d.month, 'MM.YYYY').format('MMMM YYYY');
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  <style type="text/css">
+    .ui-vhr307 .sg.grid {
+      background-color: #fdfeff;
+      position: relative;
+      border: none;
+      padding: 0;
+      display: block;
+      box-shadow: 0 2px 8px -3px #bfbfde;
+    }
+    .ui-vhr307 .sg.grid .sg-header {
+      background-color: #f2f3f8;
+      border: none;
+      -webkit-transition: box-shadow .3s;
+      transition: box-shadow .3s;
+      overflow-x: hidden;
+    }
+    .ui-vhr307 .sg.grid .sg-row {
+      border-bottom: 0;
+      display: block;
+      -webkit-transition: all .3s;
+      transition: all .3s;
+    }
+    .ui-vhr307 .sg.grid .sg-content .sg-row:not(.open):hover {
+      position: relative;
+      background-color: #fff;
+      -webkit-box-shadow: 0 0 10px -5px #071727;
+      box-shadow: 0 0 10px -5px #071727;
+    }
+    .ui-vhr307 .sg.grid .sg-sub-row {
+      border-top: 1px solid rgba(230,230,240,.6);
+      display: flex;
+    }
+    .ui-vhr307 .sg.grid .sg .sg-sub-row:first-child {
+      border: 0;
+    }
+    .ui-vhr307 .sg.grid .sg-sub-row:not(.sg-action) .sg-cell {
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    .ui-vhr307 .sg.grid .sg-cell, .ui-vhr307 .sg.grid .sg-cell {
+      padding: 10px 7px;
+      border-right: 1px solid rgba(232,234,244,.5);
+      color: #201f2b;
+    }
+    .ui-vhr307 .text-black {
+      font-weight: 600;
+      color: #201f2b;
+    }
+  </style>
+</div>
+<div class="b-content ui-vhr307">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-8">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div ng-if="q.penalty_undefined">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>penalty month</t><r/></label>
+                  <input class="form-control" style="text-transform: capitalize;" view-format="MMMM YYYY" ng-model="d.month" b-date-picker="MM.YYYY" required/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>name</t></label>
+                <input type="text" class="form-control" ng-model="d.name" b-maxlength="100"/>
+              </div>
+              <div class="form-group" ng-if="q.form_type != 'C'">
+                <label><t>division</t><r ng-if="q.form_type == 'S'"/></label>
+                <b-tree-select multiple
+                               origin="q.divisions"
+                               id-key="division_id"
+                               model="d.division_id"
+                               required
+                               ng-if="q.form_type == 'S'"/>
+                <b-tree-select multiple
+                               origin="q.divisions"
+                               id-key="division_id"
+                               model="d.division_id"
+                               ng-if="q.form_type != 'S'"/>
+              </div>
+              <div class="form-group">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div ng-if="!q.penalty_undefined">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>penalty month</t></label>
+                  <div class="form-view">{{ d.month_view }}</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>name</t></label>
+                <input type="text" class="form-control" ng-model="d.name" b-maxlength="100"/>
+              </div>
+              <div class="form-group" ng-if="d.division_id">
+                <label><t>division</t></label>
+                <div class="form-view">{{ d.division_name }}</div>
+              </div>
+              <div class="form-group">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-16">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group" ng-repeat="item in q.penalty_kinds">
+              <div class="separator separator-solid my-6" ng-hide="$first"></div>
+              <label><t>penalties for</t>&nbsp;<span class="text-black">{{ item.name }}</span></label>
+              <a href class="float-right" ng-click="addPenalty(item.penalty_kind)" title="{{ q.t_add_rule_title }}"><i class="fa fa-plus"></i>&nbsp;<t>add</t></a>
+              <div class="sg grid">
+                <div class="sg-header">
+                  <div class="sg-row">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-5" ng-if="item.penalty_kind != 'S' && item.penalty_kind != 'M'"><t>penalty time name</t></div>
+                      <div class="sg-cell col-sm-10" ng-if="item.penalty_kind == 'M'"><t>penalty times name</t></div>
+                      <div class="sg-cell" ng-class="isDaySkip(item) ? 'col-sm-10': 'col-sm-5'" ng-if="item.penalty_kind != 'M'"><t>penalty day</t></div>
+                      <div class="sg-cell col-sm-4"><t>penalty type</t></div>
+                      <div class="sg-cell col-sm-4"><t>penalty value</t></div>
+                      <div class="sg-cell col-sm-4"><t>penalty per time</t></div>
+                      <div class="sg-cell col-sm-2">
+                        <div class="text-center" ng-if="d.penalties[item.penalty_kind].length > 0">
+                          <button b-toggle="confirm" class="btn btn-icon btn-default" data-title="{{ q.t_remove_all_confirm }}" data-placement="left" on-click-yes="removePenalty(null, item.penalty_kind)">
+                            <i class="fa fa-trash text-danger"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sg-content">
+                  <div class="sg-row" ng-if="d.penalties[item.penalty_kind].length == 0">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-24 font-italic text-muted"><t>no rules</t></div>
+                    </div>
+                  </div>
+                  <div class="sg-row" ng-repeat="row in d.penalties[item.penalty_kind]">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-5" ng-if="item.penalty_kind != 'S' && item.penalty_kind != 'M'">{{ row.penalty_time_name }}</div>
+                      <div class="sg-cell col-sm-10" ng-if="item.penalty_kind == 'M'">{{ row.penalty_times_name }}</div>
+                      <div class="sg-cell" ng-class="isDaySkip(item) ? 'col-sm-10': 'col-sm-5'" ng-if="item.penalty_kind != 'M'">{{ row.penalty_day_name }}</div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'A'"><t>penalty amount</t></div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'C'"><t>penalty coef</t></div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'T'"><t>penalty time</t></div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'A'">{{ row.penalty_amount | bNumber }}</div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'C'">{{ row.penalty_coef | bNumber }}</div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'T'">{{ row.penalty_time | bNumber }}</div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type == 'A'">{{ row.penalty_per_name }}</div>
+                      <div class="sg-cell col-sm-4" ng-if="row.penalty_type != 'A'"></div>
+                      <div class="sg-cell col-sm-2">
+                        <div class="text-center">
+                          <button class="btn btn-icon btn-default" ng-click="editPenalty(item.penalty_kind, row)" title="{{ q.t_edit_rule_title }}"><i class="fa fa-pen"></i></button>
+                          <button class="btn btn-icon btn-hover-text-danger btn-default" ng-click="removePenalty($event, item.penalty_kind, row)" title="{{ q.t_remove_rule_title }}">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <!-- MODAL -->
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PENALTY MODAL -->
+  <script type="text/ng-template" id="penalty_vhr307.html">
+    <div class="modal-header">
+      <h5 class="modal-title">{{ p.title }}</h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div ng-class="p.data.penalty_kind == 'M' ? 'col-sm-24': 'col-sm-12'" ng-if="p.data.penalty_kind != 'S'">
+          <label ng-if="p.data.penalty_kind != 'M'"><t>penalty time (border)</t>&nbsp;(<t>in minutes</t>)</label>
+          <label ng-if="p.data.penalty_kind == 'M'"><t>penalty repeating</t>&nbsp;(<t>in times</t>)</label>
+          <div class="form-row mb-4">
+            <div class="col-12">
+              <input class="form-control" ng-model="p.data.from_time" b-number b-maxlength="4" scale="0" placeholder="{{ q.t_from_placeholder }}"/>
+            </div>
+            <div class="col-12">
+              <input class="form-control" ng-model="p.data.to_time" b-number b-maxlength="4" scale="0" placeholder="{{ q.t_to_placeholder }}"/>
+            </div>
+          </div>
+        </div>
+        <div ng-class="isDaySkip(p.data) ? 'col-sm-24': 'col-sm-12'"" ng-if="p.data.penalty_kind != 'M'">
+          <label><t>penalty day</t>&nbsp;(<t>in days</t>)</label>
+          <div class="form-row mb-4">
+            <div class="col-12">
+              <input class="form-control" ng-model="p.data.from_day" b-number b-maxlength="4" scale="0" placeholder="{{ q.t_from_placeholder }}"/>
+            </div>
+            <div class="col-12">
+              <input class="form-control" ng-model="p.data.to_day" b-number b-maxlength="4" scale="0" placeholder="{{ q.t_to_placeholder }}"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" ng-if="p.data.penalty_kind != 'M'">
+        <label><t>penalty type</t></label><br/>
+        <label class="radio">
+          <input type="radio" name="penalty_type" value="C" ng-model="p.data.penalty_type"/><span><t>penalty coef</t></span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="penalty_type" value="A" ng-model="p.data.penalty_type"/><span><t>penalty amount</t></span>
+        </label>
+        <label class="radio" ng-if="p.data.penalty_kind != 'S'">
+          <input type="radio" name="penalty_type" value="T" ng-model="p.data.penalty_type"/><span><t>penalty time</t></span>
+        </label>
+      </div>
+      <div class="form-group" ng-if="p.data.penalty_kind == 'M'">
+        <label><t>penalty type</t></label><br/>
+        <div class="row">
+          <div class="col-sm-12">
+            <span class="form-view"><t>penalty amount</t></span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <label><t>penalty value</t><span ng-if="p.data.penalty_type == 'T'">&nbsp;(<t>in minutes</t>)</span><r/></label>
+          <input class="form-control" ng-model="p.data.penalty_coef" ng-if="p.data.penalty_type == 'C'" b-number precision="14" scale="6" required/>
+          <input class="form-control" ng-model="p.data.penalty_amount" ng-if="p.data.penalty_type == 'A'" b-number precision="14" scale="6" required/>
+          <input class="form-control" ng-model="p.data.penalty_time" ng-if="p.data.penalty_type == 'T'" b-number precision="14" scale="6" required/>
+        </div>
+        <div class="col-sm-12" ng-if="p.data.penalty_type == 'A' && p.data.penalty_kind !='S' && p.data.penalty_kind !='M'">
+          <label><t>penalty per time</t>&nbsp;(<t>in minutes</t>)</label>
+          <input class="form-control" ng-model="p.data.penalty_per_time" b-number b-maxlength="4" scale="0"/>
+        </div>
+      </div>
+      <div class="form-group mt-4" ng-if="p.data.penalty_type != 'T' && p.data.penalty_kind != 'S' && p.data.penalty_kind != 'M'">
+        <label class="checkbox">
+          <input type="checkbox" ng-model="p.data.calc_after_from_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+          <span><t>calculate after from time</t></span>
+        </label>
+      </div>
+      <label class="font-red" ng-if="p.error.found" ng-bind-html="p.error.message"></label>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="savePenalty()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+</div>

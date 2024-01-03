@@ -1,0 +1,5 @@
+{
+ "pg.location_type.before": "Previous Value",
+ "pg.location_type.current": "Current Value",
+ "pg.location_type.field_name": "Field"
+}

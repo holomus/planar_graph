@@ -1,0 +1,386 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model, bHttp, $timeout, bConfig) {
+  moment.locale(bConfig.langCode());
+
+  var d = _.omit(model, 'references'), q = model.references, p = { data: {} };
+  var modal = page.$content.find("form[name='modal']>.modal");
+  
+  // modal
+  function showModal() {
+    $timeout(() => {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // edit
+  function editPersonal() {
+    scope.modal_content = 'personal_vhr502';
+    p.title = t('edit personal info')();
+    p.data = _.pick(d, 'first_name', 'last_name', 'middle_name', 'birthday', 'gender', 'nationality_id', 'nationality_name', 'tin', 'iapa', 'npin', 'note');
+    p.saveFunc = fi.save_personal;
+    showModal();
+  }
+
+  function editContacts() {
+    scope.modal_content = 'contacts_vhr502';
+    p.title = t('edit contacts')();
+    p.data = _.pick(d, 'main_phone', 'email', 'address', 'legal_address', 'region_id', 'extra_phone');
+    p.saveFunc = fi.save_contacts;
+    showModal();
+  }
+
+  // nationality
+  function setNationality(row) {
+    if (!row) return;
+    p.data.nationality_id = row.nationality_id;
+    p.data.nationality_name = row.name;
+  }
+
+  function addNationality(value) {
+    fi.add_nationality(null, setNationality, { name: value });
+  }
+
+  function selectNationality() {
+    fi.select_nationality(null, setNationality);
+  }
+
+  function validatePhone() {
+    if (!p.data.main_phone || p.data.main_phone == q.phone_origin) {
+      q.phone_is_unique = true;
+    } else if (p.data.main_phone) {
+      bHttp.unblockOnce();
+      page.post(':phone_is_unique', { main_phone: p.data.main_phone, person_id: d.person_id }).then(function(result) {
+        q.phone_is_unique = result == "Y";
+      }, page.alert);
+    }
+  }
+
+  function validateEmail() {
+    if (!p.data.email || p.data.email == q.email_origin) {
+      q.email_is_unique = true;
+    } else if (p.data.email) {
+      bHttp.unblockOnce();
+      page.post(':email_is_unique', { email: p.data.email }).then(function(result) {
+        q.email_is_unique = result == "Y";
+      }, page.alert);
+    }
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.modal)) {
+      p.data.person_id = d.person_id;
+      p.saveFunc(p.data).then(function() {
+        _.extend(d, p.data);
+        d.region_name = q.regions_dict[d.region_id];
+        d.gender_name = q.genders_dict[d.gender];
+        q.phone_origin = d.main_phone;
+        q.email_origin = d.email;
+        hideModal();
+        page.emit('person_change');
+      }, page.alert);
+    }
+  }
+
+  q.regions_dict = _.object(q.regions);
+  q.genders_dict = _.object(q.genders);
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  q.genders = _.mapRows(q.genders, ['kind', 'name']);
+  q.phone_origin = d.main_phone;
+  q.email_origin = d.email;
+  q.phone_is_unique = true;
+  q.email_is_unique = true;
+
+  d.region_name = q.regions_dict[d.region_id];
+  d.gender_name = q.genders_dict[d.gender];
+  d.person_statuses = _.mapRows(model.person_statuses, ['filial_name', 'status', 'status_name', 'division_name', 'job_title', 'dismissal_date', 'dismissal_reason_type', 'dismissal_reason_name']);
+
+  _.each(d.person_statuses, s => {
+    switch (s.status) {
+      case q.ss_working: s.status_class = 'success'; break;
+      case q.ss_dismissed: s.status_class = 'danger'; break;
+      case q.ss_unknown: s.status_class = 'dark'; break;
+    }
+    switch (s.dismissal_reason_type) {
+      case q.drt_positive: s.dismissal_reason_class = 'primary'; break;
+      case q.drt_negative: s.dismissal_reason_class = 'danger'; break;
+    }
+  });
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>personal</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-secondary" ng-if="fi.save_personal" ng-click="editPersonal()"><t>edit</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>first name</t></label>
+              <span class="form-view">{{ d.first_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>last name</t></label>
+              <span class="form-view">{{ d.last_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>middle name</t></label>
+              <span class="form-view">{{ d.middle_name }}</span>
+            </div>
+            <div class="form-group" ng-if="d.note">
+              <label><t>note</t></label>
+              <span class="form-view">{{ d.note }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>nationality</t></label>
+              <span class="form-view">{{ d.nationality_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>birthday</t></label>
+              <span class="form-view">{{ d.birthday }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>gender</t></label>
+              <span class="form-view">{{ d.gender_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>npin</t></label>
+              <span class="form-view">{{ d.npin }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>iapa</t></label>
+              <span class="form-view">{{ d.iapa }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>tin</t></label>
+              <span class="form-view">{{ d.tin }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>contacts</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-secondary" ng-if="fi.save_contacts" ng-click="editContacts()"><t>edit</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>main phone</t></label>
+              <span class="form-view">{{ d.main_phone }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>email</t></label>
+              <span class="form-view">{{ d.email }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>address</t></label>
+              <span class="form-view">{{ d.address }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>legal address</t></label>
+              <span class="form-view">{{ d.legal_address }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>region</t></label>
+              <span class="form-view">{{ d.region_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>extra phone</t></label>
+              <span class="form-view">{{ d.extra_phone }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom card-stretch gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>person statuses in filials</t></h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <b-pg-grid name="person_statuses" local-data="d.person_statuses" min-height="'auto'"
+                   search="filial_name, job_title" searchable="dismissal_date" current-limit="1000">
+          <b-pg-row>
+            <b-pg-col name="filial_name" size="4"/>
+            <b-pg-col name="status_name" size="4">
+              <div class="alert alert-custom alert-light-{{ row.status_class }} text-center py-1 px-3 m-0">
+                <div class="alert-text">{{ row.status_name }}</div>
+              </div>
+            </b-pg-col>          
+            <b-pg-col name="division_name" size="4"/>
+            <b-pg-col name="job_title" size="4"/>
+            <b-pg-col name="dismissal_date" size="4"/>
+            <b-pg-col name="dismissal_reason_name" size="4">
+              <div class="alert alert-custom alert-light-{{ row.dismissal_reason_class }} text-center py-1 px-3 m-0">
+                <div class="alert-text">{{ row.dismissal_reason_name }}</div>
+              </div>
+            </b-pg-col> 
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div ng-include="modal_content"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script type="text/ng-template" id="personal_vhr502">
+    <div class="form-group">
+      <label><t>first name</t><r/></label>
+      <input type="text" class="form-control" ng-model="p.data.first_name" b-maxlength="250" required>
+    </div>
+    <div class="form-group">
+      <label><t>last name</t><r ng-if="q.crs.last_name == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.last_name" ng-required="q.crs.last_name == 'Y'" b-maxlength="250">
+    </div>
+    <div class="form-group">
+      <label><t>middle name</t><r ng-if="q.crs.middle_name == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.middle_name" ng-required="q.crs.middle_name == 'Y'" b-maxlength="250">
+    </div>
+    <div class="form-group">
+      <label><t>nationality</t></label>
+      <b-input name="nationalities"
+               model="p.data.nationality_name | name"
+               model-key="p.data.nationality_id | nationality_id"
+               is-add="fi.add_nationality"
+               is-view="fi.select_nationality"
+               on-add="addNationality(value)"
+               on-view="selectNationality()">
+        {{ row.name }}
+      </b-input>
+    </div>
+    <div class="form-row">
+      <div class="col-sm-12 form-group">
+        <label><t>birthday</t><r ng-if="q.crs.birthday == 'Y'"/></label>
+        <input type="text" class="form-control" ng-model="p.data.birthday" ng-required="q.crs.birthday == 'Y'" b-date-picker="DD.MM.YYYY"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label><t>gender</t></label><br/>
+      <label class="radio" ng-repeat="gender in q.genders">
+        <input type="radio" name="gender" value="{{ gender.kind }}" ng-model="p.data.gender"/>
+        <span>{{ gender.name }}</span>
+      </label>
+    </div>
+    <div class="form-group">
+      <label><t>npin</t><r ng-if="q.crs.npin == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.npin" ng-required="q.crs.npin == 'Y'" b-maxlength="14"/>
+    </div>
+    <div class="form-group">
+      <label><t>iapa</t><r ng-if="q.crs.iapa == 'Y'"/></label>
+      <input type="text" class="form-control" ng-model="p.data.iapa" ng-required="q.crs.iapa == 'Y'" b-maxlength="14"/>
+    </div>
+    <div class="form-group">
+      <label><t>tin</t></label>
+      <input type="text" class="form-control" ng-model="p.data.tin" b-maxlength="18"/>
+    </div>
+    <div class="form-group">
+      <label><t>note</t></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.note" b-maxlength="500"></textarea>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="contacts_vhr502">
+    <div class="form-group">
+      <label><t>main phone</t><r ng-if="q.crs.phone_number == 'Y'"/></label>
+      <input type="text"
+             class="form-control"
+             ng-model="p.data.main_phone"
+             ng-change="validatePhone()"
+             ng-model-options="{ debounce: 500 }"
+             ng-required="q.crs.phone_number == 'Y'"
+             b-validate="{ s: q.phone_is_unique || p.data.main_phone.length == 0 }"
+             b-maxlength="100"/>
+      <span class="text-danger" ng-hide="p.data.main_phone.length == 0 || q.phone_is_unique"><t>main phone should be unique</t></span>
+    </div>
+    <div class="form-group">
+      <label><t>email</t><r ng-if="q.crs.email == 'Y'"/></label>
+      <input type="email"
+             class="form-control"
+             ng-model="p.data.email"
+             ng-change="validateEmail()"
+             ng-model-options="{ debounce: 500 }"
+             ng-required="q.crs.email == 'Y'"
+             b-validate="{ s: q.email_is_unique || p.data.email.length == 0 }"
+             b-maxlength="300">
+      <span class="text-danger" ng-hide="p.data.email.length == 0 || q.email_is_unique"><t>email phone should be unique</t></span>
+    </div>
+    <div class="form-group" >
+      <label><t>extra phone</t></label>
+      <input type="text" class="form-control" ng-model="p.data.extra_phone" b-maxlength="100"/>
+    </div>
+    <div class="form-group" ng-if="q.crs.region == 'N'">
+      <label><t>region</t></label>
+      <b-tree-select
+        origin="q.regions"
+        id-key="region_id"
+        model="p.data.region_id"/>
+    </div>
+    <div class="form-group" ng-if="q.crs.region == 'Y'">
+      <label><t>region</t><r/></label>
+      <b-tree-select
+        origin="q.regions"
+        id-key="region_id"
+        model="p.data.region_id"
+        required/>
+    </div>
+    <div class="form-group">
+      <label><t>legal address</t><r ng-if="q.crs.legal_address == 'Y'"/></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.legal_address" ng-required="q.crs.legal_address == 'Y'" b-maxlength="300"></textarea>
+    </div>
+    <div class="form-group">
+      <label><t>address</t><r ng-if="q.crs.address == 'Y'"/></label>
+      <textarea class="form-control" rows="1" ng-model="p.data.address" ng-required="q.crs.address == 'Y'" b-maxlength="500"></textarea>
+    </div>
+  </script>
+</div>

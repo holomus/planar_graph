@@ -1,0 +1,116 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+
+  let tg = page.grid('table');
+  let status_class = { 0: 'danger', 1: 'success', 2: 'dark' };
+  
+  tg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ status_class[row.status] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, $timeout, fi, t, param, bAlert) {
+  let q = {
+    unknown_devices: {},
+    is_subpage: scope.bPage.pageType() == 'subpage',
+  };
+
+  function deleteAction(message, device_code) {
+    page.confirm(message, function() {
+      fi.delete({ device_code: device_code, server_id: param.server_id })
+        .then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete device $1{device_name}?')(row.device_name), row.device_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{device_count} device(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_code'));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('unknown_devices', checked, x => !x.serial_number);
+  }
+
+  async function getDevices() {
+    let data = { 
+      server_id: param.server_id,
+      pageNo: 1,
+    };
+    try {
+      let result = { item_count: 1, };
+      while (result.item_count > 0) {
+        result = await page.post(':get_devices', data);
+        data.pageNo += 1;
+      }
+      page.reload();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="getDevices()"><t>get devices from HCP</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-12">
+        <button type="button" class="btn btn-primary" ng-click="getDevices()"><t>get devices</t></button>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table"
+            required="device_code, device_name"
+            on-check="onCheck(checked)"
+            sort="-modified_on"
+            search="device_name, serial_number"
+            searchable="device_ip, device_code"
+            extra-columns="created_on">
+      <b-row>
+        <b-col name="device_name" size=3/>
+        <b-col name="serial_number" size=3/>
+        <b-col name="device_code" size=3/>
+        <b-col name="device_ip" size=3/>
+        <b-col name="device_port" size=2/>
+        <b-col name="treaty_type" size=3/>
+        <b-col name="status_name" as-html="status_html" size=3/>
+        <b-col name="modified_on" size=3/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+      
+      <b-filter name="device_ip"/>
+      <b-filter name="treaty_type"/>
+      <b-filter name="status" decorate-with="status_name"/>
+    </b-grid>
+  </div>
+</div>

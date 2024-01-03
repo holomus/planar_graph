@@ -1,0 +1,309 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var statusClass = {
+    N: 'secondary',
+    W: 'warning',
+    A: 'primary',
+    P: 'info',
+    O: 'success',
+    C: 'danger',
+  };
+
+  page.grid('table').asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var q = _.extend(model, { to_delete: {} }), p = {}, actions = {};
+
+  function fetchTable() {
+    page.query('table').fetch();
+    q.to_delete = {};
+  }
+
+  function hasGrant(row, to_status) {
+    var type = '';
+    switch(row.pcode) {
+      case q.pcode_create_robot: type = 'create_robot_'; break;
+      case q.pcode_hiring: type = 'hiring_'; break;
+      case q.pcode_transfer: type = 'transfer_'; break;
+      case q.pcode_transfer_multiple: type = 'transfer_'; break;
+      case q.pcode_dismissal: type = 'dismissal_'; break;
+    }
+    var role = q.status_flow[row.status]?.[to_status];
+
+    return role && fi[type + role];
+  }
+
+  function toNew(row) {
+    if (!hasGrant(row, q.application_status_new)) return;
+    page.confirm(
+      t('change application No. $1{application_number} of $2{application_date} status into new?')(row.application_number, row.application_date),
+      () => page.post(':to_new', { application_id: row.application_id }).then(fetchTable, page.alert)
+    );
+  }
+
+  function toWaiting(row) {
+    if (!hasGrant(row, q.application_status_waiting)) return;
+    page.confirm(
+      t('change application No. $1{application_number} of $2{application_date} status into waiting?')(row.application_number, row.application_date),
+      () => page.post(':to_waiting', { application_id: row.application_id }).then(fetchTable, page.alert)
+    );
+  }
+
+  function toApproved(row) {
+    if (!hasGrant(row, q.application_status_approved)) return;
+    page.confirm(
+      t('change application No. $1{application_number} of $2{application_date} status into approved?')(row.application_number, row.application_date),
+      () => page.post(':to_approved', { application_id: row.application_id }).then(fetchTable, page.alert)
+    );
+  }
+
+  function toInProgress(row) {
+    if (!hasGrant(row, q.application_status_in_progress)) return;
+    page.confirm(
+      t('change application No. $1{application_number} of $2{application_date} status into in progress?')(row.application_number, row.application_date),
+      () => page.post(':to_in_progress', { application_id: row.application_id }).then(fetchTable, page.alert)
+    );
+  }
+
+  function toCompleted(row) {
+    if (!hasGrant(row, q.application_status_completed)) return;
+    page.confirm(
+      t('change application No. $1{application_number} of $2{application_date} status into completed?')(row.application_number, row.application_date),
+      () => page.post(':to_completed', { application_id: row.application_id }).then(fetchTable, page.alert)
+    );
+  }
+
+  function toCanceled() {
+    page.post(':to_canceled', {
+      application_id: p.data.application_id,
+      closing_note: p.data.closing_note
+    }).then(() => {
+      hideCancelModal();
+      fetchTable();
+    }, page.alert);
+  }
+
+  function deleteOne(row) {
+    var rows = [_.pick(row, 'filial_id', 'application_id')];
+    page.confirm(
+      t('delete application No. $1{application_number} of $2{application_date}?')(row.application_number, row.application_date),
+      () => fi.delete(rows).then(fetchTable, page.alert)
+    );
+  }
+
+  function deleteMany() {
+    var rows = _.map(q.to_delete.rows, r => _.pick(r, 'filial_id', 'application_id'));
+    page.confirm(
+      t('delete $1{application_count} application(s)?')(q.to_delete.size),
+      () => fi.delete(rows).then(fetchTable, page.alert)
+    );
+  }
+
+  function genFilialUri(form, filial_id, param) {
+    var uri = window.location.origin + window.location.pathname + '#' + form + '?-project_code=vhr&-filial_id=' + filial_id;
+    _.each(Object.keys(param),  p => {
+      if (!param[p]) return;
+      uri += '&' + p + '=' + param[p];
+    });
+    return uri;
+  }
+
+  function hasAdd(pcode) {
+    return fi[actions[pcode] + '_add'];
+  }
+
+  function add(pcode) {
+    fi[actions[pcode] + '_add']();
+  }
+
+  function hasEdit(row) {
+    var action = actions[row.pcode] + '_edit';
+    if (fi.isHead) {
+      return _.contains(q.filial_grants[row.filial_id], action);
+    }
+    return fi[action];
+  }
+
+  function edit(row) {
+    var action = actions[row.pcode] + '_edit';
+    var param = _.pick(row, 'application_id');
+    if (fi.isHead) {
+      return window.open(genFilialUri(q['uri_' + action], row.filial_id, param));
+    }
+    return fi[action](param);
+  }
+
+  function hasView(row) {
+    var action = actions[row.pcode] + '_view';
+    if (fi.isHead) {
+      return _.contains(q.filial_grants[row.filial_id], action);
+    }
+    return fi[action];
+  }
+
+  function view(row) {
+    var action = actions[row.pcode] + '_view';
+    var param = _.pick(row, 'application_id');
+    if (fi.isHead) {
+      return window.open(genFilialUri(q['uri_' + action], row.filial_id, param));
+    }
+    return fi[action](param);
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.status == q.application_status_new);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : hasView(row) ? view(row) : hasEdit(row) ? edit(row) : null;
+  }
+
+  function showCancelModal(row) {
+    if (!hasGrant(row, q.application_status_canceled)) return;
+    page.untouch(scope.cancelModal);
+    p.data = {
+      application_id: row.application_id,
+      application_number: row.application_number,
+      application_date: row.application_date,
+      closing_note: ''
+    };
+    $timeout(() => cancelModal.modal('show'));
+  }
+
+  function hideCancelModal() {
+    $timeout(() => cancelModal.modal('hide'));
+  }
+
+  var cancelModal = page.$content.find('form[name=cancelModal]>.modal');
+
+  actions[q.pcode_create_robot] = 'create_robot';
+  actions[q.pcode_hiring] = 'hiring';
+  actions[q.pcode_transfer] = 'transfer';
+  actions[q.pcode_transfer_multiple] = 'transfer_multiple';
+  actions[q.pcode_dismissal] = 'dismissal';
+
+  q.application_types = _.mapRows(model.application_types, ['application_type_id', 'application_type_name', 'pcode']);
+  q.add_actions = _.filter(q.application_types, x => hasAdd(x.pcode));
+
+  // application status transition flow
+  // current status => new status => grant
+  q.status_flow = {
+    'N': { 'W': 'applicant'                                   },
+    'W': { 'N': 'applicant',  'A': 'manager',  'C': 'manager' },
+    'A': { 'W': 'manager',    'P': 'hr'                       },
+    'P': { 'A': 'hr',         'O': 'hr'                       },
+    'O': { 'P': 'hr'                                          },
+    'C': { 'W': 'hr'                                          }
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.add_actions.length">
+      <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><t>add</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="action in q.add_actions" ng-click="add(action.pcode)">{{ action.application_type_name }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="filial_id, application_id, application_number, application_date, application_type_id, status, pcode" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="-application_date, -created_on"
+            search="application_number, application_type_name" searchable="application_id"
+            extra-columns="filial_name, application_id, trans_date, employee_names, created_by_name, modified_by_name, created_on, modified_on">
+      <b-row>
+        <b-col name="application_date" size=4/>
+        <b-col name="application_number" size=4/>
+        <b-col name="application_type_name" size=4/>
+        <b-col name="created_by_name" size=3/>
+        <b-col name="created_on" size=4/>
+        <b-col name="status_name" as-html="status_html" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="row.status == q.application_status_new && hasEdit(row)"><t>edit</t></button>
+        <!-- Begin Statuses -->
+        <button type="button" class="btn btn-default" ng-click="toNew(row)" ng-if="hasGrant(row, q.application_status_new)">
+          <t>to new</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="toWaiting(row)" ng-if="hasGrant(row, q.application_status_waiting)">
+          <t ng-if="row.status == q.application_status_new">new to waiting</t>
+          <t ng-if="row.status == q.application_status_approved">approved to waiting</t>
+          <t ng-if="row.status == q.application_status_canceled">canceled to waiting</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="toApproved(row)" ng-if="hasGrant(row, q.application_status_approved)">
+          <t ng-if="row.status == q.application_status_waiting">waiting to approved</t>
+          <t ng-if="row.status == q.application_status_in_progress">in progress to approved</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="toInProgress(row)" ng-if="hasGrant(row, q.application_status_in_progress)">
+          <t ng-if="row.status == q.application_status_approved">approved to in progress</t>
+          <t ng-if="row.status == q.application_status_completed">completed to in progress</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="toCompleted(row)" ng-if="hasGrant(row, q.application_status_completed)">
+          <t>to completed</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="showCancelModal(row)" ng-if="hasGrant(row, q.application_status_canceled)">
+          <t>to canceled</t>
+        </button>
+        <!-- End Statuses -->
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == q.application_status_new">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="filial_id" decorate-with="filial_name"/>
+      <b-filter name="application_id" directive="equal" extra/>
+      <b-filter name="application_date"/>
+      <b-filter name="application_number"/>
+      <b-filter name="employee_ids" decorate-with="employee_names" extra/>
+      <b-filter name="trans_date" extra/>
+      <b-filter name="application_type_id" decorate-with="application_type_name"/>
+      <b-filter name="status" decorate-with="status_name"/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+  <form name="cancelModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">
+              <t p1="p.data.application_number" p2="p.data.application_date">change application No. $1{application_number} of $2{application_date} status into canceled?</t>
+            </h4>
+          </div>
+          <div class="modal-body">
+            <label><t>closing note</t></label>
+            <textarea class="form-control" ng-model="p.data.closing_note" rows=4></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" ng-click="toCanceled()"><t>to canceled</t></button>
+            <button type="button" class="btn btn-default" ng-click="hideCancelModal()" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,21 @@
+{
+ "mega performance": "Superb",
+ "poor": "Unsatisfactory",
+ "satsfactory": "Satisfactorily",
+ "unsatisfactory": "Needs Improvement",
+ "very satsfactory": "Perfect",
+ "outstanding": "Outstanding",
+ "pg.staff_plans.type": "Type",
+ "employee avarage efficiency indicator": "Average performance for period",
+ "employee performance": "Employee performance",
+ "employee performance for $1{first_month}": "Employee performance for $1",
+ "employee performance for period ($1{first_month} - $2{last_month})": "Employee performance for ($1 - $2)",
+ "extra": "Extra",
+ "main": "Main",
+ "pg.staff_plans.amount": "Amount",
+ "pg.staff_plans.division_name": "Department",
+ "pg.staff_plans.job_name": "Job",
+ "pg.staff_plans.month": "Month",
+ "pg.staff_plans.percent": "Fact %",
+ "There is no data to show on this chart": "There is no data to show"
+}

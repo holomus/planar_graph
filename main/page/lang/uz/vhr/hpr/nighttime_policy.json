@@ -1,0 +1,23 @@
+{
+ "active": "Faol",
+ "add": "Yaratish",
+ "begin time": "Boshlanish vaqti",
+ "coefficient": "Koeffitsient",
+ "coefficient must be greater than 1 for $1 rule(s)": "",
+ "delete $1": "O'chirish $1",
+ "division": "Bo'lim",
+ "end time": "Tugash vaqti",
+ "main info": "Asosiy ma'lumotlar",
+ "name": "Nomi",
+ "passive": "Faol emas",
+ "pg.rules.begin_time": "Boshlanish vaqti",
+ "pg.rules.end_time": "Tugash vaqti",
+ "pg.rules.nighttime_coef": "",
+ "pg.rules.rownum": "№",
+ "policy month": "Oy",
+ "policy rules": "Qoidalar",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "state": "Holat",
+ "there is intersection between $1 rule(s)": ""
+}

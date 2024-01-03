@@ -1,0 +1,453 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, $http) {
+  var d = _.omit(model, 'references'),
+      q = _.extend({
+        t_intime: t('intime')(),
+        t_overtime: t('overtime')(),
+        t_nearest: t('nearest')()
+      }, model.references),
+      p = {
+        data: {},
+      },
+      dt_format = 'DD.MM.YYYY';
+
+  // edit
+  function edit() {
+    fi.edit({ document_id: d.document_id });
+  }
+
+  function editTrainings() {
+    fi.edit_trainings({ document_id: d.document_id });
+  }
+
+  function editStatuses() {
+    fi.edit_statuses({ document_id: d.document_id });
+  }
+
+  function roundToDecimal(num) {
+    return Math.round((+num + Number.EPSILON) * 100) / 100
+  }
+
+  function statusStyle() {
+    return d.status == q.status_new ? { 'color': '#212121', 'background-color': '#e5eaee', }
+         : d.status == q.status_set_training ? { 'color': '#fff', 'background-color': '#8950fc', }
+         : d.status == q.status_training ? { 'color': '#fff', 'background-color': '#5055fc', }
+         : d.status == q.status_waiting ? { 'color': '#212121', 'background-color': '#ffa800', }
+         : d.status == q.status_approved ? { 'color': '#fff', 'background-color': '#1bc5bd', } :  { 'color': '#212121', 'background-color': '#e5eaee', };
+  }
+
+  // change status
+  function action(doFunc, message) {
+    page.confirm(message, function() {
+      doFunc({ document_id: d.document_id }).then(page.reload, page.alert);
+    });
+  }
+
+  // ------------------------------ indicators modal ------------------------------ //
+  let modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function openIndicatorsModal(row) {
+    p.data = row;
+    showModal();
+  }
+
+  // fix status
+  function fixStatus(item) {
+    let first_change_date = moment(item.first_change_date, dt_format),
+        new_change_date = moment(item.new_change_date, dt_format);
+    item.diff_days = new_change_date.diff(first_change_date, 'days') - (+item.old_penalty_period || 0);
+
+    [item.diff_days_class, item.status_name] = item.diff_days == 0 ? ['badge-success', q.t_intime] : item.diff_days > 0 ? ['badge-danger', q.t_overtime] : ['badge-warning', q.t_nearest];
+  }
+
+  function rowStatus(row) {
+    if (row.is_dismissed) return 'label-danger';
+    if (row.career_deleted || row.is_rotated) return 'label-info'; 
+
+    return row.attempt_no > 1 ? 'label-warning' : 'label-success';
+  }
+
+  function calcOverallScore(row) {
+    if (!row.indicators || row.indicators.length == 0) {
+      row.overall_score = 0;
+    }
+
+    row.overall_score = roundToDecimal(_.reduce(row.indicators, (sum, x) => sum + (+x.indicator_value || 0), 0) / row.indicators.length) || 0;
+  }
+
+  q.increment_statuses = _.chain(q.increment_statuses)
+                          .mapRows(['value', 'name'])
+                          .each(x => {
+                            x.class = x.value == q.increment_status_success ? 'label-success'
+                                    : x.value == q.increment_status_failure ? 'label-danger'
+                                    : 'label-default'
+                          })
+                          .indexBy('value')
+                          .value();
+  q.activeSection = 'main';
+
+  let indicators = _.chain(d.indicators)
+                    .mapRows(['staff_id',
+                              'indicator_id',
+                              'indicator_name',
+                              'indicator_used',
+                              'indicator_value'])
+                    .each(x => { x.indicator_value = roundToDecimal(x.indicator_value) })
+                    .groupBy('staff_id')
+                    .value(),
+      subjects = _.chain(d.subjects)
+                  .mapRows(['staff_id',
+                            'name'])
+                  .groupBy('staff_id')
+                  .value();
+  d.staffs = _.chain(d.staffs)
+              .mapRows(['staff_id',
+                        'staff_number',
+                        'staff_name',
+                        'dismissal_date',
+                        'last_change_date',
+                        'new_change_date',
+                        'period',
+                        'nearest',
+                        'old_penalty_period',
+                        'success_score',
+                        'ignore_score',
+                        'recommend_failure',
+                        'increment_status',
+                        'robot_name',
+                        'from_rank_id',
+                        'from_rank_name',
+                        'to_rank_name',
+                        'division_name',
+                        'job_name',
+                        'attempt_no',
+                        'exam_name',
+                        'old_experience_id',
+                        'new_experience_id',
+                        'new_from_rank_id',
+                        'note'])
+              .each(x => {
+                x.subjects = subjects[x.staff_id] || [];
+                x.indicators = indicators[x.staff_id] || [];
+
+                let dismissal_date = moment(x.dismissal_date, dt_format),
+                    new_change_date = moment(x.new_change_date, dt_format);
+
+                x.is_dismissed = dismissal_date < new_change_date;
+                x.career_deleted = !x.old_experience_id || !x.new_experience_id;
+                x.is_rotated = x.old_experience_id != x.new_experience_id || x.from_rank_id != x.new_from_rank_id;
+
+                x.has_subjects_indicator = _.any(indicators[x.staff_id] || [], indicator => indicator.indicator_id == q.training_subjects_indicator);
+                x.has_exam_indicator = _.any(indicators[x.staff_id] || [], indicator => indicator.indicator_id == q.exam_score_indicator);
+
+                x.first_change_date = moment(x.last_change_date, dt_format).add(parseFloat(x.period), 'days').format(dt_format)
+              })
+              .each(fixStatus)
+              .each(calcOverallScore)
+              .value();
+
+  q.actions = _.filter([
+    {
+      has_access: fi.to_set_training,
+      title: fi.to_set_training?.title,
+      show_condition: d.status == q.status_new,
+      execute: () => action(fi.to_set_training, t('change status to set training?')()),
+    },
+    {
+      has_access: fi.to_training,
+      title: fi.to_training?.title,
+      show_condition: d.status == q.status_set_training,
+      execute: () => action(fi.to_training, t('change status to training?')()),
+    },
+    {
+      has_access: fi.to_waiting,
+      title: fi.to_waiting?.title,
+      show_condition: d.status == q.status_training,
+      execute: () => action(fi.to_waiting, t('change status to waiting?')()),
+    },
+    {
+      has_access: fi.to_approved,
+      title: fi.to_approved?.title,
+      show_condition: d.status == q.status_waiting,
+      execute: () => action(fi.to_approved, t('change status to approved?')()),
+    },
+    {
+      has_access: fi.return_to_waiting,
+      title: fi.return_to_waiting?.title,
+      show_condition: d.status == q.status_approved,
+      execute: () => action(fi.return_to_waiting, t('return status to waiting?')()),
+    },
+    {
+      has_access: fi.return_to_training,
+      title: fi.return_to_training?.title,
+      show_condition: d.status == q.status_waiting,
+      execute: () => action(fi.return_to_training, t('return status to training?')()),
+    },
+    {
+      has_access: fi.return_to_set_training,
+      title: fi.return_to_set_training?.title,
+      show_condition: d.status == q.status_training,
+      execute: () => action(fi.return_to_set_training, t('return status to set training?')()),
+    },
+    {
+      has_access: fi.to_new,
+      title: fi.to_new?.title,
+      show_condition: d.status == q.status_set_training,
+      execute: () => action(fi.to_new, t('change status to new?')()),
+    },
+  ], x => x.has_access);
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && d.status == q.status_new" b-hotkey="edit"><t>edit</t></button>
+  <button type="button" class="btn btn-success" ng-click="editTrainings()" ng-if="fi.edit_trainings && d.status == q.status_set_training"><t>edit trainings</t></button>
+  <button type="button" class="btn btn-success" ng-click="editStatuses()" ng-if="fi.edit_statuses && d.status == q.status_waiting"><t>edit statuses</t></button>
+  <div class="btn-group" ng-if="q.actions.length > 0">
+    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+    <div class="dropdown-menu">
+      <a href class="dropdown-item" 
+         ng-repeat="action in q.actions" 
+         ng-if="action.has_access"
+         ng-show="action.show_condition"
+         ng-click="action.execute()">
+        {{ action.title }}
+      </a>
+    </div>
+  </div>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3"><t p1="d.document_number" p2="d.document_date">$1{document_number} from $2{document_date}</t></span>
+                <span class="text-muted">&nbsp;({{ d.document_id }})</span>
+              </div>
+              <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-style="statusStyle()">{{ d.status_name }}</div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <div class="form-group" >
+                      <label><t>document date</t></label>
+                      <span class="form-view">{{ d.document_date }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>division name</t></label>
+                      <span class="form-view">{{ d.division_name }}</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>document number</t></label>
+                      <span class="form-view">{{ d.document_number }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>note</t></label>
+                      <span class="form-view">{{ d.note }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>created by</t></label>
+                      <span class="form-view">{{ d.created_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>created on</t></label>
+                      <span class="form-view">{{ d.created_on }}</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>modified by</t></label>
+                      <span class="form-view">{{ d.modified_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>modified on</t></label>
+                      <span class="form-view">{{ d.modified_on }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-6"></div>
+            <div class="row">
+              <div class="offset-sm-12 col-sm-12 mb-2">
+                <b-pg-controller name="staffs"/>
+              </div>
+            </div>
+            <b-pg-grid name="staffs" 
+                       search="staff_name, robot_name, from_rank_name, to_rank_name" 
+                       searchable="staff_number, division_name, job_name"
+                       sort="staff_name" 
+                       local-data="d.staffs"
+                       on-check="onCheck(checked)">
+              <b-pg-header name="ranks">
+                <div><t>old rank</t>&nbsp;<i class="fas fa-arrow-right"></i>&nbsp;<t>new rank</t></div>
+              </b-pg-header>
+              <b-pg-row>
+                <b-pg-col name="staff_name" size="4"/>
+                <b-pg-col name="attempt_status" size="3">
+                  <span class="label label-pill label-inline mr-2" ng-class="rowStatus(row)">
+                    <t ng-if="row.is_dismissed">staff dismissed</t>
+                    <t ng-if="!row.is_dismissed && row.career_deleted">career deleted</t>
+                    <t ng-if="!row.is_dismissed && !row.career_deleted && row.is_rotated">staff rotated</t>
+                    <t ng-if="!row.is_dismissed && !row.career_deleted && !row.is_rotated" p1="{{ row.attempt_no }}">attempt no $1</t>
+                  </span>
+                </b-pg-col>
+                <b-pg-col name="robot_name" size="3"/>
+                <b-pg-col name="ranks" size="4">
+                  <div class="row ml-0">
+                    <div class="badge badge-primary">{{ row.from_rank_name }}</div>
+                    &nbsp;<i class="fas fa-arrow-right pt-1"></i>&nbsp;
+                    <div class="badge badge-success">{{ row.to_rank_name }}</div>
+                  </div>
+                </b-pg-col>
+                <b-pg-col name="new_change_date" size="3"/>
+                <b-pg-col name="overall_score" format="number" size="1"/>
+                <b-pg-col name="increment_status" size="4">
+                  <div class="label label-pill label-inline mr-2" ng-class="q.increment_statuses[row.increment_status].class">
+                    {{ q.increment_statuses[row.increment_status].name }}
+                  </div>
+                </b-pg-col>
+                <b-pg-col name="actions" size="1">
+                  <div class="text-left" ng-if="row.indicators.length > 0">
+                    <button type="button" class="btn btn-default btn-icon" ng-click="openIndicatorsModal(row)">
+                      <i class="fa fa-eye"></i>
+                    </button>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+
+              <b-pg-extra-col name="training_subjects" size="3">
+                <div ng-if="row.has_subjects_indicator">
+                  <ol class="pl-4 mb-0">
+                    <li ng-repeat="subject in row.subjects">
+                      {{ subject.name }}
+                    </li>
+                  </ol>
+                </div>
+              </b-pg-extra-col>
+              <b-pg-extra-col name="exam" size="3">
+                <div ng-if="row.has_exam_indicator">
+                  {{ row.exam_name }}
+                </div>
+              </b-pg-extra-col>
+              <b-pg-extra-col name="note" size="3"/>
+              <b-pg-extra-col name="status" size="2">
+                <div class="row ml-0" ng-if="row.new_change_date">
+                  <div class="badge" ng-class="row.diff_days_class">{{ row.diff_days }}</div>
+                  &nbsp;
+                  <div>{{ row.status_name }}</div>
+                </div>
+              </b-pg-extra-col>
+              <b-pg-extra-col name="staff_number" size="3"/>
+              <b-pg-extra-col name="division_name" size="3"/>
+              <b-pg-extra-col name="job_name" size="3"/>
+            </b-pg-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>view indicators</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <label><t>staff name</t></label>
+                  <span class="form-view">{{ p.data.staff_name }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>overall score</t></label>
+                  <span class="form-view text-right">{{ p.data.overall_score }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-4"></div>
+            <div class="form-group" ng-repeat-start="indicator in p.data.indicators">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <label>{{ indicator.indicator_name }}</label>
+                  <span class="form-view text-right">{{ indicator.indicator_value }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-repeat-end>
+              <div class="form-row">
+                <div class="col-sm-12" ng-if="indicator.indicator_id == q.exam_score_indicator">
+                  <label><t>exam name</t></label>
+                  <span class="form-view">{{ p.data.exam_name }}</span>
+                </div>
+                <div class="col-sm-24" ng-if="indicator.indicator_id == q.training_subjects_indicator">
+                  <label><t>subject names</t></label>
+                  <span class="form-view" style="white-space: nowrap">
+                    <ol class="pl-4 mb-0">
+                      <li ng-repeat="subject in p.data.subjects">
+                        {{ subject.name }}
+                      </li>
+                    </ol>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

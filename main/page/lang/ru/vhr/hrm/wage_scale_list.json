@@ -1,0 +1,17 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{wage_scale_count} wage scale(s)?": "Вы действительно хотите удалить <b>$1</b> тарифную(ых) груп(п)у?",
+ "delete wage scale $1{wage_scale_name}?": "Вы действительно хотите удалить <b>$1</b>?",
+ "info": "Просмотреть",
+ "list": "Утверждения",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.full_name": "Полное название",
+ "table.last_changed_date": "Дата последнего изменения",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.wage_scale_id": "ИД"
+}

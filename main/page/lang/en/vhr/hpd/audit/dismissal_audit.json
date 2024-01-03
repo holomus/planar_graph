@@ -1,0 +1,16 @@
+{
+ "details": "Details",
+ "dismissal": "Dismissal",
+ "journal": "Document",
+ "page": "Page",
+ "table_audit.dismissal_reason_name": "Dismissal Reason",
+ "table_audit.employment_source_name": "New Workplace",
+ "table_audit.page_id": "Page ID",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User"
+}

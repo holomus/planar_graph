@@ -1,0 +1,14 @@
+{
+ "before start": "Время до начала тестирования",
+ "Do you finish ? If you want you can go back to review your answers.": "Вы действительно хотите завершить тестирование? Если хотите, то можете вернуться назад для проверки своих ответов",
+ "finish": "Завершить",
+ "mark question": "Отметить вопрос",
+ "next": "Следующий",
+ "Options": "Варианты ответов",
+ "prev": "Предыдущий",
+ "Question № $1:": "Вопрос № $1:",
+ "test finished": "Тестирование завершено",
+ "testing paused for some time": "Тестирование приостановлено",
+ "testing time has expired": "Время тестирования истекло",
+ "view result": "Просмотреть результаты"
+}

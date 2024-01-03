@@ -1,0 +1,21 @@
+{
+ "mega performance": "Superb",
+ "poor": "Qoniqarsiz",
+ "satsfactory": "Qoniqarli",
+ "unsatisfactory": "Yaxshilash kerak",
+ "very satsfactory": "Mukammal",
+ "outstanding": "Ajoyib",
+ "pg.staff_plans.type": "Tur",
+ "employee avarage efficiency indicator": "Davr uchun o'rtacha samaradorlik",
+ "employee performance": "Xodim samaradorligi",
+ "employee performance for $1{first_month}": "$1 uchun xodimning samaradorligi",
+ "employee performance for period ($1{first_month} - $2{last_month})": "$1 - $2 davr uchun xodimning samaradorligi",
+ "extra": "Qo'shimcha",
+ "main": "Asosiy",
+ "pg.staff_plans.amount": "Qiymat",
+ "pg.staff_plans.division_name": "Bo'lim",
+ "pg.staff_plans.job_name": "Lavozim",
+ "pg.staff_plans.month": "Oy",
+ "pg.staff_plans.percent": "Fakt (%)",
+ "There is no data to show on this chart": "Aks ettirish uchun ma'lumotlar topilmadi"
+}

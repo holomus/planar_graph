@@ -1,0 +1,5 @@
+{
+ "pg.question_group.before": "Previous Value",
+ "pg.question_group.current": "Current Value",
+ "pg.question_group.field_name": "Field"
+}

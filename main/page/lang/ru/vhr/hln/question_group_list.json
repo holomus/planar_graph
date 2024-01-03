@@ -1,0 +1,17 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{question_group_count} question_group(s)?": "Вы действительно хотите удалить <b>$1</b> групп(у) вопросов?",
+ "delete question group $1{name}?": "Вы действительно хотите удалить группу вопросов <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.pcode": "Системный код",
+ "table.question_group_id": "ИД",
+ "table.required": "Обязательный",
+ "table.state_name": "Статус"
+}

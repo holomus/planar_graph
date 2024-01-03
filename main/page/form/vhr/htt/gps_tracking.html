@@ -1,0 +1,711 @@
+<script biruni>
+page.ctrl(function(scope, model, t, bHttp) {
+  let d = model || {};
+  let map = page.getMap('GPS');
+  let latlng = d.default_latlng.split(',').map(parseFloat);
+  let polygons = [];
+  let polylines = [];
+
+  const t_gps_on = t('gps turned on');
+  const t_gps_off = t('gps turned off');
+  const t_polygon_in = t('entered into <b>$1{location_name}</b> polygon');
+  const t_polygon_out = t('left from polygon');
+  const event_icons = {
+    // track types
+    C: { class: 'fas fa-walking', color: '#ffa800' },
+    I: { class: 'fas fa-walking', color: '#6993ff' },
+    O: { class: 'fas fa-walking', color: '#f64e60' },
+    M: { class: 'fas fa-walking', color: '#8950fc' },
+    P: { class: 'fas fa-walking', color: '#ff8b97' },
+    G: { class: 'fas fa-walking', color: '#ff499a' },
+    // gps
+    gps_on: { class: 'fas fa-map-marker-alt', color: '#4BB543' },
+    gps_off: { class: 'fas fa-tint-slash fa-rotate-180', color: '#f64e60' },
+    // polygon
+    polygon_in: { class: 'fas fa-map-marked-alt', color: '#4BB543' },
+    polygon_out: { class: 'fas fa-map-marked-alt', color: '#f64e60' },
+  };
+
+  const GPS_ON = 'GPS_ON';
+  const GPS_OFF = 'GPS_OFF';
+  const POLYGON_IN = 'POLYGON_IN';
+  const POLYGON_OUT = 'POLYGON_OUT';
+
+  d.t_search = t('search')();
+  d.divisions = _.mapRows(d.divisions, ['division_id', 'name', 'parent_id']);
+  d.division_ids = [];
+  d.jobs = [];
+
+  map.init({
+    lat: latlng[0],
+    lng: latlng[1],
+    zoom: 13,
+    fullscreen: true,
+    profile: 'walking',
+    showProfiles: true
+  });
+
+  loadEmployees();
+
+  function setCenter(track) {
+    if (!track.lat || !track.lng) return;
+    map.then(api => {
+      api.flyTo([track.lat, track.lng], 16);
+    });
+  }
+
+  // markers
+  function addMarkers(markers) {
+    map.then(api => api.addMarkers(markers));
+  }
+
+  function removeMarkers() {
+    map.then(api => api.removeMarkers());
+  }
+
+  // polygons
+  function addPolygons() {
+    map.then(api => {
+      _.each(d.locations, loc => {
+        if (!loc.polygon_vertices.length) return;
+        let polygon_name = 'polygon-' + loc.location_id;
+        api.addPolygon(polygon_name, loc.polygon_vertices, { color: loc.color }, loc.name);
+        polygons.push(polygon_name);
+      });
+    });
+  }
+
+  function removePolygon() {
+    map.then(api => {
+      _.each(polygons, api.removePolygon);
+      polygons = [];
+    });
+  }
+
+  // routes & polylines
+  function addRoutes() {
+    map.then(api => {
+      _.each(d.gps_track_timecuts, (timecut, index, all) => {
+        if (index < all.length - 1) {
+          let v1 = _.last(timecut);
+          let v2 = _.first(all[index + 1]);
+          polylines.push(v1.caption);
+          api.addPolylineWithArrows(v1.caption, [[v1.lat, v1.lng], [v2.lat, v2.lng]], {
+            color: 'red',
+            weight: 2,
+            dashArray: '10,5'
+          });
+        }
+        api.addMarkers([
+          {
+            caption: 'start' + index,
+            lat: _.first(timecut).lat,
+            lng: _.first(timecut).lng,
+            icon: 'check_start',
+            title: _.first(timecut).caption,
+            iconOptions: { iconSize: [24, 24], iconAnchor: [12, 12] }
+          },
+          {
+            caption: 'end' + index,
+            lat: _.last(timecut).lat,
+            lng: _.last(timecut).lng,
+            icon: 'check_end',
+            title: _.last(timecut).caption,
+            iconOptions: { iconSize: [24, 24], iconAnchor: [12, 12] }
+          }
+        ], true);
+        api.drawRoute(timecut, {
+          fuseClosePoints: true,
+          showDirection: false
+        });
+      });
+      if (d.gps_track_timecuts.length) {
+        setCenter(d.gps_track_timecuts[0][0]);
+      }
+    });
+  }
+
+  function removeRoute() {
+    map.then(api => {
+      api.removeRoute();
+      _.each(polylines, api.removePolylineWithArrows);
+      polylines = [];
+    });
+  }
+
+  function clearMap() {
+    removeMarkers();
+    removePolygon();
+    removeRoute();
+  }
+
+  function loadEmployees() {
+    bHttp.unblockOnce();
+    page.post(':load_employees', {
+      date: d.date,
+      search: d.search,
+      division_ids: d.division_ids,
+      job_ids: _.pluck(d.jobs, 'job_id')
+    }).then(result => {
+      d.employees = _.chain(result.employees)
+        .mapRows([
+          'employee_id',
+          'employee_name',
+          'gender',
+          'main_phone',
+          'staff_id',
+          'staff_number',
+          'division_id',
+          'division_name',
+          'org_unit_id',
+          'org_unit_name',
+          'robot_id',
+          'robot_name',
+          'job_id',
+          'job_name',
+          'rank_id',
+          'rank_name',
+          'photo_sha'
+        ])
+        .map(row => {
+          row.photo_src = loadImage(row);
+          return row;
+        })
+        .value();
+        if (_.findIndex(d.employees, x => x.employee_id == d.employee_id) < 0) {
+          clearMap();
+          d.employee_id = '';
+          d.staff_id = '';
+          d.locations = [];
+          d.tracks = [];
+          d.timesheet = {};
+          d.gps_track_timecuts = [];
+          d.gps_events = [];
+        }
+    }, page.alert);
+  }
+
+  function loadImage(row) {
+    if (row.photo_sha)
+      return `${ page.loadImage(row.photo_sha) + '&height=80&width=80' }`;
+    else
+      return `page/resource/anor/no_photo_${ row.gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  function toggleCard(param) {
+    let id = '.card-' + param, angle = '#angle-' + param;
+    if (d[param]) {
+      $(id).hide();
+      $(id).parent().removeClass('col-md-6');
+      $(id).parent().addClass('col-md-auto');
+      $(angle).css('transform', 'rotate(180deg)');
+    } else {
+      $(id).show();
+      $(id).parent().removeClass('col-md-auto');
+      $(id).parent().addClass('col-md-6');
+      $(angle).css('transform', 'rotate(0deg)');
+    }
+    d[param] = !d[param];
+  }
+
+  function getEvents() {
+    let in_polygon = false;
+    let prev_gps_timestamp;
+    let prev_polygon_timestamp;
+    d.gps_events = [];
+
+    function rayCasting(point, polygon) {
+      let n = polygon.length,
+        is_in = false,
+        x = point[1],
+        y = point[0],
+        x1, x2, y1, y2;
+
+      for (let i = 0; i < n - 1; ++i) {
+        x1 = polygon[i][0];
+        x2 = polygon[i + 1][0];
+        y1 = polygon[i][1];
+        y2 = polygon[i + 1][1];
+
+        if (y < y1 !== y < y2 && x < (x2 - x1) * (y - y1) / (y2 - y1) + x1) {
+          is_in = !is_in;
+        }
+      }
+      return is_in;
+    }
+
+    function is_in_polygon(gps) {
+      let location_name;
+      let is_in_polygon = _.any(_.filter(d.locations, x => x.polygon_vertices.length), x => {
+        if (rayCasting([gps.lng, gps.lat], x.polygon_vertices)) {
+          location_name = x.name;
+          return true;
+        }
+        return false;
+      });
+      return { is_in_polygon, location_name };
+    }
+
+    function push_event(event, event_kind) {
+      if (event_kind == GPS_ON) {
+        event.event_kind = event_kind;
+        event.event_icon = event_icons.gps_on;
+        event.event_name = t_gps_on();
+        event.title = event.title + ' - ' + event.event_name;
+        event.required = true;
+        d.gps_events.push(event);
+        in_polygon = event.is_in_polygon;
+
+      } else if (event_kind == GPS_OFF) {
+        event.event_kind = event_kind;
+        event.event_icon = event_icons.gps_off;
+        event.event_name = t_gps_off();
+        event.title = event.title + ' - ' + event.event_name;
+        event.required = true;
+        d.gps_events.push(event);
+        in_polygon = event.is_in_polygon;
+
+      } else if (event_kind == POLYGON_IN) {
+        if (in_polygon) return;
+        event.event_kind = event_kind;
+        event.event_icon = event_icons.polygon_in;
+        event.event_name = t_polygon_in(event.location_name);
+        event.title = event.title + ' - ' + event.event_name;
+        event.required = true;
+        d.gps_events.push(event);
+        in_polygon = true;
+
+      } else if (event_kind == POLYGON_OUT) {
+        if (!in_polygon) return;
+        event.event_kind = event_kind;
+        event.event_icon = event_icons.polygon_out;
+        event.event_name = t_polygon_out();
+        event.title = event.title + ' - ' + event.event_name;
+        event.required = true;
+        d.gps_events.push(event);
+        in_polygon = false;
+      }
+    }
+    _.each(d.gps_track_timecuts, timecut => {
+      _.each(timecut, (gps, index) => {
+        let location = is_in_polygon(gps);
+        let event_kind = location.is_in_polygon ? POLYGON_IN : POLYGON_OUT;
+        gps.is_in_polygon = location.is_in_polygon;
+        gps.location_name = location.location_name;
+        if (index == 0) return push_event(gps, GPS_ON);
+        else if (index == timecut.length - 1) return push_event(gps, GPS_OFF);
+        else return push_event(gps, event_kind);
+      });
+    });
+    d.gps_events = _.sortBy([...d.gps_events, ...d.tracks], x => x.track_number);
+  }
+
+  function reloadMap() {
+    clearMap();
+    // clear data
+    d.locations = [];
+    d.tracks = [];
+    d.timesheet = {};
+    d.gps_track_timecuts = [];
+    d.gps_events = [];
+    // employee must be selected
+    if (!d.employee_id) return;
+
+    page.post(':load_tracks', {
+      date: d.date,
+      employee_id: d.employee_id,
+      staff_id: d.staff_id,
+      location_type_ids: _.pluck(d.location_types, 'location_type_id')
+    }).then(result => {
+      // timesheet & settings
+      d.date = result.date;
+      d.timesheet = result.timesheet;
+      d.gps_max_interval = result.gps_max_interval;
+
+      // locations
+      d.locations = _.map(result.locations, loc => {
+        let [lat, lng] = loc.latlng.split(',').map(parseFloat);
+        loc.lat = lat;
+        loc.lng = lng;
+        loc.color = loc.color || '#4B77BE';
+        loc.polygon_vertices = _.map(loc.polygon_vertices, vx => _.map(vx.split(','), parseFloat));
+        return loc;
+      });
+      addPolygons();
+
+      // tracks
+      d.tracks = _.map(result.tracks, x => {
+        let [lat, lng] = !!x.latlng ? x.latlng.split(',').map(parseFloat) : [];
+        x.lat = lat;
+        x.lng = lng;
+        x.time = x.track_time;
+        x.timestamp = moment(x.track_date + ' ' + x.track_time, 'DD.MM.YYYY HH:mm:ss');
+        x.track_number = x.timestamp.format('YYYYMMDDHHmmss');
+        x.title = x.time;
+        x.caption = x.time;
+        x.event_kind = x.track_type;
+        x.event_icon = event_icons[x.track_type];
+        x.event_name = x.track_type_name;
+        return x;
+      });
+
+      // timesheet is null when timesheet.day_kind <> work
+      if (!d.timesheet) return;
+
+      // timestamp difference between two tracks (in milliseconds)
+      const max_interval_ms = d.gps_max_interval * 1000; // seconds => milliseconds
+      const min_interval_ms = 1000;
+      // timesheet
+      const begin_time = moment(d.timesheet.begin_time, 'DD.MM.YYYY HH:mm:ss');
+      const end_time = moment(d.timesheet.end_time, 'DD.MM.YYYY HH:mm:ss');
+      const break_begin_time = moment(d.timesheet.break_begin_time, 'DD.MM.YYYY HH:mm:ss');
+      const break_end_time = moment(d.timesheet.break_end_time, 'DD.MM.YYYY HH:mm:ss');
+
+      // GPS tracks
+      d.gps_track_timecuts = _.chain(result.gps_tracks)
+                      .map(track => {
+                        return _.chain(track.data.slice(0, -1).split(/\r?\n/))
+                                .map(x => x.split('\t'))
+                                .mapRows(['track_time', 'lat', 'lng', 'accuracy', 'provider'])
+                                .each(x => {
+                                  x.time = x.track_time.substring(0, 5);
+                                  x.track_date = track.track_date;
+                                  x.timestamp = moment(x.track_date + ' ' + x.track_time, 'DD.MM.YYYY HH:mm:ss');
+                                  x.track_number = x.timestamp.format('YYYYMMDDHHmmss');
+                                  // map
+                                  x.lat = parseFloat(x.lat);
+                                  x.lng = parseFloat(x.lng);
+                                  x.accuracy = Math.round(x.accuracy);
+                                  x.title = x.time;
+                                  x.caption = x.time;
+                                })
+                                .value();
+                      })
+                      .flatten()
+                      // ordering gps-tracks by timestamp
+                      .sortBy(x => x.track_number)
+                      // 1) filtering gps-tracks
+                      // 2) separating gps-tracks into timecuts where maximum-allowed-gap between two timestamps exceed (matrix of gps tracks)
+                      .reduce((timecuts, curr_gps, index, all) => {
+                        const prev_gps = index > 0 ? all[index - 1] : null;
+                        const last_added_gps = _.last(_.last(timecuts));
+                        // filter tracks
+                        // valid gps conditions
+                        const in_work_time = (curr_gps.timestamp > begin_time) && (curr_gps.timestamp < end_time);
+                        const out_of_break_time = (d.timesheet.break_enabled == 'N') || (curr_gps.timestamp < break_begin_time) || (curr_gps.timestamp > break_end_time);
+                        const is_distinct_timestamps = !prev_gps || !last_added_gps || (curr_gps.timestamp - last_added_gps.timestamp) > min_interval_ms;
+                        // skip invalid gps tracks
+                        if (!in_work_time || !out_of_break_time || !is_distinct_timestamps) return timecuts;
+                        // initialize the very first timecut (runs only once)
+                        if (!timecuts.length) {
+                          timecuts.push([]);
+                          _.last(timecuts).push(curr_gps);
+                          return timecuts;
+                        }
+                        // new timecut if two timestamps exceed maximum-allowed-gap (max_interval_ms)
+                        if (curr_gps.timestamp - last_added_gps.timestamp > max_interval_ms) timecuts.push([]);
+                        _.last(timecuts).push(curr_gps);
+                        return timecuts;
+                      }, [])
+                      // remove timecuts which has only one point
+                      .filter(x => x.length > 1)
+                      .value();
+      // warning: getEvents() must be run before addRoutes();
+      // getEvents() sets event-kind tracks into required
+      // which enforces tracks not to be removed while "fuseRoutePoints = true"
+      getEvents();
+      addRoutes();
+    }, page.alert);
+  }
+
+  function selectEmployee(row) {
+    if (d.employee_id == row.employee_id) return;
+    d.employee_id = row.employee_id;
+    d.staff_id = row.staff_id;
+    reloadMap();
+  }
+
+  function timeClass(first, last) {
+    if (first && last) return 'd-none';
+    if (first) return 'time-line-first';
+    if (last) return 'time-line-last';
+    return '';
+  }
+
+  scope.$watch('d.date', () => {
+    loadEmployees();
+    reloadMap();
+  });
+  scope.$watchCollection('d.jobs', loadEmployees);
+  scope.$watchCollection('d.division_ids', loadEmployees);
+  scope.$watchCollection('d.location_types', reloadMap);
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <style type="text/css">
+    .full-screen {
+      height: calc(100vh - 170px);
+    }
+
+    .full-screen-left {
+      height: calc(100vh - 213px);
+    }
+
+    .full-screen-right {
+      height: calc(100vh - 213px);
+    }
+
+    .y-scroll {
+      overflow-y: scroll;
+      background-color: #FFFFFF;
+      padding: 4px;
+      scrollbar-color: lightgrey white;
+    }
+
+    .text-green {
+      color: #4BB543;
+    }
+
+    .text-red {
+      color: #f64e60;
+    }
+
+    .text-blue {
+      color: #1D5D9B;
+    }
+
+    .w100 {
+      width: 80px;
+    }
+
+    .angle {
+      position: absolute;
+      z-index: 100;
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      -ms-transform: translateY(-50%);
+      transform: translateY(-50%);
+    }
+
+    .angle>i {
+      font-size: 20px;
+      background: white;
+      width: 22px;
+      height: 22px;
+      text-align: center;
+      border-radius: 100%;
+      border: 1px solid #AAAAAA;
+    }
+
+    .bg-opacity-green {
+      background-color: rgba(68, 211, 33, 0.15);
+    }
+
+    .icon-history {
+      text-align: center;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #3A98B9;
+      padding-top: 3px;
+      position: absolute;
+      top: calc(50% - 12.5px);
+    }
+
+    .event_date {
+      width: 60px;
+      text-align: center;
+    }
+
+    .event_date>div {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .time-line {
+      background: #3A98B9;
+      width: 2px;
+      height: calc(100% + 12px);
+      position: absolute;
+      left: calc(50% - 1px);
+      top: -6px;
+    }
+
+    .time-line-last {
+      height: calc(50% + 6px);
+    }
+
+    .time-line-first {
+      height: calc(50% + 6px);
+      top: 50%;
+    }
+
+    .pointer {
+      cursor: pointer;
+    }
+
+    .bg-white {
+      background: white;
+    }
+
+    .x-scroll {
+      overflow-x: scroll;
+      display: flex;
+      scrollbar-color: lightgrey white;
+    }
+
+    .setting-card {
+      width: 250px;
+      margin-right: 5px;
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    @media screen and (max-width: 1024px) {
+      .w100 {
+        width: 50px;
+      }
+    }
+  </style>
+  <button type="button" class="btn btn-primary" ng-click="page.reload()"><t>reload</t><span class="ml-2 fa fa-sync-alt"></span></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-md-6">
+        <div class="angle" style="left: calc(100% - 10px)" ng-click="toggleCard('left')">
+          <i id="angle-left" class="fa fa-angle-left"></i>
+        </div>
+        <div class="card-left">
+          <div class="bg-white p-2">
+            <div class="input-group">
+              <input type="text" class="form-control" placeholder="{{ d.t_search }}" ng-model="d.search" ng-model-options="{ debounce: 500 }" ng-change="loadEmployees()">
+              <div class="input-group-append">
+                <button type="button" class="btn btn-outline-secondary" data-toggle="modal" data-target="#biruniGridFilter">
+                  <i class="fa fa-filter"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="full-screen-left y-scroll">
+            <div class="card" ng-repeat="emp in d.employees">
+              <div class="card-body p-3 {{ emp.employee_id == d.employee_id ? 'bg-opacity-green' : '' }}" style="cursor: pointer" ng-click="selectEmployee(emp)">
+                <div class="row">
+                  <div class="col-auto align-self-center">
+                    <img class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;" ng-src="{{ emp.photo_src }}" alt="{{ emp.employee_name }}">
+                  </div>
+                  <div class="col">
+                    <h3>{{ emp.employee_name }}</h3>
+                    <b>{{ emp.job_name + ' ' + emp.rank_name }}</b><br>
+                    <b>{{ emp.main_phone }}</b><br>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md full-screen">
+        <b-map name="GPS" id="map"/>
+      </div>
+      <div class="col-md-6">
+        <div class="angle" style="right: calc(100% - 10px)" ng-click="toggleCard('right')">
+          <i id="angle-right" class="fa fa-angle-right"></i>
+        </div>
+        <div class="input-group p-2 card-right bg-white">
+          <input type="text" class="form-control" ng-model="d.date" b-date-picker/>
+          <div class="input-group-append">
+            <span class="input-group-text" id="basic-addon2">
+              <i class="fas fa-calendar-alt"></i>
+            </span>
+          </div>
+        </div>
+        <div class="full-screen-right y-scroll card-right" id="right-scroll">
+          <div ng-repeat="event in d.gps_events" ng-show="d.employee_id">
+            <div class="row m-0 p-2">
+              <div class="col-auto event_date">
+                <div>{{ event.time }}</div>
+              </div>
+              <div class="col-auto p-0" style="width: 30px; cursor: pointer;" ng-click="setCenter(event)">
+                <div class="time-line" ng-class="timeClass($first, $last)"></div>
+                <div class="icon-history">
+                  <i class="{{ event.event_icon.class }}" ng-style="{ 'color': event.event_icon.color }"></i>
+                </div>
+              </div>
+              <div class="col">
+                <div ng-bind-html="event.event_name"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- filter modal -->
+  <div class="modal" tabindex="-1" role="dialog" id="biruniGridFilter">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><t>filter</t></h5>
+          <button type="button" class="close" data-dismiss="modal">
+            <svg class="cursor-pointer" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1.41427 0.335711L0.335022 1.41496L6.92227 7.99996L0.335022 14.5857L1.41502 15.665L8.00002 9.07771L14.5858 15.6642L15.6643 14.5857L9.07777 7.99996L15.6643 1.41421L14.585 0.334961L8.00002 6.92221L1.41427 0.335711Z" fill="white" fill-opacity="0.9"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body p-5">
+          <div class="row form-group">
+            <div class="col">
+              <label><t>divisions</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                model="d.division_ids"/>
+            </div>
+          </div>
+          <div class="row form-group">
+            <div class="col">
+              <label><t>job</t></label>
+              <b-input multiple
+                       name="jobs"
+                       model="d.jobs"
+                       model-key="job_id"
+                       column="job_id, name"
+                       sort="name"
+                       search="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="row  form-group">
+            <div class="col">
+              <label><t>location types</t></label>
+              <b-input multiple
+                       name="location_types"
+                       model="d.location_types"
+                       model-key="location_type_id"
+                       column="location_type_id, name, color, code"
+                       sort="name"
+                       search="name">
+                <div style="width:20px; height:20px; border-radius:3px;" ng-style="{ 'background-color': row.color }"></div>&nbsp;{{ row.name }}
+              </b-input>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            <t>Close</t>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

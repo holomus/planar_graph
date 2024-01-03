@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{plan_group_count} ?": "Удалить группы показателей в количестве <b>$1</b>?",
+ "delete plan group $1{plan_group_name}?": "Удалить группу показателей <b>$1</b>?",
+ "select": "Выбрать",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.plan_group_id": "ИД",
+ "table.plan_type_count": "Кол-во показатели",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,1231 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model, param, $timeout) {
+  var d = model,
+      q = model.references,
+      p = {},
+      array_keys = ['transfers', 'schedules', 'salaries'];
+
+  // UTILITY FUNCTIONS
+  function prepSortType(x) {
+    return x == 'D' ? 3 : x == 'T' ? 2 : 1;
+  }
+
+  function cmp(a, b) {
+    let c = a.begin_date.toMoment();
+    let d = b.begin_date.toMoment();
+    let e = +a.posted_order_no;
+    let f = +b.posted_order_no;
+
+    return c < d ? -1 : c > d ? 1 : e < f ? -1 : e > f ? 1 : 0;
+  }
+
+  function fixOrder(items) {
+    items.sort(cmp);
+  }
+
+  // INPUT FUNCTIONS
+  // fte
+  function setFte(row) {
+    if (!row) return;
+    p.data.fte_id = row.fte_id;
+    p.data.fte_name = row.name;
+  }
+
+  function addFte(name) {
+    fi.add_fte(null, setFte, { name });
+  }
+
+  function selectFte() {
+    fi.select_fte(null, setFte);
+  }
+
+  // job
+  function setJob(row) {
+    if (!row) return;
+    p.data.job_id = row.job_id;
+    p.data.job_name = row.name;
+
+    if (row.job_id) fixHiddenSalaryJob();
+    else p.data.hidden_salary_job = 'N';
+  }
+
+  function changeJobQuery(query, value) {
+    query.param({ division_id: p.data.division_id }).searchValue(value);
+  }
+
+  function selectJob() {
+    let data = p.data.division_id ? { division_id: p.data.division_id } : null;
+    fi.select_job(data, setJob, { where: ['state', '=', 'A'] });
+  }
+
+  function addJob(name) {
+    let data = { name };
+    if (p.data.division_id) data.division_ids = [p.data.division_id];
+    fi.add_job(null, setJob, data);
+  }
+
+  // division
+  function selectDivision(row) {
+    p.data.division_name = row.name;
+    p.data.division_id = row.division_id;
+    p.data.org_unit_id = null;
+    loadOrgUnits(p.data.division_id);
+    setJob({});
+  }
+
+  // org unit id
+  function loadOrgUnits(division_id) {
+    if (q.advanced_org_structure == 'N') return;
+    if (!division_id) {
+      q.org_units = [];
+      return;
+    }
+    q.org_units = q.all_org_units[division_id] || [];
+    if (p.data.org_unit_id == null) _.each(q.org_units, x => x.selected = false);
+  }
+
+  function selectOrgUnit(row) {
+    p.data.org_unit_name = row.name;
+    p.data.org_unit_id = row.division_id;
+  }
+
+  // schedule
+  function setSchedule(row) {
+    if (!row) return;
+    p.data.schedule_id = row.schedule_id;
+    p.data.schedule_name = row.name;
+  }
+
+  function addSchedule(name) {
+    fi.add_schedule({ schedule_kind: q.sk_flexible }, setSchedule, { name: name });
+  }
+
+  function selectSchedule() {
+    fi.select_schedule(null, setSchedule);
+  }
+
+  // reason
+  function setReason(row) {
+    if (!row) return;
+    p.data.dismissal_reason_id = row.dismissal_reason_id;
+    p.data.dismissal_reason_name = row.name;
+    p.data.dismissal_reason_type = row.reason_type;
+  }
+
+  function addReason(name) {
+    fi.add_reason(null, setReason, { name });
+  }
+
+  function selectReason() {
+    fi.select_reason(null, setReason);
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    p.last_type = p.type;
+
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // page emit
+  function pageEmit() {
+    page.emit('journal_post');
+  }
+
+  // delete item
+  function deleteItem(items, item, message, callBack) {
+    page.confirm(message, function() {
+      fi.delete({ journal_id: item.journal_id, employee_id: param.employee_id }).then(function() {
+        let index = _.findIndex(items, item);
+        items.splice(index, 1);
+
+        if (callBack) callBack();
+        pageEmit();
+      }, page.alert);
+    });
+  }
+
+  // fix hidden salary job
+  function fixHiddenSalaryJob() {
+    let data = _.pick(p.data, 'job_id');
+    data.period = p.data[p.date_key];
+    data.staff_id = d.staff_id;
+
+    page.post(':get_hidden_salary_job', data).then(x => p.data.access_to_hidden_salary = x, page.alert);
+  }
+
+  // fix items
+  function fixItems() {
+    if (p.type == 'E') {
+      for (let i = 0; i < p.items.length; i++) {
+        if (p.items[i].journal_id == p.data.journal_id) {
+          _.extend(p.items[i], p.data);
+          break;
+        }
+      }
+    } else {
+      p.items.push(p.data);
+    }
+
+    fixOrder(p.items);
+  }
+
+  // modal edit
+  function edit() {
+    p.type = p.last_type;
+  }
+
+  // hiring
+  function addHiringModal(min_date) {
+    scope.modal_content = "hiring_vhr312";
+    p.title = t('add hiring')();
+    p.data = { fte_id: q.fte_id, fte_name: q.fte_name, hiring_date: moment().format('DD.MM.YYYY') };
+
+    p.date_key = 'hiring_date';
+    p.type = 'A';
+    p.delete = null;
+
+    p.min_date = min_date ? min_date.toMoment().add({ 'day': 1 }).format('DD.MM.YYYY') : null;
+    p.max_date = null;
+
+    showModal();
+  }
+
+  function editHiringModal() {
+    _.each(q.divisions, x => x.selected = false);
+
+    scope.modal_content = "hiring_vhr312";
+    p.title = t('edit hiring')();
+    p.data = angular.copy(d.hiring);
+
+    p.date_key = 'hiring_date';
+    p.type = 'E';
+    p.delete = fi.delete_hiring &&
+               d.hiring.journal_id &&
+               d.transfers.length == 0 &&
+               d.schedules.length == 0 &&
+               d.salaries.length == 0 &&
+               !d.dismissal.journal_id;
+
+    p.min_date = d.last_dismissal_date;
+    p.max_date = _.chain([_.map(array_keys, key => (_.first(d[key]) || {}).begin_date), d.dismissal.dismissal_date])
+                  .flatten()
+                  .max(x => x ? x.toMoment() : null)
+                  .value();
+
+    loadOrgUnits(p.data.division_id);
+
+    showModal();
+  }
+
+  function saveHiring() {
+    if (!page.valid(scope.modal)) return;
+
+    p.data.employee_id = param.employee_id;
+    p.data.staff_id = d.staff_id;
+
+    fi.save_hiring(p.data).then(function(result) {
+      _.extend(p.data, result);
+
+      if (!p.data.fte_id) {
+        p.data.fte_id = q.fte_id;
+        p.data.fte_name = q.fte_name;
+      }
+
+      if (!p.data.salary_type_id) p.data.salary_amount = null;
+
+      _.extend(d.hiring, p.data);
+
+      if (p.type == 'A') {
+        d.staff_id = p.data.staff_id;
+        d.staffs_exist = p.data.staffs_exist;
+        d.dismissal = {};
+
+        _.each(array_keys, key => {
+          d[key] = [];
+        });
+      }
+
+      pageEmit();
+      hideModal();
+    }, page.alert);
+  }
+
+  function deleteHiring() {
+    let data = {
+      journal_id: d.hiring.journal_id,
+      employee_id: param.employee_id,
+      page_id: d.hiring.page_id
+    };
+
+    fi.delete(data).then(function() {
+      loadLastStaff();
+      pageEmit();
+      hideModal();
+    }, page.alert);
+  }
+
+  function loadLastStaff() {
+    page.post(':load_last_staff', { employee_id: param.employee_id }).then(function(result) {
+      _.extend(d, result);
+      initData();
+    }, page.alert);
+  }
+
+  // transfers
+  function takeLastJob(data) {
+    let job = _.last(d.transfers) || d.hiring;
+    data.division_name = q.divisions_dict[job.division_id];
+    data.job_name = job.job_name;
+  }
+
+  function addTransferModal() {
+    scope.modal_content = "transfer_vhr312";
+    p.title = t('add transfer')();
+    p.data = { fte_id: q.fte_id, fte_name: q.fte_name, begin_date: moment().format('DD.MM.YYYY') };
+
+    p.date_key = 'begin_date';
+    p.type = 'A';
+    p.items = d.transfers;
+
+    showModal();
+  }
+
+  function editTransferModal(row) {
+    _.each(q.divisions, x => x.selected = false);
+
+    scope.modal_content = "transfer_vhr312";
+    p.title = t('edit transfer')();
+    p.data = angular.copy(row);
+
+    p.date_key = 'begin_date';
+    p.type = 'E';
+    p.items = d.transfers;
+
+    loadOrgUnits(p.data.division_id);
+
+    showModal();
+  }
+
+  function viewTransferModal(row) {
+    scope.modal_content = "transfer_vhr312";
+    p.title = t('view transfer')();
+    p.data = angular.copy(row);
+
+    p.type = 'V';
+
+    showModal();
+  }
+
+  function saveTransfer() {
+    if (!page.valid(scope.modal)) return;
+
+    p.data.employee_id = param.employee_id;
+    p.data.staff_id = d.staff_id;
+
+    fi.save_transfer(p.data).then(function(result) {
+      _.extend(p.data, result);
+
+      if (!p.data.fte_id) {
+        p.data.fte_id = q.fte_id;
+        p.data.fte_name = q.fte_name;
+      }
+
+      p.data.division_name = q.divisions_dict[p.data.division_id];
+
+      fixItems();
+      pageEmit();
+
+      if (d.dismissal.journal_id) {
+        takeLastJob(d.dismissal);
+      }
+
+      hideModal();
+    }, page.alert);
+  }
+
+  function deleteTransfer(row) {
+    deleteItem(d.transfers, row, t('delete transfer, division_name $1, job_name $2, begin_date $3?')(row.division_name, row.job_name, row.begin_date), _.partial(takeLastJob, d.dismissal));
+  }
+
+  // schedules
+  function addScheduleModal() {
+    scope.modal_content = "schedule_vhr312";
+    p.title = t('add schedule change')();
+    p.data = { begin_date: moment().format('DD.MM.YYYY')};
+
+    p.type = 'A';
+    p.items = d.schedules;
+
+    showModal();
+  }
+
+  function editScheduleModal(row) {
+    scope.modal_content = "schedule_vhr312";
+    p.title = t('edit schedule change')();
+    p.data = angular.copy(row);
+
+    p.type = 'E';
+    p.items = d.schedules;
+
+    showModal();
+  }
+
+  function auditSchedule(row) {
+    fi.audit_schedule({ journal_id: row.journal_id });
+  }
+
+  function saveSchedule() {
+    if (!page.valid(scope.modal)) return;
+
+    p.data.employee_id = param.employee_id;
+    p.data.staff_id = d.staff_id;
+
+    fi.save_schedule(p.data).then(function(result) {
+      _.extend(p.data, result);
+
+      fixItems();
+      pageEmit();
+
+      hideModal();
+    }, page.alert);
+  }
+
+  function deleteSchedule(row) {
+    deleteItem(d.schedules, row, t('delete schedule change, schedule_name $1, begin_date $2?')(row.schedule_name, row.begin_date));
+  }
+
+  // salary
+  function addSalaryModal() {
+    scope.modal_content = "salary_vhr312";
+    p.title = t('add salary')();
+    p.data = { begin_date: moment().format('DD.MM.YYYY') };
+
+    p.date_key = 'begin_date';
+    p.type = 'A';
+    p.items = d.salaries;
+
+    fixHiddenSalaryJob();
+
+    showModal();
+  }
+
+  function editSalaryModal(row) {
+    scope.modal_content = "salary_vhr312";
+    p.title = t('edit salary')();
+    p.data = angular.copy(row);
+
+    p.date_key = 'begin_date';
+    p.type = 'E';
+    p.items = d.salaries;
+
+    showModal();
+  }
+
+  function saveSalary() {
+    if (!page.valid(scope.modal)) return;
+
+    p.data.employee_id = param.employee_id;
+    p.data.staff_id = d.staff_id;
+
+    fi.save_salary(p.data).then(function(result) {
+      _.extend(p.data, result);
+
+      fixItems();
+      pageEmit();
+
+      hideModal();
+    }, page.alert);
+  }
+
+  function deleteSalary(row) {
+    deleteItem(d.salaries, row, t('delete salary, salary_type_name $1, salary_amount $2, begin_date $3?')(row.salary_type_name, row.salary_amount, row.begin_date));
+  }
+
+  // dismissal
+  function addDismissalModal() {
+    scope.modal_content = "dismissal_vhr312";
+    p.title = t('add dismissal')();
+    p.data = { dismissal_date: moment().format('DD.MM.YYYY') };
+    p.influence = {};
+    p.type = 'A';
+    p.delete = null;
+
+    p.min_date = _.chain([_.map(array_keys, key => (_.last(d[key]) || {}).begin_date), d.hiring.hiring_date])
+                  .flatten()
+                  .max(x => x ? x.toMoment() : null)
+                  .value();
+    p.max_date = null;
+
+    takeLastJob(p.data);
+    showModal();
+  }
+
+  function editDismissalModal() {
+    scope.modal_content = "dismissal_vhr312";
+    p.title = t('edit dismissal')();
+    p.data = angular.copy(d.dismissal);
+    p.influence = {};
+    p.type = 'E';
+    p.delete = fi.delete_dismissal && d.dismissal.journal_id;
+
+    p.min_date = _.chain([_.map(array_keys, key => (_.last(d[key]) || {}).begin_date), d.hiring.hiring_date])
+                  .flatten()
+                  .max(x => x ? x.toMoment() : null)
+                  .value();
+    p.max_date = null;
+
+    takeLastJob(p.data);
+    showModal();
+  }
+
+  function saveDismissal() {
+    if (!page.valid(scope.modal)) return;
+
+    p.data.employee_id = param.employee_id;
+    p.data.staff_id = d.staff_id;
+
+    fi.save_dismissal(p.data).then(function(result) {
+      _.extend(d.dismissal, p.data, result);
+
+      pageEmit();
+
+      hideModal();
+    }, page.alert);
+  }
+
+  function getInfluences() {
+    let data = _.pick(p.data, 'dismissal_date', 'dismissal_reason_id');
+    _.extend(data, { employee_id: param.employee_id, staff_id: d.staff_id });
+    page.post(':get_influences', data).then(result => {
+      if (result.has_influence == 'Y') {
+        p.influence = result;
+        p.influence.only_access = !result.division_names && !result.locations_count && result.blacklisted == 'N' && result.remove_access == 'Y';
+        p.type = 'V';
+      } else saveDismissal();
+    }, page.alert)
+  }
+
+  function deleteDismissal() {
+    page.confirm(t('delete dismissal from $1{dismissal_date}?')(d.dismissal.dismissal_date), function() {
+      fi.delete({ journal_id: d.dismissal.journal_id, employee_id: param.employee_id }).then(function() {
+        d.dismissal = {};
+        pageEmit();
+        hideModal();
+      }, page.alert);
+    });
+  }
+
+  // init
+  function initData() {
+    d.hiring = _.chain(d.hirings)
+                .mapRows(['journal_id', 'page_id', 'staff_number', 'hiring_date', 'robot_id', 'org_unit_id', 'division_id', 'job_id', 'job_name', 'fte_id', 'fte_name',
+                          'schedule_id', 'schedule_name', 'salary_type_id', 'salary_type_name', 'salary_amount', 'access_to_hidden_salary'])
+                .first()
+                .value() || {};
+    d.dismissal = _.chain(d.dismissals)
+                   .mapRows(['journal_id', 'page_id', 'dismissal_date', 'dismissal_reason_id', 'dismissal_reason_name', 'reason_type', 'note', 'division_name', 'job_name'])
+                   .first()
+                   .value() || {};
+    d.transfers = _.mapRows(d.transfers, ['journal_id', 'posted_order_no', 'page_id', 'begin_date', 'robot_id', 'org_unit_id', 'org_unit_name', 'division_id', 'division_name', 'job_id', 'job_name', 'fte_id', 'fte_name',
+                                'schedule_id', 'schedule_name', 'salary_type_id', 'salary_type_name', 'salary_amount', 'access_to_hidden_salary']);
+    d.schedules = _.mapRows(d.schedules, ['journal_id', 'posted_order_no', 'page_id', 'begin_date', 'end_date', 'schedule_id', 'schedule_name']);
+    d.salaries = _.mapRows(d.salaries, ['journal_id', 'posted_order_no', 'page_id', 'begin_date', 'salary_type_id', 'salary_type_name', 'salary_amount', 'access_to_hidden_salary']);
+
+    _.each(array_keys, key => {
+      fixOrder(d[key]);
+    });
+  }
+
+  initData();
+
+  q.divisions_dict = _.chain(q.divisions).map(_.initial).object().value();
+  q.teams_dict = _.chain(q.all_org_units).map(_.initial).object().value();
+  q.t_view = t('view')();
+  q.t_no_access_to_wage = t('no access to wage')();
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.all_org_units = _.chain(q.all_org_units)
+                     .mapRows(['division_id', 'name', 'parent_id', 'parent_department_id'])
+                     .each(x => x.parent_id = x.parent_department_id == x.parent_id ? '' : x.parent_id)
+                     .groupBy('parent_department_id')
+                     .value();
+
+  page.on('dismiss_employee', function() {
+    loadLastStaff();
+  });
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>Hiring</t></h3>
+          </div>
+          <div class="card-toolbar">
+              <button type="button" class="btn btn-outline-success" ng-click="addHiringModal(d.last_dismissal_date)" ng-if="fi.save_hiring && !d.hiring.journal_id"><t>add hiring</t></button>
+              <button type="button" class="btn btn-outline-secondary" ng-click="editHiringModal()" ng-if="fi.save_hiring && d.hiring.journal_id"><t>edit hiring</t></button>
+          </div>
+      </div>
+      <div class="card-body" ng-if="d.hiring.journal_id">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>hiring date</t></label>
+              <span class="form-view">{{ d.hiring.hiring_date }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>staff number</t></label>
+              <span class="form-view">{{ d.hiring.staff_number }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <span class="form-view">{{ q.divisions_dict[d.hiring.division_id] }}</span>
+            </div>
+            <div class="form-group" ng-if="q.advanced_org_structure == 'Y'">
+              <label><t>org unit name</t></label>
+              <span class="form-view">{{ q.teams_dict[d.hiring.org_unit_id] }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>job name</t></label>
+              <span class="form-view">{{ d.hiring.job_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>schedule name</t></label>
+              <span class="form-view">{{ d.hiring.schedule_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>fte name</t></label>
+              <span class="form-view">{{ d.hiring.fte_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>salary type name</t></label>
+              <span class="form-view" ng-show="d.hiring.access_to_hidden_salary != 'N'">{{ d.hiring.salary_type_name }}</span>
+              <span class="form-view" ng-show="d.hiring.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>salary amount</t></label>
+              <span class="form-view" ng-show="d.hiring.access_to_hidden_salary != 'N'">{{ d.hiring.salary_amount }}</span>
+              <span class="form-view" ng-show="d.hiring.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom gutter-b" ng-if="d.hiring.journal_id">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>Transfer</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-success" ng-click="addTransferModal()" ng-if="fi.save_transfer"><t>add</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row" ng-if="d.transfers.length > 10">
+          <div class="offset-sm-12 col-sm-12 mb-2">
+            <b-pg-controller name="transfers"/>
+          </div>
+        </div>
+        <b-pg-grid name="transfers" local-data="d.transfers">
+          <b-pg-row>
+            <b-pg-col name="begin_date" size="4"/>
+            <b-pg-col name="division_name" size="6"/>
+            <b-pg-col name="job_name" size="6"/>
+            <b-pg-col name="schedule_name" size="6"/>
+            <b-pg-col name="action" size="2">
+              <div class="text-center w-100" ng-if="!fi.save_transfer && !fi.delete">
+                <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" role="button" aria-expanded="false" ng-click="viewTransferModal(row)" title="{{ q.t_view }}">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </div>
+              <div class="text-center w-100 dropdown" ng-if="fi.save_transfer || fi.delete">
+                <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                  <i class="fas fa-ellipsis-h"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                  <a class="dropdown-item" ng-click="viewTransferModal(row)"><t>view</t></a>
+                  <a class="dropdown-item" ng-if="fi.save_transfer" ng-click="editTransferModal(row)"><t>edit</t></a>
+                  <a class="dropdown-item text-danger" ng-if="fi.delete" ng-click="deleteTransfer(row)"><t>delete</t></a>
+                </div>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+    <div class="card card-custom card-stretch gutter-b" ng-if="d.hiring.journal_id">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>Schedule</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-success" ng-click="addScheduleModal()" ng-if="fi.save_schedule"><t>add</t></button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="row" ng-if="d.schedules.length > 10">
+          <div class="offset-sm-12 col-sm-12 mb-2">
+            <b-pg-controller name="schedules"/>
+          </div>
+        </div>
+        <b-pg-grid name="schedules" local-data="d.schedules" search="schedule_name">
+          <b-pg-row>
+            <b-pg-col name="begin_date" size="4"/>
+            <b-pg-col name="end_date" size="4"/>
+            <b-pg-col name="schedule_name" size="14"/>
+            <b-pg-col name="action" size="2" required>
+              <div class="text-center w-100 dropdown" ng-if="fi.save_schedule || fi.delete">
+                <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                  <i class="fas fa-ellipsis-h"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                  <a class="dropdown-item" ng-if="fi.save_schedule" ng-click="editScheduleModal(row)"><t>edit</t></a>
+                  <a class="dropdown-item" ng-if="fi.audit_schedule" ng-click="auditSchedule(row)"><t>audit</t></a>
+                  <a class="dropdown-item text-danger" ng-if="fi.delete" ng-click="deleteSchedule(row)"><t>delete</t></a>
+                </div>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+    <div class="card card-custom card-stretch gutter-b" ng-if="d.hiring.journal_id">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>Salary</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-success" ng-click="addSalaryModal()" ng-if="fi.save_salary"><t>add</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row" ng-if="d.salaries.length > 10">
+          <div class="offset-sm-12 col-sm-12 mb-2">
+            <b-pg-controller name="salaries"/>
+          </div>
+        </div>
+        <b-pg-grid name="salaries" local-data="d.salaries" search="salary_type_name">
+          <b-pg-row>
+            <b-pg-col name="begin_date" size="4"/>
+            <b-pg-col name="salary_type_name" size="4">
+              <div ng-show="row.access_to_hidden_salary != 'N'">{{ row.salary_type_name }}</div>
+              <div ng-show="row.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</div>
+            </b-pg-col>
+            <b-pg-col name="salary_amount" size="14">
+              <div ng-show="row.access_to_hidden_salary != 'N'">{{ row.salary_amount | bNumber }}</div>
+              <div ng-show="row.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</div>
+            </b-pg-col>
+            <b-pg-col name="action" size="2">
+              <div class="text-center w-100 dropdown" ng-if="fi.save_salary || fi.delete">
+                <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                  <i class="fas fa-ellipsis-h"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                  <a class="dropdown-item" ng-if="fi.save_salary" ng-click="editSalaryModal(row)"><t>edit</t></a>
+                  <a class="dropdown-item text-danger" ng-if="fi.delete" ng-click="deleteSalary(row)"><t>delete</t></a>
+                </div>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+    <div class="card card-custom gutter-b" ng-if="d.hiring.journal_id">
+      <div class="card-header d-block px-6 py-4">
+        <div class="row">
+          <div class="col-sm-18">
+            <div class="card-title">
+              <h3 class="card-label"><t>Dismissal</t></h3>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="float-sm-right">
+              <button type="button" class="btn btn-outline-success" ng-click="addHiringModal(d.dismissal.dismissal_date)" ng-if="fi.save_hiring && d.dismissal.journal_id"><t>add hiring</t></button>
+              <button type="button" class="btn btn-outline-danger" ng-click="addDismissalModal()" ng-if="fi.save_dismissal && !d.dismissal.journal_id"><t>add dismissal</t></button>
+              <button type="button" class="btn btn-outline-secondary" ng-click="editDismissalModal()" ng-if="fi.save_dismissal && d.dismissal.journal_id"><t>edit dismissal</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" ng-if="d.dismissal.journal_id">
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>dismissal date</t></label>
+              <span class="form-view">{{ d.dismissal.dismissal_date }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <span class="form-view">{{ d.dismissal.division_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>job name</t></label>
+              <span class="form-view">{{ d.dismissal.job_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="form-group">
+              <label><t>dismissal reason name</t></label>
+              <span class="form-view">{{ d.dismissal.dismissal_reason_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <span class="form-view">{{ d.dismissal.note }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script type="text/ng-template" id="hiring_vhr312">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>hiring date</t><r ng-if="p.type != 'V'"/></label>
+            <input type="text" class="form-control" ng-model="p.data.hiring_date" min-date="p.min_date" max-date="p.max_date" b-date-picker required ng-if="p.type != 'V'"/>
+            <span class="form-view" ng-if="p.type == 'V'">{{ p.data.hiring_date }}</span>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>staff number</t></label>
+            <input type="text" class="form-control" ng-model="p.data.staff_number" b-maxlength="50" ng-if="p.type != 'V'"/>
+            <span class="form-view" ng-if="p.type == 'V'">{{ p.data.staff_number }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>division</t><r ng-if="p.type != 'V'"/></label>
+        <b-tree-select origin="q.divisions"
+                       id-key="division_id"
+                       model="p.data.division_id"
+                       on-select="selectDivision(row)"
+                       required
+                       ng-if="p.type != 'V'"/>
+        <span class="form-view" ng-if="p.type == 'V'">{{ q.divisions_dict[p.data.division_id] }}</span>
+      </div>
+      <div class="form-group" ng-if="q.advanced_org_structure == 'Y'">
+        <label><t>org unit</t></label>
+        <b-tree-select
+          origin="q.org_units"
+          id-key="division_id"
+          model="p.data.org_unit_id"
+          disabled="!p.data.division_id"
+          on-select="selectOrgUnit(row)"
+          ng-if="p.type != 'V'"/>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.org_unit_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>job name</t><r ng-if="p.type != 'V'"/></label>
+        <b-input name="jobs"
+                 model="p.data.job_name | name"
+                 model-key="p.data.job_id | job_id"
+                 on-change="changeJobQuery(query, value)"
+                 on-select="setJob(row)"
+                 on-delete="setJob({})"
+                 is-add="fi.add_job"
+                 on-add="addJob(value)"
+                 is-view="fi.select_job"
+                 on-view="selectJob()"
+                 required-key
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.job_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>schedule</t></label>
+        <b-input name="schedules"
+                 model="p.data.schedule_name | name"
+                 model-key="p.data.schedule_id | schedule_id"
+                 is-add="fi.add_schedule"
+                 on-add="addSchedule(value)"
+                 is-view="fi.select_schedule"
+                 on-view="selectSchedule()"
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.schedule_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>fte</t></label>
+        <b-input name="ftes"
+                 model="p.data.fte_name | name"
+                 model-key="p.data.fte_id | fte_id"
+                 column="order_no"
+                 sort="order_no, name"
+                 on-add="addFte(value)"
+                 is-add="fi.add_fte"
+                 on-view="selectFte()"
+                 is-view="fi.select_fte"
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.fte_name }}</span>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>salary type name</t><r ng-if="p.data.salary_amount && p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/></label>
+            <b-input name="salary_types"
+                     model="p.data.salary_type_name | name"
+                     model-key="p.data.salary_type_id | oper_type_id"
+                     required-key="p.data.salary_amount"
+                     ng-if="p.type != 'V' && p.data.access_to_hidden_salary != 'N'">
+              {{ row.name }}
+            </b-input>
+            <span class="form-view" ng-if="p.type == 'V' && p.data.access_to_hidden_salary != 'N'">{{ p.data.salary_type_name }}</span>
+            <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>salary amount</t><r ng-if="p.data.salary_type_id && p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/></label>
+            <input type="text" class="form-control" ng-model="p.data.salary_amount" b-number precision="14" scale="6" ng-required="p.data.salary_type_id" ng-if="p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/>
+            <span class="form-view" ng-if="p.type == 'V' && p.data.access_to_hidden_salary != 'N'">{{ p.data.salary_amount }}</span>
+            <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="saveHiring()" ng-if="p.type != 'V'">
+        <t ng-if="p.type == 'A'">add</t>
+        <t ng-if="p.type == 'E'">edit</t>
+      </button>
+      <button type="button" class="btn btn-danger" ng-if="p.delete && p.type != 'V'" ng-click="deleteHiring()"><t>delete hiring</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal" ng-if="p.type != 'V'"><t>close</t></button>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="transfer_vhr312">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row mb-4">
+        <div class="col-sm-12 mb-sm-0 mb-4">
+          <label><t>begin date</t><r ng-if="p.type != 'V'"/></label>
+          <input type="text" class="form-control" ng-model="p.data.begin_date" min-date="d.hiring.hiring_date" max-date="p.dismissal.dismissal_date" ng-if="p.type != 'V'" b-date-picker required/>
+          <span class="form-view" ng-if="p.type == 'V'">{{ p.data.begin_date }}</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>division</t><r ng-if="p.type != 'V'"/></label>
+        <b-tree-select
+          origin="q.divisions"
+          id-key="division_id"
+          model="p.data.division_id"
+          on-select="selectDivision(row)"
+          required
+          ng-if="p.type != 'V'"/>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.division_name }}</span>
+      </div>
+      <div class="form-group" ng-if="q.advanced_org_structure == 'Y'">
+        <label><t>org unit</t></label>
+        <b-tree-select
+          origin="q.org_units"
+          id-key="division_id"
+          model="p.data.org_unit_id"
+          disabled="!p.data.division_id"
+          on-select="selectOrgUnit(row)"
+          ng-if="p.type != 'V'"/>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.org_unit_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>job name</t><r ng-if="p.type != 'V'"/></label>
+        <b-input name="jobs"
+                 model="p.data.job_name | name"
+                 model-key="p.data.job_id | job_id"
+                 on-change="changeJobQuery(query, value)"
+                 on-select="setJob(row)"
+                 on-delete="setJob({})"
+                 is-add="fi.add_job"
+                 on-add="addJob(value)"
+                 is-view="fi.select_job"
+                 on-view="selectJob()"
+                 required-key
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.job_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>schedule</t></label>
+        <b-input name="schedules"
+                 model="p.data.schedule_name | name"
+                 model-key="p.data.schedule_id | schedule_id"
+                 is-add="fi.add_schedule"
+                 on-add="addSchedule(value)"
+                 is-view="fi.select_schedule"
+                 on-view="selectSchedule()"
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.schedule_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>fte</t></label>
+        <b-input name="ftes"
+                 model="p.data.fte_name | name"
+                 model-key="p.data.fte_id | fte_id"
+                 column="order_no"
+                 sort="order_no, name"
+                 is-add="fi.add_fte"
+                 on-add="addFte(value)"
+                 is-view="fi.select_fte"
+                 on-view="selectFte()"
+                 ng-if="p.type != 'V'">
+          {{ row.name }}
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.fte_name }}</span>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>salary type name</t><r ng-if="p.data.salary_amount && p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/></label>
+            <b-input name="salary_types"
+                     model="p.data.salary_type_name | name"
+                     model-key="p.data.salary_type_id | oper_type_id"
+                     required-key="p.data.salary_amount"
+                     ng-if="p.type != 'V' && p.data.access_to_hidden_salary != 'N'">
+              {{ row.name }}
+            </b-input>
+            <span class="form-view" ng-if="p.type == 'V' && p.data.access_to_hidden_salary != 'N'">{{ p.data.salary_type_name }}</span>
+            <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>salary amount</t><r ng-if="p.data.salary_type_id && p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/></label>
+            <input type="text" class="form-control" ng-model="p.data.salary_amount" b-number precision="14" scale="6" ng-required="p.data.salary_type_id" ng-if="p.type != 'V' && p.data.access_to_hidden_salary != 'N'"/>
+            <span class="form-view" ng-if="p.type == 'V' && p.data.access_to_hidden_salary != 'N'">{{ p.data.salary_amount }}</span>
+            <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="saveTransfer()" ng-if="p.type != 'V'">
+        <t ng-if="p.type == 'A'">add</t>
+        <t ng-if="p.type == 'E'">edit</t>
+      </button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="schedule_vhr312">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row mb-4">
+        <div class="col-sm-12 mb-sm-0 mb-4">
+          <label><t>begin date</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.begin_date" b-date-picker min-date="d.hiring.hiring_date" max-date="p.dismissal.dismissal_date" required/>
+        </div>
+        <div class="col-sm-12 mb-sm-0 mb-4">
+          <label><t>end date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker min-date="p.data.begin_date" max-date="p.dismissal.dismissal_date"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>schedule</t><r/></label>
+        <b-input name="schedules"
+                 model="p.data.schedule_name | name"
+                 model-key="p.data.schedule_id | schedule_id"
+                 is-add="fi.add_schedule"
+                 on-add="addSchedule(value)"
+                 is-view="fi.select_schedule"
+                 on-view="selectSchedule()"
+                 required-key>
+            {{ row.name }}
+        </b-input>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="saveSchedule()">
+        <t ng-if="p.type == 'A'">add</t>
+        <t ng-if="p.type == 'E'">edit</t>
+      </button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="salary_vhr312">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row mb-4">
+        <div class="col-sm-12 mb-sm-0 mb-4">
+          <label><t>begin date</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.begin_date" min-date="d.hiring.hiring_date" max-date="p.dismissal.dismissal_date" b-date-picker ng-blur="fixHiddenSalaryJob()" required/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="col-sm-12 mb-4">
+          <label><t>salary type name</t><r ng-if="p.data.access_to_hidden_salary != 'N'"/></label>
+          <b-input name="salary_types"
+                   model="p.data.salary_type_name | name"
+                   model-key="p.data.salary_type_id | oper_type_id"
+                   required-key
+                   ng-if="p.data.access_to_hidden_salary != 'N'">
+            {{ row.name }}
+          </b-input>
+          <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+        </div>
+        <div class="col-sm-12 mb-4">
+          <label><t>salary amount</t><r ng-if="p.data.access_to_hidden_salary != 'N'"/></label>
+          <input type="text" class="form-control" ng-model="p.data.salary_amount" b-number precision="14" scale="6" ng-if="p.data.access_to_hidden_salary != 'N'" required/>
+          <span class="form-view" ng-show="p.data.access_to_hidden_salary == 'N'">{{ q.t_no_access_to_wage }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="saveSalary()">
+        <t ng-if="p.type == 'A'">add</t>
+        <t ng-if="p.type == 'E'">edit</t>
+      </button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="dismissal_vhr312">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-row">
+          <div class="col-12">
+            <label><t>dismissal date</t><r ng-if="p.type != 'V'"/></label>
+            <input type="text" class="form-control" ng-model="p.data.dismissal_date" min-date="p.min_date" b-date-picker required ng-if="p.type != 'V'"/>
+            <span class="form-view" ng-if="p.type == 'V'">{{ p.data.dismissal_date }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>division name</t></label>
+        <span class="form-view">{{ p.data.division_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>job name</t></label>
+        <span class="form-view">{{ p.data.job_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>dismissal reason name</t></label>
+        <b-input name="reasons"
+                 model="p.data.dismissal_reason_name | name"
+                 model-key="p.data.dismissal_reason_id | dismissal_reason_id"
+                 column="reason_type, reason_type_name"
+                 on-select="setReason(row)"
+                 on-delete="setReason({})"
+                 is-add="fi.add_reason"
+                 on-add="addReason(value)"
+                 is-view="fi.select_reason"
+                 on-view="selectReason()"
+                 ng-if="p.type != 'V'">
+          <header>
+            <div class="col-sm-12"><t>reason name</t></div>
+            <div class="col-sm-12"><t>reason type</t></div>
+          </header>
+          <content>
+            <div class="col-sm-12">{{ row.name }}</div>
+            <div class="col-sm-12">
+              <span class="badge" ng-class="{ 'badge-primary': row.reason_type == 'P', 'badge-danger': row.reason_type == 'N' }">
+                {{ row.reason_type_name }}
+              </span>
+            </div>
+          </content>
+        </b-input>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.dismissal_reason_name }}</span>
+      </div>
+      <div class="form-group">
+        <label><t>note</t></label>
+        <textarea class="form-control" ng-model=p.data.note rows=2 ng-if="p.type != 'V'"></textarea>
+        <span class="form-view" ng-if="p.type == 'V'">{{ p.data.note }}</span>
+      </div>
+      <div ng-if="p.type == 'V'">
+        <div class="form-group">
+          <div class="row">
+            <div class="col-sm-2"><i class="fas fa-exclamation-triangle fa-2x text-warning"></i></div>
+            <div class="col-sm-20 mt-2" ng-if="!p.influence.only_access"><t>after dismissal we will do these actions</t></div>
+            <div class="col-sm-20 mt-2" ng-if="p.influence.only_access"><t>after dismissal user remove access to system</t></div>
+          </div>
+        </div><hr ng-if="!p.influence.only_access"/>
+        <div class="form-group" ng-if="!p.influence.only_access">
+          <ul>
+            <li ng-if="p.influence.locations_count"><t>detach from attached locations</t><span class="badge badge-pill alert-danger">{{ p.influence.locations_count }}</span></li>
+            <li ng-if="p.influence.division_names"><t p1="p.influence.division_names">$1 remains without manager</t></li>
+            <li ng-if="p.influence.blacklisted == 'Y'"><t>person will be blacklisted</t></li>
+            <li ng-if="p.influence.remove_access == 'Y'"><t>lost access to system</t></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="getInfluences()" ng-if="p.type != 'V'">
+        <t ng-if="p.type == 'A'">add</t>
+        <t ng-if="p.type == 'E'">edit</t>
+      </button>
+      <button type="button" class="btn btn-danger" ng-if="p.delete && p.type != 'V'" ng-click="deleteDismissal()"><t>delete dismissal</t></button>
+      <button type="button" class="btn btn-primary" ng-if="p.type == 'V'" ng-click="saveDismissal()"><t>yes</t></button>
+      <button type="button" class="btn btn-default" ng-if="p.type == 'V'" ng-click="edit()"><t>no</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal" ng-if="p.type != 'V'"><t>close</t></button>
+    </div>
+  </script>
+</div>

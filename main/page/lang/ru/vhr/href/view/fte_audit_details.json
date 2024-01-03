@@ -1,0 +1,5 @@
+{
+ "pg.fte.before": "Старое значение",
+ "pg.fte.current": "Новое значение",
+ "pg.fte.field_name": "Поле"
+}

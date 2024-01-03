@@ -1,0 +1,162 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table'),
+      statusClass = { D: 'light', B: 'light-primary', C: 'light-success', A: 'light-info' },
+      pg = page.grid('table');
+
+  if(xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  pg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<div class="alert alert-custom alert-${ statusClass[row.status] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+  pg.asHtml('begin_month_html', 'begin_month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.begin_month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+  pg.asHtml('end_month_html', 'end_month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.end_month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+});
+page.ctrl(function (scope, model, fi, t) {
+  var q = {};
+
+  function add() {
+    fi.add();
+  }
+
+  function edit(row) {
+    fi.edit({ credit_id: row.credit_id });
+  }
+
+  function view(row){
+    fi.view({ credit_id : row.credit_id });
+  }
+
+  function doAction(doFunc, credit_id) {
+    doFunc({ credit_id: credit_id }).then(page.reload, page.alert);
+  }
+
+  function doActionOne(doFunc, doTrans) {
+    return function(row) {
+      page.confirm(doTrans(row.credit_number), _.partial(doAction, doFunc, row.credit_id));
+    }
+  }
+
+  function doActionMany(doFunc, data, doTrans) {
+    return function() {
+      page.confirm(doTrans(data.size), _.partial(doAction, doFunc, _.pluck(data.rows, 'credit_id')));
+    }
+  }
+
+  function prepareChecked(data, checked, filterFunc) {
+    data.rows = _.filter(checked.rows(), filterFunc);
+    data.size = data.rows.length;
+    data.has = data.size > 0;
+  }
+
+  function onCheck(checked) {
+    prepareChecked(q.checked, checked, x => x.status == 'D');
+    _.map(q.actions, x => prepareChecked(x.data, checked, x.filterFunc));
+    q.actions_exists = _.any(q.actions, x => x.data.has);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit && row.status == 'D' ? edit(row) : null;
+  }
+
+  function transactions(row) {
+    window.open(page.url('transactions', { rt: 'html', journal_code: row.journal_code }));
+  }
+
+  q.checked = {};
+  q.actions = _.chain([
+    [ fi.draft,    row => row.status != 'D', t('draft credit $1{credit_number}?'), t('draft $1{credit_size} credit(s)?') ],
+    [ fi.book,     row => row.status != 'B' && row.payment_kind == q.pk_payroll, t('book credit $1{credit_number}?'), t('book $1{credit_size} credit(s)?') ],
+    [ fi.complete, row => row.status != 'C', t('complete credit $1{credit_number}?'), t('complete $1{credit_size} credit(s)?') ],
+    [ fi.archive,  row => row.status == 'C', t('archive credit $1{credit_number}?'), t('archive $1{credit_size} credit(s)?') ]
+  ])
+  .mapRows(['grant', 'filterFunc', 'transOne', 'transMany'])
+  .reject(x => !x.grant)
+  .each(x => {
+    x.data = {};
+    x.funcOne = doActionOne(x.grant, x.transOne);
+    x.funcMany = doActionMany(x.grant, x.data, x.transMany);
+  })
+  .value();
+
+  scope.q = q;
+
+  scope.deleteOne = doActionOne(fi.delete, t('delete credit $1{credit_number}?'));
+  scope.deleteMany = doActionMany(fi.delete, q.checked, t('delete $1{credit_size} credit(s)?'));
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-if="fi.add" ng-click="add()">{{ fi.add.title }}</button>
+    <div class="btn-group" ng-show="q.actions_exists">
+      <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcMany()" ng-if="action.grant && action.data.has">
+          {{ action.grant.title }} {{ action.data.size }}
+        </a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="credit_id, status, credit_number, begin_month, end_month, journal_code" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-credit_date" search="employee_name, credit_number" searchable="bank_account_name, cashbox_name, note"
+          extra-columns="credit_number, payment_type_name, bank_account_name, cashbox_name, currency_name, note, created_on, created_by_name, modified_on, modified_by_name">
+
+    <b-row>
+      <b-col name="booked_date" size="3"/>
+      <b-col name="credit_date" size="3"/>
+      <b-col name="employee_name" size="5"/>
+      <b-col name="credit_amount" format="amount" align="right" size="3"/>
+      <b-col name="begin_month" as-html="begin_month_html" size="3"/>
+      <b-col name="end_month" as-html="end_month_html" size="3"/>
+      <b-col name="status_name" as-html="status_html" size="3"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.status == 'D'"><t>edit</t></button>
+      <div class="btn-group" ng-if="q.actions.length > 0">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcOne(row)" ng-if="action.grant && action.filterFunc(row)">
+            {{ action.grant.title }}
+          </a>
+        </div>
+      </div>
+      <button type="button" class="btn btn-default" ng-click="transactions(row)" ng-if="fi.transactions && (row.status == 'C' || row.status == 'A')">{{ fi.transactions.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'D'">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="credit_id" directive="equal" extra/>
+    <b-filter name="credit_number"/>
+    <b-filter name="booked_date"/>
+    <b-filter name="credit_date"/>
+    <b-filter name="employee_id" decorate-with="employee_name"/>
+    <b-filter name="credit_amount"/>
+    <b-filter name="begin_month"/>
+    <b-filter name="end_month"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="payment_type" decorate-with="payment_type_name" extra/>
+    <b-filter name="cashbox_id" decorate-with="cashbox_name" extra/>
+    <b-filter name="bank_account_id" decorate-with="bank_account_name" extra/>
+    <b-filter name="currency_id" decorate-with="currency_name" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,518 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bUtil) {
+  var d = _.omit(model, 'references'),
+      q = model.references;
+
+  function setStaff(result) {
+    if (result) {
+      if (result.staff_id && q.last_staf_id != result.staff_id) {
+        if (d.change_kind == 'S') {
+          d.swap_days = [[{}, {}]];
+        } else {
+          d.change_dates = [{}];
+        }
+      }
+
+      d.staff_id = result.staff_id;
+      d.staff_name = result.name;
+
+      if (result.staff_id) q.last_staf_id = result.staff_id;
+    }
+  }
+
+  function whereStaff() {
+    let where = ['and', [
+                  ['hiring_date', '<=', q.current_date],
+                  ['schedule_id', '<>', [null]],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', q.current_date]
+                  ]]]];
+
+    if (q.personal_staff_id) where = ['and', [where, ['staff_id', '<>', q.personal_staff_id]]];
+    return where;
+  }
+
+  function selectStaff() {
+    fi.select_staff(null, setStaff, { where: whereStaff() });
+  }
+
+  function changeKind(change_kind) {
+    if (change_kind == d.change_kind) {
+      return;
+    } else if (change_kind == 'S') {
+      d.swap_days = [[{}, {}]];
+    } else {
+      d.change_dates = [{}];
+    }
+  }
+
+  function addChangeDate(index) {
+    var i = index + 1;
+    d.change_dates.splice(i, 0, {});
+  }
+
+  function removeChangeDate(index) {
+    d.change_dates.splice(index, 1);
+    checkMonthlyLimit();
+  }
+
+  function addSwapDay(index) {
+    var i = index + 1
+    d.swap_days.splice(i, 0, [{}, {}]);
+  }
+
+  function removeSwapDay(index) {
+    d.swap_days.splice(index, 1);
+    checkSwapDays();
+    checkMonthlyLimit();
+  }
+
+  function calcDay(day) {
+    let end_time = bUtil.timeToMinutes(day.end_time);
+    let begin_time =  bUtil.timeToMinutes(day.begin_time);
+    let break_begin_time = bUtil.timeToMinutes(day.break_begin_time);
+    let break_end_time = bUtil.timeToMinutes(day.break_end_time);
+    let break_time = 0;
+    let full_time = 0;
+
+    if (day.break_enabled == 'Y') {
+      if (break_end_time > break_begin_time) {
+        break_time = (break_end_time - break_begin_time) / 60;
+      } else {
+        break_time = (break_end_time - break_begin_time + 1440) / 60;
+      }
+    }
+
+    if (end_time > begin_time) {
+      full_time = (end_time - begin_time) / 60;
+    } else {
+      full_time = (end_time - begin_time + 1440) / 60;
+    }
+
+    day.plan_time = bUtil.minutesToTime((full_time - break_time) * 60);
+  }
+
+  function checkSwapDays() {
+    var used_swap_days = [];
+
+    q.invalid_date_count = 0;
+    _.each(d.swap_days, x => {
+      x[0].invalid = false;
+      x[1].invalid = false;
+
+      if (_.contains(used_swap_days, x[0].change_date)) {
+        x[0].invalid = true;
+        q.invalid_date_count ++;
+      } else if (x[0].change_date) used_swap_days.push(x[0].change_date);
+
+      if (_.contains(used_swap_days, x[1].change_date)) {
+        x[1].invalid = true;
+        q.invalid_date_count ++;
+      } else if (x[1].change_date) used_swap_days.push(x[1].change_date);
+    });
+  }
+
+  var timesheet_keys = ['timesheet_date', 'day_kind', 'begin_time', 'end_time', 'break_enabled', 'break_begin_time', 'break_end_time', 'plan_time'];
+  var timesheet_time_keys = ['begin_time', 'end_time', 'break_begin_time', 'break_end_time', 'plan_time'];
+
+  function loadTimesheet(data, index) {
+    let change_date = data[index].change_date;
+
+    if (d.staff_id && change_date) {
+      page.post(':load_timesheet', {
+        staff_id: d.staff_id,
+        timesheet_date: change_date
+      }).then(function(result) {
+        let x = _.pick(result, timesheet_keys);
+        if (d.change_kind == 'C') {
+          x.plan_time = bUtil.minutesToTime(~~(x.plan_time / 60));
+        }
+        data[index] = x;
+        data[index].change_date = change_date;
+
+        if (d.change_kind == 'S') {
+          checkSwapDays();
+        }
+      }, page.alert);
+    } else {
+      data[index] = {};
+    }
+  }
+
+  function checkMonthlyLimit() {
+    let dates = [];
+    if (d.change_kind == 'C') {
+      dates = _.chain(d.change_dates)
+                .pluck('change_date')
+                .compact()
+                .uniq()
+                .value();
+
+    } else if (d.change_kind == 'S') {
+      dates = _.chain(d.swap_days)
+                .map(x => {
+                  if (!x[0].change_date && !x[1].change_date) return;
+                  if (!x[1].change_date) return x[0].change_date;
+                  if (!x[0].change_date) return x[1].change_date;
+                  if (moment(x[0].change_date, 'DD.MM.YYYY') < moment(x[1].change_date, 'DD.MM.YYYY')) return x[0].change_date;
+                  return x[1].change_date;
+                })
+                .compact()
+                .uniq()
+                .value();
+    }
+    d.limits = {};
+
+    _.each(dates, date => {
+      let month = date.slice(3);
+      if (!d.limits?.[month]?.current_count) {
+        d.limits[month] = { current_count: 1 };
+      } else {
+        d.limits[month].current_count++;
+      }
+    });
+
+    _.each(dates, date => {
+      let month = date.slice(3);
+      page.post(':load_monthly_limit', {
+        staff_id: d.staff_id,
+        change_date: date
+      }).then(result => {
+        d.limits[month].with_monthly_limit = result.change_with_monthly_limit;
+        d.limits[month].monthly_limit = parseInt(result.change_monthly_limit);
+        d.limits[month].total_count = parseInt(result.staff_change_monthly_count) + d.limits[month].current_count;
+        d.limits[month].is_restriction_valid = d.limits[month].with_monthly_limit != 'Y' || d.limits[month].monthly_limit >= d.limits[month].total_count;
+        d.limits[month].month_name = moment(date, 'DD.MM.YYYY').format('MMMM YYYY');
+      }, page.alert);
+    });
+  }
+
+  function getMonthlyLimit(data) {
+    let date, month;
+    if (d.change_kind == 'C') {
+      if (!data.change_date) return {};
+      date = data.change_date;
+
+    } else if (d.change_kind == 'S') {
+      if (!data[0].change_date && !data[1].change_date) return {};
+      if (!data[0].change_date) date = data[1].change_date;
+      else if (!data[1].change_date) date = data[0].change_date;
+      else if (moment(data[0].change_date, 'DD.MM.YYYY') < moment(data[1].change_date, 'DD.MM.YYYY')) date = data[0].change_date;
+      else date = data[1].change_date;
+    }
+    month = date.slice(3);
+    return d?.limits?.[month] || {};
+  }
+
+  function save() {
+    if (q.invalid_date_count == 0 && page.valid(scope.form) && !(q.note_is_required == 'Y' && (!d.note || !q.note_valid))) {
+      page.confirm(t('save?')(), function() {
+        let data = angular.copy(d);
+        if (data.change_kind == 'S') {
+          var swap_date;
+          data.change_dates = [];
+
+          for (i = 0; i < d.swap_days.length; i ++) {
+            swap_date = d.swap_days[i][0].change_date;
+
+            d.swap_days[i][0].swapped_date = d.swap_days[i][0].change_date;
+            d.swap_days[i][0].change_date = d.swap_days[i][1].change_date;
+            d.swap_days[i][1].swapped_date = d.swap_days[i][1].change_date;
+            d.swap_days[i][1].change_date = swap_date;
+
+            data.change_dates = data.change_dates.concat(d.swap_days[i][0], d.swap_days[i][1]);
+          }
+        } else {
+          _.each(data.change_dates, function(x) {
+            x.plan_time = bUtil.timeToMinutes(x.plan_time) * 60;
+          });
+        }
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function changeNote() {
+    if (q.note_is_required == 'Y') {
+      q.note_valid = d.note.length > q.note_limit;
+    }
+  }
+
+  d.change_dates = _.mapRows(d.change_dates, ['change_date',
+                                              'swapped_date',
+                                              'day_kind',
+                                              'begin_time',
+                                              'end_time',
+                                              'break_enabled',
+                                              'break_begin_time',
+                                              'break_end_time',
+                                              'plan_time']);
+
+  if(d.change_kind == 'C') {
+    _.each(d.change_dates, function(x) {
+      x.plan_time = bUtil.minutesToTime(Math.round(~~(x.plan_time / 60)));
+    });
+  } else {
+    d.swap_days = [];
+    for(i = 0; i < d.change_dates.length; i += 2) {
+      d.swap_days.push([d.change_dates[i], d.change_dates[i + 1]]);
+    }
+  }
+
+  _.extend(q, model.references);
+
+  q.tSelectDate = t('select date')();
+  q.readonly = d.change_id || d.staff_id;
+  if (!d.change_id) {
+    d.change_dates = [{}];
+    d.swap_days = [[{}, {}]];
+  } else {
+    checkMonthlyLimit();
+  }
+
+  q.personal_mode = q.personal_mode == 'Y';
+  q.invalid_date_count = 0;
+  q.note_valid = true;
+  if (q.personal_mode) {
+      d.staff_id = q.personal_staff_id;
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <style>
+    .text-grey {
+      color:#b5b5c3;
+    }
+  </style>
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group" ng-if="!q.personal_mode">
+            <label><t>staff</t><r/></label>
+            <b-input name="staffs"
+                      model="d.staff_name"
+                      model-key="d.staff_id"
+                      column="staff_id, staff_number, name, staff_kind_name"
+                      sort="name"
+                      search="staff_number, name"
+                      on-select="setStaff(row)"
+                      on-delete="setStaff({})"
+                      is-view="fi.select_staff"
+                      on-view="selectStaff()"
+                      readonly="q.readonly"
+                      required-key>
+              <header>
+                <div class="col-6"><t>staff number</t></div>
+                <div class="col-12"><t>staff name</t></div>
+                <div class="col-6"><t>staff kind name</t></div>
+              </header>
+              <content>
+                <div class="col-6">{{ row.staff_number }}</div>
+                <div class="col-12">{{ row.name }}</div>
+                <div class="col-6">{{ row.staff_kind_name }}</div>
+              </content>
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>change kind</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="change_kind" value="S" ng-model="d.change_kind" ng-click="changeKind('S')"/>
+              <span><t>change_kind:swap</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="change_kind" value="C" ng-model="d.change_kind" ng-click="changeKind('C')"/>
+              <span><t>change_kind:change</t></span>
+            </label>
+          </div>
+          <div ng-if="d.change_kind == 'S'">
+            <div ng-repeat="item in d.swap_days">
+              <div class="card card-custom gutter-b">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-sm-22">
+                      <div class="form-row">
+                        <div class="col-sm-11">
+                          <div class="form-group">
+                            <input type="text" class="form-control" placeholder="{{ q.tSelectDate }}" b-date-picker="DD.MM.YYYY" ng-model="item[0].change_date" ng-blur="loadTimesheet(d.swap_days[$index], 0); checkMonthlyLimit();" ng-disabled="!d.staff_id" required/>
+                          </div>
+                          <div class="form-row">
+                            <div class="col">
+                              <label ng-class="item[0].day_kind == 'W' ? 'text-primary' : 'text-grey'">
+                                <t ng-if="item[0].day_kind == 'W'">working</t>
+                                <t ng-if="item[0].day_kind == 'R'">rest</t>
+                                <t ng-if="item[0].day_kind == 'H'">holiday</t>
+                                <t ng-if="item[0].day_kind == 'A'">additional rest day</t>
+                                <t ng-if="item[0].day_kind == 'N'">non working</t>
+                              </label><br/>
+                              <label ng-if="item[0].day_kind == 'W' || item[0].day_kind == 'N'">{{ item[0].begin_time + ' - ' + item[0].end_time }}</label><br ng-if="item[0].day_kind == 'W' || item[0].day_kind == 'N'"/>
+                            </div>
+                            <div class="col">
+                              <label class="text-primary" ng-if="item[0].break_enabled == 'Y'"><t>break time</t></label><br ng-if="item[0].break_enabled == 'Y'"/>
+                              <label ng-if="item[0].break_enabled == 'Y'">{{ item[0].break_begin_time + ' - ' + item[0].break_end_time }}</label>
+                            </div>
+                          </div>
+                          <div class="form-group">
+                            <span class="text-danger" ng-if="item[0].invalid"><t>there is already a plan change in this day</t></span>
+                          </div>
+                        </div>
+                        <div class="col-sm-2">
+                          <div class="form-group text-center">
+                            <i class="fa fa-exchange-alt mt-4"></i>
+                          </div>
+                        </div>
+                        <div class="col-sm-11">
+                          <div class="form-group">
+                            <input type="text" class="form-control" placeholder="{{ q.tSelectDate }}" b-date-picker="DD.MM.YYYY" ng-model="item[1].change_date" ng-blur="loadTimesheet(d.swap_days[$index], 1); checkMonthlyLimit();" ng-disabled="!d.staff_id" required/>
+                          </div>
+                          <div class="form-row">
+                            <div class="col">
+                              <label ng-class="item[1].day_kind == 'W' ? 'text-primary' : 'text-grey'">
+                                <t ng-if="item[1].day_kind == 'W'">working</t>
+                                <t ng-if="item[1].day_kind == 'R'">rest</t>
+                                <t ng-if="item[1].day_kind == 'H'">holiday</t>
+                                <t ng-if="item[1].day_kind == 'A'">additional rest day</t>
+                                <t ng-if="item[1].day_kind == 'N'">non working</t>
+                              </label><br/>
+                              <label ng-if="item[1].day_kind == 'W' || item[1].day_kind == 'N'">{{ item[1].begin_time + ' - ' + item[1].end_time }}</label><br ng-if="item[1].day_kind == 'W' || item[1].day_kind == 'N'"/>
+                            </div>
+                            <div class="col">
+                              <label class="text-primary" ng-if="item[1].break_enabled == 'Y'"><t>break time</t></label><br ng-if="item[1].break_enabled == 'Y'"/>
+                              <label ng-if="item[1].break_enabled == 'Y'">{{ item[1].break_begin_time + ' - ' + item[1].break_end_time }}</label>
+                            </div>
+                          </div>
+                          <div class="form-group">
+                            <span class="text-danger" ng-if="item[1].invalid"><t>there is already a plan change in this day</t></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div ng-if="getMonthlyLimit(item).with_monthly_limit == 'Y'">
+                        <span ng-class="{ 'text-danger': !getMonthlyLimit(item).is_restriction_valid }"><t p1="getMonthlyLimit(item).month_name" p2="getMonthlyLimit(item).total_count" p3="getMonthlyLimit(item).monthly_limit">change request count for $1{month_name} is $2{total_count} out of $3{monthly_limit}</t></span>
+                      </div>
+                    </div>
+                    <div class="col-sm-2">
+                      <div class="float-sm-right">
+                        <div class="btn-group text-center">
+                          <button type="button"
+                                  class="btn btn-default btn-icon btn-hover-text-danger"
+                                  ng-if="d.swap_days.length > 1"
+                                  ng-click="removeSwapDay($index)">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="addSwapDay($index)">
+                            <i class="fa fa-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div ng-if="d.change_kind == 'C'">
+            <div ng-repeat="item in d.change_dates">
+              <div class="card card-custom card-stretch gutter-b">
+                <div class="card-header d-block px-6 py-4">
+                  <div class="row">
+                    <div class="col-sm-21 col-20">
+                      <div class="form-group row">
+                        <div class="col-sm-12 col-24 mb-sm-0 mb-4">
+                          <label>&nbsp;</label>
+                          <input type="text" class="form-control" placeholder="{{ q.tSelectDate }}" b-date-picker="DD.MM.YYYY" ng-model="item.change_date" ng-blur="loadTimesheet(d.change_dates, $index); checkMonthlyLimit();" ng-disabled="!d.staff_id" required/>
+                        </div>
+                        <div class="col-sm-12 col-24">
+                          <label><t>day kind</t></label><br/>
+                          <label class="radio">
+                            <input type="radio" name="{{ 'day_kind' + $index }}" value="W" ng-model="item.day_kind" ng-change="changeDayKind(item)"/><span><t>working</t></span>
+                          </label>
+                          <label class="radio">
+                            <input type="radio" name="{{ 'day_kind' + $index }}" value="R" ng-model="item.day_kind" ng-change="changeDayKind(item)"/><span><t>rest</t></span>
+                          </label>
+                          <div class="float-sm-right">
+                            <div class="btn-group text-center">
+                              <button type="button"
+                                      class="btn btn-default btn-icon btn-hover-text-danger"
+                                      ng-if="d.change_dates.length > 1"
+                                      ng-click="removeChangeDate($index)">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                              <button type="button" class="btn btn-default btn-icon" ng-click="addChangeDate($index)">
+                                <i class="fa fa-plus"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div ng-if="getMonthlyLimit(item).with_monthly_limit == 'Y'">
+                        <span ng-class="{ 'text-danger': !getMonthlyLimit(item).is_restriction_valid }"><t p1="getMonthlyLimit(item).month_name" p2="getMonthlyLimit(item).total_count" p3="getMonthlyLimit(item).monthly_limit">change request count for $1{month_name} is $2{total_count} out of $3{monthly_limit}</t></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body" ng-if="item.day_kind == 'W'">
+                  <div class="form-group row">
+                    <div class="col-sm-7">
+                      <label><t>plan time</t></label>
+                      <input type="text" class="form-control" ng-model="item.plan_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                    </div>
+                    <div class="offset-sm-3 col-sm-7">
+                      <label><t>begin time</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.begin_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                    </div>
+                    <div class="col-sm-7">
+                      <label><t>end time</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.end_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-sm-10">
+                      <label>&nbsp;</label>
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="item.break_enabled" ng-true-value="'Y'" ng-false-value="'N'" ng-change="calcDay(item))" ng-disabled="item.day_kind == 'R'"/>
+                        <span><t>break enable</t></span>
+                      </label>
+                    </div>
+                    <div class="col-sm-7" ng-show="item.break_enabled == 'Y'">
+                      <label><t>break begin</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.break_begin_time" b-date-picker="HH:mm"
+                            ng-disabled="item.day_kind == 'R' || item.break_enabled == 'N'" ng-required="item.day_kind == 'W' && item.break_enabled == 'Y'"/>
+                    </div>
+                    <div class="col-sm-7" ng-show="item.break_enabled == 'Y'">
+                      <label><t>break end</t><r/></label>
+                      <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.break_end_time" b-date-picker="HH:mm"
+                            ng-disabled="item.day_kind == 'R' || item.break_enabled == 'N'" ng-required="item.day_kind == 'W' && item.break_enabled == 'Y'"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group row" ng-if="d.created_on">
+            <div class="col">
+              <label><t>created on</t></label>
+              <span class="form-view">{{ d.created_on }}</span>
+            </div>
+            <div class="col">
+              <label><t>created by</t></label>
+              <span class="form-view">{{ d.created_by_name }}</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>note</t><r ng-if="q.note_is_required == 'Y'"></r></label>
+            <textarea class="form-control" rows="4" ng-model="d.note" ng-change="changeNote()" b-maxlength="300" ng-required="q.note_is_required == 'Y'"></textarea>
+            <small ng-if="q.note_is_required == 'Y' && !q.note_valid" class="form-text text-danger mt-0"><t p1="q.note_limit">letters must be minimum: $1</t></small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

@@ -1,0 +1,19 @@
+{
+ "both": "All",
+ "CSV": "CSV",
+ "date": "Introduction date",
+ "edu stages": "Education Type",
+ "Excel": "EXCEL",
+ "female": "Female",
+ "gender": "Gender",
+ "generate": "Generate",
+ "Html": "HTML",
+ "jobs": "Jobs",
+ "languages": "Languages",
+ "male": "Male",
+ "parameters": "Filter",
+ "person types": "Natural Person type",
+ "sources": "Employment Source",
+ "view": "View",
+ "XML": "XML"
+}

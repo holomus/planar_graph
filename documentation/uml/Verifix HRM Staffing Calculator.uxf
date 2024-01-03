@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.0.0">
+  <zoom_level>12</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>264</x>
+      <y>600</y>
+      <w>252</w>
+      <h>228</h>
+    </coordinates>
+    <panel_attributes>*HSC_PROCESS_ACTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*ACTION_ID*
+NAME
+STATE
+CODE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>264</x>
+      <y>348</y>
+      <w>252</w>
+      <h>228</h>
+    </coordinates>
+    <panel_attributes>*HSC_PROCESSES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*PROCESS_ID*
+NAME
+STATE
+CODE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>576</x>
+      <y>348</y>
+      <w>252</w>
+      <h>228</h>
+    </coordinates>
+    <panel_attributes>*HSC_DRIVERS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*DRIVER_ID*
+NAME
+STATE
+CODE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>888</x>
+      <y>348</y>
+      <w>252</w>
+      <h>204</h>
+    </coordinates>
+    <panel_attributes>*HSC_OBJECTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*OBJECT_ID*
+NOTE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>888</x>
+      <y>576</y>
+      <w>252</w>
+      <h>252</h>
+    </coordinates>
+    <panel_attributes>*HSC_OBJECT_NORMS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*NORM_ID*
+OBJECT_ID 
+PROCESS_ID
+ACTION_ID
+MAIN_DRIVER_ID
+EXTRA_DRIVER_ID
+DIVISION_ID
+JOB_ID
+TIME_ESTIMATE</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>564</x>
+      <y>108</y>
+      <w>288</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>*HSC_DRIVER_FACTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*DRIVER_ID*
+*FACT_DATE*
+*FACT_TYPE: (P)redicted, (A)ctual*
+FACT_VALUE</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>672</x>
+      <y>264</y>
+      <w>36</w>
+      <h>108</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;70.0;10.0;10.0</additional_attributes>
+  </element>
+</diagram>

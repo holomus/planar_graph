@@ -1,0 +1,9 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{awards_count} award(s)?": "Удалить награды в количестве <b>$1</b>?",
+ "delete award $1{award_name}?": "Удалить награду <b>$1</b>?",
+ "select": "Выбрать",
+ "table.award_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

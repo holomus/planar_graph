@@ -1,0 +1,18 @@
+{
+ "accept $1 facts(s)": "Qabul qilish $1",
+ "accept $1{facts_count} facts?": "$1 ta xizmat(lar)ni qabul qilmoqchimisiz?",
+ "accept fact $1{fact_id}?": "Xizmatni qabul qilmoqchimisiz, Xizmat ID = $1?",
+ "return complete $1 facts(s)": "Qaytarish $1",
+ "return to complete $1{facts_count} facts?": "$1 ta xizmat(lar)ni qaytarmoqchimisiz?",
+ "return to complete fact $1{fact_id}?": "Xizmatni qaytarmoqchimisiz, Xizmat ID = $1?",
+ "return to new $1{facts_count} facts?": "$1 ta xizmat(lar)ni qayta tiklamoqchimisiz?",
+ "return to new fact $1{fact_id}?": "Xizmatni qayta tiklamoqchimisiz, Xizmat ID = $1?",
+ "table.contract_number": "Shartnoma raqami",
+ "table.division_name": "Bo'lim",
+ "table.fact_id": "ID",
+ "table.month": "Oy",
+ "table.person_name": "Jismoniy shaxs",
+ "table.status_name": "Status",
+ "table.total_amount": "Jami",
+ "to new $1 facts(s)": "Qayta tiklash $1"
+}

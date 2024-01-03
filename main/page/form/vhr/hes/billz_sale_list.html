@@ -1,0 +1,128 @@
+<script biruni>
+page.ctrl(function(scope, model, $timeout, fi) {
+  var d = model;
+  var getSalesModal = page.$content.find('form[name=get_sales_modal] > .modal');
+  var credentialsModal = page.$content.find('form[name=credentials_modal] > .modal');
+
+  function getSales() {
+    if (page.valid(scope.get_sales_modal)) {
+      fi.get_sales({ date_begin: d.date_begin, date_end: d.date_end }).then(page.reload, page.alert);
+    }
+  }
+
+  function saveCredentials() {
+    if (page.valid(scope.credentials_modal)) {
+      fi.save_credentials({ subject_name: d.subject_name, secret_key: d.secret_key }).then(page.reload, page.alert);
+    }
+  }
+
+  function showGetSalesModal(row) {
+    $timeout(function() { getSalesModal.modal('show'); });
+  }
+
+  function showCredentialsModal(row) {
+    $timeout(function() { credentialsModal.modal('show'); });
+  }
+
+  function hideGetSalesModal() {
+    getSalesModal.modal('hide');
+  }
+
+  function hideCredentialsModal() {
+    credentialsModal.modal('hide');
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="showGetSalesModal()" ng-if="fi.get_sales"><t>get sales from Billz</t></button>
+    <button type="button" class="btn btn-success" ng-click="showCredentialsModal()" ng-if="fi.save_credentials"><t>Billz credentials</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table"
+            required="billz_office_id, billz_seller_id, sale_date"
+            sort="division_name, -sale_date, employee_name"
+            search="division_name, employee_name"
+            searchable="billz_office_id, billz_seller_id, billz_office_name, billz_seller_name"
+            extra-columns="billz_office_id, billz_seller_id">
+      <b-row>
+        <b-col name="billz_office_name" size=4/>
+        <b-col name="division_name" size=4/>
+        <b-col name="billz_seller_name" size=4/>
+        <b-col name="employee_name" size=4/>
+        <b-col name="sale_date" size=4/>
+        <b-col name="sale_amount" size=4 format="amount" align="right"/>
+      </b-row>
+  
+      <b-filter name="billz_office_id" decorate-with="division_name"/>
+      <b-filter name="billz_seller_id" decorate-with="employee_name"/>
+      <b-filter name="billz_office_name"/>
+      <b-filter name="billz_seller_name"/>
+      <b-filter name="sale_date"/>
+      <b-filter name="sale_amount"/>
+    </b-grid>
+  </form>
+  <form name="get_sales_modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" style="max-width: 1000px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>get sales from Billz</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4">
+              <div class="col-sm mb-4 mb-sm-0">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" b-date-picker ng-model="d.date_begin" required/>
+              </div>
+              <div class="col-sm">
+                <label><t>end date</t></label>
+                <input type="text" class="form-control" b-date-picker ng-model="d.date_end"/>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="getSales()"><t>get sales from Billz</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="get_sales_modal" ng-click="hideGetSalesModal()">{{ page.close.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="credentials_modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" style="max-width: 1000px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>Billz credentials</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4">
+              <div class="offset-4 col-sm-16">
+                <label><t>subject (username)</t><r/></label>
+                <input class="form-control" ng-model="d.subject_name" required/>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="offset-4 col-16">
+                <label><t>secret_key</t><r/></label>
+                <textarea class="form-control" ng-model="d.secret_key" rows=6 required/>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveCredentials()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="credentials_modal" ng-click="hideCredentialsModal()">{{ page.close.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

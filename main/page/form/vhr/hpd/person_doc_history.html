@@ -1,0 +1,252 @@
+<script biruni>
+page.init(function(param, xparam, t, $filter) {
+  var journalTypeClass = { H: 'success', D: 'danger', T: 'info', W: 'warning', S: 'warning', R: 'warning', L: 'warning' },
+      formatNumber = $filter('bNumber'),
+      t_no_access = t('no access to wage')(),
+      t = page.query('primary_staffs'),
+      pg = page.grid('primary_staffs');
+
+  t.param({ person_id: param.person_id });
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  pg.asHtml('journal_type_html', 'journal_type, journal_type_name', function(row) {
+    return `<span class="badge badge-${ journalTypeClass[row.journal_type] }">${ row.journal_type_name }</span>`;
+  });
+  pg.asHtml('wage_html', 'wage', function(row) {
+    return row.wage == '-1' ? t_no_access : formatNumber(row.wage);
+  });
+});
+page.ctrl(function(scope, model, fi, param, xparam, $filter, t) {
+  var q = model,
+      actions = {},
+      journalTypeClass = { H: 'success', D: 'danger', T: 'info', W: 'warning', S: 'warning', R: 'warning', L: 'warning' },
+      formatNumber = $filter('bNumber'),
+      t_no_access = t('no access to wage')();
+
+  function hasView(row) {
+    return fi[`${actions[row.pcode]}_view`];
+  }
+
+  function view(row) {
+    fi[`${actions[row.pcode]}_view`]({
+      journal_id: row.journal_id
+    });
+  }
+
+  function onDblclick(row) {
+    hasView(row) ? view(row) : null;
+  }
+
+  function initTable(table, staff_id) {
+    var t = page.query(table), pg = page.grid(table);
+
+    t.param({ person_id: param.person_id, staff_id: staff_id });
+
+    if (xparam.where) t.where(xparam.where);
+    else if (param.where) t.where(param.where);
+
+    pg.asHtml('journal_type_html', 'journal_type, journal_type_name', function(row) {
+      return `<span class="badge badge-${ journalTypeClass[row.journal_type] }">${ row.journal_type_name }</span>`;
+    });
+    pg.asHtml('wage_html', 'wage', function(row) {
+      return row.wage == '-1' ? t_no_access : formatNumber(row.wage);
+    });
+  };
+
+  actions[q.pcode_hiring] = 'hiring';
+  actions[q.pcode_transfer] = 'transfer';
+  actions[q.pcode_dismissal] = 'dismissal';
+  actions[q.pcode_wage_change] = 'wage_change';
+  actions[q.pcode_rank_change] = 'rank_change';
+  actions[q.pcode_schedule_change] = 'schedule_change';
+  actions[q.pcode_vacation_limit_change] = 'vacation_limit_change';
+  actions[q.pcode_hiring_multiple] = 'hiring_multiple';
+  actions[q.pcode_transfer_multiple] = 'transfer_multiple';
+  actions[q.pcode_dismissal_multiple] = 'dismissal_multiple';
+  actions[q.pcode_rank_change_multiple] = 'rank_change_multiple';
+
+  q.secondary_staffs = _.mapRows(q.secondary_staffs, ['staff_id', 'staff_number']);
+
+  _.each(q.secondary_staffs, (x, i) => {
+    initTable('secondary_staffs' + i, x.staff_id);
+  });
+
+  scope.q = q;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>primary staffs</t></h3>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="b-toolbar row">
+      <div class="col-sm-10 offset-sm-14 b-right">
+        <b-grid-controller name="primary_staffs"/>
+      </div>
+    </div>
+    <b-grid name="primary_staffs"
+            required="journal_id, pcode"
+            sort="-begin_date, order_no"
+            on-dblclick="onDblclick(row)"
+            search="journal_type_name, robot_name, rank_name, schedule_name"
+            extra-columns="journal_name, journal_date, journal_number">
+      <b-row>
+        <b-col name="begin_date" size=2/>
+        <b-col name="end_date" size=2/>
+        <b-col name="robot_name" size=3/>
+        <b-col name="division_name" size=2/>
+        <b-col name="job_name" size=2/>
+        <b-col name="rank_name" size=2/>
+        <b-col name="schedule_name" size=2/>
+        <b-col name="vacation_limit" size=2/>
+        <b-col name="wage" as-html="wage_html" format="amount" size=3 align="right"/>
+        <b-col name="journal_type_name" as-html="journal_type_html" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+      </b-action>
+
+      <b-filter name="begin_date"/>
+      <b-filter name="end_date"/>
+      <b-filter name="journal_type" decorate-with="journal_type_name"/>
+      <b-filter name="robot_id" decorate-with="robot_name"/>
+      <b-filter name="division_id" decorate-with="division_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="rank_id" decorate-with="rank_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="vacation_limit"/>
+      <b-filter name="wage"/>
+    </b-grid>
+  </div>
+  <div class="card-header" ng-if="q.secondary_staffs[0].staff_id">
+    <div class="card-title">
+      <h3 class="card-label"><t p1="q.secondary_staffs[0].staff_number">secondary staffs ($1)</t></h3>
+    </div>
+  </div>
+  <div class="card-body" ng-if="q.secondary_staffs[0].staff_id">
+    <div class="b-toolbar row">
+      <div class="col-sm-10 offset-sm-14 b-right">
+        <b-grid-controller name="secondary_staffs0"/>
+      </div>
+    </div>
+    <b-grid name="secondary_staffs0" required="journal_id, pcode" sort="begin_date, order_no" on-dblclick="onDblclick(row)" search="journal_type_name, robot_name, rank_name, schedule_name"
+            extra-columns="journal_name, journal_date, journal_number">
+      <b-row>
+        <b-col name="begin_date" size=2/>
+        <b-col name="end_date" size=2/>
+        <b-col name="robot_name" size=3/>
+        <b-col name="division_name" size=2/>
+        <b-col name="job_name" size=2/>
+        <b-col name="rank_name" size=2/>
+        <b-col name="schedule_name" size=2/>
+        <b-col name="vacation_limit" size=2/>
+        <b-col name="wage" as-html="wage_html" format="amount" size=3 align="right"/>
+        <b-col name="journal_type_name" as-html="journal_type_html" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+      </b-action>
+
+      <b-filter name="begin_date"/>
+      <b-filter name="end_date"/>
+      <b-filter name="journal_type" decorate-with="journal_type_name"/>
+      <b-filter name="robot_id" decorate-with="robot_name"/>
+      <b-filter name="division_id" decorate-with="division_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="rank_id" decorate-with="rank_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="vacation_limit"/>
+      <b-filter name="wage"/>
+    </b-grid>
+  </div>
+  <div class="card-header" ng-if="q.secondary_staffs[1].staff_id">
+    <div class="card-title">
+      <h3 class="card-label"><t p1="q.secondary_staffs[1].staff_number">secondary staffs ($1)</t></h3>
+    </div>
+  </div>
+  <div class="card-body" ng-if="q.secondary_staffs[1].staff_id">
+    <div class="b-toolbar row">
+      <div class="col-sm-10 offset-sm-14 b-right">
+        <b-grid-controller name="secondary_staffs1"/>
+      </div>
+    </div>
+    <b-grid name="secondary_staffs1" required="journal_id, pcode" sort="begin_date, order_no" on-dblclick="onDblclick(row)" search="journal_type_name, robot_name, rank_name, schedule_name"
+            extra-columns="journal_name, journal_date, journal_number">
+      <b-row>
+        <b-col name="begin_date" size=2/>
+        <b-col name="end_date" size=2/>
+        <b-col name="robot_name" size=3/>
+        <b-col name="division_name" size=2/>
+        <b-col name="job_name" size=2/>
+        <b-col name="rank_name" size=2/>
+        <b-col name="schedule_name" size=2/>
+        <b-col name="vacation_limit" size=2/>
+        <b-col name="wage" as-html="wage_html" format="amount" size=3 align="right"/>
+        <b-col name="journal_type_name" as-html="journal_type_html" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+      </b-action>
+
+      <b-filter name="begin_date"/>
+      <b-filter name="end_date"/>
+      <b-filter name="journal_type" decorate-with="journal_type_name"/>
+      <b-filter name="robot_id" decorate-with="robot_name"/>
+      <b-filter name="division_id" decorate-with="division_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="rank_id" decorate-with="rank_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="vacation_limit"/>
+      <b-filter name="wage"/>
+    </b-grid>
+  </div>
+  <div class="card-header" ng-if="q.secondary_staffs[2].staff_id">
+    <div class="card-title">
+      <h3 class="card-label"><t p1="q.secondary_staffs[2].staff_number">secondary staffs ($1)</t></h3>
+    </div>
+  </div>
+  <div class="card-body" ng-if="q.secondary_staffs[2].staff_id">
+    <div class="b-toolbar row">
+      <div class="col-sm-10 offset-sm-14 b-right">
+        <b-grid-controller name="secondary_staffs2"/>
+      </div>
+    </div>
+    <b-grid name="secondary_staffs2" required="journal_id, pcode" sort="begin_date, order_no" on-dblclick="onDblclick(row)" search="journal_type_name, robot_name, rank_name, schedule_name"
+            extra-columns="journal_name, journal_date, journal_number">
+      <b-row>
+        <b-col name="begin_date" size=2/>
+        <b-col name="end_date" size=2/>
+        <b-col name="robot_name" size=3/>
+        <b-col name="division_name" size=2/>
+        <b-col name="job_name" size=2/>
+        <b-col name="rank_name" size=2/>
+        <b-col name="schedule_name" size=2/>
+        <b-col name="vacation_limit" size=2/>
+        <b-col name="wage" as-html="wage_html" format="amount" size=3 align="right"/>
+        <b-col name="journal_type_name" as-html="journal_type_html" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+      </b-action>
+
+      <b-filter name="begin_date"/>
+      <b-filter name="end_date"/>
+      <b-filter name="journal_type" decorate-with="journal_type_name"/>
+      <b-filter name="robot_id" decorate-with="robot_name"/>
+      <b-filter name="division_id" decorate-with="division_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="rank_id" decorate-with="rank_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="vacation_limit"/>
+      <b-filter name="wage"/>
+    </b-grid>
+  </div>
+</div>

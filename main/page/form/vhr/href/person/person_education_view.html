@@ -1,0 +1,78 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+
+  function downloadPersonEduStageFiles(row) {
+    window.open(page.url("download_files", { person_edu_stage_id: row.edu_stage_id }));
+  }
+
+  function hasFiles(row) {
+    return !!row.file_names;
+  }
+
+  d.person_langs = _.mapRows(d.person_langs, ['lang_name', 'lang_level_name']);
+
+  d.person_edu_stages = _.mapRows(d.person_edu_stages,
+    ['edu_stage_id',
+      'edu_stage_name',
+      'institution_name',
+      'begin_date',
+      'end_date',
+      'specialty_name',
+      'qualification',
+      'course',
+      'hour_amount',
+      'base',
+      'file_names']);
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label">
+        <t>education</t>
+      </h3>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="mb-2">
+      <b-pg-grid name="person_edu_stages" local-data="d.person_edu_stages" min-height="'auto'" search="edu_stage_name, institution_name"
+                 searchable="begin_date, end_date" sort="edu_stage_name, institution_name, begin_date, end_date" current-limit="1000">
+        <b-pg-row>
+          <b-pg-col name="edu_stage_name" size="7" />
+          <b-pg-col name="institution_name" size="7" />
+          <b-pg-col name="begin_date" size="4" />
+          <b-pg-col name="end_date" size="4" />
+          <b-pg-col name="action" size="2">
+            <div class="text-center w-100 dropdown" ng-if="hasFiles(row)">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                <a class="dropdown-item" ng-click="downloadPersonEduStageFiles(row)">
+                  <t>download</t>
+                </a>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+        <b-pg-extra-col name="file_names" />
+      </b-pg-grid>
+    </div>
+    <div class="col-sm-6 mt-6 px-0">
+      <div class="mb-1">
+        <span class="h5">
+          <t>Languages</t>
+        </span>
+      </div>
+      <table class="table">
+        <tr ng-repeat="item in d.person_langs">
+          <td>{{ item.lang_name }}</td>
+          <td>{{ item.lang_level_name }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>

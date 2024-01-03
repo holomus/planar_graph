@@ -1,0 +1,15 @@
+{
+ "vacancy group name": "Группа Вакансии",
+ "delete $1": "Удалить $1",
+ "delete $1{vacancy_type_count} vacancy type(s)?": "Удалить $1 тип(ов)?",
+ "delete vacancy type $1{vacancy_type_name}?": "Удалить тип <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.vacancy_type_id": "ИД"
+}

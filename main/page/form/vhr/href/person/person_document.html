@@ -1,0 +1,377 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout, bHttp) {
+  const document_cols = ['document_id', 'doc_type_id', 'doc_type_name', 'is_required', 'doc_series', 'doc_number', 'issued_by', 'issued_date', 'begin_date', 'expiry_date', 'days_to_expire', 'is_valid', 'status', 'note', 'rejected_note', 'has_file'];
+  const file_cols = ['document_id', 'sha', 'name'];
+  const document_modal = page.$content.find("form[name='document_modal']>.modal");
+  const reject_modal = page.$content.find("form[name='reject_modal']>.modal");
+
+  loadModel(model);
+
+  function loadModel(model) {
+    scope.d = d = _.omit(model, 'reference');
+    scope.q = q = model.reference || {};
+    scope.p = p = {};
+
+    document_modal.modal('hide');
+    reject_modal.modal('hide');
+
+    d.person_id = param.person_id;
+    d.person_documents = _.mapRows(model.person_documents, document_cols);
+    var files = _.chain(model.person_document_files).mapRows(file_cols).groupBy('document_id').value();
+    _.each(d.person_documents, pd => pd.files = files[pd.document_id] || []);
+
+    q.document_status = {};
+    q.document_status[q.status_new] = q.t_status_new;
+    q.document_status[q.status_approved] = q.t_status_approved;
+    q.document_status[q.status_rejected] = q.t_status_rejected;
+    q.t_remove_file = t('remove file')();
+    q.t_download_file = t('download file')();
+
+    page.on('passport_info', doc => {
+      var document = _.find(d.person_documents, x => (x.document_id == doc.document_id));
+      viewPersonDocument(document);
+    });
+    page.emit('ready');
+
+    gridSort();
+  }
+
+  function gridSort() {
+    let pgGrid = page.pgGrid('person_documents');
+    pgGrid.uncheckAll();
+    pgGrid.onSort();
+  }
+
+  function dataReload() {
+    page.post(':reload', { person_id: d.person_id }).then(loadModel, page.alert);
+  }
+
+  function showDocumentModal() {
+    $timeout(function() {
+      page.untouch(scope.document_modal);
+      document_modal.modal('show');
+    });
+  }
+
+  function showRejectModal() {
+    $timeout(function() {
+      page.untouch(scope.reject_modal);
+      reject_modal.modal('show');
+    });
+  }
+
+  // doc type
+  function setDocType(row) {
+    if (!row) return;
+    p.data.doc_type_id = row.doc_type_id;
+    p.data.doc_type_name = row.name;
+    validateDocument();
+  }
+
+  function changeDocTypeQuery(query, value) {
+    query.param({ person_id: d.person_id }).searchValue(value);
+  }
+
+  function addDocType(value) {
+    fi.add_doc_type(null, setDocType, { name: value });
+  }
+
+  function selectDocType() {
+    fi.select_doc_type(null, setDocType);
+  }
+
+  // files
+  function uploadFiles($file) {
+    if (_.isEmpty($file)) return;
+    _.each($file, x => p.data.files.push(x));
+    page.dropzone('files').clear();
+  }
+
+  function deleteFile(index) {
+    p.data.files.splice(index, 1);
+  }
+
+  function downloadFile(index) {
+    window.open(page.downloadFile(p.data.files[index].sha));
+  }
+
+  function downloadDocFiles(row) {
+    window.open(page.url("download_files", { document_id: row.document_id }));
+  }
+
+  function addPersonDocument() {
+    p.title = t('add person document')();
+    p.data = { files: [], doc_valid: true, is_valid: 'Y' };
+    showDocumentModal();
+  }
+
+  function viewPersonDocument(row) {
+    p.title = t('view person document')();
+    p.data = angular.copy(row);
+    p.data.is_view = true;
+    showDocumentModal();
+  }
+
+  function editPersonDocument(row) {
+    p.title = t('edit person document')();
+    p.data = angular.copy(row);
+    p.data.is_view = false;
+    p.data.doc_valid = true;
+    showDocumentModal();
+  }
+
+  function validateDocument() {
+    bHttp.unblockOnce();
+    page.post(':doc_valid', _.pick(p.data, 'document_id', 'doc_type_id', 'doc_series', 'doc_number')).then(result => p.data.doc_valid = (result == 'Y'));
+  }
+
+  function savePersonDocument() {
+    if (!page.valid(scope.document_modal)) return;
+    let data = _.pick(p.data, 'document_id', 'doc_type_id', 'doc_series', 'doc_number', 'issued_by', 'issued_date', 'begin_date', 'expiry_date', 'is_valid', 'note');
+    data.person_id = d.person_id;
+    data.shas = _.map(p.data.files, x => x.sha ? x.sha : x);
+    fi.save_document(data).then(dataReload, page.alert);
+  }
+
+  function statusToNew(row) {
+    page.confirm(t('do you want to set document status into new?')(), () => {
+      fi.status_new({ document_id: row.document_id }).then(dataReload, page.alert);
+    });
+  }
+
+  function statusToApproved(row) {
+    page.confirm(t('do you want to set document status into approved?')(), () => {
+      fi.status_approved({ document_id: row.document_id }).then(dataReload, page.alert);
+    });
+  }
+
+  function statusToRejected() {
+    fi.status_rejected({ document_id: p.data.document_id, rejected_note: p.data.rejected_note }).then(dataReload, page.alert);
+  }
+
+  function openRejectModal(row) {
+    p.title = t('do you want to set document status into rejected?')();
+    p.data = angular.copy(row);
+    showRejectModal();
+  }
+
+  function delPersonDocument(row) {
+    let msg = row.doc_number ? t('delete $1{doc_type_name} with number $2{doc_number}?')(row.doc_type_name, row.doc_number) :
+                               t('delete $1{doc_type_name}?')(row.doc_type_name);
+    page.confirm(msg, () => {
+      fi.del_document({ person_id: d.person_id, document_id: row.document_id }).then(dataReload, page.alert);
+    });
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom gutter-b" style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>documents</t></h3>
+      <span style="font-size: .6em;" class="badge badge-secondary" ng-if="d.person_document_owe_status == 'E'">{{ d.person_document_owe_status_name }}</span>
+      <span style="font-size: .6em;" class="badge" ng-class="{ 'badge-success': d.person_document_owe_status == 'C', 'badge-danger': d.person_document_owe_status == 'P' }" ng-if="d.required_doc_types_count > 0">{{ d.person_document_owe_status_name }} {{ d.person_documents_count }}/{{ d.required_doc_types_count }}</span>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_document" ng-click="addPersonDocument()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row" ng-if="d.person_documents.length > 10">
+      <div class="offset-sm-12 col-sm-12 mb-2">
+        <b-pg-controller name="person_documents"/>
+      </div>
+    </div>
+    <b-pg-grid name="person_documents" local-data="d.person_documents" min-height="'auto'" sort="doc_series, status" limit="50">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="doc_type_name" size="6">
+          {{ row.doc_type_name }}<r ng-if="row.is_required == 'Y'"></r>
+        </b-pg-col>
+        <b-pg-col name="doc_series" size="3"/>
+        <b-pg-col name="doc_number" size="3"/>
+        <b-pg-col name="issued_by" size="3"/>
+        <b-pg-col name="expiry_date" size="3">
+          <div class="alert alert-custom alert-light-{{ row.days_to_expire >= 0 && row.days_to_expire <= 7 ? 'warning' : 'danger' }} text-center py-1 px-3 m-0" ng-show="row.expiry_date && row.days_to_expire <= 7">
+            <div class="alert-text">{{ row.expiry_date }}</div>
+          </div>
+          <div class="text-center" ng-show="row.days_to_expire > 7">{{ row.expiry_date }}</div>
+        </b-pg-col>
+        <b-pg-col name="status" size="3">
+          <span class="badge" ng-class="{ 'badge-secondary': row.status == q.status_new, 'badge-success': row.status == q.status_approved, 'badge-danger': row.status == q.status_rejected }">
+            {{ q.document_status[row.status] }}
+          </span>
+        </b-pg-col>
+        <b-pg-col name="action" size="3">
+          <div class="text-center w-100 dropdown">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-click="viewPersonDocument(row)"><t>view</t></a>
+              <a class="dropdown-item" ng-if="fi.save_document" ng-click="editPersonDocument(row)"><t>edit</t></a>
+              <a class="dropdown-item" ng-if="row.has_file == 'Y'" ng-click="downloadDocFiles(row)"><t>download</t></a>
+
+              <hr class="my-2" ng-if="fi.status_new || fi.status_approved || fi.status_rejected"/>
+              <a class="dropdown-item" ng-if="fi.status_new && row.status != q.status_new" ng-click="statusToNew(row)">{{ fi.status_new.title }}</a>
+              <a class="dropdown-item" ng-if="fi.status_approved && row.status != q.status_approved" ng-click="statusToApproved(row)">{{ fi.status_approved.title }}</a>
+              <a class="dropdown-item" ng-if="fi.status_rejected && row.status != q.status_rejected" ng-click="openRejectModal(row)">{{ fi.status_rejected.title }}</a>
+
+              <hr class="my-2" ng-if="fi.del_document"/>
+              <a class="dropdown-item text-danger" ng-if="fi.del_document" ng-click="delPersonDocument(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+  <!-- PERSON FILE MODAL -->
+  <form name="document_modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>document type name</t><r ng-if="!p.data.is_view"/></label>
+              <b-input name="document_types"
+                       model="p.data.doc_type_name"
+                       model-key="p.data.doc_type_id"
+                       ng-model-options="{ debounce: 1000 }"
+                       column="doc_type_id, name, is_required"
+                       on-select="setDocType(row)"
+                       on-delete="setDocType({})"
+                       on-change="changeDocTypeQuery(query, value)"
+                       readonly="p.data.is_view"
+                       is-add="fi.add_doc_type"
+                       on-add="addDocType(value)"
+                       is-view="fi.select_doc_type"
+                       on-view="selectDocType()"
+                       required-key>
+                <content>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                  <div class="col-sm-8 b-right" ng-if="row.is_required == 'Y'">
+                    <span class="label label-pill label-inline label-info"><t>required</t></span>
+                  </div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12 mb-sm-0 mb-4">
+                <label><t>doc series</t></label>
+                <input class="form-control" ng-model="p.data.doc_series" ng-change="validateDocument()" ng-model-options="{ debounce: 1000 }" ng-if="!p.data.is_view" b-maxlength="50"/>
+                <span class="form-view" ng-if="p.data.is_view">{{ p.data.doc_series }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>doc number</t></label>
+                <input class="form-control" ng-model="p.data.doc_number" ng-change="validateDocument()" ng-model-options="{ debounce: 1000 }" ng-if="!p.data.is_view" b-maxlength="50"/>
+                <span class="form-view" ng-if="p.data.is_view">{{ p.data.doc_number }}</span>
+              </div>
+              <span class="text-danger ml-2" ng-hide="p.data.doc_valid || p.data.is_view"><t>this passport series and number are already used</t></span>
+            </div>
+            <div class="form-group">
+              <label><t>issued by</t></label>
+              <input class="form-control" ng-model="p.data.issued_by" ng-if="!p.data.is_view" b-maxlength="150"/>
+              <span class="form-view" ng-if="p.data.is_view">{{ p.data.issued_by }}</span>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>issued date</t></label>
+                <input class="form-control" ng-model="p.data.issued_date" ng-if="!p.data.is_view" b-date-picker/>
+                <span class="form-view" ng-if="p.data.is_view">{{ p.data.issued_date }}</span>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12 mb-sm-0 mb-4">
+                <label><t>begin date</t></label>
+                <input class="form-control" ng-model="p.data.begin_date" ng-if="!p.data.is_view" b-date-picker/>
+                <span class="form-view" ng-if="p.data.is_view">{{ p.data.begin_date }}</span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>expiry date</t></label>
+                <input class="form-control" ng-model="p.data.expiry_date" ng-if="!p.data.is_view" b-date-picker/>
+                <span class="form-view" ng-if="p.data.is_view">{{ p.data.expiry_date }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="p.data.note" style="resize: none;" ng-if="!p.data.is_view" b-maxlength="300"></textarea>
+              <span class="form-view" ng-if="p.data.is_view">{{ p.data.note }}</span>
+            </div>
+            <div class="form-group" ng-if="p.data.is_view && p.data.status == q.status_rejected">
+              <label><t>rejected note</t></label>
+              <span class="form-view">{{ p.data.rejected_note }}</span>
+            </div>
+            <div class="form-group">
+              <label class="switch" ng-if="!p.data.is_view">
+                <input type="checkbox" ng-model="p.data.is_valid" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span>
+                  <t ng-show="p.data.is_valid == 'Y'">valid</t>
+                  <t ng-show="p.data.is_valid == 'N'">invalid</t>
+                </span>
+              </label>
+              <label class="switch" ng-if="p.data.is_view">
+                <input type="checkbox" ng-model="p.data.is_valid" ng-true-value="'Y'" ng-false-value="'N'" disabled/>
+                <span>
+                  <t ng-show="p.data.is_valid == 'Y'">valid</t>
+                  <t ng-show="p.data.is_valid == 'N'">invalid</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>files</t></label>
+              <div class="form-group mb-0" style="font-size: 14px;" ng-repeat="file in p.data.files">
+                <label>
+                  <i class="fa fa-times" style="cursor: pointer;" title="{{ q.t_remove_file }}" ng-if="!p.data.is_view" ng-click="deleteFile($index)"/>
+                  <i class="fa fa-download" style="cursor: pointer;" title="{{ q.t_download_file }}" ng-if="p.data.is_view" ng-click="downloadFile($index)"/>
+                  <span class="font-blue-hoki">{{ file.name }}</span><br ng-if="!$last"/>
+                </label>
+              </div>
+              <div style="font-size: 14px;">
+                <label class="font-grey-salt" ng-if="p.data.files.length == 0"><span class="fa fa-file">&nbsp;&nbsp;</span><t>no files</t></label>
+              </div>
+            </div>
+            <div class="form-group" ng-if="!p.data.is_view">
+              <b-dropzone name="files" multiple on-select="uploadFiles($file)"/>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.save_document && !p.data.is_view" ng-click="savePersonDocument()" ng-disabled="!p.data.doc_valid"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PERSON REJECT MODAL -->
+  <form name="reject_modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>rejected note</t></label>
+              <textarea class="form-control" rows="2" ng-model="p.data.rejected_note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" ng-click="statusToRejected()"><t>reject</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

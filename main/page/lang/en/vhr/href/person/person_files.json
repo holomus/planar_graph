@@ -1,0 +1,18 @@
+{
+ "add": "Create",
+ "add person file": "File / New",
+ "close": "Close",
+ "delete": "Delete",
+ "delete person file $1{title}?": "Do you really want to delete <b>$1</b>?",
+ "download": "Download",
+ "edit": "Edit",
+ "edit person file": "File / Edit",
+ "file selection is required": "You need to select the file",
+ "files": "Files",
+ "note": "Note",
+ "pg.person_files.action": "Actions",
+ "pg.person_files.note": "Note",
+ "pg.person_files.title": "Name",
+ "save": "Save",
+ "title": "Name"
+}

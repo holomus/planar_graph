@@ -1,0 +1,313 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'divisions'),
+      frame = page.$content.find('.report_frame')[0]
+      q = {};
+
+  function selectRank() {
+    let where;
+    if (d.ranks.length > 0) {
+      where = { where: ['rank_id', '<>', _.pluck(d.ranks, 'rank_id')] };
+    };
+
+    fi.select_rank(null, (result) => {
+      if (result) {
+        if (Array.isArray(result)) {
+          d.ranks.push(...result)
+        } else {
+          d.ranks.push(result)
+        }
+      }
+    }, where);
+  }
+
+  function setEduStage(rows) {
+    if (!rows) return;
+    d.edu_stages.push(...rows);
+  }
+
+  function selectEduStage() {
+    let where;
+    if (d.edu_stages.length > 0) {
+      where = { where: ['edu_stage_id', '<>', _.pluck(d.edu_stages, 'edu_stage_id')] };
+    };
+
+    fi.select_edu_stage(null, setEduStage, { multiple_select: true, ...where });
+  }
+
+  function toRange(max, type) {
+    if (type == 'age') return t('to $1 ages')(max);
+    else return t('to $1 experiences')(max);
+  }
+
+  function fromRange(min, type) {
+    if (type == 'age') return t('from $1 ages')(min);
+    else return t('from $1 experiences')(min);
+  }
+
+  function rangeLabel(min, max, type) {
+    if (type == 'age') return t('from $1 to $2 ages')(min, max);
+    else return t('from $1 to $2 experiences')(min, max);
+  }
+
+  function tryAddRanges(min, max, type) {
+    if (!min && !max) return false;
+
+    let label = '';
+
+    if (!min && max) {
+      label = toRange(max, type);
+      min = 0;
+    } else if (min && (!max)) {
+      label = fromRange(min, type);
+    } else if (parseFloat(min) > parseFloat(max)) return false;
+    else label = rangeLabel(min, max, type);
+
+    if (type == 'age') {
+      d.ages.push({ min: min, max: max, label: label });
+    } else {
+      d.experiences.push({ min: min, max: max, label: label });
+    }
+
+    return true;
+  }
+
+  function addRange() {
+    if (tryAddRanges(d.min, d.max, d.type)) {
+      d.min = '';
+      d.max = '';
+    }
+  }
+
+  function removeRange(index) {
+    if (d.type == 'age') d.ages.splice(index, 1);
+    else d.experiences.splice(index, 1);
+  }
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+      if ((d.type == 'age' && d.ages.length == 0 ) || (d.type == 'work' && d.experiences.length == 0)) {
+        page.alert(t('there are must be minimun one range')());
+      } else {
+          var data = {
+            type: d.type,
+            date: d.date,
+            division_ids: d.division_ids,
+            rt: rt
+          };
+
+          switch (d.type) {
+            case 'age':
+              data.mins = _.pluck(d.ages, 'min');
+              data.maxs = _.pluck(d.ages, 'max');
+              break;
+
+            case 'work':
+              data.mins = _.pluck(d.experiences, 'min');
+              data.maxs = _.pluck(d.experiences, 'max');
+              break;
+
+            case 'rank':
+              data.rank_ids = _.pluck(d.ranks, 'rank_id');
+              break;
+
+            case 'edu':
+              data.edu_stage_ids = _.pluck(d.edu_stages, 'edu_stage_id');
+              break;
+
+            default:
+              break;
+          }
+
+        if (form) {
+          frame.src = page.url('run', data);
+          setFormMode('V');
+        } else {
+          window.open(page.url('run', data));
+        }
+      }
+    }
+  }
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V'? 'btn-primary' : 'btn-default';
+  }
+
+  d.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.division_ids = [];
+  d.ranks = [];
+  d.edu_stages = [];
+  d.ages = [];
+  d.experiences = [];
+
+  _.chain([[0, 18], [18, 25], [25, 35], [35, 55], [55, '']])
+   .map(x => _.object(['min', 'max'], x))
+   .each(x => tryAddRanges(x.min, x.max, 'age'));
+
+  _.chain([[0, 1], [1, 2], [2, 3], [3, 5], [5, '']])
+   .map(x => _.object(['min', 'max'], x))
+   .each(x => tryAddRanges(x.min, x.max, 'work'));
+
+  setFormMode('P');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+  </div>
+  <button type="button" class="btn btn-default" ng-if="page.isDialog()" ng-click="page.close()">{{ page.close.title }}</button>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>date</t></label><br/>
+              <input class="form-control" b-date-picker ng-model="d.date" required/>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"/>
+            </div>
+            <div class="form-group">
+              <label><t>report type</t></label><br/>
+              <label class="radio">
+                <input type="radio" name="report_type" value="age" ng-model="d.type"/>
+                <span><t>by age</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="report_type" value="work" ng-model="d.type"/>
+                <span><t>by experience</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="report_type" value="rank" ng-model="d.type"/>
+                <span><t>by rank</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="report_type" value="edu" ng-model="d.type"/>
+                <span><t>by edu stage</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <div class="sg">
+                <div class="sg-content" ng-if="d.type == 'age'">
+                  <div class="sg-row">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-11 col-10">
+                        <input class="form-control" b-number scale="0" ng-model="d.min"/>
+                      </div>
+                      <div class="sg-cell col-sm-11 col-10">
+                        <input class="form-control" b-number scale="0" ng-model="d.max"/>
+                      </div>
+                      <div class="sg-cell col-sm-2 col-4">
+                        <button type="button" class="btn btn-icon btn-default pull-right" ng-click="addRange()">
+                          <i class="fa fa-plus"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sg-row" ng-repeat="item in d.ages">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-22 col-20">&emsp;{{ item.label }}</div>
+                      <div class="sg-cell col-sm-2 col-4">
+                        <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="removeRange($index)"><i class="fa fa-trash"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sg-content" ng-if="d.type == 'work'">
+                  <div class="sg-row">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-11 col-10">
+                        <input class="form-control" b-number scale="0" ng-model="d.min"/>
+                      </div>
+                      <div class="sg-cell col-sm-11 col-10">
+                        <input class="form-control" b-number scale="0" ng-model="d.max"/>
+                      </div>
+                      <div class="sg-cell col-sm-2 col-4">
+                        <button type="button" class="btn btn-icon btn-default pull-right" ng-click="addRange()">
+                          <i class="fa fa-plus"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sg-row" ng-repeat="item in d.experiences">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-sm-22 col-20">&emsp;{{ item.label }}</div>
+                      <div class="sg-cell col-sm-2 col-4">
+                        <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="removeRange($index)"><i class="fa fa-trash"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div ng-if="d.type == 'rank'">
+                <label><t>ranks</t></label>
+                <b-input name="ranks"
+                         multiple
+                         model="d.ranks"
+                         model-key="rank_id"
+                         column="order_no"
+                         sort="order_no"
+                         label="name"
+                         is-view="fi.select_rank"
+                         on-view="selectRank()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div ng-if="d.type == 'edu'">
+                <label><t>edu stages</t></label>
+                <b-input name="edu_stages"
+                         multiple
+                         model="d.edu_stages"
+                         model-key="edu_stage_id"
+                         column="order_no"
+                         sort="order_no"
+                         label="name"
+                         is-view="fi.select_edu_stage"
+                         on-view="selectEduStage()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P'" class="report_frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

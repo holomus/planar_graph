@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/htt/location_import
+begin
+uis.lang_uz('#a:/vhr/htt/location_import$save_settings','Sozlamalarni saqlash');
+uis.lang_uz('#f:/vhr/htt/location_import','Joylashuv / Import');
+uis.lang_uz('ui-vhr272:$1{error message} with accuracy $2{accuracy}','Xatolik: $1, Xatolik sababi Aniqlik: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with address $2{address}','Xatolik: $1, Xatolik sababi Manzil: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with code $2{code}','Xatolik: $1, Xatolik sababi Kod: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with division name $2{division_name}','Xatolik: $1, Xatolik sababi Bo''lim: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with employees $2{employees}','Xatolik: $1, Xatolik sababi Xodimlar: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with lat lng $2{latlng}','Xatolik: $1, Xatolik sababi Koordinatalar: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with location name $2{name}','Xatolik: $1, Xatolik sababi Joylashuv nomi: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with location type name $2{location_type_name}','Xatolik: $1, Xatolik sababi Joylashuv turi: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with prohibited $2{prohibited}','Xatolik: $1, Xatolik sababi Qaydlar cheklovi: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with region name $2{region_name}','Xatolik: $1, Xatolik sababi Hudud: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with state $2{state}','Xatolik: $1, Xatolik sababi Holat: $2');
+uis.lang_uz('ui-vhr272:$1{error message} with time zone $2{time_zone}','Xatolik: $1, Xatolik sababi Vaqt zonasi: $2');
+uis.lang_uz('ui-vhr272:accuracy','Aniqlik (metlarda)');
+uis.lang_uz('ui-vhr272:address','Manzil');
+uis.lang_uz('ui-vhr272:code','Kod');
+uis.lang_uz('ui-vhr272:division name','Bo''lim');
+uis.lang_uz('ui-vhr272:division_name','Bo''lim');
+uis.lang_uz('ui-vhr272:employee_id_by_number: employee not found, employee_number=$1','Xodim topilmadi. Xodim raqami = $1');
+uis.lang_uz('ui-vhr272:employee_identifier:code','Kod');
+uis.lang_uz('ui-vhr272:employee_identifier:employee_number','Xodim raqami');
+uis.lang_uz('ui-vhr272:employee_identifier:name','F.I.O.');
+uis.lang_uz('ui-vhr272:employee_identifier:tin','STIR');
+uis.lang_uz('ui-vhr272:employees','Xodimlar');
+uis.lang_uz('ui-vhr272:employees ($1)','Xodimlar ($1)');
+uis.lang_uz('ui-vhr272:lat lng','Koordinatalar');
+uis.lang_uz('ui-vhr272:latlng','Koordinatalar');
+uis.lang_uz('ui-vhr272:location import','Joylashuv / Import');
+uis.lang_uz('ui-vhr272:location_type name','Joylashuv turi');
+uis.lang_uz('ui-vhr272:location_type_id_by_name: location type not found, location_type_name=$1','Joylashuv turi topilmadi. Joylashuv turi ID = $1');
+uis.lang_uz('ui-vhr272:location_type_name','Joylashuv turi');
+uis.lang_uz('ui-vhr272:name','Nom');
+uis.lang_uz('ui-vhr272:prohibited','Qaydlar cheklovi');
+uis.lang_uz('ui-vhr272:region name','Hudud');
+uis.lang_uz('ui-vhr272:region_id_by_name: region not found, name=$1','Hudud topilmadi. Nomi: $1');
+uis.lang_uz('ui-vhr272:region_name','Hudu');
+uis.lang_uz('ui-vhr272:state','Holat');
+uis.lang_uz('ui-vhr272:time zone','Vaqt zonasi');
+uis.lang_uz('ui-vhr272:time_zone','Vaqt zonasi');
+uis.lang_uz('ui-vhr272:time_zone_code_by_name: time zone not found, name=$1','Vaqt zonasi topilmadi. Nomi: $1');
+commit;
+end;
+/

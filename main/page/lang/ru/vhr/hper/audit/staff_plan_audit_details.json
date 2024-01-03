@@ -1,0 +1,12 @@
+{
+ "before": "Старое значение",
+ "current": "Новое значение",
+ "field_name": "Поле",
+ "pg.{{ data.tab }}.before": "Старое значение",
+ "pg.{{ data.tab }}.current": "Новое значение",
+ "pg.{{ data.tab }}.field_name": "Поле",
+ "staff_plan_items": "Показатели эффективности",
+ "staff_plan_parts": "Части",
+ "staff_plan_rules": "Правила",
+ "staff_plans": "Расчет показателей эффективности"
+}

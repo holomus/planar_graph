@@ -1,0 +1,15 @@
+{
+ "attach": "Attach",
+ "attach $1": "Attach $1",
+ "attach $1{job_count} job(s)": "Attach $1 job(s)?",
+ "attach job $1{job_name}?": "Attach $1?",
+ "attached": "Attached",
+ "detach": "Detach",
+ "detach $1": "Detach $1",
+ "detach $1{job_count} job(s)": "Detach $1 job(s)?",
+ "detach job $1{job_name}?": "Detach $1?",
+ "detached": "Available",
+ "table.code": "Code",
+ "table.job_id": "ID",
+ "table.name": "Name"
+}

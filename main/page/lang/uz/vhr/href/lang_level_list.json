@@ -1,0 +1,11 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{lang_level_count} lang level(s)?": "<b>$1</b>ta til bilish darajasi o'chirilsinmi?",
+ "delete lang level $1{lang_level_name}?": "<b>$1</b> til bilish darajasi o'chirilsinmi?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.lang_level_id": "ID",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.state_name": "Holat"
+}

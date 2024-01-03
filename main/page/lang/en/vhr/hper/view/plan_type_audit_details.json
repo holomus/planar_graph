@@ -1,0 +1,14 @@
+{
+ "division": "Department",
+ "pg.division.before": "Previous Value",
+ "pg.division.current": "Current Value",
+ "pg.division.field_name": "Field",
+ "pg.plan_type.before": "Previous Value",
+ "pg.plan_type.current": "Current Value",
+ "pg.plan_type.field_name": "Field",
+ "pg.task_type.before": "Previous Value",
+ "pg.task_type.current": "Current Value",
+ "pg.task_type.field_name": "Field",
+ "plan type": "Measures",
+ "task type": "Task Type"
+}

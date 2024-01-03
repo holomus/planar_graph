@@ -1,0 +1,326 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout) {
+  var d = _.pick(param, 'person_id'),
+      q = {},
+      p = {};
+
+  //sort function
+  function sortFunction(a, b, key) {
+    let c = a[key];
+    let d = b[key];
+    return c > d ? 1 : c < d ? -1: 0;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      p.fail_msg = false;
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // marital statuses
+  function setMaritalStatus(data, row) {
+    if (!row) return;
+    data.marital_status_id = row.marital_status_id;
+    data.marital_status_name = row.name;
+  }
+
+  function addMaritalStatus(data, value) {
+    fi.add_marital_status(null, _.partial(setMaritalStatus, data), { name: value });
+  }
+
+  function selectMaritalStatus(data) {
+    fi.select_marital_status(null, _.partial(setMaritalStatus, data));
+  }
+
+  // relation degrees
+  function setRelationDegree(data, row) {
+    if (!row) return;
+    data.relation_degree_id = row.relation_degree_id;
+    data.relation_degree_name = row.name;
+  }
+
+  function addRelationDegree(data, value) {
+    fi.add_relation_degree(null, _.partial(setRelationDegree, data), { name: value });
+  }
+
+  function selectRelationDegree(data) {
+    fi.select_relation_degree(null, _.partial(setRelationDegree, data));
+  }
+
+  // person marital statuses
+  function pushMaritalStatus() {
+    p.data.push({});
+  }
+
+  function deleteMaritalStatus(data) {
+    let index = _.indexOf(p.data, data);
+    p.data.splice(index, 1);
+    if (p.data.length == 0) pushMaritalStatus();
+  }
+
+  function editPersonMaritalStatus() {
+    scope.modal_content = 'person_marital_status_vhr40.html';
+    p.title = t('person marital status')();
+    p.data = d.personal_marital_statuses.length == 0 ? [{}] : angular.copy(d.personal_marital_statuses);
+    showModal();
+  }
+
+  function savePersonMaritalStatus() {
+    if (page.valid(scope.modal)) {
+      let data = {};
+      data.person_id = d.person_id;
+      data.marital_statuses = _.chain(p.data).map(x => x = _.omit(x, 'marital_status_name')).filter((obj) => { return obj.marital_status_id }).value();
+
+      fi.save_marital_status(data).then(function(result) {
+        d.personal_marital_statuses = _.mapRows(result.personal_marital_statuses, ['person_marital_status_id', 'marital_status_id', 'marital_status_name', 'start_date']);
+        d.personal_marital_statuses.sort(_.partial(sortFunction, _, _, 'marital_status_name'));
+
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  // person family members
+  function addPersonFamilyMember() {
+    scope.modal_content = 'person_family_member_vhr40.html';
+    p.title = t('add person family member')();
+    p.data = { is_dependent: 'N', is_private: 'N' };
+    showModal();
+  }
+
+  function editPersonFamilyMember(row) {
+    scope.modal_content = 'person_family_member_vhr40.html';
+    p.title = t('edit person family member')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function savePersonFamilyMember() {
+    if (page.valid(scope.modal)) {
+      let data = _.omit(p.data, 'relation_degree_name');
+          data.person_id = d.person_id;
+      fi.save_family_member(data).then(function(result) {
+        p.data.person_family_member_id = result.person_family_member_id;
+        d.person_family_members = _.reject(d.person_family_members, x => x.person_family_member_id == p.data.person_family_member_id);
+        d.person_family_members.push(p.data);
+        d.person_family_members.sort(_.partial(sortFunction, _, _, 'name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonFamilyMember(row) {
+    page.confirm(t('delete person family member $1{name}?')(row.name), function() {
+      fi.del_family_member({ person_family_member_id: row.person_family_member_id }).then(function() {
+        var index = _.findIndex(d.person_family_members, row);
+        d.person_family_members.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+
+  d.personal_marital_statuses = _.mapRows(model.personal_marital_statuses, ['person_marital_status_id', 'marital_status_id', 'marital_status_name', 'start_date']);
+  d.person_family_members = _.mapRows(model.personal_family_members, ['person_family_member_id',
+                                                                      'name',
+                                                                      'relation_degree_id',
+                                                                      'relation_degree_name',
+                                                                      'birthday',
+                                                                      'workplace',
+                                                                      'is_dependent',
+                                                                      'is_private']);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom gutter-b" style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>family members</t></h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_family_member" ng-click="addPersonFamilyMember()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <b-pg-grid name="person_family_members" local-data="d.person_family_members" min-height="'auto'" search="name, relation_degree_name"
+               searchable="birthday, workplace" sort="name, relation_degree_name, birthday" current-limit="1000">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="name" size="9"/>
+        <b-pg-col name="relation_degree_name" size="4"/>
+        <b-pg-col name="birthday" size="4"/>
+        <b-pg-col name="workplace" size="5"/>
+        <b-pg-col name="action" size="2">
+          <div class="text-center w-100 dropdown" ng-if="fi.save_family_member || fi.del_family_member">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-if="fi.save_family_member" ng-click="editPersonFamilyMember(row)"><t>edit</t></a>
+              <a class="dropdown-item text-danger" ng-if="fi.del_family_member" ng-click="delPersonFamilyMember(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+    <div class="row mt-8">
+      <div class="col-sm-8">
+        <table class="table table-hover">
+          <col width="70%">
+          <col width="30%">
+          <thead>
+            <tr>
+              <th class="pl-0"><h5 style="color:#212121;"><t>marital status name</t></h5></th>
+              <th>
+                <button type="button" class="btn btn-link text-decoration-none" ng-if="fi.save_marital_status" ng-click="editPersonMaritalStatus()">
+                  <t ng-if="d.personal_marital_statuses.length == 0">add</t>
+                  <t ng-if="d.personal_marital_statuses.length > 0">edit</t>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody ng-repeat="data in d.personal_marital_statuses">
+            <tr>
+              <td>{{ data.marital_status_name }}</td>
+              <td>{{ data.start_date }}</td>
+            </tr>
+          </tbody>
+          <tbody ng-if="d.personal_marital_statuses.length == 0">
+            <tr>
+              <td colspan="2"><p class="font-italic"><t>No data</t></p></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PERSON MARITAL STATUS MODAL -->
+  <script type="text/ng-template" id="person_marital_status_vhr40.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row mr-2">
+        <div class="col-11"><label><t>marital status name</t></label></div>
+        <div class="col-11"><label><t>start date</t></label></div>
+      </div>
+      <div class="form-row mr-2" ng-repeat="data in p.data">
+        <div class="col-11">
+          <div class="form-group">
+            <b-input name="marital_statuses"
+                     model="data.marital_status_name | name"
+                     model-key="data.marital_status_id | marital_status_id"
+                     is-add="fi.add_marital_status"
+                     is-view="fi.select_marital_status"
+                     on-add="addMaritalStatus(data, value)"
+                     on-view="selectMaritalStatus(data)">
+              {{ row.name }}
+            </b-input>
+          </div>
+        </div>
+        <div class="col-11">
+          <input type="text" class="form-control" ng-model="data.start_date" b-date-picker="DD.MM.YYYY" ng-required="data.marital_status_id"/>
+        </div>
+        <div class="col-2">
+          <button class="btn btn-default btn-icon btn-hover-text-danger" ng-if="data.marital_status_id || p.data.length > 1" ng-click="deleteMaritalStatus(data)"><i class="fas fa-trash fa-2x"></i></button>
+        </div>
+      </div>
+      <div class="form-group">
+        <button class="btn btn-default btn-icon btn-hover-text-primary" ng-click="pushMaritalStatus()"><i class="fas fa-plus fa-2x"></i></button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="savePersonMaritalStatus()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+  <!-- PERSON FAMILY MEMBER MODAL -->
+  <script type="text/ng-template" id="person_family_member_vhr40.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><t>name</t><r/></label>
+        <input type="text" class="form-control" ng-model="p.data.name" b-maxlength="300" required/>
+      </div>
+      <div class="form-group">
+        <label><t>relation degree name</t></label>
+        <b-input name="relation_degrees"
+                 model="p.data.relation_degree_name | name"
+                 model-key="p.data.relation_degree_id | relation_degree_id"
+                 is-add="fi.add_relation_degree"
+                 is-view="fi.select_relation_degree"
+                 on-add="addRelationDegree(p.data, value)"
+                 on-view="selectRelationDegree(p.data)">
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-group row">
+        <div class="col-sm-12">
+          <label><t>birthday</t></label>
+          <input type="text" class="form-control" ng-model="p.data.birthday" b-date-picker="DD.MM.YYYY"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>workplace</t></label>
+        <textarea class="form-control" rows="1" ng-model="p.data.workplace" b-maxlength="200"></textarea>
+      </div>
+      <div class="row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <div class="form-group">
+            <label><t>is dependent</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.data.is_dependent"/>
+              <span>
+                <t ng-if="p.data.is_dependent == 'Y'">yes</t>
+                <t ng-if="p.data.is_dependent == 'N'">no</t>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="col-sm">
+          <div class="form-group">
+            <label><t>is private</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.data.is_private"/>
+              <span>
+                <t ng-if="p.data.is_private == 'Y'">yes</t>
+                <t ng-if="p.data.is_private == 'N'">no</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_family_member" ng-click="savePersonFamilyMember()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+</div>

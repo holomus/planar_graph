@@ -1,0 +1,13 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{areas_count} area(s)?": "Delete zones in the amount of <b>$1</b>?",
+ "delete area $1{area_name}?": "Delete zone <b>$1</b>?",
+ "select": "Pick-up",
+ "table.area_id": "ID",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

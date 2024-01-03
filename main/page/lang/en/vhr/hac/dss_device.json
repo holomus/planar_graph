@@ -1,0 +1,12 @@
+{
+ "copied to clipboard": "Copied to clipboard.",
+ "device ip": "IP-address",
+ "device MAC": "Device MAC address",
+ "device name": "Device Name",
+ "location": "Location",
+ "location should be only small latin letters and numbers": "The location must contain only lowercase Latin letters and numbers.",
+ "login": "Login",
+ "password": "Password",
+ "primary company": "Company",
+ "save": "Save"
+}

@@ -1,0 +1,422 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t) {
+  var d = _.omit(model, 'references'),
+      q = model.references;
+
+// ------------------------------ staff formatting ------------------------------//
+  function formatFacts(facts) {
+    return _.chain(facts)
+            .mapRows(['staff_id',
+                      'date',
+                      'day_kind',
+                      'facts_changed',
+                      'time_kind_id',
+                      'fact_value'])
+            .filter(x => { return _.isEmpty(q.settings.time_kind_ids) || _.contains(q.settings.time_kind_ids, x.time_kind_id) })
+            .groupBy('staff_id')
+            .mapObject(function(staff_facts, staff_id) {
+              return _.chain(staff_facts)
+                      .groupBy('date')
+                      .mapObject(function(facts, date) {
+                        let day_facts = _.chain(facts)
+                                         .map(fact => [fact.time_kind_id, fact.fact_value])
+                                         .object()
+                                         .value();
+
+                        day_facts.day_kind = facts[0].day_kind;
+                        day_facts.facts_changed = facts[0].facts_changed;
+
+                        return day_facts;
+                      })
+                      .value();
+            })
+            .value();
+  }
+
+  function formatFactTotals(fact_totals) {
+    return _.chain(fact_totals)
+            .mapRows(['staff_id',
+                      'time_kind_id',
+                      'fact_value'])
+            .filter(x => { return _.isEmpty(q.settings.time_kind_ids) || _.contains(q.settings.time_kind_ids, x.time_kind_id) })
+            .groupBy('staff_id')
+            .mapObject(function(staff, staff_id) {
+              return {
+                      min_time_kind: _.chain(staff)
+                                      .pluck('time_kind_id')
+                                      .min()
+                                      .value(),
+                      facts: _.chain(staff)
+                              .map(staff => [staff.time_kind_id, staff.fact_value])
+                              .object()
+                              .value()
+                    };
+            })
+            .value();
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+  }
+
+  function edit() {
+    fi.edit(_.pick(d, 'timebook_id'));
+  }
+
+  function post() {
+    page.confirm(t('post timebook $1{timebook_number} on $2{month}?')(d.timebook_number, d.month), function() {
+      fi.post({ timebook_id: d.timebook_id, timebook_number: d.timebook_number, month: d.month  }).then(page.reload, page.alert);
+    });
+  }
+
+  function unpost() {
+    page.confirm(t('unpost timebook $1{timebook_number} on $2{month}?')(d.timebook_number, d.month), function() {
+      fi.unpost({ timebook_id: d.timebook_id, timebook_number: d.timebook_number, month: d.month  }).then(page.reload, page.alert);
+    });
+  }
+
+  function searchStaff(staff, srchTerm) {
+    return String(staff.staff_name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1
+        || String(staff.staff_number).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1
+        || String(staff.job_name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1;
+  }
+
+  page.$content.find('.scroll-table').hScroll();
+
+  var facts = formatFacts(d.staffs.facts),
+      fact_totals = formatFactTotals(d.staffs.fact_totals);
+
+  d.staffs = _.chain(d.staffs.totals)
+              .mapRows(['staff_id',
+                        'staff_number',
+                        'staff_name',
+                        'job_name',
+                        'division_name',
+                        'schedule_name',
+                        'plan_days',
+                        'plan_hours',
+                        'fact_days',
+                        'fact_hours'])
+              .each(function(staff) {
+                staff.fact_totals = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].facts : {};
+                staff.min_time_kind = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].min_time_kind : null;
+                staff.facts = staff.staff_id in facts ? facts[staff.staff_id] : {};
+                staff.totals_num = _.size(staff.fact_totals);
+              })
+              .value();
+
+  q.time_kinds = _.mapRows(q.time_kinds, ['time_kind_id', 'name']);
+  q.time_kind_names = _.chain(q.time_kinds)
+                       .map(time_kind => [time_kind.time_kind_id, time_kind.name])
+                       .object()
+                       .value();
+  q.time_kind = {};
+  q.activeSection = 'main';
+  q.dates = [];
+
+  let startDay = moment(d.period_begin, 'DD.MM.YYYY');
+  let lastDay = moment(d.period_end, 'DD.MM.YYYY');
+
+  while (startDay<= lastDay) {
+    q.dates.push({ value: startDay.format("DD.MM.YYYY"), name: startDay.format('dd'), num: startDay.format('D') });
+    startDay.add(1, 'days');
+  }
+
+  scope.q = q;
+  scope.d = d;
+  scope.$watchGroup(['q.pageStaffsTotal'], function() {
+    for (time_kind of q.time_kinds) {
+        q.time_kind[time_kind.time_kind_id] = _.some(
+          _.pluck(q.pageStaffsTotal, 'fact_totals'),
+          (fact_totals) => !!fact_totals && fact_totals[time_kind.time_kind_id] > 0
+        );
+      }
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit"><t>edit</t></button>
+  <button type="button" class="btn btn-primary" ng-click="post()" ng-if="fi.post && d.posted == 'N'"><t>post</t></button>
+  <button type="button" class="btn btn-danger" ng-click="unpost()" ng-if="fi.unpost && d.posted == 'Y'"><t>unpost</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">
+    {{ page.close.title }}
+  </button>
+</div>
+<div class="b-content">
+  <style>
+    .ui-vhr163 .table-custom {
+      background-color: white;
+    }
+
+    .ui-vhr163 .table-custom .td-bordered {
+      border: 1px solid #ecf0f3;
+    }
+
+    .ui-vhr163 .table-custom td {
+      vertical-align: middle;
+    }
+
+    .ui-vhr163 .table-custom tbody:nth-child(2n+1) tr:nth-child(2n+1) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr163 .table-custom tbody:nth-child(2n) tr:nth-child(2n) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr163 .table-custom tbody + tbody {
+      border-top: 1px solid rgb(228, 228, 228);
+    }
+
+    .ui-vhr163 .table-custom tbody:hover td[rowspan],
+    .ui-vhr163 .table-custom tbody tr:hover td {
+      background: #f0f0f1;
+    }
+
+    .ui-vhr163 .table.table-custom {
+      width: 2100px;
+    }
+  </style>
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3"><t p1="d.timebook_number" p2="d.timebook_date">timebook $1 from $2</t></span>
+            </div>
+            <div class="b-offcanvas-hide">
+              <span class="text-muted">&nbsp;({{ d.timebook_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex"
+              ng-class="d.posted == 'Y' ? 'alert-light-primary' : 'alert-light'">
+              <div class="alert-text">{{ d.posted_name }}
+              </div>
+            </div>
+            <br>
+            <div class="b-offcanvas-hide alert alert-custom alert-warning text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-if="d.facts_changed == 'Y'">
+              <div><t>facts changed</t></div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-info-circle mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'total' }" ng-click="changeSection('total')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-clock mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>total</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'detail' }" ng-click="changeSection('detail')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-clock mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>detail</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>main</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group" ng-if="fi.isHead">
+                <label><t>filial name</t></label>
+                <span class="form-view">{{ d.filial_name }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm mb-4">
+                  <label><t>timebook number</t></label>
+                  <span class="form-view">{{ d.timebook_number }}</span>
+                </div>
+                <div class="col-sm mb-4">
+                  <label><t>timebook date</t></label>
+                  <span class="form-view">{{ d.timebook_date }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>division</t></label>
+                <span class="form-view">{{ d.division_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm-12 mb-4" ng-show="d.period_kind == q.period_kind_full_month">
+                  <label><t>month</t></label>
+                  <span class="form-view">{{ d.month }}</span>
+                </div>
+                <div class="col-sm-12 mb-4" ng-show="d.period_kind != q.period_kind_full_month">
+                  <label><t>period begin</t></label>
+                  <span class="form-view">{{ d.period_begin }}</span>
+                </div>
+                <div class="col-sm-12 mb-4" ng-show="d.period_kind != q.period_kind_full_month">
+                  <label><t>period end</t></label>
+                  <span class="form-view">{{ d.period_end }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'total'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>total</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row mb-4">
+            <div class="offset-sm-12 col-sm-12">
+              <b-pagination from="d.staffs" to="q.pageStaffsTotal" search-by="searchStaff"/>
+            </div>
+          </div>
+          <div class="scroll-table">
+            <table class="table table-striped table-hover" style="background-color: white">
+              <thead class="text-center">
+                <tr>
+                  <td><t>№</t></td>
+                  <td><t>staff number</t></td>
+                  <td><t>staff name</t></td>
+                  <td><t>job</t></td>
+                  <td><t>schedule</t></td>
+                  <td><t>plan days</t></td>
+                  <td><t>plan hours</t></td>
+                  <td><t>fact days</t></td>
+                  <td><t>fact hours</t></td>
+                  <td ng-repeat="time_kind in q.time_kinds" ng-if="q.time_kind[time_kind.time_kind_id]">{{ time_kind.name }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="(stf_ind, staff) in q.pageStaffsTotal">
+                  <td>{{ stf_ind + 1 }}</td>
+                  <td>{{ staff.staff_number }}</td>
+                  <td>{{ staff.staff_name }}</td>
+                  <td>{{ staff.job_name }}</td>
+                  <td>{{ staff.schedule_name }}</td>
+                  <td class="text-center">{{ staff.plan_days }}</td>
+                  <td class="text-center">{{ staff.plan_hours }}</td>
+                  <td class="text-center">{{ staff.fact_days }}</td>
+                  <td class="text-center">{{ staff.fact_hours }}</td>
+                  <td class="text-center" ng-repeat="time_kind in q.time_kinds" ng-if="q.time_kind[time_kind.time_kind_id]">{{ staff.fact_totals[time_kind.time_kind_id] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'detail'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>detail</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row mb-4">
+            <div class="offset-sm-12 col-sm-12">
+              <b-pagination from="d.staffs" to="q.pageStaffsDetail" search-by="searchStaff"/>
+            </div>
+          </div>
+          <div class="scroll-table ui-vhr163">
+            <table class="table table-custom" cellspacing='0' cellpadding='0'>
+              <colgroup>
+                <col width="10"/>
+                <col width="100"/>
+                <col width="200"/>
+                <col width="90"/>
+                <col width="50"/>
+                <col width="50"/>
+                <col width="50"/>
+                <col width="50"/>
+                <col width="75"/>
+                <col width="50" ng-repeat="date in q.dates"/>
+              </colgroup>
+              <thead class="text-center">
+                <tr>
+                  <td rowspan="2"><t>№</t></td>
+                  <td rowspan="2"><t>staff number</t></td>
+                  <td rowspan="2"><t>staff name</t></td>
+                  <td rowspan="2"><t>job</t></td>
+                  <td rowspan="2" ng-if="q.settings.by_plan_day == 'Y'"><t>plan days</t></td>
+                  <td rowspan="2" ng-if="q.settings.by_plan_hour == 'Y'"><t>plan hours</t></td>
+                  <td rowspan="2" ng-if="q.settings.norm_day == 'Y'"><t>fact days</t></td>
+                  <td rowspan="2" ng-if="q.settings.norm_hour == 'Y'"><t>fact hours</t></td>
+                  <td class="td-bordered" rowspan="2"><t>time kinds</t></td>
+                  <td class="td-bordered" ng-repeat="date in q.dates">{{ date.num }}</td>
+                </tr>
+                <tr>
+                  <td class="td-bordered" ng-repeat="date in q.dates">{{ date.name }}</td>
+                </tr>
+              </thead>
+              <tbody ng-repeat="(stf_ind, staff) in q.pageStaffsDetail">
+                <tr>
+                  <td class="text-center" rowspan="{{ staff.totals_num }}">{{ stf_ind + 1 }}</td>
+                  <td rowspan="{{ staff.totals_num }}">{{ staff.staff_number }}</td>
+                  <td rowspan="{{ staff.totals_num }}">{{ staff.staff_name }}</td>
+                  <td rowspan="{{ staff.totals_num }}">{{ staff.job_name }}</td>
+                  <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.by_plan_day == 'Y'">{{ staff.plan_days }}</td>
+                  <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.by_plan_hour == 'Y'">{{ staff.plan_hours }}</td>
+                  <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.norm_day == 'Y'">{{ staff.fact_days }}</td>
+                  <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.norm_hour == 'Y'">{{ staff.fact_hours }}</td>
+                  <td class="text-center td-bordered">{{ q.time_kind_names[staff.min_time_kind] }}</td>
+                  <td class="text-center td-bordered" ng-repeat="date in q.dates" ng-style="{ 'background': staff.facts[date.value].facts_changed == 'Y' ? '#ffe7b8' : staff.facts[date.value].day_kind != 'W' ? '#fccdd2' : '' }">{{ staff.facts[date.value][staff.min_time_kind] }}</td>
+                </tr>
+                <tr class="text-center" ng-repeat="time_kind in q.time_kinds" ng-if="time_kind.time_kind_id != staff.min_time_kind && staff.fact_totals[time_kind.time_kind_id] > 0">
+                  <td class="td-bordered">{{ time_kind.name }}</td>
+                  <td class="td-bordered" ng-repeat="date in q.dates" ng-style="{ 'background': staff.facts[date.value].facts_changed == 'Y' ? '#ffe7b8' : staff.facts[date.value].day_kind != 'W' ? '#fccdd2' : '' }">{{ staff.facts[date.value][time_kind.time_kind_id] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

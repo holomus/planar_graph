@@ -1,0 +1,5 @@
+{
+ "pg.subject.before": "Старое значение",
+ "pg.subject.current": "Новое значение",
+ "pg.subject.field_name": "Поле"
+}

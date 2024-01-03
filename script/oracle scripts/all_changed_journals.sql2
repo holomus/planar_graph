@@ -1,0 +1,32 @@
+select *
+  from (select w.Staff_Id, --
+               Uk.Hiring_Date,
+               k.Division_Id,
+               k.Job_Id,
+               w.Page_Id,
+               Lag(k.Division_Id) Over(partition by(w.Staff_Id) order by w.Staff_Id, Uk.Hiring_Date, w.Page_Id) Last_Division_Id,
+               Lag(k.Job_Id) Over(partition by(w.Staff_Id) order by w.Staff_Id, Uk.Hiring_Date, w.Page_Id) Last_Job_Id
+          from Hpd_Journals q
+          join Hpd_Journal_Pages w
+            on q.Company_Id = w.Company_Id
+           and q.Filial_Id = w.Filial_Id
+           and q.Journal_Id = w.Journal_Id
+          join Hpd_Page_Jobs k
+            on w.Company_Id = k.Company_Id
+           and w.Filial_Id = k.Filial_Id
+           and w.Page_Id = k.Page_Id
+          join (select h.Company_Id, h.Filial_Id, h.Page_Id, h.Hiring_Date
+                 from Hpd_Hirings h
+                where h.Company_Id = 240
+               union all
+               select t.Company_Id, t.Filial_Id, t.Page_Id, t.Transfer_Begin
+                 from Hpd_Transfers t
+                where t.Company_Id = 240) Uk
+            on w.Company_Id = Uk.Company_Id
+           and w.Filial_Id = Uk.Filial_Id
+           and w.Page_Id = Uk.Page_Id
+         where q.Company_Id = 240
+         order by w.Staff_Id, Uk.Hiring_Date, w.Page_Id) q
+ /*where q.Division_Id = q.Last_Division_Id
+   and q.Job_Id = q.Last_Job_Id
+*/

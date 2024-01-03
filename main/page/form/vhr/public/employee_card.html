@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no user-scalable=no"/>
+  <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+
+  <title>Verifix</title>
+
+  <script src="../../../../assets/underscore/underscore-min.js"></script>
+  <script src="../../../../assets/jquery/jquery.min.js"></script>
+  <script src="../../../../assets/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <link href="../../../../favicon.ico" rel="shortcut icon"/>
+  <link href="../../../../assets/fontawesome/css/all.min.css" rel="stylesheet" type="text/css"/>
+  <link href="../../../../assets/metronic/css/style.bundle.css" rel="stylesheet" type="text/css"/>
+  <link href="../../../../biruni/login.css" rel="stylesheet" type="text/css"/>
+</head>
+<style>
+  body {
+    background: rgb(17, 21, 41)
+  }
+  .trim-text{
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+<body>
+  <div class="login-page__top mt-4">
+    <div class="login-page-language" id="langs">
+      <span class="login-page-language__title"></span>
+      <button type="button" class="login-page-language__button">
+        <span class="login-page-language__lang">Ru</span>
+        <i class="fa fa-caret-down login-page-language__caret-down"></i>
+      </button>
+      <div class="login-page-lang-options" style="background-color: rgb(234, 237, 240); z-index: 1;">
+        <li code="ru">Русский</li>
+        <li code="en">English</li>
+      </div>
+    </div>
+  </div>
+  <div class="container rounded bg-white mt-5 mb-5">
+    <div class="row py-5">
+      <div class="col-sm">
+        <div class="d-flex flex-column align-items-center text-center p-3 py-5">
+          <img class="rounded-circle mt-5" width="150px" id="photo_sha">
+          <h3 class="text-bold mt-4" id="name"></h3>
+          <h5 class="text-muted" id="filial_name"></h5>
+        </div>
+      </div>
+    </div>
+    <div class="row py-5 border-top" id="details">
+      <div class="col-sm">
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-calendar-alt fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left" id="birthday"></h4>
+            <medium class="text-muted" id="label_birthday"></medium>
+          </div>
+        </div>
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-phone fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left" id="phone"></h4>
+            <medium class="text-muted" id="label_phone_number"></medium>
+          </div>
+        </div>
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-envelope fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left trim-text" id="email"></h4>
+            <medium class="text-muted">E-mail</medium>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm border-left">
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-map-marker-alt fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left" id="address"></h4>
+            <medium class="text-muted" id="label_address"></medium>
+          </div>
+        </div>
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-network-wired fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left" id="division"></h4>
+            <medium class="text-muted" id="label_division"></medium>
+          </div>
+        </div>
+        <div class="row mb-8">
+          <div class="col-6">
+            <div class="text-center">
+              <i class="fas fa-briefcase fa-2x alert-secondary mt-4"></i>
+            </div>
+          </div>
+          <div class="col-18">
+            <h4 class="text-left" id="job"></h4>
+            <medium class="text-muted" id="label_job"></medium>
+          </div>
+         </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    $(function() {
+      var imageType = 'L', // changes image quality: (L)arge, (M)edium, (S)mall
+          lang_code = '',
+          storageKey = 'employee_card_lang';
+
+      $.urlParam = function(name) {
+        var results = new RegExp('[?&]' + name + '=([^&#]*)').exec(window.location.href);
+
+        if (results == null) {
+          return null;
+        } else {
+          return results[1] || 0;
+        }
+      }
+
+      var all_langs = [{
+        label: "Language",
+        name: "ENG",
+        code: "en"
+      }, {
+        label: "Язык",
+        name: "РУС",
+        code: "ru"
+      }];
+
+      var translates = {
+        label_birthday:     { en: 'Birthday',     ru: 'Дата рождения' },
+        label_phone_number: { en: 'Phone number', ru: 'Номер телефона' },
+        label_address:      { en: 'Address',      ru: 'Адрес' },
+        label_division:     { en: 'Department',   ru: 'Подразделение' },
+        label_job:          { en: 'Job',          ru: 'Должность' },
+      };
+
+      function putTranslates() {
+        _.each(translates, function(v, k) {
+          var val = v[lang_code];
+          $('#' + k).html(val);
+        });
+      }
+
+      function setStorageLang() {
+        var lang = {};
+        var def_lang = navigator.language || navigator.browserLanguage || navigator.userLanguage || '';
+
+        def_lang = def_lang.substr(0, 2).toLowerCase();
+
+        if (!_.findWhere(all_langs, { code: def_lang })) def_lang = _.first(all_langs).code;
+
+        if (('localStorage' in window) && window['localStorage'] !== null) {
+          lang = _.findWhere(all_langs, JSON.parse(window.localStorage.getItem(storageKey)) || { code: def_lang });
+
+          $('#langs').find('.login-page-language__title').html(lang.label + ':');
+          $('#langs').find('.login-page-language__lang').html(lang.name);
+          $('#langs').find('.login-page-language__button').click(function() {
+            $(this).next('.login-page-lang-options').fadeToggle(100);
+          });
+          $('#langs').find('.login-page-lang-options>li').click(function() {
+            window.localStorage.setItem(storageKey, JSON.stringify({
+              code: $(this).attr('code')
+            }));
+            location.reload();
+          });
+          $('body').click(function(ev) {
+            if ($(ev.target).closest('#langs').length == 0) {
+              $('#langs').find('.login-page-lang-options').fadeOut(100);
+            }
+          });
+        } else {
+          $('#langs').remove();
+          lang = { code: def_lang };
+        }
+        lang_code = lang.code;
+      }
+
+      setStorageLang();
+      putTranslates();
+
+      function nvlline(a) {
+        return a ? a : '___';
+      }
+
+      var baseUrl = window.location.pathname.substring(0, window.location.pathname.indexOf('/page'));
+
+      $.post(window.origin +  baseUrl + '/b/vhr/public/employee_card$employee_details', { employee_code: $.urlParam('employee_code'), filial_id: $.urlParam('filial_id') }).done(function(result) {
+          let src = '';
+          if (result.photo_sha) {
+            src = window.origin + baseUrl + '/b/core/m$load_image?sha='+ result.photo_sha + '&type=' + imageType;
+          } else {
+            src = window.origin + baseUrl + '/page/resource/vhr/no_photo_' + (result.gender == result.pg_female ? 'fe' : '') + 'male.png';
+          };
+
+          $('#photo_sha').attr('src', src);
+          $('#filial_name').html(result.filial_name);
+          $('#name').html(result.name);
+          $('#birthday').html(nvlline(result.birthday));
+          $('#phone').html(nvlline(result.mobile_phone));
+          $('#email').html(nvlline(result.email));
+          $('#division').html(nvlline(result.division_name));
+          $('#job').html(nvlline(result.job_name));
+          $('#address').html(nvlline(result.address));
+        }).fail(function(er) {
+          $('#name').html(er.responseText);
+          $('#details').remove();
+      });
+    });
+    </script>
+</body>
+</html>

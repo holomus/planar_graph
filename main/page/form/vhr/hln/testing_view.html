@@ -1,0 +1,288 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pg = page.grid('answers');
+
+  pg.asHtml('name_html', 'name', row => {
+    return `<div class="inbox-view">${ row.name }</div>`;
+  });
+
+  pg.asHtml('correct_answers_html', 'correct_answers, writing_hint', row => {
+    return `<p>${ row.writing_hint ? row.writing_hint : row.correct_answers }</p>`
+  });
+
+  pg.asHtml('chosen_html', 'chosen_answers, writing_answer', row => {
+    return `<p>${ row.writing_answer ? row.writing_answer : row.chosen_answers }</p>`
+  });
+
+  function correctClass(correct) {
+    switch (correct) {
+      case 'Y': return 'success';
+      case 'N': return 'danger';
+      default: return 'warning';
+    }
+  }
+
+  pg.asHtml('correct_html', 'correct, correct_name', row => {
+    return `<span class="badge badge-${ correctClass(row.correct) }">${ row.correct_name }</span>`;
+  });
+
+  pg.disable();
+});
+page.ctrl(function(scope, model, param, fi) {
+  var d = model,
+      q = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (_.contains(q.enabledGrids, section)) return;
+
+    page.query(section).param({ testing_id: param.testing_id });
+    page.grid(section).fetch();
+    page.grid(section).enable();
+
+    q.enabledGrids.push(section);
+
+  }
+
+  function showPhoto() {
+    if (d.photo_sha) {
+      page.previewFile({
+        sha: d.photo_sha,
+        name: d.person_name,
+        type: 'image'
+      });
+    }
+  }
+
+  switch (d.status) {
+    case 'N': q.status_class = 'alert-light-primary'; break;
+    case 'E': q.status_class = 'alert-light-info'; break;
+    case 'C': q.status_class = 'alert-light-danger'; break;
+    case 'P': q.status_class = 'alert-warning'; break;
+    case 'F': q.status_class = 'alert-light-success'; break;
+  }
+
+  switch (d.passed) {
+    case 'Y': q.passed_class = 'alert-light-success'; break;
+    case 'N': q.passed_class = 'alert-light-danger'; break;
+
+    default : q.passed_class = 'alert-light-dark'; break;
+  }
+
+  q.activeSection = 'testing_info';
+  q.enabledGrids = ['testing_info'];
+  q.passed_percent = ((d.correct_questions_count / d.questions_count) * 100).toPrecision(4);
+  q.passing_score = d.passing_percentage || ((d.passing_score / d.questions_count) * 100).toPrecision(4);
+
+  if (!d.photo_sha) {
+    q.photo_src = 'page/resource/vhr/no_photo_' + (d.gender == q.pg_female ? 'fe' : '') + 'male.png';
+  } else {
+    q.photo_src = page.loadImageLarge(d.photo_sha);
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="symbol h-200px w-200px w-xxl-250px">
+              <img class="w-100 h-100 mw-100 cursor-pointer" ngf-src="q.photo_src" ng-click="showPhoto()"/>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-if="d.passed_name" ng-class="q.passed_class">
+              <span class="font-weight-bolder font-size-h3 alert-text">{{ d.passed_name }}</span>
+            </div><br>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-if="d.passed_name" ng-class="q.passed_class">
+              <div class="alert-text">{{ q.passed_percent }} %</div>
+            </div><br>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.status_class">
+              <div class="alert-text">{{ d.status_name }}</div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'testing_info' }" ng-click="changeSection('testing_info')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>testing info</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.answers && (d.status == 'C' || d.status == 'F')">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'answers' }" ng-click="changeSection('answers')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-spell-check"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.answers.title }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'testing_info'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>main info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>testing number</t></label>
+                  <span class="form-view">{{ d.testing_number }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>testing date</t></label>
+                  <span class="form-view">{{ d.testing_date }}</span>
+                </div>
+              </div>
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>person name</t></label>
+                  <span class="form-view">{{ d.person_name }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>examiner name</t></label>
+                  <span class="form-view">{{ d.examiner_name }}</span>
+                </div>
+              </div>
+              <div class="form-row mb-4" ng-if="d.is_period == 'N'">
+                <div class="col-sm-12">
+                  <label><t>begin time</t></label>
+                  <span class="form-view">{{ d.begin_time_period_begin }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>end time</t></label>
+                  <span class="form-view">{{ d.end_time }}</span>
+                </div>
+              </div>
+              <div ng-if="d.is_period == 'Y'">
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>begin time period begin</t></label>
+                    <span class="form-view">{{ d.begin_time_period_begin }}</span>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>begin time period end</t></label>
+                    <span class="form-view">{{ d.begin_time_period_end }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>end time</t></label>
+                  <span class="form-view">{{ d.end_time }}</span>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>fact begin time</t></label>
+                  <span class="form-view">{{ d.fact_begin_time }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>fact end time</t></label>
+                  <span class="form-view">{{ d.fact_end_time }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>exam name</t></label>
+                <span class="form-view">{{ d.exam_name }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>correct questions count</t></label>
+                  <span class="form-view">{{ d.correct_questions_count }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>questions count</t></label>
+                  <span class="form-view">{{ d.questions_count }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>passing score</t></label>
+                  <span class="form-view">{{ d.passing_score }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>passing score percent</t></label>
+                  <span class="form-view">{{ q.passing_score }} %</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'answers'" ng-if="fi.answers && (d.status == 'C' || d.status == 'F')">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>answers</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="answers"/>
+            </div>
+          </div>
+          <b-grid name="answers" required="testing_id, question_id" on-dblclick="onDblclick(row)"
+                  sort="order_no" search="name, order_no" searchable="question_id" extra-columns="question_id, answer_type_name, code">
+            <b-row>
+              <b-col name="order_no" size=2/>
+              <b-col name="name" as-html="name_html" size=7/>
+              <b-col name="correct_answers" as-html="correct_answers_html" size=6/>
+              <b-col name="chosen_answers" as-html="chosen_html" size=6/>
+              <b-col name="correct_name" as-html="correct_html" size=3/>
+            </b-row>
+
+            <b-filter name="question_id" extra/>
+            <b-filter name="order_no"/>
+            <b-filter name="name"/>
+            <b-filter name="correct" decorate-with="correct_name"/>
+            <b-filter name="answer_type" decorate-with="answer_type_name" extra/>
+            <b-filter name="code" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

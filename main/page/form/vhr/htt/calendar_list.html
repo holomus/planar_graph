@@ -1,0 +1,81 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+});
+page.ctrl(function(scope, fi, t) {
+  var q = { checked: {} };
+
+  function deleteAction(message, calendar_id) {
+    page.confirm(message, function() {
+      fi.delete({ calendar_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete calendar $1{calendar_name}?')(row.name), row.calendar_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{calendar_count} calendar(s)?')(q.checked.size), _.pluck(q.checked.rows, 'calendar_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ calendar_id: row.calendar_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked.rows = _.filter(checked.rows(), x => !x.pcode);
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="calendar_id, name, pcode" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name" search="name, code" searchable="calendar_id"
+          extra-columns="calendar_id, code, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="name" size=23/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && !row.pcode">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="calendar_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+  </b-grid>
+</form></div>

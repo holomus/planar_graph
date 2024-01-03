@@ -1,0 +1,427 @@
+<script biruni>
+page.init(function() {
+  page.grid('table_company').disable();
+});
+page.ctrl(function(scope, model, param, fi, t, $timeout, bAlert, $q, blockUI) {
+  var d = model, 
+      q = { 
+        desync_companies: {}, 
+        receiver_host_url: window.location.origin + window.location.pathname,
+        isDev: param.mode == 'dev'
+      },
+      p = {};
+
+  function edit() {
+    fi.edit({ server_id: d.server_id });
+  }
+
+  function subscribeToTracks() {
+    fi.subscribe_to_tracks({ 
+      server_id: d.server_id, 
+      receiver_host_url: q.receiver_host_url,
+      all_types: q.isDev ? 'N' : 'Y',
+    }).then(function(result) {
+      notify(t('successfully subscribed')());
+    }, page.alert);
+  }
+
+  function unsubscribeFromTracks() {
+    fi.list_subsctiptions({
+      server_id: d.server_id,
+    }).then(function(result) {
+      let host_url = q.receiver_host_url + result.events_route;
+      let subscribed_types = _.chain(result.data)
+                              .filter(x => x.eventdest == (q.receiver_host_url + result.events_route))
+                              .pluck('eventtypes')
+                              .flatten()
+                              .value();
+      
+      page.post(':unsubscribe_from_tracks', {
+        server_id: d.server_id,
+        subscribed_types: subscribed_types,
+      }).then(function(result) {
+        notify(t('successfully unsubscribed')());
+      }, page.alert);
+    }).catch(page.alert);
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(forSubscription) {
+    p.forSubscription = forSubscription;
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+  
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (section == 'company') setMode('attach');
+    if (_.contains(q.enabledGrids, section)) return;
+    if (section) {
+      page.subpage(section).run(fi[section].uri, { server_id: d.server_id });
+    }
+    q.enabledGrids.push(section);
+  }
+
+  function genToken() {
+    fi.gen_token({ server_id: d.server_id }).then(result => d.token = result, page.alert);
+  }
+
+  function fetchQuery() {
+    var mode = q.attachMode ? 'attach' : 'detach';
+
+    q.checked = {};
+    q.desync_companies = {};
+ 
+    page.query('table_company').param({ mode: mode, server_id: d.server_id });
+    page.grid('table_company').enable();
+    page.grid('table_company').fetch();
+  }
+
+  function doAction(doFunc, message, company_id) {
+    page.confirm(message, function() {
+      doFunc({
+        server_id: d.server_id,
+        company_id: company_id
+      }).then(fetchQuery, page.alert);
+    });
+  }
+
+  function attachOne(row) {
+    doAction(fi.attach, t('attach company $1{company_name}?')(row.name), row.company_id);
+  }
+
+  function attachMany(row) {
+    doAction(fi.attach, t('attach $1{company_count} company(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'company_id'));
+  }
+
+  function detachOne(row) {
+    doAction(fi.detach, t('detach company $1{company_name}?')(row.name), row.company_id);
+  }
+
+  function detachMany() {
+    doAction(fi.detach, t('detach $1{company_count} company(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'company_id'));
+  }
+
+  function syncCompany(row) {
+    doAction(fi.sync_companies, t('sync company $1{company_name}?')(row.name), row.company_id);
+  }
+
+  function syncCompanies() {
+    doAction(fi.sync_companies, t('sync $1{company_count} company(s)?')(q.desync_companies.size), _.pluck(q.desync_companies.rows, 'company_id'));
+  }
+
+  function companyPersons(row) {
+    fi.company_persons({ company_id: row.company_id });
+  }
+
+  async function getPersons() {
+    let data = {
+      server_id: d.server_id,
+      pageNo: 1,
+    };
+    try {
+      let result = {
+        item_count: 1,
+        continue_pagination: 'Y'
+      };
+      while (result.item_count > 0 && (q.isDev || result.continue_pagination == 'Y')) {
+        result = await page.post(':get_persons', data);
+        data.pageNo += 1;
+      }
+      notify(t('succefully loaded persons from HikCentral')());
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('desync_companies', checked, x => !x.organization_code);
+  }
+
+  function onDblclick(row) {
+    q.attachMode ? detachOne(row) : attachOne(row);
+  }
+
+  function setMode(mode) {
+    if (q.attachMode = mode == 'attach') {
+      q.attachClass = 'btn-success';
+      q.detachClass = 'btn-default';
+    } else {
+      q.attachClass = 'btn-default';
+      q.detachClass = 'btn-success';
+    }
+    fetchQuery();
+  }
+
+  async function getOrganizations() {
+    let data = { 
+      server_id: param.server_id,
+      pageNo: 1,
+    };
+    try {
+      let result = { item_count: 1, };
+      while (result.item_count > 0) {
+        try {
+          result = await page.post(':get_organizations', data);
+        } catch (exception) {
+          notify(t('error loading organizations')(), 'danger')
+          console.error(exception);
+        }
+        data.pageNo += 1;
+      }
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  async function syncAllCompanies() {
+    return fi.sync_companies({ server_id: d.server_id });
+  }
+
+  async function syncAll() {
+    blockUI.start();
+    try {
+      await getOrganizations();
+      await syncAllCompanies();
+
+      fetchQuery();
+    } catch (err) {
+      page.alert(err);
+    }
+    blockUI.stop();
+  }
+
+  q.activeSection = 'main';
+  q.enabledGrids = ['main', 'company'];
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-primary" ng-click="showModal(true)" ng-if="fi.subscribe_to_tracks">{{ fi.subscribe_to_tracks.title }}</button>
+  <button type="button" class="btn btn-primary" ng-click="showModal(false)" ng-if="fi.list_subsctiptions"><t>unsubscribe from tracks</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3">{{ d.name }}</span>
+                <span class="text-muted">&nbsp;({{ d.server_id }})</span>
+              </div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'company' }" ng-click="changeSection('company')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-building"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>company</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'devices' }" ng-click="changeSection('devices')">
+                  <span class="navi-icon mr-2">
+                    <i class="fas fa-laptop"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>devices</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2" ng-if="fi.ex_organizations">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'ex_organizations' }" ng-click="changeSection('ex_organizations')">
+                  <span class="navi-icon mr-2">
+                    <i class="fas fa-users"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>external organizations</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2" ng-if="fi.ex_devices">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'ex_devices' }" ng-click="changeSection('ex_devices')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-camera"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>external devices</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2" ng-if="fi.ex_doors">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'ex_doors' }" ng-click="changeSection('ex_doors')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-door-closed"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>external doors</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2" ng-if="fi.ex_access_levels">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'ex_access_levels' }" ng-click="changeSection('ex_access_levels')">
+                  <span class="navi-icon mr-2">
+                    <i class="fas fa-map-marker-alt"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>external access levels</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>name</t></label>
+                  <span class="form-view">{{ d.name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>host url</t></label>
+                  <span class="form-view">{{ d.host_url }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>order no</t></label>
+                  <span class="form-view">{{ d.order_no | bNumber }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>partner key</t></label>
+                  <span class="form-view">{{ d.partner_key }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>partner secret</t></label>
+                  <span class="form-view">{{ d.partner_secret }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>token</t></label>
+                  <div class="input-group">
+                    <span class="form-view">{{ d.token }}</span>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-default btn-icon" ng-if="fi.gen_token" ng-click="genToken()">
+                        <i class="fa fa-redo"/>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'company'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-16">
+                <div class="btn-group mb-2">
+                  <button type="button" class="btn" ng-class="q.attachClass" ng-click="setMode('attach')"><t>attached companies</t></button>
+                  <button type="button" class="btn" ng-class="q.detachClass" ng-click="setMode('detach')"><t>detached companies</t></button>
+                </div>
+                <button type="button" class="btn btn-success mb-2" ng-click="syncAll()" ng-if="fi.sync_companies"><t>sync all</t></button>
+                <button type="button" class="btn btn-primary mb-2" ng-click="getPersons()" ng-show="q.attachMode"><t>get persons</t></button>
+                <button type="button" class="btn btn-primary mb-2" ng-click="syncCompanies()" ng-if="fi.sync_companies" ng-show="q.attachMode && q.desync_companies.has">
+                  <t p1="q.desync_companies.size">sync $1 companies</t>
+                </button>
+                <button type="button" class="btn btn-danger mb-2" ng-click="detachMany()" ng-if="fi.detach" ng-show="q.attachMode && q.checked.has">
+                  <t p1="q.checked.size">detach $1</t>
+                </button>
+                <button type="button" class="btn btn-primary mb-2" ng-click="attachMany()" ng-if="fi.attach" ng-show="!q.attachMode && q.checked.has">
+                  <t p1="q.checked.size">attach $1</t>
+                </button>
+              </div>
+              <div class="col-sm-8">
+                <b-grid-controller name="table_company"/>
+              </div>
+            </div>
+            <b-grid name="table_company" required="company_id, name, code, organization_code" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name" search="name, code" searchable="company_id">
+              <b-row>
+                <b-col name="name" size="7"/>
+                <b-col name="code" size="4"/>
+                <b-col name="organization_code" size="6"/>
+              </b-row>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="companyPersons(row)" ng-if="fi.company_persons && q.attachMode" ng-show="!!row.organization_code">{{ fi.company_persons.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="fi.attach && !q.attachMode">{{ fi.attach.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="syncCompany(row)" ng-if="fi.sync_companies && q.attachMode" ng-show="!row.organization_code">{{ fi.sync_companies.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="fi.detach && q.attachMode">{{ fi.detach.title }}</button>
+              </b-action>
+            </b-grid>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.devices" ng-show="q.activeSection == 'devices'">
+        <b-subpage name="devices"/>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.ex_organizations" ng-show="q.activeSection == 'ex_organizations'">
+        <b-subpage name="ex_organizations"/>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.ex_devices" ng-show="q.activeSection == 'ex_devices'">
+        <b-subpage name="ex_devices"/>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.ex_doors" ng-show="q.activeSection == 'ex_doors'">
+        <b-subpage name="ex_doors"/>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.ex_access_levels" ng-show="q.activeSection == 'ex_access_levels'">
+        <b-subpage name="ex_access_levels"/>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>subscribe to tracks</t></h4>
+          </div>
+          <div class="modal-body">
+            <label><t>event receiver host url</t><r/></label>
+            <input type="text" class="form-control" ng-model="q.receiver_host_url"/>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="subscribeToTracks()" ng-if="p.forSubscription"><t>subscribe</t></button>
+            <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="unsubscribeFromTracks()" ng-if="!p.forSubscription"><t>unsubscribe</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

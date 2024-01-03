@@ -1,0 +1,13 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{calendar_count} calendar(s)?": "Удалить производственные календари в количестве <b>$1</b>?",
+ "delete calendar $1{calendar_name}?": "Удалить производственный календарь <b>$1</b>?",
+ "select": "Выбрать",
+ "table.calendar_id": "ИД",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название"
+}

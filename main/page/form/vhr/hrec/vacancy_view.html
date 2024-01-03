@@ -1,0 +1,477 @@
+<script biruni>
+  page.ctrl(function(scope, model, $timeout, fi, t) {
+    let d = _.omit(model, 'references'), q = model.references, p = {};
+
+  // change section
+  function changeSection(section) {
+    q.activeSection = section;
+    if (section == 'operation') page.subpage(section).run(fi.vacancy_operation.uri, { vacancy_id: d.vacancy_id });
+    if (_.contains(q.enabledGrids, section)) return;
+    q.enabledGrids.push(section);
+  }
+
+  function publishHeadHunter() {
+    page.confirm(t('publish in Head Hunter?')(), () => {
+      fi.publish_head_hunter({
+        vacancy_id: d.vacancy_id,
+        billing_type: p.setting.billing_type,
+        vacancy_type: p.setting.vacancy_type
+      }).then(() => {
+        notify(t('vacancy published successfully')());
+        page.reload();
+      }, page.alert);
+    });
+  }
+
+  // modal publish Head Hunter
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    if (!d.region_name) {
+      page.alert(t('for publish vacancy region must be selected')());
+    } else if (d.description_in_html.length < 150) {
+      page.alert(t('for publish vacancy description must be write')());
+    } else {
+      p.setting = {
+        billing_type: 'standard',
+        vacancy_type: 'open'
+      };
+
+      $timeout(function() {
+        modal.modal('show');
+      });
+    }
+  }
+
+  // modal publish Olx
+  var olxModal = page.$content.find('form[name=olxModal]>.modal');
+
+  function showOlxModal() {
+    if (!d.region_name) {
+      page.alert(t('for publish vacancy region must be selected')());
+    } else if (d.description_in_html.length < 80 && d.description_in_html.length < 9000) {
+      page.alert(t('for publish vacancy description muste more than 80 letters and less than 9000 letters')());
+    } else if (d.name.length < 16) {
+      page.alert(t('for publish to Olx name must be more than 16 letters')());
+    } else if (!d.wage_from) {
+      page.alert(t('for publish to Olx wage must be indicated')());
+    } else {
+      p.data = { advertiser_type: 'private' };
+
+      $timeout(function() {
+        olxModal.modal('show');
+      });
+    }
+  }
+
+  function setOlxCategory(item, row) {
+    if (!row) return;
+    item.category_code = row.category_code;
+    item.category_name = row.name;
+
+    page.post(':get_attributes', { category_code: item.category_code}).then(res => {
+      item.attributes = res.attributes;
+      _.each(item.attributes, x => {
+        x.values = _.mapRows(x.values, ['code', 'label']);
+        x.value_code = x.values[0].code;
+      });
+    }, page.alert);
+  }
+
+  function publishOlx() {
+    page.confirm(t('save and publish in olx?')(), function() {
+      let data = {};
+      data.vacancy_id = d.vacancy_id;
+      data.category_code = p.data.category_code;
+      data.advertiser_type = p.data.advertiser_type;
+      data.attributes = [];
+
+      _.each(p.data.attributes, x => {
+        data.attributes.push({ attribute_code: x.attribute_code, value_code: x.value_code })
+      });
+
+      fi.publish_olx(data).then(page.reload, page.alert);
+    });
+  }
+
+  d.recruiters = _.mapRows(d.recruiters, ['user_id', 'name']);
+  d.langs = _.mapRows(d.langs, ['lang_name', 'level_name']);
+  d.types = _.mapRows(d.types, ['group_name', 'type_name']);
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+  q.billing_types = _.mapMatrix(q.billing_types, ['key', 'name']);
+  q.vacancy_types = _.mapMatrix(q.vacancy_types, ['key', 'name']);
+  q.olx_advertiser_types = _.mapMatrix(q.olx_advertiser_types, ['key', 'name']);
+
+  document.getElementById("description").innerHTML = d.description_in_html;
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content vhr573">
+  <style>
+    .vhr573 .card.card-custom {
+      background-color: #ffffff !important;
+    }
+    .vhr573 .card b-pg-grid .tbl-container {
+      box-shadow: none !important;
+      border: 1px solid #ecf0f3;
+      border-radius: 3px;
+    }
+    .vhr573 b-pg-grid .tbl .tbl-header .tbl-header-cell,
+    .vhr573 b-grid .tbl .tbl-header .tbl-header-cell {
+      border-bottom: none !important;
+    }
+    .vhr573 b-pg-grid .tbl .tbl-row.tbl-no-data-row,
+    .vhr573 b-grid .tbl .tbl-row.tbl-no-data-row {
+      border-top: 1px solid #eaeaea !important;
+    }
+  </style>
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="d-flex bd-highlight">
+            <div class="mr-auto bd-highlight">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" ng-click="page.close()"><i class="fas fa-arrow-left"></i></i></a>
+            </div>
+            <div class="bd-highlight dropdown dropdown-inline" ng-if="(fi.publish_head_hunter && d.head_hunter_published == 'N') || (fi.publish_olx && d.olx_published)">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-md dropdown-menu-right" style="cursor: pointer;">
+                <!--begin::Navigation-->
+                <ul class="navi navi-hover py-5">
+                  <li class="navi-item" ng-if="fi.publish_head_hunter && d.head_hunter_published == 'N'">
+                    <a class="navi-link" ng-click="showModal()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-share-alt"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>publish in head hunter</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="fi.publish_olx && d.olx_published == 'N'">
+                    <a class="navi-link" ng-click="showOlxModal()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-share-alt"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>publish in Olx</t>
+                      </span>
+                    </a>
+                  </li>
+                </ul>
+                <!--end::Navigation-->
+              </div>
+            </div>
+          </div>
+          <div class="text-center mb-9 mt-4">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.name }}</span>
+              <span class="text-muted" ng-if="d.urgent == 'Y'">&nbsp;<i class="fas fa-fire-alt text-danger" style="font-size: 20px;"></i></span><br>
+              <span class="text-muted">{{ '(' + d.vacancy_id + ')' }}</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.status == 'O' ? 'alert-light-success' : 'alert-light-danger'">
+              <div class="alert-text">{{ d.status_name }}</div>
+            </div>
+            <div class="b-offcanvas-hide mt-4">
+              <span><t p1="d.accepted_count" p2="d.quantity">done $1 of $2</t></span>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-info-circle mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'operation' }" ng-if="fi.vacancy_operation" ng-click="changeSection('operation')">
+              <span class="navi-icon mr-2">
+                <i class="fas fa-filter"></i>
+              </span>
+              <span class="navi-text b-offcanvas-hide font-size-sm"><t>operation</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>main</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-row mb-4" ng-if="d.application_number">
+                <div class="col-sm-12">
+                  <label><t>application number</t></label>
+                  <span class="form-view">{{ d.application_number }}</span>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>opened date</t></label>
+                    <span class="form-view">{{ d.opened_date }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>closed date</t></label>
+                    <span class="form-view">{{ d.closed_date }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>division</t></label>
+                    <span class="form-view">{{ d.division_name }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>job</t></label>
+                    <span class="form-view">{{ d.job_name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>funnel</t></label>
+                    <span class="form-view">{{ d.funnel_name }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>quantity</t></label>
+                    <span class="form-view">{{ d.quantity }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>scope</t></label>
+                    <span class="form-view">{{ d.scope_name }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>urgent</t></label>
+                    <span class="form-view">{{ d.urgent_name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>region name</t></label>
+                <span class="form-view">{{ d.region_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>exam</t></label>
+                <span class="form-view">{{ d.exam_name }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>deadline</t></label>
+                    <span class="form-view">{{ d.deadline }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>schedule name</t></label>
+                    <span class="form-view">{{ d.schedule_name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>wage from</t></label>
+                    <span class="form-view">{{ d.wage_from }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>wage to</t></label>
+                    <span class="form-view">{{ d.wage_to }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>description</t></label>
+                <span id="description" class="form-view"></span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="card-title">
+            <h5 class="card-label font-weight-bolder text-dark"><t>recruiters</t></h5>
+          </div>
+          <b-pg-grid name="recruiter" local-data="d.recruiters" iterator="item" current-limit="1000" sort="rownum">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="2"/>
+              <b-pg-col name="name" size="22"/>
+            </b-pg-row>
+          </b-pg-grid>
+          <div class="separator separator-solid my-6"></div>
+          <div class="card-title">
+            <h5 class="card-label font-weight-bolder text-dark"><t>langs</t></h5>
+          </div>
+          <b-pg-grid name="langs" local-data="d.langs" iterator="item" current-limit="1000" sort="rownum">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="2"/>
+              <b-pg-col name="lang_name" size="11"/>
+              <b-pg-col name="level_name" size="11"/>
+            </b-pg-row>
+          </b-pg-grid>
+          <div class="separator separator-solid my-6"></div>
+          <div class="card-title">
+            <h5 class="card-label font-weight-bolder text-dark"><t>characteristics</t></h5>
+          </div>
+          <b-pg-grid name="types" local-data="d.types" iterator="item" current-limit="1000" sort="rownum">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="2"/>
+              <b-pg-col name="group_name" size="11"/>
+              <b-pg-col name="type_name" size="11"/>
+            </b-pg-row>
+          </b-pg-grid>
+          <div class="separator separator-solid my-6"></div>
+          <div class="form-group row">
+            <div class="col-24 col-sm mb-4 mb-sm-0">
+              <label><t>created by name</t></label>
+              <span class="form-view">{{ d.created_by_name }}</span>
+            </div>
+            <div class="col-24 col-sm">
+              <label><t>modified by name</t></label>
+              <span class="form-view">{{ d.modified_by_name }}</span>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col-24 col-sm mb-4 mb-sm-0">
+              <label><t>created on</t></label>
+              <span class="form-view">{{ d.created_on }}</span>
+            </div>
+            <div class="col-24 col-sm">
+              <label><t>modified on</t></label>
+              <span class="form-view">{{ d.modified_on }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-if="fi.vacancy_operation" ng-show="q.activeSection == 'operation'">
+      <b-subpage name="operation"/>
+    </div>
+    <form name="modal">
+      <div class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title"><t>settings</t></h4>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group mb-4">
+                <label><t>billing type</t></label>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12" ng-repeat="billing in q.billing_types">
+                    <label class="radio">
+                      <input type="radio" name="billing_type" value="{{ billing.key }}" ng-model="p.setting.billing_type"/>
+                      <span>{{ billing.name }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>vacancy type</t></label>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12" ng-repeat="vacancy in q.vacancy_types">
+                    <label class="radio">
+                      <input type="radio" name="vacancy_type" value="{{ vacancy.key }}" ng-model="p.setting.vacancy_type"/>
+                      <span>{{ vacancy.name }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" ng-click="publishHeadHunter()"><t>publish</t></button>
+              <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+    <form name="olxModal">
+      <div class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title"><t>settings</t></h4>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label><t>advertising type</t></label>
+                <div class="form-row">
+                  <div class="col-sm" ng-repeat="item in q.olx_advertiser_types">
+                    <label class="radio">
+                      <input type="radio" name="{{ item.name }}" value="{{ item.key }}" ng-model="p.data.advertiser_type"/>
+                      <span>{{ item.name }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group mb-4">
+                <label><t>category</t></label>
+                <b-input name="olx_category"
+                         model="p.data.category_name | name"
+                         model-key="p.data.category_code | category_code"
+                         on-select="setOlxCategory(p.data, row)"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group">
+                <label ng-if="p.data.category_code"><t>attributes</t></label><br><br>
+                <div class="form-group mb-4" ng-repeat="item in p.data.attributes">
+                  <label>{{ item.label }}<r ng-if="item.is_require == 'Y'"></label>
+                  <div class="form-row">
+                    <div class="col-sm" ng-repeat="value in item.values">
+                      <label class="radio">
+                        <input type="radio" name="{{ item.code }}" value="{{ value.code }}" ng-model="item.value_code"/>
+                        <span ng-if="value.code == '1'"><t>yes</t></span>
+                        <span ng-if="value.code == '0'"><t>no</t></span>
+                        <span ng-if="!(value.code == '1' || value.code == '0')">{{ value.label }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" ng-click="publishOlx()"><t>publish</t></button>
+              <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

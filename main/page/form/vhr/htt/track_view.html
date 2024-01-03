@@ -1,0 +1,294 @@
+<script biruni>
+page.init(function() {
+  var grid = page.grid('table_audit');
+  var trackTypeClass = { C: 'warning', I: 'primary', O: 'danger' };
+
+  grid.asHtml('track_type_html', 'track_type, track_type_name', function(row) {
+    return `<span class="fa fa-circle text-${ trackTypeClass[row.track_type] }"></span>&nbsp;<span>${ row.track_type_name }</span>`;
+  });
+  grid.asHtml('is_valid_html', 'is_valid, is_valid_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.is_valid == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.is_valid_name }</div></div>`;
+  });
+  grid.disable();
+});
+page.ctrl(function(scope, fi, model, t) {
+  var d = model,
+      q = model.references;
+
+  function hasAccess() {
+    return q.access_all_employee == 'Y' || d.access_level != q.ual_personal;
+  }
+
+  // validation change
+  function setValid() {
+    page.confirm(t('set valid?')(), function() {
+      fi.set_valid({ track_id: d.track_id, filial_id: d.filial_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function setInvalid() {
+    page.confirm(t('set invalid?')(), function() {
+      fi.set_invalid({ track_id: d.track_id, filial_id: d.filial_id }).then(page.reload, page.alert);
+    });
+  }
+
+  // show image
+  function showImage() {
+    if (!d.photo_sha) return;
+    page.previewFile({
+      sha: d.photo_sha,
+      name: d.person_name,
+      type: 'image'
+    });
+  }
+
+  var map = page.getMap('Map');
+      latlng = d.latlng.split(',');
+      q.photo_src = d.photo_sha ? page.loadImageLarge(d.photo_sha) : null;
+      d.photo_identified = !!d.photo_sha && d.mark_type == 'F';
+
+  if (d.latlng) {
+    map.init({
+      lat: latlng[0],
+      lng: latlng[1],
+      zoom: 15
+    });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+
+    if (!_.contains(q.enabledGrids, tableName) && q.activeSection != 'main') {
+      page.query(tableName).param({ track_id: d.track_id, filial_id: d.filial_id });
+      page.grid(tableName).fetch();
+      page.grid(tableName).enable();
+
+      q.enabledGrids.push(tableName);
+    }
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ track_id: d.track_id, context_id: row.t_context_id, filial_id: d.filial_id });
+  }
+
+  var marker = map.then(function(api) {
+    q.mapIsReady = true;
+    api.addPlacemark('location', latlng, null, `<span><b>${ t('track time')() }</b>&nbsp;${ d.track_time }</span>`);
+    api.addCircle('location', latlng, { radius: d.accuracy }, `<span><b>${ t('accuracy $1 m')(d.accuracy) }</b>&nbsp;${ d.accuracy }</span>&nbsp;${ t('m')() }`);
+  });
+
+  function trackClass(track_type) {
+    let track_class = track_type == q.tt_input     ? 'primary'
+                    : track_type == q.tt_output    ? 'danger'
+                    : track_type == q.tt_merger    ? 'info'
+                    : 'warning';
+    return `alert-light-${ track_class }`;
+  }
+
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+  d.track_types = _.mapRows(d.track_types, ['track_type', 'track_type_name']);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="setValid()" ng-if="fi.set_valid && d.is_valid == 'N' && hasAccess()">{{ fi.set_valid.title }}</button>
+  <button type="button" class="btn btn-danger" ng-click="setInvalid()" ng-if="fi.set_invalid && d.is_valid == 'Y' && hasAccess()">{{ fi.set_invalid.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="image-input-wrapper w-auto h-auto">
+              <img class="w-100 h-100 mw-100 cursor-pointer" ngf-src="q.photo_src" ng-if="q.photo_src" ng-click="showImage()"/>
+            </div>
+            <div class="b-offcanvas-hide">
+              <div>
+                <span class="font-weight-bolder font-size-h3">
+                  <t p1="d.person_name" p2="d.track_time">$1's track at $2</t>
+                </span>
+                <span class="text-muted">&nbsp;({{ d.track_id }})</span>
+              </div>
+            </div>
+            <div class="b-offcanvas-hide" ng-if="d.photo_sha">
+              <div class="alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.photo_identified ? 'alert-light-primary' : 'alert-light-danger'">
+                <div class="alert-text">
+                  <t ng-if="d.photo_identified">photo identified</t>
+                  <t ng-if="!d.photo_identified">photo not identified</t>
+                </div>
+              </div>
+            </div>
+            <div class="b-offcanvas-hide" ng-repeat="type in d.track_types">
+              <div class="alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="trackClass(type.track_type)">
+                <div class="alert-text">{{ type.track_type_name }}</div>
+              </div>
+            </div>
+            <div class="b-offcanvas-hide">
+              <div class="alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.is_valid == 'Y' ? 'alert-light-success' : 'alert-light-danger'">
+                <div class="alert-text">
+                  <t ng-if="d.is_valid == 'Y'">valid</t>
+                  <t ng-if="d.is_valid == 'N'">not valid</t>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.audit">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-user-clock"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header py-3">
+          <div class="card-title align-items-start flex-column">
+            <h3 class="card-label font-weight-bolder text-dark"><t>information</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-row mb-4">
+                <div class="col-sm">
+                  <label><t>person name</t></label>
+                  <span class="form-view">{{ d.person_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>location</t></label>
+                <span class="form-view" ng-if="d.location_name">{{ d.location_name }}</span>
+                <span class="form-view" ng-if="!d.location_name" class="text-muted"><t>location not found</t></span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm mb-4" ng-if="d.device_name">
+                  <label><t>device name</t></label>
+                  <span class="form-view">{{ d.device_name }}</span>
+                </div>
+                <div class="col-sm mb-4" ng-if="d.device_type_name">
+                  <label><t>device type</t></label>
+                  <span class="form-view">{{ d.device_type_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>mark type</t></label>
+                <span class="form-view">{{ d.mark_type_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>track time</t></label>
+                  <span class="form-view">{{ d.track_time }}</span>
+                </div>
+              </div>
+              <div class="form-group" ng-if="d.region_name">
+                <label><t>region name</t></label>
+                <span class="form-view" >{{ d.region_name }}</span>
+              </div>
+              <div class="form-group" ng-if="d.device_serial_number">
+                <label><t>device serial number</t></label>
+                <span class="form-view">{{ d.device_serial_number }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>bssid</t></label>
+                <span class="form-view">{{ d.bssid }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="col-sm">
+              <div ng-show="d.latlng">
+                <b-map name="Map" width="100%" height="400px"/>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>created by name</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm">
+              <div class="form-group">
+                <label><t>modified by name</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>audit</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="table_audit"/>
+            </div>
+          </div>
+          <b-grid name="table_audit" required="t_context_id" on-dblclick="auditDetails(row)" sort="-t_timestamp" search="t_user_name, t_event_name" extra-columns="t_source_project_name">
+            <b-row>
+              <b-col name="t_timestamp" size=4/>
+              <b-col name="t_user_name" size=4/>
+              <b-col name="t_event_name" size=4/>
+              <b-col name="track_time" size=4/>
+              <b-col name="track_type_name" as-html="track_type_html" size=4/>
+              <b-col name="is_valid_name" as-html="is_valid_html" size=4/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+            </b-action>
+
+            <b-filter name="track_id" directive="equal" extra/>
+            <b-filter name="t_user_id" decorate-with="t_user_name"/>
+            <b-filter name="track_type" decorate-with="track_type_name"/>
+            <b-filter name="track_time"/>
+            <b-filter name="is_valid" decorate-with="is_valid_name" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>

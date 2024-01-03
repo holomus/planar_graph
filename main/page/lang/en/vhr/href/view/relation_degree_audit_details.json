@@ -1,0 +1,5 @@
+{
+ "pg.relation_degree.before": "Previous Value",
+ "pg.relation_degree.current": "Current Value",
+ "pg.relation_degree.field_name": "Field"
+}

@@ -1,0 +1,21 @@
+{
+ "active": "Faol",
+ "cannot close division before it opens, change your opened or closed date": "Bo'lim ochilishi sanasini yopilish sanasidan keyin qo'yib bo'lmaydi, ochilish yoki yopilish sanasini o'zgartiring",
+ "closed date": "Yopilish sanasi",
+ "code": "Kod",
+ "code is already used by another division": "Kod boshqa bo'lim uchun foydalanilgan",
+ "division group name": "Bo'lim guruhi",
+ "is department": "Bo'lim turi",
+ "job name": "Lavozim",
+ "manager name": "Rahbar",
+ "name": "Nom",
+ "name should be unique": "Nom takrorlanmas bo'lishi shart",
+ "opened date": "Ochilish sanasi",
+ "parent division": "Yuqori bo'lim",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "schedule name": "Ish jadvali",
+ "staff name": "Xodim",
+ "staff number": "Xodim raqami",
+ "state": "Holat"
+}

@@ -1,0 +1,17 @@
+{
+ "end date": "Tugash sanasi",
+ "get sales from Billz": "Billzdan sotuv haqidagi ma'lumotlarni yuklash",
+ "save": "Saqlash",
+ "secret_key": "SECRET_KEY",
+ "subject (username)": "SUBJECT (USERNAME)",
+ "table.billz_office_id": "Billzda Bo'lim ID",
+ "table.billz_office_name": "Billzda Bo'lim nomi",
+ "table.billz_seller_id": "Billzda sotuvchi ID",
+ "table.billz_seller_name": "Billzda sotuvchi ismi",
+ "table.division_name": "Bo'lim",
+ "table.employee_name": "Xodim",
+ "table.sale_amount": "Sotuv qiymat",
+ "table.sale_date": "Sotuv sanasi",
+ "begin date": "Boshlanish sanasi",
+ "Billz credentials": "Billz ro'yxatga olish ma'lumotlari"
+}

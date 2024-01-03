@@ -1,0 +1,153 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = model,
+      q = { has_indicators: false };
+
+  function edit() {
+    fi.edit({ register_id: d.register_id });
+  }
+
+  let indicators = _.mapRows(model.indicators, ['rank_id', 'indicator_name', 'indicator_value', 'coefficient']);
+  d.ranks = _.chain(model.ranks)
+             .mapRows(['rank_id', 'rank_name'])
+             .each(x => {
+              x.indicators = [];
+              _.each(indicators, y => {
+                if (x.rank_id == y.rank_id) x.indicators.push(_.omit(y, 'rank_id'));
+              })
+              q.has_indicators = x.indicators.length > 1;
+             })
+             .value();
+  q.activeSection = 'main';
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="text-center">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.wage_scale_name }}</span>
+              <span class="text-muted">&nbsp;({{ d.register_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.posted == 'Y' ? 'alert-light-primary' : 'alert-secondary'">
+              <div class="alert-text">
+                <t ng-if="d.posted == 'Y'">posted</t>
+                <t ng-if="d.posted == 'N'">unposted</t>
+              </div>
+            </div>
+          </div>
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>main</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>register date</t></label>
+                    <span class="form-view">{{ d.register_date }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>register number</t></label>
+                    <span class="form-view">{{ d.register_number }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>wage scale</t></label>
+                <span class="form-view">{{ d.wage_scale_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>with base wage</t></label>
+                <span class="form-view">{{ d.with_base_wage }}</span>
+              </div>
+              <div ng-if="d.base_wage">
+                <div class="form-row">
+                  <div class="form-group col-sm-12">
+                    <label><t>round type</t></label>
+                    <span class="form-view">{{ d.round_type }}</span>
+                  </div>
+                  <div class="form-group col-sm-12">
+                    <label><t>round model</t></label>
+                    <span class="form-view">{{ d.round_value }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>base wage</t></label>
+                  <span class="form-view">{{ d.base_wage }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>valid from</t></label>
+                <span class="form-view">{{ d.valid_from }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-2"></div>
+          <b-pg-grid name="ranks" search="rank_name" local-data="d.ranks" iterator="item" current-limit="1000">
+            <b-pg-header name="wage_html">
+              <div class="text-right">
+                <t ng-if="!q.has_indicators">wage</t>
+                <t ng-if="q.has_indicators">indicators</t>
+              </div>
+            </b-pg-header>
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-right">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="rank_name" size="11"></b-pg-col>
+              <b-pg-col name="coefficient" access="d.base_wage" size="6">
+              <div class="text-right" ng-if="item.indicators.length == 1">{{ item.indicators[0].coefficient }}</div>
+              <div class="text-right p-2" ng-if="item.indicators.length > 1" ng-repeat="indicator in item.indicators">
+                {{ indicator.coefficient }}
+              </div>
+              </b-pg-col>
+              <b-pg-col name="wage_html" size="6">
+                <div class="text-right" ng-if="item.indicators.length == 1">{{ item.indicators[0].indicator_value | bNumber }}</div>
+                <div class="d-flex" ng-if="item.indicators.length > 1" ng-repeat="indicator in item.indicators">
+                  <div class="p-2">{{ indicator.indicator_name }}</div>
+                  <div class="ml-auto p-2">{{ indicator.indicator_value | bNumber }}</div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

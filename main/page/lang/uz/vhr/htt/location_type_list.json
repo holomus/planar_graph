@@ -1,0 +1,15 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{location_type_count} location type(s)?": "<b>$1</b> joylashuv tur(lar)ini o'chirmoqchimisiz?",
+ "delete location type $1{location_type_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.color": "Rang",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.location_type_id": "ID",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.state_name": "Holat"
+}

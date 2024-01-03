@@ -1,0 +1,20 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{time_kind_count} time kind(s)?": "<b>$1</b> ta vaqt tur(lar)ni oʻchirmoqchimisiz?",
+ "delete time kind $1{time_kind_name}?": "<b>$1</b>ni oʻchirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.bg_color": "Rang",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.digital_code": "Raqamli kod",
+ "table.letter_code": "Harfli kod",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.parent_name": "Yuqoridagi vaqt turi",
+ "table.plan_load_name": "Reja yuklanishi",
+ "table.requestable_name": "So'rash mumkin bo'lgan",
+ "table.state_name": "Holat",
+ "table.time_kind_id": "Vaqti turi ID",
+ "table.timesheet_coef": "Koeffitsient"
+}

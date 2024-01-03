@@ -1,0 +1,20 @@
+{
+ "table.timesheet_coef": "Coefficient",
+ "delete $1": "Delete $1",
+ "delete $1{time_kind_count} time kind(s)?": "Do you really want to delete <b>$1</b> type(s)?",
+ "delete time kind $1{time_kind_name}?": "Do you really want to delete <b>$1</b> ?",
+ "select": "Select",
+ "table.bg_color": "Color",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.digital_code": "Digital Code",
+ "table.letter_code": "Letter Code",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.parent_name": "Parent",
+ "table.plan_load_name": "Plan Overload",
+ "table.requestable_name": "Requested",
+ "table.state_name": "Status",
+ "table.time_kind_id": "ID"
+}

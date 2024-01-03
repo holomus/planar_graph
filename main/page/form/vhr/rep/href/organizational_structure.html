@@ -1,0 +1,500 @@
+<script biruni>
+page.require('jquery-orgchart', 'html2canvas', 'jspdf');
+page.ctrl(function(scope, model, fi, t, $timeout, $compile, bHttp) {
+  var d = model;
+  var employee_keys = ['employee_name', 'employee_gender', 'employee_photo_sha', 'employee_email', 'employee_phone', 'employee_region', 'employee_job'];
+
+  d.head_division_employees = _.mapRows(d.head_division_employees, employee_keys);
+  d.divisions = _.map(d.divisions, x => { x.employees = _.mapRows(x.employees, employee_keys); return x; });
+
+  var tree_data = {
+    type: 'head',
+    division_id: d.head_division_id,
+    division_name: d.head_division_name,
+    manager_name: d.manager_name,
+    manager_gender: d.manager_gender,
+    manager_division: d.manager_division,
+    manager_job: d.manager_job,
+    manager_photo_sha: d.manager_photo_sha,
+    manager_email: d.manager_email,
+    manager_phone: d.manager_phone,
+    manager_region: d.manager_region,
+    employees: d.head_division_employees,
+    employees_count: d.head_division_employees.length,
+    children: d.divisions
+  };
+
+  var chart = page.$content.find('.chart-western');
+  var orgchart = chart.orgchart({ 'data': tree_data, 'createNode': createNode });
+  var mouseDown = false, lastPageX, scrollLeft;
+
+  chart.on('mousedown', function(event) {
+    mouseDown = true;
+    lastPageX = event.pageX;
+    scrollLeft = chart.scrollLeft();
+  });
+  chart.on('mouseup mouseleave', () => mouseDown = false);
+  chart.on('mousemove', event => mouseDown && chart.scrollLeft(scrollLeft + lastPageX - event.pageX));
+
+  function createNode($node, data) {
+    var isolate = scope.$new(true);
+    data.employee_limit = 6;
+
+    var popover_employee_contents = [];
+    _.each(_.first(data.employees, data.employee_limit), e => popover_employee_contents.push(popoverEmployeeContent(data, e)));
+
+    elem = $(nodeTemplate($node, data));
+    elem
+      .find('.structure-manager-block [data-toggle="popover"]')
+      .popover({
+        html: true,
+        content: popoverManagerContent(data),
+        trigger: 'manual',
+        delay: { "show": 0, "hide": 200 }
+      })
+      .click(function() { $(this).popover('toggle'); })
+      .blur(function() { $(this).popover('hide'); });
+
+    _.each(elem.find('.structure-employee-list [data-toggle="popover"]'), (popover, index) => {
+      $(popover)
+        .popover({
+          html: true,
+          content: popover_employee_contents[index],
+          trigger: 'manual',
+          delay: { "show": 0, "hide": 200 }
+        })
+        .click(function() { $(this).popover('toggle'); })
+        .blur(function() { $(this).popover('hide'); });
+    });
+
+    elem
+      .find('[data-toggle="popover-employees"]')
+      .popover({
+        html: true,
+        content: popoverEmployeesList(data),
+        trigger: 'manual'
+      })
+      .click(function() { $(this).popover('toggle'); })
+      .blur(function() { $(this).popover('hide'); })
+      .on('shown.bs.popover', () => {
+        var where = [
+          "and",
+          [
+            ["state", "=", "A"],
+            ["org_unit_id", "=", data.division_id]
+          ]
+        ];
+        $('.popover-emp-list .popover-emp-list-all')
+          .click(() => $timeout(() => fi.view_all(null, null, { where }), 100));
+      });
+
+    $compile(elem.contents())(isolate);
+    $node.empty();
+    $node.append(elem);
+
+    $node.find('.b-verticalEdge').click(function(e) {
+      var stopPropagation = event => event.stopPropagation();
+      stopPropagation(e);
+
+      $node.closest('.node').addClass('loading');
+      $node.find('.b-node-loading').on('click', stopPropagation);
+      bHttp.unblockOnce();
+
+      page.post(':load_children', { filial_id: data.filial_id, division_id: data.division_id })
+        .then(result => {
+          var divisions = _.map(result.divisions, x => { x.employees = _.mapRows(x.employees, employee_keys); return x; });
+          if (divisions.length > 0) orgchart.addChildren($node, divisions);
+
+          var childNodes = orgchart.getRelatedNodes($node, 'children');
+          _.each(childNodes, child => {
+            var elem = '<i class="edge verticalEdge topEdge fa"></i>';
+            if (childNodes.length > 1) {
+              elem += '<i class="edge horizontalEdge rightEdge fa"></i>';
+              elem += '<i class="edge horizontalEdge leftEdge fa"></i>';
+            }
+            elem = $(elem);
+            elem.appendTo(child);
+          });
+          $node.find('.b-verticalEdge').remove();
+        }, page.alert)
+        .then(function() {
+          $node.closest('.node').removeClass('loading');
+          $node.find('.b-node-loading').off('click', stopPropagation);
+        });
+    });
+  }
+
+  function popoverManagerContent(data) {
+    var manager_photo_src = !data.manager_photo_sha ? defaultPhoto(data.manager_gender) : page.loadImageSmall(data.manager_photo_sha);
+    var division_type = (data.type != 'head' && !!data.division_id) ? t('division')() : t('filial')();
+    return `
+      <div class="popover-block">
+        <div class="popover-leftcolumn">
+          <img class="popover-avatar" src=${ manager_photo_src } crossorigin="anonymous">
+        </div>
+        <div>
+          <div class="popover-name">${ data.manager_name }</div>
+          <span class="popover-job">${ data.manager_job }</span>
+          <div class="popover-data">
+          <span class="popover-data-row ${ !data.division_name ? 'd-none' : '' }">
+            <span class="popover-data-name">${ division_type }:</span>
+            <span class="popover-data-value">${ data.division_name }</span>
+          </span>
+          <span class="popover-data-row ${ !data.manager_email ? 'd-none' : '' }">
+            <span class="popover-data-name">${ t('email')() }:</span>
+            <span class="popover-data-value">${ data.manager_email }</span>
+          </span>
+          <span class="popover-data-row ${ !data.manager_phone ? 'd-none' : '' }">
+            <span class="popover-data-name">${ t('phone')() }:</span>
+            <span class="popover-data-value">${ data.manager_phone }</span>
+          </span>
+          <span class="popover-data-row ${ !data.manager_region ? 'd-none' : '' }">
+            <span class="popover-data-name">${ t('region')() }:</span>
+            <span class="popover-data-value">${ data.manager_region }</span>
+          </span>
+          </div>
+        </div>
+      </div>`;
+  }
+  
+  function popoverEmployeeContent(data, employee) {
+    var employee_photo_src = !employee.employee_photo_sha ? defaultPhoto(employee.employee_gender) : page.loadImageSmall(employee.employee_photo_sha);
+    var division_type = (data.type != 'head' && !!data.division_id) ? t('division')() : t('filial')();
+    return `
+      <div class="popover-block">
+        <div class="popover-leftcolumn">
+          <img class="popover-avatar" src="${ employee_photo_src }" crossorigin="anonymous">
+        </div>
+        <div>
+          <div class="popover-name">${ employee.employee_name }</div>
+          <span class="popover-job">${ employee.employee_job }</span>
+          <div class="popover-data">
+            <span class="popover-data-row ${ !data.division_name ? 'd-none' : '' }">
+              <span class="popover-data-name">${ division_type }:</span>
+              <span class="popover-data-value">${ data.division_name }</span>
+            </span>
+            <span class="popover-data-row ${ !employee.employee_email ? 'd-none' : '' }">
+              <span class="popover-data-name">${ t('email')() }:</span>
+              <span class="popover-data-value">${ employee.employee_email }</span>
+            </span>
+            <span class="popover-data-row ${ !employee.employee_phone ? 'd-none' : '' }">
+              <span class="popover-data-name">${ t('phone')() }:</span>
+              <span class="popover-data-value">${ employee.employee_phone }</span>
+            </span>
+            <span class="popover-data-row ${ !employee.employee_region ? 'd-none' : '' }">
+              <span class="popover-data-name">${ t('region')() }:</span>
+              <span class="popover-data-value">${ employee.employee_region }</span>
+            </span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function popoverEmployeesList(data) {
+    var manager_photo_src = !data.manager_photo_sha ? defaultPhoto(data.manager_gender) : page.loadImageSmall(data.manager_photo_sha);
+    var template = `
+      <div class="popover-emp-list">
+        <div class="structure-manager-block ${ !data.manager_name ? 'd-none' : '' }">
+          <img class="structure-avatar" src="${ manager_photo_src }" crossorigin="anonymous">
+          <div class="structure-manager-name">${ data.manager_name }</div>
+          <span class="structure-manager-job">${ data.manager_job }</span>
+        </div>
+        <div class="separator separator-solid mt-2 ${ !data.manager_name ? 'd-none' : '' }"></div>`;
+
+    _.each(data.employees, e => {
+      var employee_photo_src = !e.employee_photo_sha ? defaultPhoto(e.employee_gender) : page.loadImageSmall(e.employee_photo_sha);
+      template += `
+        <div class="structure-manager-block">
+          <img class="structure-avatar" src="${ employee_photo_src }" crossorigin="anonymous">
+          <div class="structure-manager-name">${ e.employee_name }</div>
+          <span class="structure-manager-job">${ e.employee_job }</span>
+        </div>`;
+    });
+
+    if (!fi.isHead && fi.view_all) {
+      template += `
+        <div class="separator separator-solid mt-2"></div>
+        <div class="popover-emp-list-all">${ t('view all')() }</div>`;
+    }
+    template += `
+    </div>`;
+    return template;
+  }
+
+  function nodeTemplate($node, data) {
+    var manager_photo_src = !data.manager_photo_sha ? defaultPhoto(data.manager_gender) : page.loadImageSmall(data.manager_photo_sha);
+    var titleClass, subCount;
+    if (data.type == 'head') {
+      titleClass = 'header';
+      subCount = fi.isHead ? t('divisions count: $1')(data.children.length) : t('subdivisions count: $1')(data.children.length);
+    } else {
+      titleClass = 'department';
+      subCount = t('subdivisions count: $1')(data.subdivisions_count);
+    }
+    if (data.is_department == 'N') titleClass += ' org-team';
+    var template = `
+      <div class="b-node">
+        <div class="b-node-title ${ titleClass }">
+          <div class="b-title-text">${ data.division_name }</div>
+        </div>
+        <div class="b-node-content">
+          <div class="structure-manager-block ${ !data.manager_name ? 'd-none' : '' }">
+            <img class="structure-avatar" tabindex="0" data-toggle="popover" data-placement="top" src="${ manager_photo_src }" crossorigin="anonymous">
+            <div class="structure-manager-name">${ data.manager_name }</div>
+            <span class="structure-manager-job">${ data.manager_job }</span>
+          </div>`;
+
+    if (data.employees.length) {
+      template += `
+          <div class="structure-employee-block">
+            <span class="structure-employee-title">${ t('employees')() }</span>
+            <div class="structure-employee-list">`;
+
+      _.each(_.first(data.employees, data.employee_limit), e => {
+        var employee_photo_src = !e.employee_photo_sha ? defaultPhoto(e.employee_gender) : page.loadImageSmall(e.employee_photo_sha);
+        template += `
+              <img class="structure-avatar" tabindex="0" data-toggle="popover" data-placement="top" src="${ employee_photo_src }" crossorigin="anonymous">`;
+      });
+
+      template += `
+            </div>
+          </div>
+          <a class="structure-more-employee" tabindex="0" data-toggle="popover-employees" data-placement="bottom">${ t('$1 employees')(data.employees_count) }</a>`;
+    }
+
+    template += `
+          <div class="b-node-content-child-spliter"></div>
+          <div class="b-node-content-child">
+            <div class="b-content-text b-person-counter">${ subCount }</div>
+          </div>
+        </div>
+        <div class="b-node-loading">
+          <div class="block-spinner-bar">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+          </div>
+        </div>
+      </div>`;
+
+    if ($node.children('.rightEdge').length != 0) template += '<i class="edge horizontalEdge rightEdge fa"></i>';
+    if ($node.children('.leftEdge').length != 0) template += '<i class="edge horizontalEdge leftEdge fa"></i>';
+    if ($node.children('.topEdge').length != 0) template += '<i class="edge verticalEdge topEdge fa"></i>';
+    if ($node.children('.bottomEdge').length != 0) template += '<i class="edge verticalEdge bottomEdge fa"></i>';
+    if (data.subdivisions_count > 0) template += '<span class="edge b-verticalEdge"></span>';
+
+    return template;
+  }
+
+  function exportChart(extension) {
+    orgchart.export(t('organization-structure')(), extension);
+  }
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F' ? 'fe' : '' }male.png`;
+  }
+});
+</script>
+<div class="b-content">
+  <style>
+    .org-team {
+      background-color: #d4650b !important;
+      border-color: #9f4800 !important;
+    }
+    .orgchart .node {
+      width: 210px;
+    }
+    .b-node {
+      width: 203px;
+    }
+    .b-node-title {
+      padding: 4px 6px 0 6px;
+      height: 30px;
+      border-radius: 4px 4px 0 0;
+    }
+    .b-node-title .b-title-text {
+      font-size: 13px;
+      text-align: left;
+      white-space: nowrap;
+      text-transform: none;
+    }
+    .b-node-content .b-node-content-child-spliter {
+      bottom: 20px;
+    }
+    .b-node-content .b-node-content-child .b-content-text {
+      padding-left: 0;
+      line-height: 20px;
+    }
+    .orgchart .node .bottomEdge {
+      padding-top: 20px;
+    }
+    .orgchart .node .b-verticalEdge {
+      padding-top: 25px;
+    }
+
+    /* Avatar */
+    .structure-avatar {
+      position: absolute;
+      left: 0;
+      top: 3px;
+      height: 25px;
+      width: 25px;
+      border-radius: 100%;
+      border: 1px solid #D3D3D3;
+      background-repeat: no-repeat;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .structure-manager-block {
+      height: 30px;
+      margin: 8px;
+      padding: 0 0 0 36px;
+      text-align: left;
+      position: relative;
+    }
+    .structure-manager-name {
+      color: #000;
+      display: block;
+      font-size: 11px;
+      overflow: hidden;
+      text-decoration: none;
+      text-overflow: ellipsis;
+      padding-top: 1px;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .structure-manager-job {
+      color: #000;
+      display: inline-block;
+      font-size: 9px;
+      overflow: hidden;
+      opacity: .6;
+      text-overflow: ellipsis;
+      width: 152px;
+      white-space: nowrap;
+    }
+    .structure-wrap {
+      padding: 10px 20px 0 10px;
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+    .structure-employee-block {
+      margin: 2px 8px 0 8px;
+      position: relative;
+      text-align: left;
+    }
+    .structure-employee-title {
+      color: #d4650b !important;
+      font-size: 10px;
+      height: 25%;
+      padding: 0 0 4px 4px;
+    }
+    .structure-employee-list {
+      overflow: hidden;
+      height: 60%;
+      padding-top: 2px;
+    }
+    .structure-employee-block .structure-avatar {
+      display: inline-block;
+      position: static;
+      vertical-align: middle;
+    }
+    .structure-more-employee {
+      color: #2067b0 !important;
+      display: block;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: underline !important;
+    }
+
+    /* Popover */
+    .popover {
+      border: none;
+      max-width: 100%;
+    }
+    .popover-block {
+      position: relative;
+      display: flex;
+      padding: 20px;
+      background: #fff;
+      color: #000;
+      text-align: left;
+    }
+    .popover-leftcolumn {
+      margin: 0 17px 0 0;
+    }
+    .popover-name {
+      display: inline-block;
+      margin: 0 0 1px 0;
+      border-bottom: 1px solid transparent;
+      font: 20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+      color: #2066b0;
+      transition: border-bottom .3s;
+    }
+    .popover-job {
+      color: #828b95;
+      display: block;
+      font-size: 13px;
+      text-overflow: ellipsis;
+    }
+    .popover-data {
+      margin: 16px 0 0 0;
+    }
+    .popover-data .popover-data-row {
+      display: block;
+      margin: 0 0 6px 0;
+    }
+    .popover-data .popover-data-row .popover-data-name {
+      color: #828b95;
+      font: 12px;
+    }
+    .popover-data .popover-data-row .popover-data-value {
+      color: #333;
+      font: 13px;
+    }
+    .popover-avatar {
+      display: block;
+      height: 57px;
+      width: 57px;
+      border-radius: 100%;
+      text-align: center;
+      overflow: hidden;
+    }
+    .popover-emp-list {
+      padding: 4px;
+      position: relative;
+      max-height: 250px;
+      width: 230px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .popover-emp-list-all {
+      color: #2067b0 !important;
+      display: block;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      margin: 3px 0 -3px 0;
+    }
+  </style>
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>export</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-click="exportChart('png')">
+            <span class="text-muted mr-3"><i class="fas fa-file-image" style="font-size: 1.4em;"></i></span>
+            <t>export to png</t>
+          </a>
+          <a href class="dropdown-item" ng-click="exportChart('pdf')">
+            <span class="text-muted mr-3"><i class="fas fa-file-pdf" style="font-size: 1.4em;"></i></span>
+            <t>export to pdf</t>
+          </a>
+        </div>
+      </div>
+      <div class="chart-western" align="center" style="overflow: auto; position: relative;"></div>
+    </div>
+  </div>
+</div>

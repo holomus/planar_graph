@@ -1,0 +1,15 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{sick_leave_reason_count} sick leave reason(s)?": "Haqiqatan ham <b>$1</b> sabab(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete sick leave reason $1{sick_leave_reason_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.coefficient": "Koeffitsient",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.reason_id": "Sabab ID",
+ "table.state_name": "Holat"
+}

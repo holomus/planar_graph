@@ -1,0 +1,1184 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, bHttp, fi, t, $timeout, bConfig) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {
+        matched_photos: [],
+      };
+
+  // nationality
+  function setNationality(row) {
+    if (!row) return;
+    d.nationality_id = row.nationality_id;
+    d.nationality_name = row.name;
+  }
+
+  function addNationality(value) {
+    fi.add_nationality(null, setNationality, { name: value });
+  }
+
+  function selectNationality() {
+    fi.select_nationality(null, setNationality);
+  }
+
+  // photo
+  function getDefaultPhotoSrc(gender) {
+    var res = gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc(d.gender);
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    d.photo_sha = null;
+    d.photo = null;
+    setPhotoSrc();
+  }
+
+  // file
+  function uploadFiles($file) {
+    if (_.isEmpty($file)) return;
+    _.each($file, x => p.data.files.push(x));
+    page.dropzone('files').clear();
+  }
+
+  function deleteFile(index) {
+    p.data.files.splice(index, 1);
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    page.untouch(scope.modal);
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function showPhoto() {
+    if (d.photo || d.photo_sha) {
+      page.previewFile(d.photo || {
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  // matched photos
+  let matched_photos = page.$content.find("form[name='matched_photos']>.modal");
+
+  function showMatchedModal() {
+    $timeout(function() {
+      matched_photos.modal('show');
+    });
+  }
+
+  function hideMatchedModal() {
+    matched_photos.modal('hide');
+  }
+
+  function calculatePhotoVector() {
+    if (!page.valid(scope.form)) return;
+    if (q.duplicate_prevention == 'N' || d.photo_as_face_rec == 'N' || !d.photo) { 
+      save(false);
+      return;
+    }
+    page.post(':upload_images', {
+      photo_shas: [d.photo],
+    }).then(function(response) {
+      page.post(':calculate_photo_vector', {
+        person_id: d.person_id,
+        photo_shas: response.photo_shas,
+      }).then(function(response) {
+        p.matched_photos = _.chain(response.matched_photos || [])
+                            .mapRows(['person_id', 'person_name', 'matched_sha', 'match_score', 'match_percent'])
+                            .sortBy(x => +x.match_score)
+                            .value();
+        p.error = response.error;
+        if (!_.isEmpty(p.matched_photos) || !!p.error && !_.isEmpty(p.error)) {
+          showMatchedModal();
+          hideModal();
+        } else save(false);
+      }).catch(page.alert);
+    }).catch(page.alert);
+  }
+
+  // save
+  function save(doConfirm = true) {
+    function onConfirm() {
+      let data = _.omit(d, 'photo', 'files');
+          data.shas = _.map(d.files, x => x.sha ? x.sha : x);
+
+      if (d.photo) {
+        data.photo_sha = d.photo;
+      }
+      page.post(':save', data).then(page.close, page.alert);
+    }
+
+    if (page.valid(scope.form) && q.login_valid && q.passport_valid && q.login_invalid_format && q.npin_valid) {
+      if (doConfirm) page.confirm(t('save employee info?')(), onConfirm);
+      else onConfirm();
+    }
+  }
+
+  // passport
+  function savePassportInfo() {
+    if(page.valid(scope.modal)) {
+      _.extend(d, p.data);
+
+      q.has_passport_info = d.issued_by || d.issued_date || d.begin_date || d.expiry_date || d.note || d.files.length > 0 ? true : false;
+      q.passport_valid = p.data.passport_valid;
+
+      hideModal();
+    }
+  }
+
+  function validatePassport(data, q) {
+    bHttp.unblockOnce();
+    if(data.passport_series && data.passport_number) {
+      page.post(':passport_valid', _.pick(data, 'passport_series', 'passport_number')).then(function(result) {
+        q.passport_valid = result == "Y";
+      });
+    }
+  }
+
+  function getPassportInfo() {
+    p.data = _.pick(d, 'passport_series', 'passport_number', 'issued_by', 'issued_date', 'begin_date', 'expiry_date', 'note');
+    p.data.files = [];
+
+    _.each(d.files, item => {
+      p.data.files.push(item);
+    });
+
+    p.data.title = t('passport info')();
+    p.data.passport_valid =  q.passport_valid;
+
+    showModal();
+  }
+
+  // login
+  function getRecLogins() {
+    if (q.recommended_logins.length > 0) return;
+
+    bHttp.unblockOnce();
+    page.post(':recommended_logins', _.pick(d, 'first_name', 'last_name')).then(function(result) {
+      q.recommended_logins = _.map(result.logins, x => x = { login: x });
+    });
+  }
+
+  function validateLogin() {
+    if (d.login) {
+      d.login = d.login.toLowerCase();
+      if (d.login.includes('@')) {
+        q.login_invalid_format = false;
+        return;
+      } else q.login_invalid_format = true;
+
+      bHttp.unblockOnce();
+      page.post(':login_validate', { login: d.login }).then(function(result) {
+        q.login_valid = result == "Y";
+      }, page.alert);
+    } else {
+      q.login_valid = true;
+      q.login_invalid_format = true;
+    }
+  }
+
+  function validateNpin() {
+    if (d.npin) {
+      bHttp.unblockOnce();
+      page.post(':npin_validate', { npin: d.npin }).then(function(result) {
+        q.npin_valid = result == "Y";
+      }, page.alert);
+    } else {
+      q.npin_valid = true;
+    }
+  }
+
+  function validatePhone() {
+    if (d.main_phone) {
+      bHttp.unblockOnce();
+        page.post(':phone_is_unique', { main_phone: d.main_phone }).then(function(result) {
+          q.phone_is_unique = result == "Y";
+        }, page.alert);
+    } else {
+      q.phone_is_unique = true;
+    }
+  }
+
+  // password
+  function passChangeParam(param, value) {
+    q.password[param] = value;
+  }
+
+  function validateEmail() {
+    if (d.email) {
+      bHttp.unblockOnce();
+      page.post(':email_is_unique', { email: d.email }).then(function(result) {
+        q.email_is_unique = result == "Y";
+      }, page.alert);
+    } else q.email_is_unique = true;
+  }
+
+  // ------------------------------ robot ------------------------------//
+  function whereRobot() {
+    let where = ['and', [
+                  ['opened_date', '<=', d.hiring_date],
+                  ['closed_date', '=', [null]]
+                ]];
+
+    where = ['and', [['fte', '>', 0], where]];
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+
+    if (d.division_id && d.org_unit_id) {
+      where = ['and', [['org_unit_id', '=', d.org_unit_id], where]];
+    }
+
+    if (d.job_id) {
+      where = ['and', [['job_id', '=', d.job_id], where]];
+    }
+
+    return where;
+  }
+
+  function changeRobotQuery(query, value) {
+    query.param({ hiring_date: d.hiring_date }).where(whereRobot()).searchValue(value);
+  }
+
+  function setRobot(row) {
+    if (!row) return;
+    d.robot_id = row.robot_id;
+    d.robot_name = row.name;
+    d.fte = row.fte;
+
+    if (row.robot_id) {
+      page.post(':get_robot', _.pick(d, 'robot_id', 'fte', 'hiring_date')).then((result) => {
+        result.org_unit_id = result.org_unit_id == result.division_id ? null : result.org_unit_id;
+        _.extend(d, result);
+        loadOrgUnits(d.division_id);
+      }, page.alert);
+    }
+  }
+
+  function selectRobot() {
+    fi.select_robot({ period: d.hiring_date }, setRobot, { where: whereRobot() });
+  }
+
+  // ------------------------------ job ------------------------------//
+  function setJob(row) {
+    if(!row) return;
+    d.job_id = row.job_id;
+    d.job_name = row.name;
+
+    if (q.position_enable != 'Y') {
+      bHttp.unblockOnce();
+      page.post(':get_hidden_salary_job', { job_id: row.job_id }).then(x => d.access_salary_job = x, page.alert);
+    }
+  }
+
+  function addJob(value) {
+    let x = { name: value };
+    if (d.division_id) x.division_ids = [d.division_id];
+    fi.add_job(null, setJob, x);
+  }
+
+  function changeJobQuery(query, value) {
+    query.param({ division_id : d.division_id }).searchValue(value);
+  }
+
+  function selectJob() {
+    let data = d.division_id ? { division_id: d.division_id } : null;
+    fi.select_job(data, setJob);
+  }
+
+  // ------------------------------ division  ------------------------------//
+  function selectDivision() {
+    if (q.position_enable == 'Y') setRobot({});
+    d.org_unit_id = null;
+    loadOrgUnits(d.division_id);
+    setJob({});
+  }
+
+  // ------------------------------ org unit ------------------------------//
+  function loadOrgUnits(division_id) {
+    if (q.advanced_org_structure == 'N') return;
+    if (!division_id) {
+      q.org_units = [];
+      return;
+    }
+    q.org_units = q.all_org_units[division_id] || [];
+    if (d.org_unit_id == null) _.each(q.org_units, x => x.selected = false);
+  }
+
+  function selectOrgUnits() {
+    if (q.position_enable == 'Y') setRobot({});
+  }
+
+  // ------------------------------ schedule ------------------------------//
+  function setSchedule(row) {
+    if (!row) return;
+    d.schedule_id = row.schedule_id;
+    d.schedule_name = row.name;
+  }
+
+  function selectSchedule() {
+    fi.select_schedule(null, setSchedule);
+  }
+
+  function addSchedule(value) {
+    fi.add_schedule({ schedule_kind: q.sk_flexible }, setSchedule, { name: value });
+  }
+
+  function requireHiring() {
+    return d.hiring_date || d.division_id || d.job_id || d.schedule_id;
+  }
+
+  // ------------------------------ fte ------------------------------//
+  function setFte(row) {
+    if (!row) return;
+    d.fte_id = row.fte_id;
+    d.fte_name = row.name;
+  }
+
+  function addFte(value) {
+    fi.add_fte(null, setFte, { name : value, fte_value: d.parttime_enable == 'N' ? 1 : null });
+  }
+
+  function selectFte() {
+    fi.select_fte(null, setFte, d.parttime_enable == 'N' ? { where: ['fte_value', '=', 1], fte_value: 1 } : null);
+  }
+
+  // ---------------------------- location ---------------------------//
+  function setLocation(row) {
+    if (!row) return;
+    d.location_name = row.name;
+    d.location_id = row.location_id;
+  }
+
+  function addLocation(value) {
+    fi.add_location(null, setLocation);
+  }
+
+  function selectLocation() {
+    fi.select_location(null, setLocation);
+  }
+
+  q.recommended_logins = [];
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.all_org_units = _.chain(q.all_org_units)
+                     .mapRows(['division_id', 'name', 'parent_id', 'parent_department_id'])
+                     .each(x => x.parent_id = x.parent_department_id == x.parent_id ? '' : x.parent_id)
+                     .groupBy('parent_department_id')
+                     .value();
+  q.genders = _.mapRows(q.genders, ['kind', 'name']);
+  q.login_valid = true;
+  q.login_invalid_format = true;
+  q.phone_is_unique = true;
+  q.email_is_unique = true;
+  q.password = {
+    type: 'password',
+    popup: false
+  };
+
+  _.extend(d, xparam);
+
+  if (xparam.name) {
+    var name = xparam.name.split(' ');
+
+    name = _.filter(name, x => x.length > 0);
+
+    if (name.length == 1) {
+      d.first_name = name[0];
+    } else {
+      d.last_name = name[0];
+      d.first_name = name[1];
+      d.middle_name = "";
+
+      for(i = 2; i < name.length; i ++) {
+        d.middle_name += (i == 2 ? '' : ' ') + name[i];
+      }
+    }
+  }
+
+  setPhotoSrc();
+
+  q.passport_valid = true;
+  q.has_passport_info = false;
+  d.files = [];
+  q.t_remove_file = t('remove file')();
+
+  // verify person uniqueness modal
+  if (d.vpu_setting == 'Y' && !d.by_application) {
+    var verifyModal = page.$content.find('form[name=verifyModal]>.modal');
+
+    function showVerifyModal() {
+      var options = {
+        show: true,
+        keyboard: false,
+        backdrop: 'static'
+      };
+      p.data = { persons: [], can_add_employee: false };
+      $timeout(() => verifyModal.modal(options));
+    }
+
+    function closeVerifyModal(page_close = false) {
+      $timeout(() => {
+        verifyModal.modal('hide');
+        if (page_close) return page.close();
+        switch (d.vpu_column) {
+          case q.vpu_column_name: setName(p.data.name); break;
+          case q.vpu_column_passport_number: setPassword(p.data.document_series, p.data.document_number); break;
+          case q.vpu_column_npin: setNpin(p.data.npin); break;
+        }
+        p.data = {};
+      });
+    }
+
+    function onKeydown(event) {
+      const kc_enter = 13;
+      if (event.keyCode == kc_enter) vpuSearch();
+    }
+
+    function vpuSearch() {
+      var search_text;
+      switch (d.vpu_column) {
+        case q.vpu_column_name: search_text = p.data.name; break;
+        case q.vpu_column_passport_number: search_text = p.data.document_series + p.data.document_number; break;
+        case q.vpu_column_npin: search_text = p.data.npin; break;
+      }
+
+      if (!search_text) {
+        p.data.persons = [];
+        p.data.can_add_employee = false;
+        return;
+      }
+      page.post(':vpu_search', search_text).then(result => {
+        p.data.persons = _.mapRows(result, ['person_id', 'name', 'gender', 'photo_sha', 'is_attached', 'is_blacklisted']);
+        p.data.can_add_employee = !p.data.persons?.length;
+      }, page.alert);
+    }
+
+    function attachEmployee(row) {
+      page.confirm(t('do you want to attach $1{person}?')(row.name), () => {
+        fi.attach_employee({ person_id: row.person_id }).then(() => row.is_attached = 'Y', page.alert);
+      });
+    }
+
+    function genViewUri(row) {
+      var uri = window.location.origin + window.location.pathname + "#" + bConfig.pathPrefix();
+      if (row.is_attached == 'Y') uri += fi.employee_edit.uri + `?employee_id=${row.person_id}`;
+      else uri += fi.person_edit.uri + `?person_id=${row.person_id}`;
+      return uri;
+    }
+
+    function setName(name) {
+      [d.last_name, d.first_name, d.middle_name] = [];
+      if (!name) return;
+      let name_array = _.reject(name.split(' '), x => { return _.isEmpty(x); });
+      if (name_array.length == 1) {
+        d.first_name = name_array[0];
+      } else {
+        [d.last_name, d.first_name, d.middle_name] = name_array;
+        if (name_array.length == 4) {
+          d.middle_name += ' ' + (_.rest(name_array, 3)).join(' ');
+        }
+      }
+    }
+
+    function setPassword(series, number) {
+      d.passport_series = series;
+      d.passport_number = number;
+    }
+
+    function setNpin(npin) {
+      d.npin = npin;
+    }
+
+    function showPhoto(row) {
+      if (!row.photo_sha) return;
+      page.previewFile({
+        sha: row.photo_sha,
+        name: row.name,
+        type: 'image'
+      });
+    }
+
+    p.tname = t('last name first name middle name')();
+    p.tDocumentSeries = t('AB')();
+    p.tDocumentNumber = t('1234567')();
+    p.tnpin = t('npin')();
+    showVerifyModal();
+  }
+
+  function uploadPhoto($file) {
+    page.faceCropper($file, croppedPhoto => d.photo = croppedPhoto, false, d.photo_as_face_rec == 'Y');
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+
+  $timeout(function() {
+    let b_input= page.$content.find('b-input[name="recommended_logins"]').scope()._$bInput;
+    b_input.onInputFocus = _.wrap(b_input.onInputFocus, function(onFocus) {
+      getRecLogins();
+      return onFocus();
+    });
+  });
+
+  scope.$watchGroup(['d.login'], function() {
+    validateLogin();
+  });
+
+  scope.$watchGroup(['d.npin'], function() {
+    validateNpin();
+  });
+
+  scope.$watchGroup(['d.first_name', 'd.last_name'], function() {
+    q.recommended_logins = [];
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-sm btn-primary" ng-if="q.duplicate_prevention == 'Y'" ng-click="calculatePhotoVector()"><t>save</t></button>
+  <button type="button" class="btn btn-sm btn-primary" ng-if="q.duplicate_prevention == 'N'" ng-click="save()"><t>save</t></button>
+  <button type="button" class="btn btn-sm btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  <!-- Temporary don't remove this span, this span for mobile adabtaion. if this span is not exist then last child of b-toolbar margin-top 5px auto -->
+  <span></span>
+</div>
+<div class="b-content vhr314">
+  <style>
+    .vhr314 .card.card-custom {
+      background-color: #ffffff !important;
+    }
+    .vhr314 .vpu .input-part1 {
+      border-radius: 1.3em 0 0 1.3em;
+      border-right: 0px;
+    }
+    .vhr314 .vpu .input-part2 {
+      border-radius: 0;
+      margin-left: 1px;
+      border-right: 0px;
+    }
+    .vhr314 .vpu .input-part3 {
+      border-radius: 0 1.3em 1.3em 0;
+      border-left: 0px;
+    }
+    .vhr314 .vpu b-pg-grid .tbl-container {
+      box-shadow: none !important;
+      border: 1px solid #ecf0f3;
+      border-radius: 3px;
+    }
+    .vhr314 .vpu b-pg-grid .tbl .tbl-header .tbl-header-cell {
+      border-bottom: none !important;
+    }
+    .vhr314 .vpu b-pg-grid .tbl .tbl-row.tbl-no-data-row {
+      border-top: 1px solid #eaeaea !important;
+    }
+    .vhr314 .b-drag-over {
+      border: 3px dashed rgba(0,0,0,.7)!important;
+      border-radius: .375rem!important;
+    }
+  </style>
+  <form name="form">
+    <!-- Catch autofilling fields -->
+    <input type="text" id="login" class="position-fixed" style="opacity: 0" name="fakeloginremember">
+    <input type="password" id="password" class="position-fixed" style="opacity: 0" name="fakepasswordremember">
+
+    <div class="col-xxl-19 p-0">
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>personal</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>first name</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.first_name" b-maxlength="250" required/>
+              </div>
+              <div class="form-group">
+                <label><t>last name</t><r ng-if="q.crs.last_name == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.last_name" b-maxlength="250" ng-required="q.crs.last_name == 'Y'"/>
+              </div>
+              <div class="form-group">
+                <label><t>middle name</t><r ng-if="q.crs.middle_name == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.middle_name" b-maxlength="250" ng-required="q.crs.middle_name == 'Y'"/>
+              </div>
+              <div class="form-group">
+               <label><t>passport series and number</t><r ng-if="q.crs.passport == 'Y'"/></label>
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="d.passport_series" ng-model-options="{ debounce: 1000 }" ng-change="validatePassport(d, q)" b-maxlength="3" ng-required="q.crs.passport == 'Y'"/>
+                  <input type="text" class="form-control w-50" ng-model="d.passport_number" ng-model-options="{ debounce: 1000 }" ng-change="validatePassport(d, q)" b-maxlength="10" ng-required="q.crs.passport == 'Y'"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-sm" ng-class="{ 'btn-outline-success': q.has_passport_info, 'btn-default': !q.has_passport_info }" ng-click="getPassportInfo()">
+                      <i class="fas fa-passport"></i>
+                    </button>
+                  </div>
+                </div>
+                <span class="text-danger" ng-hide="q.passport_valid"><t>this passport series and number are already used</t></span>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>birthday</t><r ng-if="q.crs.birthday == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.birthday" b-date-picker="DD.MM.YYYY" ng-required="q.crs.birthday== 'Y'"/>
+              </div>
+              <div class="form-group mb-4">
+                <label><t>nationality</t></label>
+                <b-input name="nationalities"
+                         model="d.nationality_name | name"
+                         model-key="d.nationality_id | nationality_id"
+                         is-add="fi.add_nationality"
+                         is-view="fi.select_nationality"
+                         on-add="addNationality(value)"
+                         on-view="selectNationality()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group">
+                <label><t>gender</t></label><br/>
+                <label class="radio" ng-repeat="gender in q.genders">
+                  <input type="radio" name="gender" value="{{ gender.kind }}" ng-model="d.gender" ng-change="setPhotoSrc()"/>
+                  <span>{{ gender.name }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label><t>npin</t><r ng-if="q.crs.npin == 'Y'"/></label>
+                <input type="text"
+                       class="form-control"
+                       ng-model="d.npin"
+                       ng-model-options="{ debounce: 500 }"
+                       b-validate="{ s: q.npin_valid || d.npin.length == 0 }"
+                       ng-required="q.crs.npin == 'Y'"
+                       b-maxlength="14"/>
+                <span class="text-danger" ng-hide="q.npin_valid"><t>this npin is already used</t></span>
+              </div>
+              <div class="form-group">
+                <label><t>iapa</t><r ng-if="q.crs.iapa == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.iapa" ng-required="q.crs.iapa == 'Y'" b-maxlength="20"/>
+              </div>
+              <div class="form-group">
+                <label><t>tin</t><r ng-if="q.crs.tin == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.tin" ng-required="q.crs.tin == 'Y'" b-maxlength="18"/>
+              </div>
+            </div>
+            <div class="col-sm-3 mt-2 offset-sm-1 ml-1">
+              <div class="image-input image-input-outline bgi-position-center" style="max-width: 163px; max-height: 163px;">
+                <div class="image-input-wrapper w-auto h-auto" ngf-drop="uploadPhoto($file)" accept="'.png, .jpg, .jpeg, .gif'" ngf-drag-over-class="'b-drag-over'">
+                  <img class="mw-100 mh-100 cursor-pointer" ngf-src="d.photo || q.photo_src" ng-if="d.photo || q.photo_src" ng-click="showPhoto()">
+                </div>
+                <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" ngf-select="uploadPhoto($file)" accept="'.png, .jpg, .jpeg, .gif'" data-action="change">
+                  <i class="fa fa-pen icon-sm text-muted"></i>
+                </a>
+                <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto()" ng-if="d.photo || d.photo_sha">
+                  <i class="fa fa-times icon-xs text-muted"></i>
+                </span>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.photo_as_face_rec" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>photo as face rec</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>contact and address</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>phone</t><r ng-if="q.crs.phone_number == 'Y'"/></label>
+                <input type="text"
+                       class="form-control"
+                       ng-model="d.main_phone"
+                       ng-change="validatePhone()"
+                       ng-model-options="{ debounce: 500 }"
+                       ng-required="q.crs.phone_number == 'Y'"
+                       b-validate="{ s: q.phone_is_unique || d.main_phone.length == 0 }"
+                       b-telinput
+                       b-maxlength="100"/>
+                <span class="text-danger" ng-hide="d.main_phone.length == 0 || q.phone_is_unique"><t>main phone should be unique</t></span>
+              </div>
+              <div class="form-group">
+                <label><t>email</t><r ng-if="q.crs.email == 'Y'"/></label>
+                <input type="email"
+                       class="form-control"
+                       ng-model="d.email"
+                       ng-change="validateEmail()"
+                       ng-model-options="{ debounce: 500 }"
+                       ng-required="q.crs.email == 'Y'"
+                       b-validate="{ s: q.email_is_unique || d.email.length == 0 }"
+                       b-maxlength="300">
+                <span class="text-danger" ng-hide="d.email.length == 0 || q.email_is_unique"><t>email should be unique</t></span>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>address</t><r ng-if="q.crs.address == 'Y'"/></label>
+                <input class="form-control" rows="1" ng-model="d.address" b-maxlength="500" ng-required="q.crs.address == 'Y'"/>
+              </div>
+              <div class="form-group">
+                <label><t>legal address</t><r ng-if="q.crs.legal_address == 'Y'"/></label>
+                <input class="form-control" rows="1" ng-model="d.legal_address" b-maxlength="300" ng-required="q.crs.legal_address == 'Y'"/>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group" ng-if="q.crs.region == 'N'">
+                <label><t>region name</t></label>
+                <b-tree-select
+                  origin="q.regions"
+                  id-key="region_id"
+                  model="d.region_id"/>
+              </div>
+              <div class="form-group" ng-if="q.crs.region == 'Y'">
+                <label><t>region name</t><r/></label>
+                <b-tree-select
+                  origin="q.regions"
+                  id-key="region_id"
+                  model="d.region_id"
+                  required/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>user</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>login</t></label>
+                <div class="input-group">
+                  <b-input name="recommended_logins"
+                           local-data="q.recommended_logins"
+                           model="d.login | login"
+                           ng-model-options="{ debounce: 1000 }"
+                           model-key="d.login_key | login"
+                           on-change="validateLogin()">
+                    <header>
+                      <div class="col"><t>recommended logins</t></div>
+                    </header>
+                    <content>
+                      <div class="col">{{ row.login }}</div>
+                    </content>
+                  </b-input>
+                  <div class="input-group-append">
+                    <span class="input-group-text">{{ d.company_code }}</span>
+                  </div>
+                </div>
+                <span class="text-danger" ng-hide="q.login_valid"><t>this login is already used</t></span>
+                <span class="text-danger" ng-hide="q.login_invalid_format"><t>you can not use @ in login</t></span>
+              </div>
+              <div class="form-group">
+                <label><t>password</t><r ng-show="d.login"/></label>
+                <div class="input-group">
+                  <input type="{{ q.password.type }}"
+                         name="password"
+                         class="form-control password-field"
+                         ng-model="d.password"
+                         ng-required="d.login"/>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-default btn-icon" ng-mousedown="passChangeParam('type', 'text')" ng-mouseup="passChangeParam('type', 'password')">
+                        <i class="fa fa-eye"></i>
+                      </button>
+                    </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>location</t></label>
+                <b-input name="locations"
+                         model="d.location_name | name"
+                         model-key="d.location_id | location_id"
+                         is-add="fi.add_location"
+                         is-view="fi.select_location"
+                         on-add="addLocation(value)"
+                         on-view="selectLocation()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom gutter-b" ng-if="fi.hiring && !d.by_application">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>hiring</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-8">
+              <div class="form-group">
+                <label><t>hiring date</t><r ng-if="requireHiring()"/></label>
+                <input type="text" class="form-control" ng-model="d.hiring_date" b-date-picker="DD.MM.YYYY" ng-required="requireHiring()"/>
+              </div>
+              <div class="form-group">
+                <label><t>employee number</t></label>
+                <input type="text" class="form-control" ng-model="d.staff_number" b-maxlength="50">
+              </div>
+              <div class="form-group">
+                <label><t>fte</t></label>
+                <b-input name="ftes"
+                         model="d.fte_name | name"
+                         model-key="d.fte_id | fte_id"
+                         is-add="fi.add_fte"
+                         is-view="fi.select_fte"
+                         on-add="addFte(value)"
+                         on-view="selectFte()">
+                  {{row.name}}
+                </b-input>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group" ng-if="requireHiring() && q.position_enable == 'N'">
+                <label><t>division</t><r/></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"
+                  on-select="selectDivision()"
+                  required/>
+              </div>
+              <div class="form-group" ng-if="!requireHiring() || q.position_enable == 'Y'">
+                <label><t>division</t></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"
+                  on-select="selectDivision()"/>
+              </div>
+              <div class="form-group" ng-if="q.advanced_org_structure == 'Y'">
+                <label><t>org unit</t></label>
+                <b-tree-select
+                  origin="q.org_units"
+                  id-key="division_id"
+                  model="d.org_unit_id"
+                  on-select="selectOrgUnits()"
+                  disabled="!d.division_id"/>
+              </div>
+              <div class="form-group">
+                <label><t>job</t><r ng-if="requireHiring() && q.position_enable == 'N'"/></label>
+                <b-input name="jobs"
+                         model="d.job_name | name"
+                         model-key="d.job_id | job_id"
+                         on-change="changeJobQuery(query, value)"
+                         on-select="setJob(row)"
+                         on-delete="setJob({})"
+                         is-add="fi.add_job"
+                         is-view="fi.select_job"
+                         on-add="addJob(value)"
+                         on-view="selectJob()"
+                         required-key="requireHiring() && q.position_enable == 'N'">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group">
+                <label><t>schedule name</t></label>
+                <b-input name="schedules"
+                         model="d.schedule_name | name"
+                         model-key="d.schedule_id | schedule_id"
+                         is-add="fi.add_schedule"
+                         is-view="fi.select_schedule"
+                         on-add="addSchedule(value)"
+                         on-view="selectSchedule()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="form-group" ng-if="q.position_enable == 'Y'">
+                <label><t>robot name</t><r ng-if="requireHiring()"/></label>
+                <b-input name="robots"
+                         model="d.robot_name | name"
+                         model-key="d.robot_id | robot_id"
+                         column="fte"
+                         on-change="changeRobotQuery(query, value)"
+                         on-select="setRobot(row)"
+                         is-view="fi.select_robot"
+                         on-view="selectRobot()"
+                         readonly="!d.hiring_date"
+                         required-key="requireHiring()">
+                  <header>
+                    <div class="col-sm-20"><t>robot name</t></div>
+                    <div class="col-sm-4"><t>free fte</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-20">{{ row.name }}</div>
+                    <div class="col-sm-4">{{ row.fte }}</div>
+                  </content>
+                </b-input>
+              </div>
+              <div class="form-group" ng-if="d.access_salary_job == 'Y'">
+                <label><t>salary type</t></label>
+                <b-input name="oper_types"
+                         model="d.salary_type_name | name"
+                         model-key="d.salary_type_id | oper_type_id">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group" ng-if="d.access_salary_job == 'Y'">
+                <label><t>salary amount</t><r ng-if="d.salary_type_id"/></label>
+                <input type="text" class="form-control" ng-model="d.salary_amount" b-number precision="14" scale="6" ng-required="d.salary_type_id"/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PERSON PASSPORT MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.data.title"></h5>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4">
+              <div class="col-sm-12 mb-sm-0 mb-4">
+                <label><t>passport series</t><r ng-if="q.crs.passport == 'Y'"/></label>
+                <input class="form-control" ng-model="p.data.passport_series" b-maxlength="3" ng-model-options="{ debounce: 1000 }" ng-change="validatePassport(p.data, p.data)" ng-required="q.crs.passport == 'Y' || p.data.passport_number"/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>passport number</t><r ng-if="q.crs.passport == 'Y'"/></label>
+                <input class="form-control" ng-model="p.data.passport_number" b-maxlength="10" ng-model-options="{ debounce: 1000 }" ng-change="validatePassport(p.data, p.data)" ng-required="q.crs.passport == 'Y' || p.data.passport_series"/>
+              </div>
+              <span class="text-danger ml-2" ng-hide="p.data.passport_valid"><t>this passport series and number are already used</t></span>
+            </div>
+            <div class="form-group">
+              <label><t>issued by</t></label>
+              <input class="form-control" ng-model="p.data.issued_by" b-maxlength="150"/>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>issued date</t></label>
+                <input class="form-control" ng-model="p.data.issued_date" b-date-picker/>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12 mb-sm-0 mb-4">
+                <label><t>begin date</t></label>
+                <input class="form-control" ng-model="p.data.begin_date" b-date-picker/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>expiry date</t></label>
+                <input class="form-control" ng-model="p.data.expiry_date" b-date-picker/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="p.data.note" style="resize: none;" b-maxlength="300"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>files</t></label>
+              <div class="form-group mb-0" style="font-size: 14px;" ng-repeat="file in p.data.files">
+                <label>
+                  <i class="fa fa-times" style="cursor: pointer;" title="{{ q.t_remove_file }}" ng-click="deleteFile($index)"/>
+                  <span class="font-blue-hoki">{{ file.name }}</span><br ng-if="!$last"/>
+                </label>
+              </div>
+              <div style="font-size: 14px;">
+                <label class="font-grey-salt" ng-if="p.data.files.length == 0"><span class="fa fa-file">&nbsp;&nbsp;</span><t>no files</t></label>
+              </div>
+            </div>
+            <div class="form-group">
+              <b-dropzone name="files" multiple on-select="uploadFiles($file)"/>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="savePassportInfo()" ng-disabled="!p.data.passport_valid"><t>save</t></button>
+            <button type="button" class="btn btn-default" ng-click="hideModal()"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- verify person uniqueness modal -->
+  <form name="verifyModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content vpu">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>verification</t></h4>
+          </div>
+          <div class="modal-body">
+            <!-- verify by name -->
+            <div class="input-group justify-content-center" ng-if="d.vpu_column == q.vpu_column_name">
+              <input type="text" class="form-control input-part1" ng-model="p.data.name" ng-keydown="onKeydown($event)" style="max-width: 30em;" placeholder="{{ p.tname }}"/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-icon btn-default input-part3" ng-click="vpuSearch()">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+            </div>
+            <!-- verify by passport number -->
+            <div class="input-group justify-content-center" ng-if="d.vpu_column == q.vpu_column_passport_number">
+              <input type="text" class="form-control input-part1" ng-model="p.data.document_series" b-maxlength="3" style="max-width: 5em;" ng-keydown="onKeydown($event)" placeholder="{{ p.tDocumentSeries }}"/>
+              <div class="input-group-append">
+                <input type="text" class="form-control input-part2" ng-model="p.data.document_number" b-maxlength="15" style="max-width: 20em;" ng-keydown="onKeydown($event)" placeholder="{{ p.tDocumentNumber }}"/>
+              </div>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-icon btn-default input-part3" ng-click="vpuSearch()">
+                  <i class="fas fa-check"></i>
+                </button>
+              </div>
+            </div>
+            <!-- verify by npin -->
+            <div class="input-group justify-content-center" ng-if="d.vpu_column == q.vpu_column_npin">
+              <input type="text" class="form-control input-part1" ng-model="p.data.npin" ng-keydown="onKeydown($event)" b-maxlength="14" style="max-width: 20em;" placeholder="{{ p.tnpin }}"/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-icon btn-default input-part3" ng-click="vpuSearch()">
+                  <i class="fas fa-check"></i>
+                </button>
+              </div>
+            </div>
+            <!-- help text -->
+            <div class="text-center mt-7" ng-if="!p.data.persons.length && !p.data.can_add_employee">
+              <span class="text-muted" ng-if="d.vpu_column == q.vpu_column_name"><t>please search by the name of the employee you want to add</t></span>
+              <span class="text-muted" ng-if="d.vpu_column == q.vpu_column_passport_number"><t>please search by the passport number of the employee you want to add</t></span>
+              <span class="text-muted" ng-if="d.vpu_column == q.vpu_column_npin"><t>please search by the npin of the employee you want to add</t></span>
+            </div>
+            <!-- success text -->
+            <div class="text-center mt-7" ng-if="!p.data.persons.length && p.data.can_add_employee">
+              <h6 class="text-success"><t>person not found, now you can proceed to add them below</t></h6>
+            </div>
+            <!-- available persons list -->
+            <div class="mt-7" ng-if="p.data.persons.length">
+              <b-pg-grid name="persons" local-data="p.data.persons" min-width="0" current-limit="1000">
+                <b-pg-header name="action"></b-pg-header>
+                <b-pg-row>
+                  <b-pg-col name="name" size="11">
+                    <div>
+                      <img ng-src="{{ !row.photo_sha ? getDefaultPhotoSrc(row.gender) : page.loadImageSmall(row.photo_sha) }}"
+                            class="rounded-circle cursor-pointer"
+                            ng-click="showPhoto(row)"
+                            style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;
+                      <a ng-if="fi.person_edit && row.is_attached == 'N'" href="{{ genViewUri(row) }}" target="_blank">{{ row.name }}</a>
+                      <a ng-if="fi.employee_edit && row.is_attached == 'Y'" href="{{ genViewUri(row) }}" target="_blank">{{ row.name }}</a>
+                      <span ng-if="!fi.person_edit && !fi.employee_edit">{{ row.name }}</span>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="status_name" size="5">
+                    <span class="badge badge-success" ng-if="row.is_attached == 'Y'"><t>own employee</t></span>
+                    <span class="badge badge-secondary" ng-if="row.is_attached == 'N'"><t>not own employee</t></span>
+                  </b-pg-col>
+                  <b-pg-col name="is_blacklisted" size="5">
+                    <span class="badge badge-dark" ng-if="row.is_blacklisted == 'Y'"><t>blacklisted</t></span>
+                  </b-pg-col>
+                  <b-pg-col name="action" size="3">
+                    <div class="text-right">
+                      <button type="button" class="btn btn-default" ng-click="attachEmployee(row)" ng-if="fi.attach_employee && row.is_attached == 'N'">{{ fi.attach_employee.title }}</button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success" ng-click="closeVerifyModal()" ng-if="!p.data.persons.length && p.data.can_add_employee"><t>add employee</t></button>
+            <button type="button" class="btn btn-default" ng-click="closeVerifyModal(true)" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="matched_photos">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="false" role="dialog">
+      <div class="modal-dialog" ng-if="!!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">
+              <h4 class="mb-0 d-flex align-items-center">
+                <i class="fa fa-exclamation-circle text-warning my-n4 mr-4 opacity-50 h1 font-weight-bolder"></i>
+                <div>{{ p.error.code }} —  <span class="font-weight-bolder breakable" ng-bind-html="p.error.title"></span></div>
+              </h4>
+            </div>
+            <button type="button" class="close p-4 m-n4" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="error-message mb-5" style="font-weight: 400; line-height: 140%;">
+              <h5 style="color: rgba(12, 42, 62, 0.8);" ng-bind-html="p.error.message"></h5>
+            </div>
+            <div style="color: rgba(12, 42, 62, 0.8); font-weight: 400; line-height: 140%;" id="recoms" ng-if="p.error.solutions.length > 0">
+              <footer class="blockquote-footer h5 text-primary user-select-none">Solutions</footer>
+              <hr class="mt-0 border-primary" style="border-top-style: dashed;"/>
+              <div class="error-solutions">
+                <ul>
+                  <li class="mb-4" ng-repeat="solution in p.error.solutions" ng-bind-html="solution"></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save(false)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-dialog modal-lg" style="max-width: 50vw;" ng-if="!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>matching photo found</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <b-pg-grid name="matched_photos" 
+                       local-data="p.matched_photos" 
+                       iterator="item"
+                       min-width="500"
+                       limit="1000">
+              <b-pg-row>
+                <b-pg-col name="person_name" size="8"/>
+                <b-pg-col name="photo" size="8">
+                  <img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" ng-src="{{ page.loadImageMedium(item.matched_sha) }}"/>
+                </b-pg-col>
+                <b-pg-col name="match_score" size="4"/>
+                <b-pg-col name="match_percent" size="4"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save(false)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

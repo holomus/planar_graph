@@ -1,0 +1,167 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout) {
+  var d = _.pick(param, 'person_id'),
+      q = {},
+      p = {};
+
+  //sort function
+  function sortFunction(a, b, key) {
+    let c = a[key];
+    let d = b[key];
+    return c > d ? 1 : c < d ? -1: 0;
+  }
+
+  // inventory types
+  function setInventoryType(data, row) {
+    if (!row) return;
+    data.inventory_type_id = row.inventory_type_id;
+    data.inventory_type_name = row.name;
+  }
+
+  function addInventoryType(data, value) {
+    fi.add_inventory_type(null, _.partial(setInventoryType, data), { name: value });
+  }
+
+  function selectInventoryType(data) {
+    fi.select_inventory_type(null, _.partial(setInventoryType, data));
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function addPersonInventory() {
+    p.title = t('add person inventory')();
+    p.data = {};
+    showModal();
+  }
+
+  function editPersonInventory(row) {
+    p.title = t('edit person inventory')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function savePersonInventory() {
+    if (page.valid(scope.modal)) {
+      let data = angular.copy(p.data);
+          data.person_id = d.person_id;
+      fi.save_person_inventory(data).then(function(result) {
+        p.data.person_inventory_id = result.person_inventory_id;
+        d.person_inventories = _.reject(d.person_inventories, x => x.person_inventory_id == p.data.person_inventory_id);
+        d.person_inventories.push(p.data);
+        d.person_inventories.sort(_.partial(sortFunction, _, _, 'inventory_type_name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonInventory(row) {
+    page.confirm(t('delete person inventory $1{title}?')(row.inventory_type_name), function() {
+      fi.delete_person_inventory({ person_inventory_id: row.person_inventory_id }).then(function() {
+        var index = _.findIndex(d.person_inventories, row);
+        d.person_inventories.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  d.person_inventories = _.chain(model.inventories)
+                          .mapRows(['person_inventory_id', 'inventory_type_id', 'inventory_type_name', 'date_assigned', 'date_returned', 'note'])
+                          .sortBy('inventory_type_name')
+                          .value();
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom gutter-b"  style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>inventories</t></h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_person_inventory" ng-click="addPersonInventory()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <b-pg-grid name="person_inventories" local-data="d.person_inventories" min-height="'auto'" sort="inventory_type_name" limit="1000">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="inventory_type_name" size="5"/>
+        <b-pg-col name="date_assigned" size="4"/>
+        <b-pg-col name="date_returned" size="4"/>
+        <b-pg-col name="note" size="8"/>
+        <b-pg-col name="action" size="3">
+          <div class="text-center w-100 dropdown" ng-if="fi.save_person_inventory || fi.delete_person_inventory">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-if="fi.save_person_inventory" ng-click="editPersonInventory(row)"><t>edit</t></a>
+              <a class="dropdown-item text-danger" ng-if="fi.delete_person_inventory" ng-click="delPersonInventory(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+  <!-- PERSON INVENTORY MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>date assigned</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.date_assigned" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>date returned</t></label>
+                <input type="text" class="form-control" ng-model="p.data.date_returned" b-date-picker="DD.MM.YYYY"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>inventory type</t><r/></label>
+              <b-input name="inventory_types"
+                       model="p.data.inventory_type_name | name"
+                       model-key="p.data.inventory_type_id | inventory_type_id"
+                       is-add="fi.add_inventory_type"
+                       is-view="fi.select_inventory_type"
+                       on-add="addInventoryType(p.data, value)"
+                       on-view="selectInventoryType(p.data)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="p.data.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.save_person_inventory" ng-click="savePersonInventory()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,21 @@
+{
+ "clear preferences": "Сбросить",
+ "CSV": "CSV",
+ "date": "Дата",
+ "division group name": "Группа подразделений",
+ "divisions": "Подразделения",
+ "Excel": "EXCEL",
+ "filter settings": "Настройки фильтра",
+ "generate": "Составить отчет",
+ "Html": "HTML",
+ "parameters": "Фильтр",
+ "preferences": "Настройки",
+ "report settings": "Настройки отчета",
+ "save preferences": "Сохранить",
+ "save preferences?": "Сохранить настройки?",
+ "setting division group": "Использовать группы подразделений",
+ "setting minute words": "Показать (чч, мин)",
+ "setting minutes": "Показать минуты",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

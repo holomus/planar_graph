@@ -1,0 +1,29 @@
+select w.Person_Id, w.Name, q.Category_Kind, q.Mon
+  from (select q.Company_Id,
+               Trunc(q.Timesheet_Date, 'MON') Mon,
+               q.Employee_Id,
+               case
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 15 then
+                   'A'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 10 then
+                   'B'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 5 then
+                   'C'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 1 then
+                   'D'
+                  else
+                   'E'
+                end Category_Kind
+          from Htt_Timesheets q
+         where exists (select 1
+                  from Md_Companies w
+                 where w.Company_Id = q.Company_Id
+                   and w.State = 'A'
+                   and w.Company_Id = 580)
+           and Trunc(q.Timesheet_Date, 'MON') = '01.09.2023'
+           and exists (select 1
+                  from Htt_Timesheet_Tracks w
+                 where w.Timesheet_Id = q.Timesheet_Id)
+         group by q.Company_Id, Trunc(q.Timesheet_Date, 'MON'), q.Employee_Id) q
+  join Md_Persons w
+    on q.Employee_Id = w.Person_Id

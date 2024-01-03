@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{access_level_count} access_level(s)?": "Удалить <b>$1</b> уровней доступа?",
+ "delete access_level $1{access_level_name}?": "Удалить уровень доступа <b>$1</b> ?",
+ "get access levels from HCP": "Загрузить",
+ "table.access_level_code": "Код",
+ "table.access_level_name": "Уровень доступа",
+ "table.created_on": "Дата создания",
+ "table.description": "Описание",
+ "table.modified_on": "Дата изменения"
+}

@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/htt/location_import
+begin
+uis.lang_ru('#a:/vhr/htt/location_import$save_settings','Сохранить настройки');
+uis.lang_ru('#f:/vhr/htt/location_import','Локация (импорт)');
+uis.lang_ru('ui-vhr272:$1{error message} with accuracy $2{accuracy}','Ошибка $1 в погрешности: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with address $2{address}','Ошибка $1 в адресе $2');
+uis.lang_ru('ui-vhr272:$1{error message} with code $2{code}','Ошибка $1 в коде $2');
+uis.lang_ru('ui-vhr272:$1{error message} with division name $2{division_name}','Ошибка $1 в подразделении: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with employees $2{employees}','Ошибка $1 в сотрудниках: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with lat lng $2{latlng}','Ошибка $1 в геолокации: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with location name $2{name}','Ошибка $1 в названии локации: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with location type name $2{location_type_name}','Ошибка $1 в типе локации: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with prohibited $2{prohibited}','Ошибка $1 в ограничение отметок: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with region name $2{region_name}','Ошибка $1 в регионе: $2');
+uis.lang_ru('ui-vhr272:$1{error message} with state $2{state}','Ошибка $1 в статусе $2');
+uis.lang_ru('ui-vhr272:$1{error message} with time zone $2{time_zone}','Ошибка $1 в часовом поясе: $2');
+uis.lang_ru('ui-vhr272:accuracy','Погрешность координат (в метрах)');
+uis.lang_ru('ui-vhr272:address','Адрес');
+uis.lang_ru('ui-vhr272:code','Код');
+uis.lang_ru('ui-vhr272:division name','Подразделение');
+uis.lang_ru('ui-vhr272:division_name','Подразделение');
+uis.lang_ru('ui-vhr272:employee_id_by_number: employee not found, employee_number=$1','Сотрудник не найден. Табельный номер = $1');
+uis.lang_ru('ui-vhr272:employee_identifier:code','Код');
+uis.lang_ru('ui-vhr272:employee_identifier:employee_number','Табельный номер');
+uis.lang_ru('ui-vhr272:employee_identifier:name','ФИО');
+uis.lang_ru('ui-vhr272:employee_identifier:tin','ИНН');
+uis.lang_ru('ui-vhr272:employees','Сотрудники');
+uis.lang_ru('ui-vhr272:employees ($1)','Сотрудники ($1)');
+uis.lang_ru('ui-vhr272:lat lng','Координаты');
+uis.lang_ru('ui-vhr272:latlng','GPS координаты');
+uis.lang_ru('ui-vhr272:location import','Локация (импорт)');
+uis.lang_ru('ui-vhr272:location_type name','Тип локации');
+uis.lang_ru('ui-vhr272:location_type_id_by_name: location type not found, location_type_name=$1','Тип локации не найден. Тип локации = $1');
+uis.lang_ru('ui-vhr272:location_type_name','Тип локации');
+uis.lang_ru('ui-vhr272:name','Название');
+uis.lang_ru('ui-vhr272:prohibited','Ограничение отметок');
+uis.lang_ru('ui-vhr272:region name','Регион');
+uis.lang_ru('ui-vhr272:region_id_by_name: region not found, name=$1','Регион не найден. Название = $1');
+uis.lang_ru('ui-vhr272:region_name','Регион');
+uis.lang_ru('ui-vhr272:state','Статус');
+uis.lang_ru('ui-vhr272:time zone','Часовой пояс');
+uis.lang_ru('ui-vhr272:time_zone','Часовой пояс');
+uis.lang_ru('ui-vhr272:time_zone_code_by_name: time zone not found, name=$1','Часовой пояс не найден. Название = $1');
+commit;
+end;
+/

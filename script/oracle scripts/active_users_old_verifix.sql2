@@ -1,0 +1,30 @@
+select (select w.Code
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Code,
+       (select w.Name
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Name,
+       q.*
+  from (select *
+          from (select q.Company_Id,
+                       to_char(Trunc(q.Timesheet_Date, 'MON'), 'dd.mm.yyyy') Mon,
+                       count(distinct q.Employee_Id) Cnt
+                  from Vx_Tp_Timesheets q
+                 where q.Timesheet_Date >= to_date('01.04.2022')
+                   and q.Company_Id = 480
+                   and exists (select 1
+                          from Md_Companies w
+                         where w.Company_Id = q.Company_Id
+                           and w.State = 'A')
+                   and (exists (select *
+                                  from Vx_Tp_Timesheet_Tracks w
+                                 where w.Company_Id = q.Company_Id
+                                   and w.Timesheet_Id = q.Timesheet_Id) or exists
+                        (select 1
+                           from Vx_Hr_Emp_Leaves w
+                          where w.Company_Id = 480
+                            and w.Employee_Id = q.Employee_Id
+                            and w.Begin_Date >= to_date('01.08.2022')))
+                 group by q.Company_Id, Trunc(q.Timesheet_Date, 'MON')) q
+        Pivot(sum(Cnt)
+           for Mon in('01.04.2022', '01.05.2022', '01.06.2022', '01.07.2022', '01.08.2022'))) q

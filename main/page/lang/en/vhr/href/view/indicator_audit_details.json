@@ -1,0 +1,5 @@
+{
+ "pg.indicator.before": "Previous Value",
+ "pg.indicator.current": "Current Value",
+ "pg.indicator.field_name": "Field"
+}

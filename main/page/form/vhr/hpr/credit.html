@@ -1,0 +1,216 @@
+<script biruni>
+  page.ctrl(function(scope, model, fi, t, xparam, bBig) {
+    var d = _.omit(model, 'references'),
+        q = model.references;
+
+  function changeCurrency(query, value) {
+    query.param({ credit_date: d.credit_date });
+    query.searchValue(value);
+  }
+
+  function setEmployee(row) {
+    if (!row) return;
+    d.employee_id = row.employee_id;
+    d.employee_name = row.name;
+
+    page.post(':get_closest_wage', { employee_id: d.employee_id, period: d.credit_date }).then(res => {
+      d.closest_wage = res.wage;
+    }, page.alert);
+  }
+
+  function selectEmployee() {
+    fi.select_employee(null, setEmployee, null);
+  }
+
+  function setCurrency(row) {
+    if (!row) return;
+    d.currency_id = row.currency_id;
+    d.currency_name = row.name;
+  }
+
+  function addCurrency(value) {
+    fi.add_currency(null, setCurrency, { name: value });
+  }
+
+  function selectCurrency() {
+    fi.select_currency(null, setCurrency);
+  }
+
+  function setCashbox(result) {
+    if (!result) return;
+    d.cashbox_id = result.cashbox_id;
+    d.cashbox_name = result.name;
+  }
+
+  function addCashbox(value) {
+    fi.add_cashbox(null, setCashbox, { name: value });
+  }
+
+  function selectCashbox() {
+    fi.select_cashbox(null, setCashbox);
+  }
+
+  function addBankAccount() {
+    fi.add_bank_account({ person_id: q.filial_id });
+  }
+
+  function save(action) {
+    if (page.valid(scope.form)) {
+      page.confirm(action.transConfirm(), function() {
+        let data = _.omit(d, ['employee_name', 'currency_name', 'cashbox_name', 'bank_account_name']);
+        data.begin_month = moment(d.begin_month, 'MM.YYYY').format('DD.MM.YYYY');
+        data.end_month = moment(d.end_month, 'MM.YYYY').format('DD.MM.YYYY');
+        if (data.payment_type == q.pt_cashbox) {
+          data.bank_account_id = null;
+        } else {
+          data.cashbox_id = null;
+        }
+        data.status = action.status;
+        action.grant(data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function setBankAccount(result) {
+    if (result) {
+      d.bank_account_id = result.bank_account_id;
+      d.bank_account_name = result.name;
+
+      if (result.currency_id) {
+        d.currency_id = result.currency_id;
+        d.currency_name = result.currency_name;
+      }
+    }
+  }
+
+  q.payment_types = _.mapRows(q.payment_types, ['kind', 'name']);
+  q.payment_type = d.payment_type;
+  q.actions = _.chain([
+    [ fi.draft, t('save?'), t('save')(), q.cs_draft ],
+    [ fi.book, t('book?'), t('book')(), q.cs_book ],
+    [ fi.complete, t('complete?'), t('complete')(), q.cs_complete ]
+  ])
+  .mapRows(['grant', 'transConfirm', 'name', 'status'])
+  .reject(x => !x.grant)
+  .value();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary mr-1" ng-click="save(action)" ng-if="action.grant" ng-repeat="action in q.actions">{{ action.name }}</button>
+  <button type="button" class="btn btn-default ml-0" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>credit number</t></label>
+              <input type="text" class="form-control" ng-model="d.credit_number" b-maxlength="50"/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>credit date</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.credit_date" required/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>booked date</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.booked_date" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>employee</t><r/></label>
+            <b-input name="employee"
+                     model="d.employee_name | name"
+                     model-key="d.employee_id | employee_id"
+                     on-select="setEmployee(row)"
+                     is-view="fi.select_employee"
+                     on-view="selectEmployee()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group" ng-if="d.employee_id && d.closest_wage">
+            <label><t>wage</t></label>
+            <span class="form-view">{{ d.closest_wage | bNumber }}</span>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>begin month</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.begin_month" required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>end month</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.end_month" required/>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>credit amount</t><r/></label>
+              <input type="text" class="form-control" b-number ng-model="d.credit_amount" required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>currency name</t></label>
+              <b-input name="currencies"
+                       model="d.currency_name | name"
+                       model-key="d.currency_id | currency_id"
+                       on-change="changeCurrency(query, value)"
+                       is-add="fi.add_currency"
+                       is-view="fi.select_currency"
+                       on-add="addCurrency(value)"
+                       on-view="selectCurrency()">
+                  {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>payment type</t></label><br/>
+            <label class="radio" ng-repeat="payment_type in q.payment_types">
+              <input type="radio" name="payment_type" value="{{ payment_type.kind }}" ng-model="d.payment_type"/>
+              <span>{{ payment_type.name }}</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <div ng-if="d.payment_type == q.pt_cashbox">
+              <label><t>cashbox</t><r/></label>
+              <b-input name="cashboxes"
+                       model="d.cashbox_name | name"
+                       model-key="d.cashbox_id | cashbox_id"
+                       is-add="fi.add_cashbox"
+                       on-add="addCashbox(value)"
+                       is-view="fi.select_cashbox"
+                       on-view="selectCashbox()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div ng-if="d.payment_type != q.pt_cashbox">
+              <label><t>bank account</t><r/></label>
+              <b-input name="bank_accounts"
+                       model="d.bank_account_name | name"
+                       model-key="d.bank_account_id | bank_account_id"
+                       column="currency_id, currency_name"
+                       on-select="setBankAccount(row)"
+                       is-add="fi.add_bank_account"
+                       on-add="addBankAccount()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

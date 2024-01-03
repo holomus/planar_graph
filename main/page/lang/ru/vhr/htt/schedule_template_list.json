@@ -1,0 +1,16 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{schedule_template_count} schedule_template(s)?": "Удалить <b>$1</b> шаблонов?",
+ "delete schedule_template $1{schedule_template_name}?": "Удалить шаблон <b>$1</b> ?",
+ "table.count_early_name": "Ранний уход",
+ "table.count_lack_name": "Отсутствие",
+ "table.count_late_name": "Поздний приход",
+ "table.description": "Описание",
+ "table.input_acceptance_time": "Приход за",
+ "table.name": "Название",
+ "table.output_acceptance_time": "Уход за",
+ "table.shift_time": "Рабочее время с",
+ "table.state_name": "Состояние",
+ "table.template_id": "ИД",
+ "table.track_duration_time": "Отслеживать в течении"
+}

@@ -1,0 +1,16 @@
+{
+ "keep rank": "Keep Rank",
+ "keep salary": "Keep Salary",
+ "keep schedule": "Keep Schedule",
+ "keep vacation limit": "Keep Vacation Limit",
+ "notification enable": "Notifications",
+ "parttime enable": "Enable part-time work",
+ "position booking": "Enable position booking",
+ "position check": "Automatic check of HR documents for compliance with the job index",
+ "position enable": "Enable job index",
+ "position fixing enabled": "Allow position organization structure adjustment",
+ "position history": "Enable job index audit log",
+ "rank enable": "Enable rank without job index",
+ "save": "Save",
+ "wage scale enable": "Enable tariff group without job index"
+}

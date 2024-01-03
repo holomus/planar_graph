@@ -1,0 +1,13 @@
+{
+ "close": "Close",
+ "delete $1": "Delete $1",
+ "delete $1{access_group_count} access group(s)?": "Delete $1 access groups?",
+ "delete access group $1{access_group_name}?": "Delete $1?",
+ "details": "Details",
+ "extra details": "Details",
+ "table.access_group_code": "Access Group Code",
+ "table.access_group_name": "Name",
+ "table.created_on": "Created on",
+ "table.modified_on": "Modified on",
+ "table.person_count": "Participants Qty"
+}

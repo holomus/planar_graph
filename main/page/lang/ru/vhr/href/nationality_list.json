@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{nationality_count} nationality(ies)?": "Удалить национальность в количестве <b>$1</b>?",
+ "delete nationality $1{nationality_name}?": "Удалить $1?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.name": "Название",
+ "table.nationality_id": "ИД",
+ "table.state_name": "Статус"
+}

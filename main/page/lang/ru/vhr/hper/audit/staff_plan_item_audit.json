@@ -1,0 +1,21 @@
+{
+ "details": "Детали",
+ "table_audit.calc_kind_name": "Способ подсчета результатов",
+ "table_audit.fact_amount": "Факт (сумма)",
+ "table_audit.fact_note": "Примечание",
+ "table_audit.fact_percent": "Факт (%)",
+ "table_audit.fact_value": "Факт",
+ "table_audit.item_plan_type_name": "Тип показателей",
+ "table_audit.note": "Примечание",
+ "table_audit.plan_amount": "План (сумма)",
+ "table_audit.plan_type_name": "Тип показателей",
+ "table_audit.plan_value": "План",
+ "table_audit.staff_plan_id": "ИД расчета",
+ "table_audit.t_audit_id": "ИД",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата события",
+ "table_audit.t_user_name": "Пользователь"
+}

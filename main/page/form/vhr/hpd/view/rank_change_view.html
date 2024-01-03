@@ -1,0 +1,405 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table_rank_change_audit').param(param);
+  page.grid('table_rank_change_audit').disable();
+});
+page.ctrl(function(scope, model, fi, $timeout, t, param) {
+  var d = _.omit(model, 'rank_changes'),
+      q = {},
+      p = {};
+
+  // edit
+  function edit() {
+    fi.edit({ journal_id: d.journal_id });
+  }
+
+  function editMultiple() {
+    fi.edit_multiple({ journal_id: d.journal_id });
+  }
+
+  function post() {
+    page.confirm(t('post journal No. $1{journal_number} of $2{journal_date}?')(d.journal_number, d.journal_date), function() {
+      fi.post({ journal_id: d.journal_id, journal_type_id: d.journal_type_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function unpost() {
+    page.confirm(t('unpost journal No. $1{journal_number} of $2{journal_date}?')(d.journal_number, d.journal_date), function() {
+      fi.unpost({ journal_id: d.journal_id, journal_type_id: d.journal_type_id }).then(page.reload, page.alert);
+    });
+  }
+
+  // change section
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (_.contains(q.enabledSections, section)) return;
+
+    if (q.activeSection == 'sign_document') {
+      page.subpage(section).run(fi.sign_document.uri, { document_id: d.sign_document_id });
+    }
+
+    if (q.activeSection == 'audit') {
+      $timeout(function() {
+        let tab = _.find([ 'journal_audit', 'page_audit'], (x) => fi[x]) || 'rank_change_audit';
+        changeAuditTab(tab);
+        page.$content.find('[data-target="' + pageId(tab, '#') + '"]').addClass('active');
+        page.$content.find(pageId(tab, '#')).addClass('active');
+      });
+    }
+    q.enabledSections.push(section);
+  }
+
+  // change tab
+  function changeAuditTab(tab) {
+    if (_.contains(q.enabledTabs, tab)) return;
+    if (tab == 'rank_change_audit') {
+      page.grid('table_rank_change_audit').fetch();
+      page.grid('table_rank_change_audit').enable();
+    } else if (tab) {
+      page.subpage(tab).run(fi[tab].uri, { journal_id: d.journal_id });
+    }
+    q.enabledTabs.push(tab);
+  }
+
+  // audit details
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ journal_id: d.journal_id, context_id: row.t_context_id });
+  }
+
+  // ------------------------------ rank change modal ------------------------------//
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function rankChangeModal(row) {
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  // page id
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  model.rank_changes = _.mapRows(model.rank_changes, ['change_date', 'staff_name', 'staff_number', 'old_rank_name', 'old_wage', 'new_wage', 'rank_name', 'access_to_hidden_salary']);
+
+  q.is_rank_change_multiple = d.journal_type_id != d.rch_journal_type_id;
+  q.enabledSections = ['main'];
+  q.enabledTabs = [];
+  q.activeSection = 'main';
+
+  if (q.is_rank_change_multiple) {
+    d.rank_changes = model.rank_changes;
+  } else {
+    _.extend(d, model.rank_changes[0]);
+  }
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && !q.is_rank_change_multiple && (d.sign_document_status ? d.sign_document_status == 'D' : true)" b-hotkey="edit"><t>edit</t></button>
+  <button type="button" class="btn btn-success" ng-click="editMultiple()" ng-if="fi.edit_multiple && q.is_rank_change_multiple && (d.sign_document_status ? d.sign_document_status == 'D' : true)" b-hotkey="edit"><t>edit</t></button>
+  <button type="button" class="btn btn-primary" ng-click="post()" ng-if="fi.post && d.posted == 'N' && (d.sign_document_status ? d.sign_document_status == 'A' : true)"><t>post</t></button>
+  <button type="button" class="btn btn-danger" ng-click="unpost()" ng-if="fi.unpost && d.posted == 'Y' && (d.sign_document_status ? d.sign_document_status == 'A' : true)"><t>unpost</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3"><t p1="d.journal_number" p2="d.journal_date">$1{journal_number} from $2{journal_date}</t></span>
+                <span class="text-muted">&nbsp;({{ d.journal_id }})</span>
+              </div>
+              <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.posted == 'Y' ? 'alert-light-primary' : 'alert-secondary'">
+                <div class="alert-text">
+                  <t ng-if="d.posted == 'Y'">posted</t>
+                  <t ng-if="d.posted == 'N'">unposted</t>
+                </div>
+              </div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2" ng-if="d.sign_document_status && fi.sign_document">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'sign_document' }" ng-click="changeSection('sign_document')">
+                  <span class="navi-icon mr-2">
+                    <i class="fas fa-file-signature"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>sign document</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')" ng-if="fi.audit">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-user-clock"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>journal date</t></label>
+                    <span class="form-view">{{ d.journal_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>journal number</t></label>
+                    <span class="form-view">{{ d.journal_number }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>journal name</t></label>
+                  <span class="form-view">{{ d.journal_name }}</span>
+                </div>
+                <div ng-if="!q.is_rank_change_multiple">
+                  <div class="form-row">
+                    <div class="col-sm-12 mb-4">
+                      <label><t>change date</t></label>
+                      <span class="form-view">{{ d.change_date }}</span>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="col-sm-12 mb-4">
+                      <label><t>staff</t></label>
+                      <span class="form-view">{{ d.staff_name }}</span>
+                    </div>
+                    <div class="col-sm-12 mb-4">
+                      <label><t>staff number</t></label>
+                      <span class="form-view">{{ d.staff_number }}</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label><t>old rank name</t></label>
+                    <span class="form-view">{{ d.old_rank_name }}</span>
+                  </div>
+                  <div class="form-group" ng-if="d.access_to_hidden_salary == 'Y'">
+                    <label><t>old wage</t></label>
+                    <span class="form-view">{{ d.old_wage }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label><t>new rank</t></label>
+                    <span class="form-view">{{ d.rank_name }}</span>
+                  </div>
+                  <div class="form-group" ng-if="d.access_to_hidden_salary == 'Y'">
+                    <label><t>new wage</t></label>
+                    <span class="form-view">{{ d.new_wage }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>created by</t></label>
+                      <span class="form-view">{{ d.created_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>created on</t></label>
+                      <span class="form-view">{{ d.created_on }}</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>modified by</t></label>
+                      <span class="form-view">{{ d.modified_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>modified on</t></label>
+                      <span class="form-view">{{ d.modified_on }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div ng-if="q.is_rank_change_multiple">
+              <div class="separator separator-solid my-6"></div>
+              <div class="row">
+                <div class="offset-sm-12 col-sm-12 mb-2">
+                  <b-pg-controller name="rank_changes"/>
+                </div>
+              </div>
+              <b-pg-grid name="rank_changes" local-data="d.rank_changes" search="staff_number, staff_name"
+                         current-limit="1000" searchable="page_id, rank_name" sort="change_date, staff_name">
+                <b-pg-row>
+                  <b-pg-col name="change_date" size="5"/>
+                  <b-pg-col name="staff_name" size="5"/>
+                  <b-pg-col name="staff_number" size="5"/>
+                  <b-pg-col name="old_rank_name" size="4"/>
+                  <b-pg-col name="rank_name" size="4"/>
+                  <b-pg-col name="actions" size="1">
+                    <div class="text-left">
+                      <button type="button" class="btn btn-default btn-icon" ng-click="rankChangeModal(row)"><i class="fas fa-eye"></i></button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+                <b-pg-extra-col name="page_id"/>
+              </b-pg-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'sign_document'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>sign document</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group" ng-if="d.sign_document_status">
+              <label>{{ fi.sign_document.title }}</label>
+              <b-subpage name="sign_document" form="fi.sign_document.uri" param="{ document_id: d.sign_document_id }"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header card-header-tabs-line">
+            <div class="card-title align-items-start flex-column">
+              <h5 class="font-weight-bolder mb-0 mt-2"><t>audit</t></h5>
+            </div>
+            <div class="card-toolobar align-items-end">
+              <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+                <li class="nav-item" ng-if="fi.journal_audit">
+                  <a ng-click="changeAuditTab('journal_audit')"  data-target="{{ pageId('journal_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>journal</t>
+                  </a>
+                </li>
+                <li class="nav-item" ng-if="fi.page_audit">
+                  <a ng-click="changeAuditTab('page_audit')"  data-target="{{ pageId('page_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>page_audit</t>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a ng-click="changeAuditTab('rank_change_audit')" data-target="{{ pageId('rank_change_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>rank_change</t>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tab-content">
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('journal_audit') }}">
+                <b-subpage name="journal_audit"/>
+              </div>
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('page_audit') }}">
+                <b-subpage name="page_audit"/>
+              </div>
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('rank_change_audit') }}">
+                <div class="row mb-2">
+                  <div class="offset-sm-14 col-sm-10">
+                    <b-grid-controller name="table_rank_change_audit"/>
+                  </div>
+                </div>
+                <b-grid name="table_rank_change_audit" required="t_context_id" on-dblclick="auditDetails(row)"
+                        sort="-t_timestamp" search="t_user_name, t_event_name"
+                        extra-columns="t_audit_id, t_source_project_name, t_date, t_filial_name">
+                  <b-row>
+                    <b-col name="t_timestamp" size="5"/>
+                    <b-col name="t_user_name" size="5"/>
+                    <b-col name="t_event_name" size="5"/>
+                    <b-col name="change_date" size="4"/>
+                    <b-col name="rank_name" size="5"/>
+                  </b-row>
+
+                  <b-action>
+                    <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details" ><t>details</t></button>
+                  </b-action>
+
+                  <b-filter name="t_date"/>
+                  <b-filter name="t_user_id" decorate-with="t_user_name"/>
+                  <b-filter name="t_event" decorate-with="t_event_name"/>
+                  <b-filter name="t_filial_id" decorate-with="t_filial_name"/>
+                  <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+                  <b-filter name="change_date"/>
+                  <b-filter name="rank_id" decorate-with="rank_name"/>
+                </b-grid>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-ml" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>view rank change</t></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>change date</t></label>
+                  <span class="form-view">{{ p.data.change_date }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>staff</t></label>
+              <span class="form-view">{{ p.data.staff_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>staff number</t></label>
+              <span class="form-view">{{ p.data.staff_number }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>old rank name</t></label>
+              <span class="form-view">{{ p.data.old_rank_name }}</span>
+            </div>
+            <div class="form-group" ng-if="p.data.access_to_hidden_salary">
+              <label><t>old wage</t></label>
+              <span class="form-view">{{ p.data.old_wage }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>rank name</t></label>
+              <span class="form-view">{{ p.data.rank_name }}</span>
+            </div>
+            <div class="form-group" ng-if="p.data.access_to_hidden_salary">
+              <label><t>new wage</t></label>
+              <span class="form-view">{{ p.data.new_wage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

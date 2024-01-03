@@ -1,0 +1,12 @@
+{
+ "details": "Details",
+ "table_audit.currency_name": "Currency",
+ "table_audit.page_id": "Page ID",
+ "table_audit.t_audit_id": "Audit ID",
+ "table_audit.t_date": "Activity Date",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Project",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User"
+}

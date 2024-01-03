@@ -1,0 +1,123 @@
+<script biruni>
+page.init(function(param) {
+  let pg, pq,
+      statusClass = { N: 'primary', E: 'info', P: 'warning', C: 'danger', F: 'success' },
+      passedClass = { Y: 'primary', N: 'danger', I: 'secondary' };
+
+  _.each(['testings', 'trainings'], x => {
+    pg = page.grid(x);
+    pq = page.query(x);
+
+    pq.param(_.pick(param, 'person_id', 'filial_id'));
+
+    pg.asHtml('status_html', 'status, status_name', row => {
+      return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+    });
+    pg.asHtml('passed_html', 'passed, passed_name', row => {
+      return `<span class="badge badge-${ passedClass[row.passed] }">${ row.passed_name }</span>`;
+    });
+  });
+});
+page.ctrl(function(scope, fi) {
+  function testingView(row) {
+    if (fi.testing_view) fi.testing_view({ testing_id: row.testing_id });
+  }
+
+  function trainingView(row) {
+    if (fi.training_view) fi.training_view({ training_id: row.training_id });
+  }
+});
+</script>
+<div class="b-content">
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>testings</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="b-toolbar row">
+        <div class="col-sm-10 offset-sm-14 b-right">
+          <b-grid-controller name="testings"/>
+        </div>
+      </div>
+      <b-grid name="testings" required="testing_id" sort="-testing_date" search="exam_name" searchable="testing_id" on-dblclick="testingView(row)"
+              extra-columns="testing_id, testing_number, examiner_name, pause_time, begin_time_period_end, fact_begin_time, fact_end_time, note, current_question_no, passing_score, question_count,
+              attestation_name, created_by_name, created_on, modified_by_name, modified_on">
+        <b-row>
+          <b-col name="testing_date" size=3/>
+          <b-col name="exam_name" size=4/>
+          <b-col name="passing_percent" size=2/>
+          <b-col name="duration" size=3/>
+          <b-col name="begin_time_period_begin" size=3/>
+          <b-col name="end_time" size=3/>
+          <b-col name="passed_name" size=3 as-html="passed_html"/>
+          <b-col name="status_name" size=3 as-html="status_html"/>
+        </b-row>
+
+        <b-action>
+          <button type="button" class="btn btn-default" ng-click="testingView(row)" ng-if="fi.testing_view"><t>view</t></button>
+        </b-action>
+
+        <b-filter name="testing_id" directive="equal" extra/>
+        <b-filter name="exam_id" decorate-with="exam_name"/>
+        <b-filter name="duration"/>
+        <b-filter name="passing_percent"/>
+        <b-filter name="testing_date"/>
+        <b-filter name="begin_time_period_begin" extra/>
+        <b-filter name="begin_time_period_end" extra/>
+        <b-filter name="examiner_id" decorate-with="examiner_name" extra/>
+        <b-filter name="passed" decorate-with="passed_name" extra/>
+        <b-filter name="passing_score" extra/>
+        <b-filter name="question_count" extra/>
+        <b-filter name="status" decorate-with="status_name"/>
+        <b-filter name="created_by" decorate-with="created_by_name" extra/>
+        <b-filter name="created_on" extra/>
+        <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+        <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>trainings</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="b-toolbar row">
+        <div class="col-sm-10 offset-sm-14 b-right">
+          <b-grid-controller name="trainings"/>
+        </div>
+      </div>
+      <b-grid name="trainings" required="training_id" on-dblclick="trainingView(row)" sort="-begin_date" search="training_number, mentor_name"
+              extra-columns="training_id, created_on, modified_on, created_by_name, modified_by_name">
+        <b-row>
+          <b-col name="training_number" size=2/>
+          <b-col name="subject_names" size=5/>
+          <b-col name="begin_date" size=3/>
+          <b-col name="mentor_name" size=4/>
+          <b-col name="address" size=5/>
+          <b-col name="status_name" as-html="status_html" size=2/>
+          <b-col name="passed_name" as-html="passed_html" size=2/>
+        </b-row>
+
+        <b-action>
+          <button type="button" class="btn btn-default" ng-click="trainingView(row)" ng-if="fi.training_view"><t>view</t></button>
+        </b-action>
+
+        <b-filter name="training_id" directive="equal" extra/>
+        <b-filter name="training_number"/>
+        <b-filter name="begin_date"/>
+        <b-filter name="address"/>
+        <b-filter name="subject_ids" decorate-with="subject_names"/>
+        <b-filter name="status" decorate-with="status_name"/>
+        <b-filter name="passed" decorate-with="passed_name"/>
+        <b-filter name="created_by" decorate-with="created_by_name" extra/>
+        <b-filter name="created_on" extra/>
+        <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+        <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+</div>

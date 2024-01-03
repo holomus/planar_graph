@@ -1,0 +1,248 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'references', 'schedule_changes'),
+      q = model.references;
+
+  // ------------------------------ staff ------------------------------//
+  function addItem() {
+    d.schedule_changes.push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.schedule_changes, item);
+      d.schedule_changes.splice(index, 1);
+    });
+  }
+
+  function whereStaff() {
+    let staff_ids = _.chain(d.schedule_changes).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', d.begin_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', d.end_date || d.begin_date]
+                  ]]]
+                ];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function selectStaff(item) {
+    fi.select_staff({ date: d.begin_date }, _.partial(setStaff, item), { where: whereStaff() });
+  }
+
+  function setStaff(item, data) {
+    if (!data) return;
+    item.staff_id = data.staff_id;
+    item.name = data.name;
+  }
+
+  function setStaffs() {
+    fi.select_staff({ date: d.begin_date }, function(result) {
+      if (!_.isEmpty(result)) {
+        d.schedule_changes.push(...result);
+      }
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  // ------------------------------ division  ------------------------------//
+  function onChangeDivision() {
+    if (!q.division_inited) {
+      q.division_inited = true;
+      q.division_id = d.division_id;
+    } else if (!_.isEmpty(d.schedule_changes)) {
+      page.confirm(t('all items will be removed. continue?')(), () => {
+        d.schedule_changes = [];
+        q.division_id = d.division_id;
+      }, () => {
+        d.division_id = q.division_id;
+      });
+    } else {
+      q.division_id = d.division_id;
+    }
+  }
+
+  // ------------------------------ schedule ------------------------------//
+  function setSchedule(item, row) {
+    if (!row) return;
+    item.schedule_id = row.schedule_id;
+    item.schedule_name = row.name;
+  }
+
+  function selectSchedule(item) {
+    fi.select_schedule(null, _.partial(setSchedule, item), { where: ['state', '=', 'A'] });
+  }
+
+  function addSchedule(item, value) {
+    fi.add_schedule({ schedule_kind: q.sk_flexible }, _.partial(setSchedule, item), { name: value });
+  }
+
+  function applySchedule(item) {
+    let row = { schedule_id: item.schedule_id, name: item.schedule_name };
+    _.each(d.schedule_changes, x => {
+      if (!x.schedule_id) setSchedule(x, row);
+    })
+  }
+
+  // ------------------------------ on check ------------------------------//
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  // ------------------------------ save ------------------------------//
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        var data = _.omit(d, 'schedule_changes');
+        data.posted = posted;
+        data.schedule_changes = _.chain(d.schedule_changes)
+                                 .map(x => x = _.pick(x, 'page_id', 'staff_id', 'schedule_id'))
+                                 .value();
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  d.schedule_changes = _.mapRows(model.schedule_changes, ['page_id', 'staff_id', 'name', 'schedule_id', 'schedule_name']);
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.division_id = d.division_id;
+  q.tConfirmApplySchedule = t('apply schedule to others?');
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <b-tree-select
+                origin="q.divisions"
+                id-key="division_id"
+                model="d.division_id"
+                on-change="onChangeDivision()"/>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.begin_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>end date</t></label>
+                <input class="form-control" ng-model="d.end_date" b-date-picker/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="col-sm mb-2">
+            <button type="button" class="btn btn-success" ng-click="setStaffs()" ng-if="fi.select_staff"><t>select</t></button>
+            <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm md-2">
+            <b-pg-controller name="staffs"/>
+          </div>
+        </div>
+        <b-pg-grid name="staffs" local-data="d.schedule_changes" on-check="onCheck(checked)" iterator="item">
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1">
+              <div class="text-center">{{ item.rownum }}</div>
+            </b-pg-col>
+            <b-pg-col name="staffs" size="11">
+              <div class="form-group">
+                <b-input name="staffs"
+                         model="item.name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, hiring_date, dismissal_date, staff_kind_name"
+                         search="staff_number, name"
+                         on-change="changeStaffQuery(query, value)"
+                         is-view="fi.select_staff"
+                         on-view="selectStaff(item)"
+                         required-key>
+                  <header>
+                    <div class="col-sm-6"><t>staff number</t></div>
+                    <div class="col-sm-12"><t>staff name</t></div>
+                    <div class="col-sm-6"><t>staff kind name</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-6">{{ row.staff_number }}</div>
+                    <div class="col-sm-12">{{ row.name }}</div>
+                    <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                  </content>
+                </b-input>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="schedule" size="11">
+              <div class="input-group">
+                <b-input name="schedules"
+                         model="item.schedule_name | name"
+                         model-key="item.schedule_id | schedule_id"
+                         is-add="fi.add_schedule"
+                         is-view="fi.select_schedule"
+                         on-add="addSchedule(item, value)"
+                         on-view="selectSchedule(item)"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplySchedule() }}" on-click-yes="applySchedule(item)">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+</div>

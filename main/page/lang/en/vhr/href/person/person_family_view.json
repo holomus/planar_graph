@@ -1,0 +1,11 @@
+{
+ "family members": "Relatives",
+ "marital statuses": "Marital Status",
+ "pg.person_family_members.birthday": "Birth Date",
+ "pg.person_family_members.is_dependent_name": "Dependent",
+ "pg.person_family_members.is_private_name": "Hide data",
+ "pg.person_family_members.name": "Full Name",
+ "pg.person_family_members.relation_degree_name": "Relation Degree",
+ "pg.person_marital_statuses.marital_status_name": "Marital Status",
+ "pg.person_marital_statuses.start_date": "Valid From"
+}

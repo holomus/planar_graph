@@ -1,0 +1,23 @@
+{
+ "attach $1": "Biriktirish $1",
+ "attach $1{location_count} location(s)?": "Siz haqiqatdan ham <b>$1</b> ta joylashuv(lar)ni biriktirmoqchimisiz?",
+ "attach location $1{location_name}?": "Siz haqiqatdan ham <b>$1</b>ni biriktirmoqchimisiz?",
+ "attached locations": "Biriktirilganlar",
+ "detach $1": "Ajratish $1",
+ "detach $1{location_count} location(s)?": "Siz haqiqatdan ham <b>$1</b> ta joylashuv(lar)ni ajratmoqchimisiz?",
+ "detach location $1{location_name}?": "Siz haqiqatdan ham <b>$1</b>ni ajratmoqchimisiz?",
+ "detached locations": "Mavjud joylashuvlar",
+ "locations.accuracy": "Aniqlik (metrlarda)",
+ "locations.address": "Manzil",
+ "locations.attach_type_name": "Biriktiruv turi",
+ "locations.attached_by_name": "Biriktirdi",
+ "locations.attached_on": "Biriktirilgan sana",
+ "locations.code": "Kod",
+ "locations.location_id": "ID",
+ "locations.location_type_name": "Joylashuv turi",
+ "locations.name": "Nom",
+ "locations.prohibited_name": "Qaydlar cheklovi",
+ "locations.region_name": "Hudud",
+ "locations.state_name": "Holat",
+ "locations.timezone_code": "Vaqt mintaqasi"
+}

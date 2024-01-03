@@ -1,0 +1,15 @@
+{
+ "add": "Add",
+ "delete $1": "Delete $1",
+ "delete $1{rounds_count} round(s)?": "Delete $1 round(s)?",
+ "delete round?": "Delete round?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.job_name": "Job",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.object_name": "Object",
+ "table.round_id": "ID",
+ "table.round_model_type_name": "Rounding Type"
+}

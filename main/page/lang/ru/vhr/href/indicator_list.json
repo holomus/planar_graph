@@ -1,0 +1,16 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{indicator_count} indicator(s)?": "Удалить показатели расчета зарплаты в количестве <b>$1</b>?",
+ "delete indicator $1{indicator_name}?": "Удалить показатель расчета зарплаты <b>$1</b>?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.identifier": "Идентификатор",
+ "table.indicator_group_name": "Группа показателя",
+ "table.indicator_id": "ИД",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.short_name": "Краткое название",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,21 @@
+{
+ "data": "Data",
+ "do you want to import file?": "Do you want to import file?",
+ "errors": "Errors",
+ "file": "File",
+ "import": "Import",
+ "import succeeded!": "The file has been successfully uploaded!",
+ "pg.error_messages.error": "Error",
+ "pg.error_messages.row_id": "Row Number",
+ "pg.staffs.actions": "Actions",
+ "pg.staffs.division": "Department",
+ "pg.staffs.employee_name": "Employee",
+ "pg.staffs.hiring_date": "Hiring Date",
+ "pg.staffs.job": "Job",
+ "pg.staffs.rownum": "No.",
+ "pg.staffs.schedule": "Work Schedule",
+ "pg.staffs.staff_id": "ID",
+ "save": "Save",
+ "save?": "Save?",
+ "template": "Template"
+}

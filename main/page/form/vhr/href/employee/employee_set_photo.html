@@ -1,0 +1,128 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  var d = { template: {} },
+      q = model;
+
+  function loadPhotos() {
+    page.post(':load_photos', { template_key: d.template.key, file_id: d.file_id }).then(res => {
+      d.files = _.groupBy(res.files, 'status');
+      setActiveTab('success');
+      notify(t('files succesfully loaded')());
+    }, page.alert);
+  }
+
+  function files(type) {
+    return d.files?.[type] || [];
+  }
+
+  function setActiveTab(active_tab) {
+    q.active_tab = active_tab;
+  }
+
+  q.active_tab = 'success';
+  q.templates = _.mapMatrix(q.templates, ['key', 'name']);
+
+  // definition of settings
+  function maekDefinitionSettings(id, title, message) {
+    $(`#${id}`).attr('title', title)
+    q[`t_load_info`] = message;
+  }
+
+  maekDefinitionSettings('load_info', t('how it works')(), t('If in template has a Employee Number, function will be scan in filial level, otherwise function will be scan in company level. Succes means - these photos set in the same time for profile photo and identification photo.Warning means - these images are likely to correspond to these employees. Not Found means - these images not found employee for depends on this template.')());
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="form-row mb-4">
+        <div class="col-sm-10">
+          <label><t>template</t><r/></label><br/>
+          <b-input local-data="q.templates"
+                   model="d.template.name | name"
+                   model-key="d.template.key | key"
+                   required-key>
+              {{ row.name }}
+          </b-input>
+        </div>
+        <div class="col-sm-6">
+          <label><t>folder</t></label><br/>
+          <b-input name="folders"
+                   model="d.folder_name | name"
+                   model-key="d.file_id | file_id">
+            {{ row.name }}
+          </b-input>
+        </div>
+      </div>
+      <div>
+        <button type="button" class="btn btn-success mb-4" ng-click="loadPhotos()" ng-disabled="!d.template.key"><t>load</t></button>
+        <a class="w-100 b-right" style="cursor: pointer;" id="load_info" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_load_info }}" tabindex="0">
+          <i class="far fa-question-circle"></i>
+        </a>
+      </div>
+      <ul class="nav nav-tabs nav-tabs-line mb-4" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{'active': q.active_tab == 'success'}" data-toggle="tab" ng-click="setActiveTab('success')" role="tab">
+            <span><t p1="d.files['S'].length > 0 ? d.files['S'].length : 0">success ($1)</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{'active': q.active_tab == 'warning'}" data-toggle="tab" ng-click="setActiveTab('warning')" role="tab">
+            <span><t p1="d.files['W'].length > 0 ? d.files['W'].length : 0">warning ($1)</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{'active': q.active_tab == 'not_found'}" data-toggle="tab" ng-click="setActiveTab('not_found')" role="tab">
+            <span><t p1="d.files['N'].length > 0 ? d.files['N'].length : 0">not found ($1)</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane" ng-class="{'active': q.active_tab == 'success'}">
+          <div class="row">
+            <div class="col-sm-10 mb-2 offset-sm-14">
+              <b-pg-controller name="success"/>
+            </div>
+          </div>
+          <b-pg-grid name="success" local-data="files('S')" iterator="item" search="file_name, employee_names" min-width="500" limit="1000">
+            <b-pg-row>
+              <b-pg-col name="file_name" size="12"/>
+              <b-pg-col name="employee_names" size="12"/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{'active': q.active_tab == 'warning'}">
+          <div class="row">
+            <div class="col-sm-10 mb-2 offset-sm-14">
+              <b-pg-controller name="warning"/>
+            </div>
+          </div>
+          <b-pg-grid name="warning" local-data="files('W')" iterator="item" search="file_name, employee_names" min-width="500" limit="1000">
+            <b-pg-row>
+              <b-pg-col name="file_name" size="12"/>
+              <b-pg-col name="employee_names" size="12"/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{'active': q.active_tab == 'not_found'}">
+          <div class="row">
+            <div class="col-sm-10 mb-2 offset-sm-14">
+              <b-pg-controller name="not_found"/>
+            </div>
+          </div>
+          <b-pg-grid name="not_found" local-data="files('N')" iterator="item" search="file_name, employee_names" min-width="500" limit="1000">
+            <b-pg-row>
+              <b-pg-col name="file_name" size="12"/>
+              <b-pg-col name="employee_names" size="12"/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

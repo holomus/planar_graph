@@ -1,0 +1,12 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{edu_stage_count} education stages?": "Удалить виды образования в количестве <b>$1</b>?",
+ "delete education stage $1{edu_stage_name}?": "Удалить вид образования <b>$1</b>?",
+ "select": "Выбрать",
+ "select $1": "Выбрать $1",
+ "table.code": "Код",
+ "table.edu_stage_id": "ИД",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,72 @@
+<script biruni>
+page.ctrl(function(scope, model, t, $timeout) {
+  var d = {},
+      q = {};
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  $timeout(function() {
+    _.any(['staff_plans', 'staff_plan_items', 'staff_plan_parts', 'staff_plan_rules'], function(tab) {
+      if (_.isEmpty(d[tab])) return false;
+      page.$content.find('[data-target="' + pageId(tab, '#') + '"]').addClass('active');
+      page.$content.find(pageId(tab, '#')).addClass('active');
+      return true;
+    });
+  });
+
+  q.data = [
+    ['staff_plans', t('staff_plans')()],
+    ['staff_plan_items', t('staff_plan_items')()],
+    ['staff_plan_parts', t('staff_plan_parts')()],
+    ['staff_plan_rules', t('staff_plan_rules')()]
+  ];
+
+  q.data = _.mapRows(q.data, ['tab', 'name']);
+  q.columns = ['field_name', 'before', 'current'];
+
+  _.each(q.data, x => {
+    d[x.tab] = _.mapRows(model[x.tab], q.columns);
+  });
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+</div>
+<div class="b-content">
+  <div class="card card-custom">
+    <div class="card-header card-header-tabs-line">
+      <div class="card-toolbar align-items-end">
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item" ng-if="d[data.tab].length > 0" ng-repeat="data in q.data">
+            <a data-target="{{ pageId(data.tab, '#')}}" class="nav-link" data-toggle="tab" role="tab">
+              {{ data.name }}
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="tab-content">
+        <div class="tab-pane" ng-show="d[data.tab].length > 0" role="tabpanel" id="{{ pageId(data.tab) }}" ng-repeat="data in q.data">
+          <b-pg-grid name="{{ data.tab }}" local-data="d[data.tab]" search="field_name, before, current">
+            <b-pg-header name="field_name"><t>field_name</t></b-pg-header>
+            <b-pg-header name="before"><t>before</t></b-pg-header>
+            <b-pg-header name="current"><t>current</t></b-pg-header>
+            <b-pg-row>
+              <b-pg-col name="field_name" size=4/>
+              <b-pg-col name="before" size=10/>
+              <b-pg-col name="current" size=10/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
