@@ -1,0 +1,26 @@
+name: Update Patch Branch
+
+on:
+  workflow_run:
+    workflows: ["Tag on Merge to Master"]
+    types:
+      - completed
+
+jobs:
+  update-patch-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Delete existing patch branch
+      run: |
+        git push origin --delete patch
+        git branch -D patch
+
+    - name: Create new patch branch from master
+      run: |
+        git checkout master
+        git checkout -b patch
+        git push origin patch
