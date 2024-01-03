@@ -5,6 +5,7 @@ on:
     workflows: ["Tag on Merge to Master"]
     types:
       - completed
+      - success
 
 jobs:
   update-patch-branch:
