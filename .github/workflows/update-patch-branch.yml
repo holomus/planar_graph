@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Tag on Merge to Master"]
     types:
-      - completed
       - success
 
 jobs:
