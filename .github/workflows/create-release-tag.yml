@@ -5,6 +5,7 @@ on:
     workflows: ["Build and Push SQL Changes"]
     types:
       - completed
+      - success
 
 jobs:
   create-tag-and-release:

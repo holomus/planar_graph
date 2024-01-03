@@ -13,8 +13,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Run build_sql.bat
-      run: ./script/build_oracle/build_sql.bat
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Run build_sql.py
+      run: python script/build_oracle/build_sql.py
 
     - name: Commit and push changes
       run: |
