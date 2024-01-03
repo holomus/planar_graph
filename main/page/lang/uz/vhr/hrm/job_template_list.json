@@ -1,0 +1,18 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{template_count} template(s)?": "<b>$1</b>ta andoza(lar)ni o'chirmoqchimisiz?",
+ "delete template $1{template_id}?": "ID: <b>$1</b> andozani o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.division_id": "Bo'lim ID",
+ "table.division_name": "Bo'lim",
+ "table.job_name": "Lavozim",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.rank_name": "Daraja",
+ "table.schedule_name": "Ish jadvali",
+ "table.template_id": "ID",
+ "table.vacation_days_limit": "Yillik mehnat ta'tili davomiyligi",
+ "table.wage_scale_name": "Tarif setkasi"
+}

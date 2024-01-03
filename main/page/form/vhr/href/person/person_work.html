@@ -1,0 +1,459 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout) {
+  var d = _.pick(param, 'person_id'),
+      q = {},
+      p = {};
+
+  //sort function
+  function sortFunction(a, b, key) {
+    let c = a[key];
+    let d = b[key];
+    return c > d ? 1 : c < d ? -1: 0;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      p.fail_msg = false;
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // experience types
+  function setExperienceType(data, row) {
+    if (!row) return;
+    data.experience_type_id = row.experience_type_id;
+    data.experience_type_name = row.name;
+  }
+
+  function addExperienceType(data, value) {
+    fi.add_experience_type(null, _.partial(setExperienceType, data), { name: value });
+  }
+
+  function selectExperienceType(data) {
+    fi.select_experience_type(null, _.partial(setExperienceType, data));
+  }
+
+  // awards
+  function setAward(data, row) {
+    if (!row) return;
+    data.award_id = row.award_id;
+    data.award_name = row.name;
+  }
+
+  function addAward(data, value) {
+    fi.add_award(null, _.partial(setAward, data), { name: value });
+  }
+
+  function selectAward(data) {
+    fi.select_award(null, _.partial(setAward, data));
+  }
+
+  // person experiences
+  function addPersonExperience() {
+    scope.modal_content = 'person_experience_vhr44.html';
+    p.title = t('add person experience')();
+    p.data = { is_working: 'Y', num_year: 0, num_month: 0, num_day: 0 };
+    showModal();
+  }
+
+  function editPersonExperience(row) {
+    scope.modal_content = 'person_experience_vhr44.html';
+    p.title = t('edit person experience')();
+    p.data = angular.copy(row);
+    p.data.num_year = p.data.num_year | 0;
+    p.data.num_month = p.data.num_month | 0;
+    p.data.num_day = p.data.num_day | 0;
+    showModal();
+  }
+
+  function savePersonExperience() {
+    if (page.valid(scope.modal)) {
+      let data = _.omit(p.data, 'experience_type_name');
+          data.person_id = d.person_id;
+      fi.save_experience(data).then(function(result) {
+        p.data.person_experience_id = result.person_experience_id;
+        d.person_experiences = _.reject(d.person_experiences, x => x.person_experience_id == p.data.person_experience_id);
+        d.person_experiences.push(p.data);
+        d.person_experiences.sort(_.partial(sortFunction, _, _, 'experience_type_name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonExperience(row) {
+    page.confirm(t('delete person experience $1{experience type name}?')(row.experience_type_name), function() {
+      fi.del_experience({ person_experience_id: row.person_experience_id }).then(function() {
+        var index = _.findIndex(d.person_experiences, row);
+        d.person_experiences.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  // person work places
+  function addPersonWorkPlace() {
+    scope.modal_content = 'person_work_place_vhr44.html';
+    p.title = t('add person work place')();
+    p.data = {};
+    showModal();
+  }
+
+  function editPersonWorkPlace(row) {
+    scope.modal_content = 'person_work_place_vhr44.html';
+    p.title = t('edit person work place')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function savePersonWorkPlace() {
+    if (page.valid(scope.modal)) {
+      let data = angular.copy(p.data);
+          data.person_id = d.person_id;
+      fi.save_work_place(data).then(function(result) {
+        p.data.person_work_place_id = result.person_work_place_id;
+        d.person_work_places = _.reject(d.person_work_places, x => x.person_work_place_id == p.data.person_work_place_id);
+        d.person_work_places.push(p.data);
+        d.person_work_places.sort(_.partial(sortFunction, _, _, 'organization_name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonWorkPlace(row) {
+    page.confirm(t('delete person work place $1{organization name}?')(row.organization_name), function() {
+      fi.del_work_place({ person_work_place_id: row.person_work_place_id }).then(function() {
+        var index = _.findIndex(d.person_work_places, row);
+        d.person_work_places.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  // person awards
+  function addPersonAward() {
+    scope.modal_content = 'person_award_vhr44.html';
+    p.title = t('add person award')();
+    p.data = {};
+    p.data.files = [];
+    showModal();
+  }
+
+  function editPersonAward(row) {
+    scope.modal_content = 'person_award_vhr44.html';
+    p.title = t('edit person award')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function savePersonAward() {
+    if (page.valid(scope.modal)) {
+      let data = _.omit(p.data, 'award_name');
+          data.person_id = d.person_id;
+      fi.save_award(data).then(function(result) {
+        p.data.person_award_id = result.person_award_id;
+        d.person_awards = _.reject(d.person_awards, x => x.person_award_id == p.data.person_award_id);
+        d.person_awards.push(p.data);
+        d.person_awards.sort(_.partial(sortFunction, _, _, 'award_name'));
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonAward(row) {
+    page.confirm(t('delete person award $1{award name}?')(row.award_name), function() {
+      fi.del_award({ person_award_id: row.person_award_id }).then(function() {
+        var index = _.findIndex(d.person_awards, row);
+        d.person_awards.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+
+  d.person_experiences = _.mapRows(model.person_experiences, ['person_experience_id',
+                                                              'experience_type_id',
+                                                              'experience_type_name',
+                                                              'is_working',
+                                                              'start_date',
+                                                              'num_year',
+                                                              'num_month',
+                                                              'num_day']);
+
+  d.person_work_places = _.mapRows(model.person_work_places, ['person_work_place_id',
+                                                              'start_date',
+                                                              'end_date',
+                                                              'organization_name',
+                                                              'job_title',
+                                                              'organization_address']);
+
+  d.person_awards = _.mapRows(model.person_awards, ['person_award_id',
+                                                    'award_id',
+                                                    'award_name',
+                                                    'is_working',
+                                                    'start_date',
+                                                    'num_year',
+                                                    'num_month',
+                                                    'num_day']);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>experiences</t></h3>
+      </div>
+      <div class="card-toolbar">
+        <button type="button" class="btn btn-outline-success" ng-if="fi.save_experience" ng-click="addPersonExperience()"><t>add</t></button>
+      </div>
+    </div>
+    <div class="card-body">
+      <b-pg-grid name="person_experiences" local-data="d.person_experiences" min-height="'auto'" search="experience_type_name" searchable="start_date" sort="experience_type_name, start_date" current-limit="1000">
+        <b-pg-header name="action">
+          ::label
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="experience_type_name" size="16"/>
+          <b-pg-col name="is_working" size="3">
+            <div class="alert alert-custom alert-text text-center py-1 px-3 m-0" ng-class="row.is_working == 'Y' ? 'alert-light-success': 'alert-light-danger'">
+              <div class="alert-text" ng-if="row.is_working == 'Y'"><t>yes</t></div>
+              <div class="alert-text" ng-if="row.is_working == 'N'"><t>no</t></div>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="start_date" size="3"/>
+          <b-pg-col name="action" size="2">
+            <div class="text-center w-100 dropdown" ng-if="fi.save_experience || fi.del_experience">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                <a class="dropdown-item" ng-if="fi.save_experience" ng-click="editPersonExperience(row)"><t>edit</t></a>
+                <a class="dropdown-item text-danger" ng-if="fi.del_experience" ng-click="delPersonExperience(row)"><t>delete</t></a>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>work places</t></h3>
+      </div>
+      <div class="card-toolbar">
+        <button type="button" class="btn btn-outline-success" ng-if="fi.save_work_place" ng-click="addPersonWorkPlace()"><t>add</t></button>
+      </div>
+    </div>
+    <div class="card-body">
+      <b-pg-grid name="person_work_places" local-data="d.person_work_places" min-height="'auto'" search="organization_name, job_title"
+                 searchable="start_date" sort="organization_name, job_title, start_date" current-limit="1000">
+        <b-pg-header name="action">
+          ::label
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="start_date" size="3"/>
+          <b-pg-col name="end_date" size="3"/>
+          <b-pg-col name="organization_name" size="6"/>
+          <b-pg-col name="job_title" size="6"/>
+          <b-pg-col name="organization_address" size="4"/>
+          <b-pg-col name="action" size="2">
+            <div class="text-center w-100 dropdown" ng-if="fi.save_work_place || fi.del_work_place">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                <a class="dropdown-item" ng-if="fi.save_work_place" ng-click="editPersonWorkPlace(row)"><t>edit</t></a>
+                <a class="dropdown-item text-danger" ng-if="fi.del_work_place" ng-click="delPersonWorkPlace(row)"><t>delete</t></a>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+  <div class="card card-custom card-stretch gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>awards</t></h3>
+      </div>
+      <div class="card-toolbar">
+        <button type="button" class="btn btn-outline-success" ng-if="fi.save_award" ng-click="addPersonAward()"><t>add</t></button>
+      </div>
+    </div>
+    <div class="card-body">
+      <b-pg-grid name="person_awards" local-data="d.person_awards" min-height="'auto'" search="award_name, doc_title, doc_number"
+                 searchable="doc_date" sort="award_name, doc_title, doc_number, doc_date" current-limit="1000">
+        <b-pg-header name="action">
+          ::label
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="award_name" size="8"/>
+          <b-pg-col name="doc_title" size="8"/>
+          <b-pg-col name="doc_number" size="3"/>
+          <b-pg-col name="doc_date" size="3"/>
+          <b-pg-col name="action" size="2">
+            <div class="text-center w-100 dropdown" ng-if="fi.save_award || fi.del_award">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                <a class="dropdown-item" ng-if="fi.save_award" ng-click="editPersonAward(row)"><t>edit</t></a>
+                <a class="dropdown-item text-danger" ng-if="fi.del_award" ng-click="delPersonAward(row)"><t>delete</t></a>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- PERSON EXPERIENCE MODAL -->
+  <script type="text/ng-template" id="person_experience_vhr44.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><t>experience type name</t><r/></label>
+        <b-input name="experience_types"
+                 model="p.data.experience_type_name | name"
+                 model-key="p.data.experience_type_id | experience_type_id"
+                 is-add="fi.add_experience_type"
+                 is-view="fi.select_experience_type"
+                 on-add="addExperienceType(p.data, value)"
+                 on-view="selectExperienceType(p.data)"
+                 required-key>
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>is working</t></label><br/>
+          <label class="switch">
+            <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.data.is_working"/>
+            <span>
+              <t ng-if="p.data.is_working == 'Y'">yes</t>
+              <t ng-if="p.data.is_working == 'N'">no</t>
+            </span>
+          </label>
+        </div>
+        <div class="col-sm">
+          <label><t>start date</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.start_date" b-date-picker="DD.MM.YYYY" required/>
+        </div>
+      </div>
+      <div class="form-row mb-4" ng-if="p.data.is_working == 'N'">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>number of years</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.num_year" b-number scale="0" precision="2" required/>
+        </div>
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>number of months</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.num_month" b-number scale="0" precision="2" required/>
+        </div>
+        <div class="col-sm">
+          <label><t>number of days</t><r/></label>
+          <input type="text" class="form-control" ng-model="p.data.num_day" b-number scale="0" precision="2" required/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_experience" ng-click="savePersonExperience()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+  <!-- PERSON WORK PLACE MODAL -->
+  <script type="text/ng-template" id="person_work_place_vhr44.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><t>organization name</t><r/></label>
+        <input type="text" class="form-control" ng-model="p.data.organization_name" b-maxlength="250" required/>
+      </div>
+      <div class="form-group">
+        <label><t>job title</t><r/></label>
+        <input type="text" class="form-control" ng-model="p.data.job_title" b-maxlength="100" required/>
+      </div>
+      <div class="form-group">
+        <label><t>organization address</t></label>
+        <textarea class="form-control" ng-model="p.data.organization_address" b-maxlength="300"></textarea>
+      </div>
+      <div class="form-row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>begin date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.start_date" b-date-picker="DD.MM.YYYY"/>
+        </div>
+        <div class="col-sm">
+          <label><t>end date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker="DD.MM.YYYY"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_work_place" ng-click="savePersonWorkPlace()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+  <!-- PERSON AWARD MODAL -->
+  <script type="text/ng-template" id="person_award_vhr44.html">
+    <div class="modal-header">
+      <h5 class="modal-title" ng-bind-html="p.title"></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><t>award name</t><r/></label>
+        <b-input name="awards"
+                 model="p.data.award_name | name"
+                 model-key="p.data.award_id | award_id"
+                 is-add="fi.add_award"
+                 is-view="fi.select_award"
+                 on-add="addAward(p.data, value)"
+                 on-view="selectAward(p.data)"
+                 required-key>
+          {{ row.name }}
+        </b-input>
+      </div>
+      <div class="form-group">
+        <label><t>document title</t></label>
+        <input type="text" class="form-control" ng-model="p.data.doc_title" b-maxlength="100"/>
+      </div>
+      <div class="form-row mb-4">
+        <div class="col-sm mb-4 mb-sm-0">
+          <label><t>document number</t></label>
+          <input type="text" class="form-control" ng-model="p.data.doc_number" b-maxlength="50"/>
+        </div>
+        <div class="col-sm">
+          <label><t>document date</t></label>
+          <input type="text" class="form-control" ng-model="p.data.doc_date" b-date-picker="DD.MM.YYYY"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-if="fi.save_award" ng-click="savePersonAward()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+</div>

@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{institution_count} institution(s)?": "Do you really want to delete <b>$1</b> educational institution(s)?",
+ "delete institution $1{institution_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.institution_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

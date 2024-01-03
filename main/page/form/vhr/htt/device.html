@@ -1,0 +1,414 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, param, xparam, t) {
+  var d = _.isUndefined(model.device_id) ? _.extend(model, xparam) : model;
+  var q = model.references;
+
+  // terminal model
+  function setTerminalModel(row) {
+    if (!row) return;
+    d.model_name = row.name;
+    d.model_id = row.model_id;
+  }
+
+  function selectTerminalModel() {
+    fi.select_terminal_model(null, setTerminalModel, { where: ['state', '=', 'A'] });
+  }
+
+  /*------------------------- location -------------------------*/
+  function setLocation(row) {
+    if (!row) return;
+    d.location_id = row.location_id;
+    d.location_name = row.name;
+    d.person_id = '';
+    d.person_name = '';
+
+    page.query('persons').param({ location_id: d.location_id });
+  }
+
+  function addLocation(value) {
+    fi.add_location(null, setLocation, { name: value });
+  }
+
+  function selectLocation() {
+    fi.select_location(null, setLocation, { where: ['and', [['state', '=', 'A'], ['prohibited', '=', 'N']]] });
+  }
+
+  function nullif(val, origin) {
+    if (val) return origin;
+    return null;
+  }
+  /*--------------------------- save --------------------------*/
+  function save(sync) {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        if (d.use_settings == 'N') {
+          d.track_types = _.compact([nullif(d.track_type_input, 'I'), nullif(d.track_type_output, 'O'), nullif(d.track_type_check, 'C')]).join(",");
+          d.mark_types = _.compact([nullif(d.mark_type_face, 'F'), nullif(d.mark_type_qr_code, 'Q'), nullif(d.mark_type_password, 'P')]).join(",");
+          d.emotion_types = d.mark_type_face ? _.compact([nullif(d.emotion_type_smile, 'S'), nullif(d.emotion_type_wink, 'W')]).join(",") : null;
+        } else {
+          d.track_types = null;
+          d.mark_types = null;
+          d.emotion_types = null;
+          d.lang_code = null;
+        }
+
+        let array = ['device_type_name', 'location_name', 'terminal', 'lang_name', 'device_types',
+                     'emotion_type_smile', 'emotion_type_wink',
+                     'mark_type_face', 'mark_type_password', 'mark_type_qr_code',
+                     'track_type_check', 'track_type_input', 'track_type_output'];
+
+        if (!d.restrict_track_types) array.push('restricted_type', 'only_last_restricted');
+
+        let data = _.omit(d, array);
+        data.admins = _.pluck(data.admins, 'person_id');
+        data.sync = sync;
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function setSettings() {
+    q.use_settings = !q.use_settings;
+  }
+
+  function onIgnoreTracksChange() {
+    if (d.ignore_tracks == 'N') return;
+
+    let t_message = t('no tracks will be accepted from this device, are you sure?')();
+
+    page.confirm(t_message, _, _ => {
+      d.ignore_tracks = 'N';
+    });
+  }
+
+  d.track_types = d.track_types ? d.track_types.split(",") : null;
+  d.mark_types = d.mark_types ? d.mark_types.split(",") : null;
+  d.emotion_types = d.emotion_types ? d.emotion_types.split(",") : null;
+
+  d.track_type_input = _.contains(d.track_types, 'I');
+  d.track_type_output =_.contains(d.track_types, 'O');
+  d.track_type_check = _.contains(d.track_types, 'C');
+
+  d.mark_type_face = _.contains(d.mark_types, 'F');
+  d.mark_type_qr_code =_.contains(d.mark_types, 'Q');
+  d.mark_type_password = _.contains(d.mark_types, 'P');
+
+  d.emotion_type_smile = _.contains(d.emotion_types, 'S');
+  d.emotion_type_wink = _.contains(d.emotion_types, 'W');
+
+  d.admins = _.mapRows(model.admins, ['person_id', 'name']);
+
+  d.restrict_track_types = !!d.restricted_type;
+  d.restricted_type = d.restricted_type || q.track_type_input;
+
+  q.timepad = q.device_types.timepad;
+  q.terminal = q.device_types.terminal;
+  q.hikvision = q.device_types.hikvision;
+  q.dahua = q.device_types.dahua;
+
+  q.integrate_settings = !d.device_id || !d.integrate_by_service || d.integrate_by_service == 'N';
+
+  q.protocols = _.mapRows(q.protocols, ['kind', 'name']);
+
+  if (param.location_id) {
+    q.location_id = param.location_id;
+    if (!param.device_id){
+      page.post(':location_name', { location_id: q.location_id }).then(result => {
+        d.location_name = result.location_name;
+        d.location_id = q.location_id;
+      }, page.alert);
+    }
+  }
+
+  if (d.location_id) {
+    page.query('persons').param({ location_id: d.location_id });
+  }
+
+  if (!_.isEmpty(xparam)) d = _.extend(d, xparam);
+
+  q.tDownloadTimepadApp = t('download timepad application')();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('sync')"><t>save and sync</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group" ng-if="!d.device_id">
+            <label><t>device type</t></label><br/>
+            <label class="radio"><input type="radio" name="device_type" value="{{ q.timepad.device_type_id }}" ng-model="d.device_type_id"/><span>{{ q.timepad.name }}</span></label>
+            <label class="radio"><input type="radio" name="device_type" value="{{ q.terminal.device_type_id }}" ng-model="d.device_type_id"/><span>{{ q.terminal.name }}</span></label>
+            <label class="radio"><input type="radio" name="device_type" value="{{ q.hikvision.device_type_id }}" ng-model="d.device_type_id"/><span>{{ q.hikvision.name }}</span></label>
+            <label class="radio"><input type="radio" name="device_type" value="{{ q.dahua.device_type_id }}" ng-model="d.device_type_id"/><span>{{ q.dahua.name }}</span></label>
+          </div>
+          <div>
+            <div class="form-group">
+              <label><t>name</t></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100"/>
+            </div>
+            <div class="form-group" ng-if="d.device_id">
+              <label><t>device type</t></label>
+              <span class="form-view">{{ d.device_type_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>location</t><r ng-if="!q.location_id"/></label>
+              <b-input name="locations"
+                       model="d.location_name | name"
+                       model-key="d.location_id | location_id"
+                       is-add="fi.add_location"
+                       on-add="addLocation(value)"
+                       is-view="fi.select_location"
+                       on-view="selectLocation()"
+                       ng-if="!q.location_id"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+              <span class="form-view" ng-if="q.location_id">{{ d.location_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>serial number</t><r ng-if="!d.device_id"/></label>
+              <input type="text" class="form-control" ng-model="d.serial_number" b-maxlength="100" ng-if="!d.device_id" required/>
+              <span class="form-view" ng-if="d.device_id">{{ d.serial_number }}</span>
+            </div>
+            <div class="form-group" ng-if="q.integrate_settings && (d.device_type_id == q.hikvision.device_type_id || d.device_type_id == q.dahua.device_type_id)">
+              <label><t>integrate by local service</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.integrate_by_service"/>
+                <span>
+                  <t ng-if="d.integrate_by_service == 'N'">no</t>
+                  <t ng-if="d.integrate_by_service == 'Y'">yes</t>
+                </span>
+              </label>
+            </div>
+            <div ng-if="d.device_type_id == q.terminal.device_type_id">
+              <div class="form-group">
+                <label><t>terminal model</t><r/></label>
+                <b-input name="terminal_models"
+                         model="d.model_name | name"
+                         model-key="d.model_id | model_id"
+                         on-select="setTerminalModel(row)"
+                         is-view="fi.select_terminal_model"
+                         on-view="selectTerminalModel()"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div ng-if="d.device_type_id != q.hikvision.device_type_id && d.device_type_id != q.dahua.device_type_id">
+              <div class="form-group">
+                <label><t>admins</t></label>
+                <b-input multiple
+                         name="admins"
+                         model="d.admins"
+                         model-key="person_id"
+                         label="name">
+                    {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div ng-if="d.device_type_id == q.timepad.device_type_id">
+              <div class="form-group">
+                <label><t>use general setting for track types and mark types</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.use_settings"/>
+                  <span>
+                    <t ng-if="d.use_settings == 'Y'">yes</t>
+                    <t ng-if="d.use_settings == 'N'">no</t>
+                  </span>
+                </label>
+              </div>
+              <div ng-if="d.use_settings == 'N'">
+                <div class="form-group">
+                  <label><t>languages</t><r ng-if="d.use_settings == 'N'"/></label>
+                  <b-input name="languages"
+                           model="d.lang_name | name"
+                           model-key="d.lang_code | lang_code"
+                           required-key="d.use_settings == 'N'">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+                <label><t>track types</t></label><br/>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.track_type_input"/>
+                    <span><t>track type input</t></span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.track_type_output"/>
+                    <span><t>track type output</t></span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.track_type_check"/>
+                    <span><t>track type check</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label><t>mark types</t></label><br/>
+                  <div class="form-group">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="d.mark_type_qr_code"/>
+                      <span><t>mark type qr code</t></span>
+                    </label>
+                    <label class="checkbox">
+                      <input type="checkbox" ng-model="d.mark_type_password"/>
+                      <span><t>mark type password</t></span>
+                    </label>
+                  </div>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.mark_type_face"/>
+                    <span><t>mark type face</t></span>
+                  </label>
+                  <label class="checkbox" ng-if="d.mark_type_face">
+                    <input type="checkbox" ng-model="d.emotion_type_smile"/>
+                    <span><t>emotion type face</t></span>
+                  </label>
+                  <label class="checkbox" ng-if="d.mark_type_face">
+                    <input type="checkbox" ng-model="d.emotion_type_wink"/>
+                    <span><t>emotion type wink</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div ng-if="d.integrate_by_service == 'Y' && (d.device_type_id == q.hikvision.device_type_id || d.device_type_id == q.dahua.device_type_id)">
+              <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                <label><t>ip address</t><r/></label>
+                <input type="text" class="form-control" b-maxlength="30" ng-model="d.ip_address" required/>
+              </div>
+              <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                <label><t>port</t><r/></label>
+                <input type="text" class="form-control" b-maxlength="10" ng-model="d.port" required/>
+              </div>
+              <div class="form-group" ng-if="d.dynamic_ip == 'Y'">
+                <label><t>protocol</t></label><br/>
+                <label class="radio" ng-repeat="protocol in q.protocols">
+                  <input type="radio" name="protocol" value="{{ protocol.kind }}" ng-model="d.protocol"/>
+                  <span>{{ protocol.name }}</span>
+                </label>
+              </div>
+              <div class="form-group" ng-if="d.dynamic_ip == 'N'">
+                <label><t>host</t><r/></label>
+                <input type="text" class="form-control" b-maxlength="100" ng-model="d.host" required/>
+              </div>
+              <div class="form-group">
+                <label><t>login</t><r/></label>
+                <input type="text" class="form-control" b-maxlength="100" ng-model="d.login" required/>
+              </div>
+              <div class="form-group">
+                <label><t>password</t><r ng-if="!d.device_id || q.integrate_settings"/></label>
+                <input type="text" class="form-control" b-maxlength="100" ng-model="d.password" ng-required="!d.device_id || q.integrate_settings"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>restrict track types from device</t></label><br/>
+              <label class="switch">
+                <div class="form-group">
+                  <input type="checkbox" ng-model="d.restrict_track_types"/>
+                  <span>
+                    <t ng-if="!d.restrict_track_types">no</t>
+                    <t ng-if="d.restrict_track_types">yes</t>
+                  </span>
+                </div>
+              </label>
+              <div class="form-group" ng-if="d.restrict_track_types">
+                <label class="radio">
+                  <input type="radio"
+                         name="restricted_type"
+                         value="{{ q.track_type_input }}"
+                         ng-model="d.restricted_type"/>
+                  <span><t>track type input</t></span>
+                </label>
+                <label class="radio">
+                  <input type="radio"
+                         name="restricted_type"
+                         value="{{ q.track_type_output }}"
+                         ng-model="d.restricted_type"/>
+                  <span><t>track type output</t></span>
+                </label>
+                <label class="radio">
+                  <input type="radio"
+                         name="restricted_type"
+                         value="{{ q.track_type_check }}"
+                         ng-model="d.restricted_type"/>
+                  <span><t>track type check</t></span>
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" ng-disabled="d.restricted_type == q.track_type_check" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.only_last_restricted"/>
+                  <span><t>turnstile mode</t></span>
+                </label>
+                <span class="form-text text-muted mt-0">
+                  <t>turnstile mode will pass only last input/output</t>
+                </span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>autogen types</t></label><br/>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-disabled="d.restrict_track_types && d.restricted_type != q.track_type_check" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.autogen_inputs"/>
+                  <span><t>autogen inputs</t></span>
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" ng-disabled="d.restrict_track_types && d.restricted_type != q.track_type_check" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.autogen_outputs"/>
+                  <span><t>autogen outputs</t></span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>ignore tracks from this device</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.ignore_tracks" ng-change="onIgnoreTracksChange()"/>
+                <span>
+                  <t ng-if="d.ignore_tracks == 'Y'">yes</t>
+                  <t ng-if="d.ignore_tracks == 'N'">no</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>ignore images from this device</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.ignore_images"/>
+                <span>
+                  <t ng-if="d.ignore_images == 'Y'">yes</t>
+                  <t ng-if="d.ignore_images == 'N'">no</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>state</t></label><br/>
+                  <label class="switch">
+                    <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                    <span>
+                      <t ng-if="d.state == 'A'">active</t>
+                      <t ng-if="d.state == 'P'">passive</t>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div ng-if="d.device_type_id == q.timepad.device_type_id">
+            <div class="form-group">
+              <label class="mb-4" ng-bind-html="q.tDownloadTimepadApp"></label>
+              <div class="pv-download">
+                <a href="https://play.google.com/store/apps/details?id=uz.datalab.verifix.timepad" target="_android">
+                  <img class="w-auto h-35px" alt='Get it on Google Play' src="page/resource/vhr/google-play-badge.png"/>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

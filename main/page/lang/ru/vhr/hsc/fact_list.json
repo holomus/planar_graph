@@ -1,0 +1,16 @@
+{
+ "add": "Создать",
+ "delete $1": "Удалить $1",
+ "delete $1{fact_count} fact(s)?": "Удалить факты в количестве <b>$1</b>?",
+ "delete fact from $1{fact_date}?": "Удалить факт за <b>$1</b>?",
+ "table.area_id": "ИД зоны",
+ "table.area_name": "Зона",
+ "table.driver_id": "ИД драйвера",
+ "table.driver_name": "Драйвер",
+ "table.fact_date": "Дата",
+ "table.fact_id": "ИД",
+ "table.fact_type_name": "Тип",
+ "table.fact_value": "Значение",
+ "table.object_id": "ИД объекта",
+ "table.object_name": "Объект"
+}

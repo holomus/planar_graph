@@ -1,0 +1,15 @@
+{
+ "attach": "Прикрепить",
+ "attach $1": "Прикрепить $1",
+ "attach $1{job_count} job(s)": "Прикрепить $1 должностей?",
+ "attach job $1{job_name}?": "Прикрепить $1?",
+ "attached": "Прикрепленные",
+ "detach": "Открепить",
+ "detach $1": "Открепить $1",
+ "detach $1{job_count} job(s)": "Открепить $1 должностей?",
+ "detach job $1{job_name}?": "Открепить $1?",
+ "detached": "Доступные",
+ "table.code": "Код",
+ "table.job_id": "ИД",
+ "table.name": "Название"
+}

@@ -1,0 +1,17 @@
+{
+ "files succesfully loaded": "Файлы успешно загружены",
+ "folder": "Папка",
+ "how it works": "Как это работает",
+ "If in template has a Employee Number, function will be scan in filial level, otherwise function will be scan in company level. Succes means - these photos set in the same time for profile photo and identification photo.Warning means - these images are likely to correspond to these employees. Not Found means - these images not found employee for depends on this template.": "Если в шаблоне есть номер сотрудника, функция будет сканироваться на уровне филиала, иначе функция будет сканироваться на уровне компании. Успешно - означает что фотографии установлены для профиля и распознавания. Предупреждение - означает что изображения, вероятно, соответствуют данным сотрудникам. Не найдено - означает что для этих изображений не найдены сотрудники, который зависит от данного шаблона.",
+ "load": "Загрузить",
+ "not found ($1)": "Не найдено ($1)",
+ "pg.not_found.employee_names": "Имена сотрудников",
+ "pg.not_found.file_name": "Файл",
+ "pg.success.employee_names": "Имена сотрудников",
+ "pg.success.file_name": "Файл",
+ "pg.warning.employee_names": "Имена сотрудников",
+ "pg.warning.file_name": "Файл",
+ "success ($1)": "Успешно ($1)",
+ "template": "Шаблон",
+ "warning ($1)": "Предупреждение ($1)"
+}

@@ -1,0 +1,13 @@
+drop trigger testchik_tr;
+drop table testchik;
+
+create table testchik(a varchar2(100), b varchar2(100));
+
+create or replace trigger testchik_tr
+before insert on testchik
+begin
+  if :new.a in ('data1', 'data2') then
+    RAISE_APPLICATION_ERROR (-20202, 'Credit Limit cannot be less than 8000');
+  end if;
+end;
+/

@@ -1,0 +1,239 @@
+<script biruni>
+  page.ctrl(function(scope, model, fi, xparam, $timeout) {
+    var d = _.isUndefined(model.data.job_id) ? _.extend(model.data, _.omit(xparam, 'division_ids')) : model.data,
+        q = _.omit(model, 'data');
+
+  // job group
+  function setJobGroup(row) {
+    if (!row) return;
+    d.job_group_id = row.job_group_id;
+    d.job_group_name = row.name;
+  }
+
+  function selectJobGroup() {
+    fi.select_job_group(null, setJobGroup, { where: ['state', '=', 'A'] });
+  }
+
+  function addJobGroup(value) {
+    fi.add_job_group(null, setJobGroup, { name: value });
+  }
+
+  // expense coa
+  function setExpenseCoa(row) {
+    if (!row) return;
+    d.expense_coa_id = row.coa_id;
+    d.expense_coa_name = row.gen_name;
+
+    if (d.expense_coa_id) {
+      page.post(':coa_info', { coa_id: row.coa_id }).then(function(result) {
+        d.expense_ref_types = result.ref_types;
+      }, page.alert);
+    } else {
+      d.expense_ref_types = [];
+    }
+  }
+
+  function selectExpenseCoa() {
+    fi.select_expense_coa(null, setExpenseCoa, { where: ['state', '=', 'A'] });
+  }
+
+  function addExpenseCoa(value) {
+    fi.add_expense_coa(null, setExpenseCoa, { name: value });
+  }
+
+  function setOrigin(ref_type, origin) {
+    ref_type.ref_origin_id = origin.ref_origin_id;
+    ref_type.ref_type_name = origin.name;
+    ref_type.ref_id = '';
+    ref_type.ref_name = '';
+  }
+
+  function changeRefQuery(ref_type, query) {
+    query.param({ ref_origin_id: ref_type.ref_origin_id }).searchValue(ref_type.ref_name);
+  }
+
+  function setRefType(ref_type, origin, row) {
+    if (row) {
+      if (ref_type.ref_name_procedure) {
+        ref_type.ref_id = row;
+        page.post(':ref_name', {
+          ref_type: ref_type.ref_type,
+          ref_id: ref_type.ref_id
+        }).then(function(result) {
+          if (result) {
+            ref_type.ref_name = result;
+          }
+        });
+      } else {
+        ref_type.ref_id = row[origin.field_id];
+        ref_type.ref_name = row[origin.field_name];
+      }
+    }
+  }
+
+  function selectRefType(ref_type, origin) {
+    page.openDialog(origin.form, null, _.partial(setRefType, ref_type, origin, _));
+  }
+
+  function removeRefType(index) {
+    d.expense_ref_types.splice(index, 1);
+  }
+
+  function changeMode(mode) {
+    q.addMode = (mode == 'ADD');
+    q.editMode = (mode == 'EDIT');
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      var data = _.pick(d, 'job_id', 'name', 'code', 'state', 'job_group_id', 'expense_coa_id', 'division_ids');
+      data.role_ids = _.pluck(d.roles, 'role_id');
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  function selectRole() {
+    let where, role_ids = _.pluck(d.roles, 'role_id');
+    if (role_ids.length) {
+      where = { where: ['role_id', '<>', role_ids] };
+    }
+    fi.select_role(null, role => {
+      if (_.isEmpty(role)) return;
+      d.roles.push(role);
+    }, where);
+  }
+
+  q.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  d.roles = _.mapRows(d.roles, ['role_id', 'name']) || [];
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>code</t></label>
+                <input class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input class="form-control" ng-model="d.name" b-maxlength="200" required/>
+            </div>
+            <div class="form-group">
+              <label><t>job group</t></label>
+              <b-input name="job_group"
+                       model="d.job_group_name | name"
+                       model-key="d.job_group_id | job_group_id"
+                       is-add="fi.add_job_group"
+                       on-add="addJobGroup(value)"
+                       is-view="fi.select_job_group"
+                       on-view="selectJobGroup()">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>roles</t></label>
+              <b-input multiple
+                      name="roles"
+                      model="d.roles"
+                      model-key="role_id"
+                      label="name"
+                      is-view="fi.select_role"
+                      on-view="selectRole()">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>divisions</t></label>
+              <b-tree-select
+                multiple
+                origin="q.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"/>
+            </div>
+            <div class="form-group">
+              <label><t>expense coa</t></label>
+              <b-input name="job_coa"
+                       model="d.expense_coa_name | gen_name"
+                       model-key="d.expense_coa_id | coa_id"
+                       is-add="fi.add_expense_coa"
+                       on-add="addExpenseCoa(value)"
+                       on-select="setExpenseCoa(row)"
+                       on-delete="setExpenseCoa({})"
+                       is-view="fi.select_expense_coa"
+                       on-view="selectExpenseCoa()">
+                {{ row.gen_name }}
+              </b-input>
+            </div>
+            <div class="form-group row" ng-repeat="ref_type in d.expense_ref_types">
+              <div class="col-sm" ng-if="ref_type.exist_in_coa == 'Y'">
+                <label ng-if="ref_type.origins.length == 1">{{ ref_type.ref_type_name }}</label>
+                <label ng-if="ref_type.origins.length > 1">
+                  <span data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ ref_type.ref_type_name }}&nbsp;<i class="fa fa-angle-down" style="color: black;"></i>
+                  </span>
+                  <div class="dropdown-menu">
+                    <span class="dropdown-item" style="cursor: pointer;" ng-repeat="origin in ref_type.origins" ng-click="setOrigin(ref_type, origin)">{{ origin.name }}</span>
+                  </div>
+                </label>
+                <div ng-repeat="origin in ref_type.origins">
+                  <div ng-if="ref_type.ref_origin_id == origin.ref_origin_id">
+                    <div ng-if="origin.kind == q.origin_kind_query">
+                      <b-input name="origins"
+                               model="ref_type.ref_name | name"
+                               model-key="ref_type.ref_id | ref_id"
+                               on-change="changeRefQuery(ref_type, query)"
+                               on-view="selectRefType(ref_type, origin)"
+                               is-view="origin.form">
+                        {{ row.name }}
+                      </b-input>
+                    </div>
+                    <input class="form-control" ng-model="ref_type.ref_id" b-number ng-if="origin.kind == q.origin_kind_number"/>
+                    <input class="form-control" ng-model="ref_type.ref_id" b-date-picker ng-if="origin.kind == q.origin_kind_date"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm" ng-if="ref_type.exist_in_coa == 'N'">
+                <label>{{ ref_type.ref_type_name }}</label>
+                <div class="input-group">
+                  <input class="form-control" ng-model="ref_type.ref_name" readonly/>
+                  <div class="input-group-append" ng-if="!q.readonly">
+                    <button type="button" class="btn btn-default" ng-click="removeRefType($index)"><i class="fa fa-times"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>state</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                <span>
+                  <t ng-if="d.state=='A'">active</t>
+                  <t ng-if="d.state=='P'">passive</t>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

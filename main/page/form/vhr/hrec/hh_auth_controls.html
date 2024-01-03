@@ -1,0 +1,28 @@
+<script biruni>
+page.ctrl(function(scope, model, t, fi) {
+  function authHH() {
+    let auth_window = window.open('about:blank', 'hh_window');
+    fi.auth_hh()
+      .then(result => {
+        auth_window.location = result.auth_url;
+      })
+      .catch(page.alert);
+  }
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch">
+          <div class="card-body">
+            <div class="form-group d-flex justify-content-between">
+              <span><t style="line-height: 2.5;">to use HH.uz you must first authenticate</t></span>
+              <button type="button" class="btn btn-success float-right" ng-click="authHH()" ng-if="fi.auth_hh"><t>auth in HH.uz</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,13 @@
+{
+ "integrate": "Add to statistics",
+ "integrate $1": "Add to statistics $1",
+ "integrate $1{tracks_count} track(s)": "Add <b>$1</b> tracks to statistics",
+ "integrate track on $1{track_date} for $2{person_name}": "Add track to the statistics with the date of $1 for $2",
+ "table.error_text": "Error text",
+ "table.mark_type_name": "Identification type",
+ "table.person_name": "Natural Person",
+ "table.status_name": "Status",
+ "table.track_datetime": "Date and Time",
+ "table.track_id": "ID",
+ "table.track_type_name": "Track Type"
+}

@@ -1,0 +1,379 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.person_id && param.track_date) {
+    t.where(['and', [['person_id', '=', param.person_id], ['track_date', '=', param.track_date]]]);
+  }
+
+  const check_track_type = 'C',
+        potential_output_type = 'P';
+
+  var tg = page.grid('table');
+  var trackTypeColors = { C: '#ffa800', I: '#6993ff', O: '#f64e60', M:'#8950fc', P:'#ff8b97', G: '#ff499a' };
+  var statusClass = { D: 'secondary', N: 'warning', P: 'info', U: 'primary' };
+
+  function trackRow(track) {
+    return `<span class="row m-0"><span class="fa fa-circle" style="color:${ trackTypeColors[track.type] }"></span>&nbsp;<span>${ track.type_name }</span></span>`;
+  }
+
+  tg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+  tg.asHtml('track_type_html', 'track_type, track_type_name', function(row) {
+    let track_badges = _.reduce(row.track_types.split(','), (memo, x) => memo + trackBadge(x), '');
+    return `${ track_badges }&nbsp;<span>${ row.track_type_name }</span>`;
+  });
+  tg.asHtml('track_type_html', 'track_type, track_type_name, original_type, original_type_name', function(row) {
+    let track_types = _.chain((row.track_type || row.original_type).split(','))
+                       .map(str => str.trim())
+                       .unique()
+                       .value();
+    let track_names = _.chain((row.track_type_name || row.original_type_name).split(','))
+                       .map(str => str.trim())
+                       .unique()
+                       .value();
+
+    return _.chain(track_types)
+            .zip(track_names)
+            .map(x => _.object(['type', 'type_name'], x))
+            .reject(x => track_types.length > 1 && x.type == check_track_type)
+            .reduce((memo, x) => memo + trackRow(x), '')
+            .value();
+  });
+  tg.asHtml('original_type_html', 'original_type, original_type_name', function(row) {
+    return `<span class="fa fa-circle" style="color:${ trackTypeColors[row.original_type] }"></span>&nbsp;<span>${ row.original_type_name }</span>`;
+  });
+  tg.asHtml('modified_track_type_name_html', 'modified_track_type, modified_track_type_name', function(row) {
+    return `<span class="fa fa-circle" style="color:${ trackTypeColors[row.modified_track_type] }"></span>&nbsp;<span>${ row.modified_track_type_name }</span>`;
+  });
+  tg.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageSmall(row.photo_sha) }"/>` : null;
+  });
+  tg.asHtml('quality_photo_html', 'quality_photo_sha', function(row) {
+    return row.quality_photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageMedium(row.quality_photo_sha) }"/>` : null;
+  });
+  tg.asHtml('latlng_exists_html', 'latlng_exists', function(row) {
+    return `<i class="fa ${ row.latlng_exists == 'Y' ? 'fa-check text-success' : 'fa-times text-danger' }"/>`;
+  });
+  tg.asHtml('photo_exists_html', 'photo_exists', function(row) {
+    return `<i class="fa ${ row.photo_exists == 'Y' ? 'fa-check text-success' : 'fa-times text-danger' }"/>`;
+  });
+  tg.asHtml('track_changed_html', 'track_changed, track_changed_name', function(row) {
+    return `<span class="badge badge-${ row.track_changed == 'Y' ? 'primary' : 'secondary' }">${ row.track_changed_name }</span>`;
+  });
+  tg.asHtml('is_potential_output_html', 'is_potential_output, is_potential_output_name', function(row) {
+    return `<span class="badge badge-${ row.is_potential_output == 'Y' ? 'primary' : 'secondary' }">${ row.is_potential_output_name }</span>`;
+  });
+  tg.asHtml('is_valid_html', 'is_valid, is_valid_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.is_valid == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.is_valid_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var q = model,
+      p = {};
+
+  function hasAccess(row) {
+    return q.access_all_employee == 'Y' || row.access_level != q.ual_personal && row.access_level != q.ual_other;
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    p.data = {
+      track_type: q.default_track_type,
+      is_valid: q.default_is_valid,
+      track_time: moment().format('DD.MM.YYYY HH:mm')
+    };
+
+    page.untouch(scope.modal);
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function addTrackModal() {
+    if (page.valid(scope.modal)) {
+      let data = _.pick(p.data, 'person_id', 'location_id', 'track_type', 'note', 'is_valid', 'track_time');
+
+      fi.add(data).then(function(){
+        page.grid('table').fetch();
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  // person
+  function setPerson(row) {
+    if (!row) return;
+    p.data.person_id = row.person_id;
+    p.data.person_name = row.name;
+  }
+
+  function addPerson(value) {
+    fi.add_person(null, setPerson, { name: value });
+  }
+
+  function selectPerson() {
+    fi.select_person(null, setPerson, { where: ['state', '=', 'A'] });
+  }
+
+  // location
+  function setLocation(row) {
+    if (!row) return;
+    p.data.location_id = row.location_id;
+    p.data.location_name = row.name;
+  }
+
+  function selectLocation() {
+    fi.select_location(null, setLocation, { where: ['and', [['state', '=', 'A'], ['prohibited', '=', 'N']]] });
+  }
+
+  function addLocation(value) {
+    fi.add_location(null, setLocation, { name: value });
+  }
+
+  function view(row) {
+    fi.view({ track_id: row.track_id });
+  }
+
+  function doAction(action, message, track_id) {
+    page.confirm(message, function() {
+      action({ track_id: track_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function doActionOne(action, confirmFunc) {
+    return function(row) {
+      doAction(action, confirmFunc(row.person_name, row.track_time), row.track_id);
+    };
+  }
+
+  function doActionMany(action, confirmFunc, key) {
+    return function() {
+      doAction(action, confirmFunc(q[key].size), _.pluck(q[key].rows, 'track_id'));
+    };
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepareChecked('to_valid', checked, x => x.is_valid == 'N' && hasAccess(x));
+    prepareChecked('to_invalid', checked, x => x.is_valid == 'Y' && hasAccess(x));
+    prepareChecked('to_delete', checked, x => true);
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : null;
+  }
+
+  function changeTrackType(row, track_type) {
+    page.post(':change_track_type', { track_id: row.track_id, track_type: track_type.key }).then(page.reload, page.alert);
+  }
+
+  function canChangeType(row) {
+    if ((q.access_all_employee == 'Y') &&
+        (row.modified_track_type == q.track_type_input ||
+         row.modified_track_type == q.track_type_output ||
+         row.modified_track_type == q.track_type_check) &&
+        ((row.modified_track_type == q.track_type_input  && fi.track_type_output && fi.track_type_check) ||
+         (row.modified_track_type == q.track_type_output && fi.track_type_input  && fi.track_type_check) ||
+         (row.modified_track_type == q.track_type_check  && fi.track_type_output && fi.track_type_input) )) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  q.track_types = [];
+
+  if (fi.track_type_input)  q.track_types.push({ name: t('input')(),  key: q.track_type_input });
+  if (fi.track_type_output) q.track_types.push({ name: t('output')(), key: q.track_type_output });
+  if (fi.track_type_check)  q.track_types.push({ name: t('check')(),  key: q.track_type_check });
+
+  scope.q = q;
+  scope.p = p;
+
+  scope.deleteOne = doActionOne(fi.delete, t('delete track of $1 at $2?'));
+  scope.deleteMany = doActionMany(fi.delete, t('delete $1 row(s)?'), 'to_delete');
+  scope.setValidOne = doActionOne(fi.set_valid, t('valid track of $1 at $2?'));
+  scope.setValidMany = doActionMany(fi.set_valid, t('valid $1 row(s)?'), 'to_valid');
+  scope.setInvalidOne = doActionOne(fi.set_invalid, t('invalid track of $1 at $2?'));
+  scope.setInvalidMany = doActionMany(fi.set_invalid, t('invalid $1 row(s)?'), 'to_invalid');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.access_all_employee == 'Y'">
+      <button type="button" class="btn btn-success" ng-click="showModal()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="fi.copy_tracks_to_filial" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="fi.copy_tracks_to_filial">
+        <a href class="dropdown-item" ng-click="fi.copy_tracks_to_filial()">{{ fi.copy_tracks_to_filial.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="setValidMany()" ng-if="fi.set_valid" ng-show="q.to_valid.has">
+      <t p1="q.to_valid.size">set valid $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="setInvalidMany()" ng-if="fi.set_invalid" ng-show="q.to_invalid.has">
+      <t p1="q.to_invalid.size">set invalid $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.to_delete.has && q.access_all_employee == 'Y'">
+      <t p1="q.to_delete.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="track_id, track_date, person_name, track_time, original_type, modified_track_type, is_valid, access_level"
+            on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="-track_time" search="person_name, location_name, device_type_name"
+            searchable="track_type_name, mark_type_name, track_time, location_type_name"
+            extra-columns="location_type_name, note, latlng, region_name, track_time_hh24_mi, device_name, location_defined_by_name, created_by_name, created_on, modified_by_name, modified_on, access_level_name">
+      <b-row>
+        <b-col name="person_name" size=6/>
+        <b-col name="location_name" size=4/>
+        <b-col name="device_type_name" size=4/>
+        <b-col name="track_type_name" as-html="track_type_html" size=3/>
+        <b-col name="mark_type_name" size=3/>
+        <b-col name="track_time" size=3/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="photo_sha" as-html="photo_html" img="100;100"/>
+        <b-col name="quality_photo_sha" as-html="quality_photo_html" img="100;100"/>
+        <b-col name="latlng_exists_name" as-html="latlng_exists_html"/>
+        <b-col name="photo_exists_name" as-html="photo_exists_html"/>
+        <b-col name="is_valid_name" as-html="is_valid_html"/>
+        <b-col name="original_type_name" as-html="original_type_html"/>
+        <b-col name="is_potential_output_name" as-html="is_potential_output_html"/>
+        <b-col name="modified_track_type_name" as-html="modified_track_type_name_html"/>
+        <b-col name="status_name" as-html="status_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="setValidOne(row)" ng-if="fi.set_valid && row.is_valid == 'N' && hasAccess(row)">{{ fi.set_valid.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="setInvalidOne(row)" ng-if="fi.set_invalid && row.is_valid == 'Y' && hasAccess(row)">{{ fi.set_invalid.title }}</button>
+        <div class="btn-group" ng-if="canChangeType(row)">
+          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change type to: </t></button>
+          <div class="dropdown-menu">
+            <a href class="dropdown-item" ng-repeat="type in q.track_types" ng-if="type.key != row.modified_track_type" ng-click="changeTrackType(row, type)">{{ type.name }}</a>
+          </div>
+        </div>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && q.access_all_employee == 'Y'">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="track_id" directive="equal" extra/>
+      <b-filter name="person_id" decorate-with="person_name"/>
+      <b-filter name="location_id" decorate-with="location_name"/>
+      <b-filter name="device_type_id" decorate-with="device_type_name"/>
+      <b-filter name="track_type" decorate-with="track_type_name"/>
+      <b-filter name="mark_type" decorate-with="mark_type_name"/>
+      <b-filter name="track_time"/>
+      <b-filter name="region_id" decorate-with="region_name" extra/>
+      <b-filter name="location_type_id" decorate-with="location_type_name" extra/>
+      <b-filter name="latlng_exists" decorate-with="latlng_exists_name" extra/>
+      <b-filter name="photo_exists" decorate-with="photo_exists_name" extra/>
+      <b-filter name="location_defined_by" decorate-with="location_defined_by_name" extra/>
+      <b-filter name="original_type" decorate-with="original_type_name" extra/>
+      <b-filter name="modified_track_type" decorate-with="modified_track_type_name" extra/>
+      <b-filter name="is_valid" decorate-with="is_valid_name" extra/>
+      <b-filter name="is_potential_output" decorate-with="is_potential_output_name" extra/>
+      <b-filter name="status" decorate-with="status_name" extra/>
+      <b-filter name="device_id" decorate-with="device_name" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+      <b-filter name="access_level" decorate-with="access_level_name" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>add</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>person</t><r/></label>
+              <b-input name="persons"
+                       model="p.data.person_name | name"
+                       model-key="p.data.person_id | person_id"
+                       is-add="fi.add_person"
+                       is-view="fi.select_person"
+                       on-view="selectPerson()"
+                       on-add="addPerson(value)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>location</t></label>
+              <b-input name="locations"
+                       model="p.data.location_name | name"
+                       model-key="p.data.location_id | location_id"
+                       is-add="fi.add_location"
+                       is-view="fi.select_location"
+                       on-view="selectLocation()"
+                       on-add="addLocation(value)">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>track time</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.track_time" b-date-picker="DD.MM.YYYY HH:mm" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>track type</t></label><br/>
+              <label class="radio" ng-if="fi.track_type_check">
+                <input type="radio" name="track_type" value="C" ng-model="p.data.track_type"/><span><t>check</t></span>
+              </label>
+              <label class="radio" ng-if="fi.track_type_input">
+                <input type="radio" name="track_type" value="I" ng-model="p.data.track_type"/><span><t>input</t></span>
+              </label>
+              <label class="radio" ng-if="fi.track_type_output">
+                <input type="radio" name="track_type" value="O" ng-model="p.data.track_type"/><span><t>output</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="p.data.note" b-maxlength="300"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>is valid</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.data.is_valid"/>
+                <span>
+                  <t ng-if="p.data.is_valid == 'Y'">yes</t>
+                  <t ng-if="p.data.is_valid == 'N'">no</t>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.add" ng-click="addTrackModal()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

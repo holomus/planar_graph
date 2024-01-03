@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{organization_count} organization(s)?": "Delete <b>$1</b> organizations?",
+ "delete organization $1{organization_name}?": "Delete <b>$1</b> organization?",
+ "get organizations from HCP": "Download",
+ "table.created_on": "Created on",
+ "table.modified_on": "Modified on",
+ "table.organization_code": "Code",
+ "table.organization_name": "Organization"
+}

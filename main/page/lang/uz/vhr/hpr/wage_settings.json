@@ -1,0 +1,23 @@
+{
+ "employee payment": "Xodim",
+ "employee payment description": "Xodimlarga ish haqi hisoblash holatlari sozlamalari",
+ "accrual coa": "Hisoblash hisobvarag'i",
+ "advance coa": "Ish haqi uchun berilgan bo'naklar",
+ "allow other currencies": "Valyutadan foydalanishga ruxsat berish",
+ "deduction coa": "Ushlab qolish hisobvarag'i",
+ "income tax": "Daromad solig'i",
+ "income tax coa": "Hisobvaraq",
+ "income tax description": "Jismoniy shaxslar uchun daromad solig'i",
+ "income tax exists": "Daromad solig'ini o'rnatish",
+ "income tax rate (%)": "Foiz (%)",
+ "pension payment": "ShJBPH",
+ "pension payment coa": "Hisobvaraq",
+ "pension payment description": "Shaxsiy jamg'arib boriladigan pensiya hisobvarag'i",
+ "pension payment exists": "ShJBPH o'rnatish",
+ "pension payment rate (%)": "Foiz (%)",
+ "social payment": "Yagona ijtimoiy to'lov",
+ "social payment coa": "Hisobvaraq",
+ "social payment description": "Yagona ijtimoiy to'lov",
+ "social payment exists": "Yagona ijtimoiy to'lov o'rnatish",
+ "social payment rate (%)": "Foiz (%)"
+}

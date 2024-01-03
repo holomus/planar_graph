@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/hes/staff
+begin
+uis.lang_uz('#a:/vhr/hes/staff$change_approve','Ish jadvalini o''zgartirishni qabul qilish');
+uis.lang_uz('#a:/vhr/hes/staff$change_complete','Ish jadvalini o''zgartirishni tasdiqlash');
+uis.lang_uz('#a:/vhr/hes/staff$change_delete','Ish jadvalini o''zgartirishni o''chirish');
+uis.lang_uz('#a:/vhr/hes/staff$change_deny','Ish jadvalini o''zgartirishni rad etish');
+uis.lang_uz('#a:/vhr/hes/staff$change_reset','Ish jadvalini o''zgartirishni qaytarish');
+uis.lang_uz('#a:/vhr/hes/staff$change_save_for_subordinate','Bo''ysunuvchi uchun ish jadvalini o''zgartirish so''rovini yaratish');
+uis.lang_uz('#a:/vhr/hes/staff$day_statistics','Kun tafsilotlari');
+uis.lang_uz('#a:/vhr/hes/staff$hide_salary','Yashirish "Mening ish haqim"');
+uis.lang_uz('#a:/vhr/hes/staff$request_approve','Ish joyida yo''qlik so''rovini qabul qilish');
+uis.lang_uz('#a:/vhr/hes/staff$request_complete','Ish joyida yo''qlik so''rovini tasdiqlash');
+uis.lang_uz('#a:/vhr/hes/staff$request_delete','Ish joyida yo''qlik so''rovini o''chirish');
+uis.lang_uz('#a:/vhr/hes/staff$request_deny','Ish joyida yo''qlik so''rovini rad etish');
+uis.lang_uz('#a:/vhr/hes/staff$request_reset','Ish joyida yo''qlik so''rovini qaytarish');
+uis.lang_uz('#a:/vhr/hes/staff$set_invalid','Yaroqsiz qilish');
+uis.lang_uz('#a:/vhr/hes/staff$set_valid','Yaroqli qilish');
+uis.lang_uz('#f:/vhr/hes/staff','Tashqi tizimlar (Verifix Staff)');
+uis.lang_uz('ui-vhr95:credit','Qarz');
+uis.lang_uz('ui-vhr95:day skip amount','Qoldirilgan ish kuni');
+uis.lang_uz('ui-vhr95:early amount','Erta ketish');
+uis.lang_uz('ui-vhr95:fact_time','Ishlangan vaqt');
+uis.lang_uz('ui-vhr95:lack amount','Yo''qlik');
+uis.lang_uz('ui-vhr95:late amount','Kech kelish');
+uis.lang_uz('ui-vhr95:mark skip amount','Qoldirilgan belgilash');
+uis.lang_uz('ui-vhr95:onetime accrual','Mukofot');
+uis.lang_uz('ui-vhr95:onetime penalty','Jarima');
+uis.lang_uz('ui-vhr95:overtime amount','Qo''shimcha ish');
+uis.lang_uz('ui-vhr95:person documents, document_type=$1','Hujjat turi: $1');
+uis.lang_uz('ui-vhr95:personal income tax','Daromad solig''i');
+uis.lang_uz('ui-vhr95:time on your phone is wrong! please fix it!','Qurilmadagi vaqtda xatolik mavjud. Iltimos, xatolikni to''g''irlang va qaytadan urinib ko''ring!');
+uis.lang_uz('ui-vhr95:transaction is invalid','Tranzaksiya yaroqli emas');
+uis.lang_uz('ui-vhr95:user cannot send track with face recognition','Foydalanuvchi Face ID orqali qaydlarni amalga oshira olmaydi');
+uis.lang_uz('ui-vhr95:user cannot send track with mark_types other than $1, $2 and $3','Foydalanuvchi faqat quyidagi usullarda qaydlarni amalga oshira oladi: $1, $2 yoki $3');
+uis.lang_uz('ui-vhr95:wage amount','Maosh');
+uis.lang_uz('ui-vhr95:when face recognition is on there must be photo of staff','Yuz aniqlash sozlamalari yoqilgan holatda fotosurat yuborilishi shart');
+uis.lang_uz('ui-vhr95:you can not send input track','"Kirish" qaydini yubora olmaysiz');
+uis.lang_uz('ui-vhr95:you can not send output track','"Chiqish" qaydini yubora olmaysiz');
+uis.lang_uz('ui-vhr95:you do not have access to input','Kirish uchun ruxsat berilmagan');
+uis.lang_uz('ui-vhr95:you do not have access to location, location_id=$1','Joylashuv uchun ruxsat berilmagan, ID=$1');
+uis.lang_uz('ui-vhr95:you do not have access to output','Chiqish qaydini amalga oshirishga ruxsat berilmagan');
+uis.lang_uz('ui-vhr95:you do not have access to send track','Qaydlarni yuborish uchun ruxsat yo''q');
+uis.lang_uz('ui-vhr95:you do not have access to track','Qaydlar uchun ruxsat yo''q');
+commit;
+end;
+/

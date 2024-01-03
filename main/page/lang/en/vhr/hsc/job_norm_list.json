@@ -1,0 +1,21 @@
+{
+ "add": "Add",
+ "delete $1": "Delete $1",
+ "delete $1{norms_count} norm(s)?": "Delete norms in the amount of <b>$1</b>?",
+ "delete norm?": "Delete the norm?",
+ "select": "Pick-up",
+ "table.absense_margin": "Vacations and Sick leaves (%)",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.division_name": "Department",
+ "table.idle_margin": "Simple (%)",
+ "table.job_name": "Job",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.month": "Month",
+ "table.monthly_days": "Norm of days",
+ "table.monthly_hours": "Hours norm",
+ "table.norm_id": "ID",
+ "table.object_name": "Object",
+ "table.round_model_type_name": "Rounding Type"
+}

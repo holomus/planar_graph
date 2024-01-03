@@ -1,0 +1,13 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another document type": "Kod allaqachon boshqa hujjat turiga biriktirilgan",
+ "is required": "Ishga qabul qilish bo'yicha hujjat",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi shart",
+ "no": "Yo'q",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat",
+ "yes": "Ha"
+}

@@ -1,0 +1,14 @@
+{
+ "table.extra_amount_enabled_name": "Add amount by setting bonus and fines from plan",
+ "delete $1": "Delete $1",
+ "delete $1{plan_type_count} ?": "Do you really want to delete <b>$1</b> measure(s)?",
+ "delete plan type $1(plan_type_name)?": "Do you really want to delete <b>$1</b> ?",
+ "select": "Select",
+ "table.calc_kind_name": "Result Calculation Type",
+ "table.code": "Code",
+ "table.group_name": "Measures Group",
+ "table.name": "Name",
+ "table.order_no": "No.",
+ "table.plan_type_id": "ID",
+ "table.state_name": "Status"
+}

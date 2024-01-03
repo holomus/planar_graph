@@ -1,0 +1,14 @@
+{
+ "check": "Belgilash",
+ "input": "Kirish",
+ "is_valid": "Yaroqli",
+ "location": "Joylashuv",
+ "no": "Yo'q",
+ "note": "Izoh",
+ "output": "Chiqish",
+ "person": "Jismoniy shaxs",
+ "save": "Saqlash",
+ "track time": "Qayd vaqti",
+ "track type": "Qayd turlari",
+ "yes": "Ha"
+}

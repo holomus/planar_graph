@@ -1,0 +1,236 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bFrame) {
+  var d = model.data,
+      q = _.omit(model, 'data');
+
+  function whereStaff() {
+    let where = ['and', [
+                  ['hiring_date', '<=', q.current_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', q.current_date]
+                  ]]]];
+
+    if (q.personal_staff_id) where = ['and', [where, ['staff_id', '<>', q.personal_staff_id]]];
+    return where;
+  }
+
+  function setStaff(row) {
+    if (!row) return;
+    d.staff_id = row.staff_id;
+    d.staff_name = row.name;
+  }
+
+  function selectStaff() {
+    fi.select_staff(null, setStaff, { where: whereStaff() });
+  }
+
+  function setRequestKind(row) {
+    if (!row) return;
+    d.request_kind_id = row.request_kind_id;
+    d.request_kind_name = row.name;
+    d.annually_limited = row.annually_limited;
+
+    q.plan_load_full_block = row.plan_load != q.plan_load_full;
+    d.request_type = q.plan_load_full_block ? q.request_type_part_of_day : q.request_type_full_day;
+  }
+
+  function changeRequestKindQuery(query, value) {
+    query.param(_.pick(d, 'staff_id'));
+    query.searchValue(value);
+  }
+
+  function addRequestKind(value) {
+    fi.add_request_kind(null, setRequestKind, { name: value });
+  }
+
+  function selectRequestKind() {
+    fi.select_request_kind({ staff_id: d.staff_id }, setRequestKind);
+  }
+
+  function yearChange() {
+    if (!d.begin_date) return;
+    let end_date = d.end_date || d.begin_date;
+
+    d.begin_year = moment(d.begin_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD');
+    d.end_year = moment(end_date, 'DD.MM.YYYY').startOf('year').format('YYYYMMDD');
+  }
+
+  function changeNote() {
+    if (q.note_is_required == 'Y') {
+      q.note_valid = d.note.length > q.note_limit;
+    }
+  }
+
+  function save() {
+    if (page.valid(scope.form) && !((q.note_is_required == 'Y' && (!d.note || !q.note_valid)))) {
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'request_id',
+                             'staff_id',
+                             'request_kind_id',
+                             'request_type',
+                             'begin_date',
+                             'end_date',
+                             'begin_time',
+                             'end_time',
+                             'accrual_kind',
+                             'note');
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  q.request_types = _.mapRows(q.request_types, ['kind', 'name']);
+  q.personal_mode = q.personal_mode == 'Y';
+  q.plan_load_full_block = q.plan_load ? q.plan_load != q.plan_load_full : null;
+  q.note_valid = true;
+
+  if (q.request_kind_user_permitted == 'Y') {
+    d.staff_id = q.personal_staff_id;
+    page.query('request_kinds').where(['user_permitted', '=' , 'Y']);
+  }
+
+  yearChange();
+
+  scope.d = d;
+  scope.q = q;
+
+  scope.$watchGroup(['d.staff_id', 'd.request_kind_id', 'd.begin_year', 'd.end_year'], function() {
+    if (d.staff_id && d.request_kind_id && d.annually_limited == 'Y' && d.begin_date) {
+      let data = {
+        staff_id: d.staff_id,
+        request_kind_id: d.request_kind_id,
+        begin_date: d.begin_date,
+        end_date: d.end_date || d.begin_date,
+        request_id: d.request_id
+      };
+      page.post(':load_request_limits', data).then(function(result) {
+        d.accruals = result;
+      }, page.alert);
+    }
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group" ng-if="!q.personal_mode">
+            <label><t>staff</t><r/></label>
+            <b-input name="staffs"
+                     model="d.staff_name | name"
+                     model-key="d.staff_id | staff_id"
+                     column="staff_number, staff_kind_name"
+                     is-view="fi.select_staff"
+                     on-view="selectStaff()"
+                     readonly="!!d.request_id"
+                     required-key>
+              <header>
+                <div class="col-6"><t>staff number</t></div>
+                <div class="col-12"><t>staff name</t></div>
+                <div class="col-6"><t>staff kind name</t></div>
+              </header>
+              <content>
+                <div class="col-6">{{ row.staff_number }}</div>
+                <div class="col-12">{{ row.name }}</div>
+                <div class="col-6">{{ row.staff_kind_name }}</div>
+              </content>
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>request kind</t><r/></label>
+            <b-input name="request_kinds"
+                     model="d.request_kind_name | name"
+                     model-key="d.request_kind_id | request_kind_id"
+                     column="user_permitted, plan_load, annually_limited"
+                     on-change="changeRequestKindQuery(query, value)"
+                     is-add="fi.add_request_kind"
+                     on-add="addRequestKind(value)"
+                     is-view="fi.select_request_kind"
+                     on-view="selectRequestKind()"
+                     on-select="setRequestKind(row)"
+                     readonly="!d.staff_id"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="card card-custom card-body form-group" style="background-color: #ffffff !important;" ng-if="d.staff_id && d.request_kind_id && d.annually_limited == 'Y'">
+            <div class="form-group">
+              <div class="row">
+                <div class="col-sm-6"><label><t>limit period</t></label></div>
+                <div class="col-sm-6"><label><t>accrued days</t></label></div>
+                <div class="col-sm-6"><label><t>used days</t></label></div>
+                <div class="col-sm-6"><label><t>left days</t></label></div>
+              </div>
+            </div>
+            <div class="form-group" ng-repeat="accrual in d.accruals">
+              <div class="row" ng-if="d.accrual_kind == q.accrual_kind_plan">
+                <div class="col-sm-6"><label class="text-muted">{{ accrual.plan_begin_date }} &ndash; {{ accrual.plan_end_date }}</label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_accrued_days">$1 days</t></label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_used_days">$1 days</t></label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.plan_left_days">$1 days</t></label></div>
+              </div>
+              <div class="row" ng-if="d.accrual_kind == q.accrual_kind_carryover">
+                <div class="col-sm-6"><label class="text-muted">{{ accrual.carryover_begin_date }} &ndash; {{ accrual.carryover_end_date }}</label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_accrued_days">$1 days</t></label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_used_days">$1 days</t></label></div>
+                <div class="col-sm-6"><label class="text-muted"><t p1="accrual.carryover_left_days">$1 days</t></label></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="radio" ng-repeat="item in q.request_types">
+              <input type="radio" name="request_type" value="{{ item.kind }}" ng-model="d.request_type"
+              ng-disabled=" q.plan_load_full_block !== null
+                        && !q.plan_load_full_block && item.kind == q.request_type_part_of_day"/>
+              <span>{{ item.name }}</span>
+            </label>
+          </div>
+          <div class="form-row mb-4">
+            <div ng-class="d.request_type == q.request_type_part_of_day ? 'col-sm-8 mb-sm-0 mb-4' : 'col-sm-12'" ng-if="d.request_type != q.request_type_multiple_days">
+              <label><t>request date</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.begin_date" ng-change="yearChange()" required/>
+            </div>
+            <div class="col-sm-8 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_part_of_day">
+              <label><t>begin time</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.begin_time" required/>
+            </div>
+            <div class="col-sm-8 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_part_of_day">
+              <label><t>end time</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.end_time" b-date-picker="HH:mm" required/>
+            </div>
+            <div class="col-sm-12 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_multiple_days">
+              <label><t>begin date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.begin_date" b-date-picker="DD.MM.YYYY" ng-change="yearChange()" required/>
+            </div>
+            <div class="col-sm-12 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_multiple_days">
+              <label><t>end date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.end_date" b-date-picker="DD.MM.YYYY" ng-change="yearChange()" required/>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.annually_limited == 'Y'">
+            <label><t>accrual kind</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="accrual_kind" value="{{ q.accrual_kind_plan }}" ng-model="d.accrual_kind"/>
+              <span><t>plan</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="accrual_kind" value="{{ q.accrual_kind_carryover }}" ng-model="d.accrual_kind"/>
+              <span><t>carryover</t></span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label><t>note</t><r ng-if="q.note_is_required == 'Y'"></label>
+            <textarea class="form-control" ng-model="d.note" ng-change="changeNote()" b-maxlength="300" rows="2" ng-required="q.note_is_required == 'Y'"></textarea>
+            <small ng-if="q.note_is_required == 'Y' && !q.note_valid" class="form-text text-danger mt-0"><t p1="q.note_limit">letters must be minimum: $1</t></small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

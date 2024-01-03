@@ -1,0 +1,24 @@
+with Tracks as
+ (select Tr.Person_Id, max(Tr.Track_Date) Max_Track_Date
+    from (select t.Company_Id, t.Track_Date, t.Person_Id
+            from Htt_Tracks t
+          union all
+          select Tt.Company_Id, Tt.Track_Date, Tt.Person_Id
+            from Htt_Trash_Tracks Tt) Tr
+   where Tr.Company_Id = 580
+   group by Tr.Person_Id)
+select count(*)
+  from (select (select Tr.Max_Track_Date
+                  from Tracks Tr
+                 where Tr.Person_Id = p.Employee_Id) Max_Track_Date,
+               p.*
+          from Href_Staffs p
+         where p.Company_Id = 580
+           and p.Dismissal_Date is null
+           and exists (select *
+                  from Mhr_Employees q
+                 where q.Company_Id = 580
+                   and q.Filial_Id = p.Filial_Id
+                   and q.Employee_Id = p.Employee_Id
+                   and q.State = 'P')) Qr
+ where Qr.Max_Track_Date is null

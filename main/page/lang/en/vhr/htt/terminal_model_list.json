@@ -1,0 +1,9 @@
+{
+ "select": "Select",
+ "table.model_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.support_face_recognation_name": "Face Recognition Support",
+ "table.support_fprint_name": "Fingerprint Support",
+ "table.support_rfid_card_name": "RFID Card Support"
+}

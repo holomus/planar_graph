@@ -1,0 +1,22 @@
+{
+ "persons.passed_subjects_count": "Кол-во пройденных тем",
+ "subject group name": "Группа тематик",
+ "address": "Адрес",
+ "all persons count": "Кол-во всех участников",
+ "begin date": "Дата и время начала",
+ "created by": "Создал",
+ "created on": "Дата создания",
+ "main info": "Общая информация",
+ "mentor name": "Ментор",
+ "modified by": "Изменил",
+ "modified on": "Дата изменения",
+ "not passed persons count": "Кол-во провалившихся",
+ "passed percent": "Процент прошедших",
+ "passed persons count": "Кол-во прошедших",
+ "persons": "Участники",
+ "persons.passed_name": "Прошел",
+ "persons.person_name": "Участник",
+ "subject name": "Тематика тренинга",
+ "training info": "Общая информация",
+ "training number": "Номер тренинга"
+}

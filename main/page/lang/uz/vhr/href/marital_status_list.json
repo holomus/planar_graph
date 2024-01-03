@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{marital_status_count} marital status(es)?": "Haqiqatan ham <b>$1</b> ta nikoh holat(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete $1{marital_status_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.marital_status_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

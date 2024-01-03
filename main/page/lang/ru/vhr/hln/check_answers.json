@@ -1,0 +1,10 @@
+{
+ "correct": "Да",
+ "finish": "Завершить",
+ "not correct": "Нет",
+ "pg.answers.correct": "Верно",
+ "pg.answers.name": "Название",
+ "pg.answers.order_no": "Порядковый номер",
+ "pg.answers.writing_answer": "Письменный ответ",
+ "pg.answers.writing_hint": "Подсказка"
+}

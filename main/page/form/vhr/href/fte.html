@@ -1,0 +1,79 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, bHttp) {
+  model = model || {};
+  var d = _.isUndefined(model.fte_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  function validateName() {
+    if (d.name) {
+      if (d.name.toLowerCase() == q.name_origin) {
+        q.name_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':name_is_unique', { name: d.name }).then(function(result) {
+          q.name_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.name_is_unique = true;
+  }
+
+  function validateFteValue() {
+    if (d.fte_value) {
+      q.fte_value_is_valid = (1 >= parseFloat(d.fte_value) && parseFloat(d.fte_value) >= 0);
+    } else q.fte_value_is_valid = true;
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  if(d.fte_id) {
+    q.name_origin = d.name.toLowerCase();
+  }
+
+  validateName();
+  validateFteValue();
+
+  q.fte_value = xparam.fte_value;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" ng-model-options="{ debounce: 500 }"
+                   ng-change="validateName()" b-validate="{ s: q.name_is_unique || d.name.length == 0 }" b-maxlength="100" required/>
+            <span class="text-danger" ng-hide="d.name.length == 0 || q.name_is_unique"><t>name should be unique</t></span>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>fte value</t><r ng-if="!d.pcode && !q.fte_value"/></label>
+              <input type="text" class="form-control" ng-model="d.fte_value" ng-change="validateFteValue()" ng-if="!d.pcode && !q.fte_value"
+                     b-validate="{ s: q.fte_value_is_valid || d.fte_value.length == 0 }" b-number required/>
+              <span class="text-danger" ng-hide="d.fte_value.length == 0 || q.fte_value_is_valid"><t>fte value must be between 0 and 1</t></span>
+              <span class="form-view" ng-if="d.pcode || q.fte_value">{{ d.fte_value | bNumber }}</span>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>order no</t></label>
+              <input type="text" class="form-control" ng-model="d.order_no" b-number precision="6" scale="0"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

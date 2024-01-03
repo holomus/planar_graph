@@ -1,0 +1,512 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, AppSession) {
+  var d = _.omit(model, 'indicators', 'oper_types', 'wage_changes', 'oper_type_indicators', 'references')
+      q = model.references,
+      p = {};
+
+  // ------------------------------ staff ------------------------------//
+  function whereStaff(wage_change) {
+    let staff_ids = _.chain(d.wage_changes).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', wage_change.change_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', wage_change.change_date]
+                  ]]]
+                ];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    return where;
+  }
+
+  function changeStaffQuery(wage_change, query, value) {
+    query.where(whereStaff(wage_change)).searchValue(value);
+  }
+
+  function getStaffInfo(wage_change) {
+    if (!wage_change.change_date || !wage_change.staff_id) return;
+
+    page.post(':get_staff_info', _.pick(wage_change, 'change_date', 'staff_id', 'employee_id')).then(function(result) {
+      wage_change.contractual_wage = result.contractual_wage;
+      wage_change.access_to_hidden_salary_job = result.access_to_hidden_salary_job;
+    }, page.alert);
+  }
+
+  function setStaff(wage_change, row) {
+    if (!row) return;
+    wage_change.staff_id = row.staff_id;
+    wage_change.staff_name = row.name;
+    wage_change.employee_id = row.employee_id;
+
+    getStaffInfo(wage_change);
+  }
+
+  function selectStaff(wage_change) {
+    fi.select_staff({ date: wage_change.change_date }, _.partial(setStaff, wage_change), { where: whereStaff(wage_change) });
+  }
+
+  // ------------------------------ oper_type ------------------------------//
+  function addAccrualOperType(wage_change) {
+    wage_change.oper_types['A'].push({});
+  }
+
+  function addDeductionOperType(wage_change) {
+    wage_change.oper_types['D'].push({});
+  }
+
+  function setOperType(wage_change, item, row) {
+    if (!row) return;
+    item.oper_type_id = row.oper_type_id;
+    item.oper_type_name = row.name;
+    item.indicator_ids = [];
+    wage_change.indicators = wage_change.indicators || {};
+
+    if (item.oper_type_id) {
+      page.post(':get_indicators', _.pick(item, 'oper_type_id')).then((result) => {
+        result = _.mapRows(result, ['indicator_id', 'name']);
+        _.each(result, indicator => {
+          wage_change.indicators[indicator.indicator_id] = wage_change.indicators[indicator.indicator_id] || indicator;
+        });
+        item.indicator_ids = _.pluck(result, 'indicator_id');
+      }, page.alert);
+    }
+  }
+
+  function deleteOperTypeItem(oper_types, item) {
+    let index = _.findIndex(oper_types, item);
+    oper_types.splice(index, 1);
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.wage_changes, item);
+      d.wage_changes.splice(index, 1);
+    });
+  }
+
+  function whereOperType(wage_change, operation_kind, for_select) {
+    let oper_type_ids = _.chain(wage_change.oper_types[operation_kind])
+                          .pluck('oper_type_id')
+                          .compact()
+                          .value(),
+      where = [];
+
+    if (!_.isEmpty(oper_type_ids)) {
+      where = ['oper_type_id', '<>', oper_type_ids];
+    }
+
+    if (for_select) {
+      where = where.length > 0 ? ['and', [['oper_group_id', '=', q.access_oper_group_ids], where]] : ['oper_group_id', '=', q.access_oper_group_ids];
+    }
+
+    return where;
+  }
+
+  function changeOperTypeQuery(wage_change, query, value, operation_kind) {
+    query.param({ operation_kind: operation_kind }).where(whereOperType(wage_change, operation_kind, false)).searchValue(value);
+  }
+
+  function selectAccrual(wage_change, item) {
+    fi.select_accrual(null, _.partial(setOperType, wage_change, item), { where: whereOperType(wage_change, 'A', true) });
+  }
+
+  function selectDeduction(wage_change, item) {
+    fi.select_deduction(null, _.partial(setOperType, wage_change, item), { where: whereOperType(wage_change, 'D', true) });
+  }
+
+  function addAccrual(wage_change, item, value) {
+    fi.add_accrual(null, _.partial(setOperType, wage_change, item), { name: value });
+  }
+
+  function addDeduction(wage_change, item, value) {
+    fi.add_deduction(null, _.partial(setOperType, wage_change, item), { name: value });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function rankEnable() {
+    return q.position_enable == 'Y' || q.rank_enable == 'Y';
+  }
+
+  function rankRequired(transfer) {
+    return q.position_enable == 'Y' && transfer.contractual_wage == 'N';
+  }
+
+  function wageInputEnable(transfer) {
+    return rankRequired(transfer)
+        || rankEnable() && q.wage_scale_enable == 'Y' &&
+           transfer.rank_id && transfer.wage_scale_id;
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        var data = _.pick(d, 'journal_id', 'journal_number', 'journal_name', 'journal_date');
+        data.posted = posted;
+        data.wage_changes = _.chain(angular.copy(d.wage_changes))
+                             .each(x => {
+                              let indicators = [];
+                              x.oper_types = x.oper_types_all;
+                              if (x.contractual_wage == 'N' && x.indicators[q.wage_id]) x.indicators[q.wage_id].indicator_value = '0';
+                              _.chain(x.oper_types).pluck('indicator_ids').flatten().compact().unique().each(id => indicators.push(x.indicators[id]));
+                              x.indicators = indicators;
+                             })
+                             .map(x => x = _.pick(x, 'page_id', 'change_date', 'staff_id', 'currency_id', 'indicators', 'oper_types'))
+                             .value();
+        _.each(d.wage_changes, (x, i) => {
+          data.wage_changes[i].staff_id = x.staff_id;
+        });
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function pageId(key) {
+    return key + page.id();
+  }
+
+  // -------------------- modal -------------------- //
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function saveWageChange() {
+    if (page.valid(scope.modal)) {
+      p.data.oper_types_all = [...p.data.oper_types['A'], ...p.data.oper_types['D']];
+      if (q.addMode) d.wage_changes.push(p.data);
+      else {
+        d.wage_changes.splice(p.data.index, 1, angular.copy(p.data));
+      }
+      hideModal();
+    }
+  }
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    })
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function wageChangeModal(row) {
+    if (row) {
+      let index = _.findIndex(d.wage_changes, row);
+      q.addMode = false;
+      p.data = _.extend(angular.copy(row), {index: index});
+      p.data.oper_types = {};
+      _.each(['A', 'D'], operation_kind => {
+        p.data.oper_types[operation_kind] = row.oper_types[operation_kind] || [];
+      });
+    } else {
+      q.addMode = true;
+      p.data = {
+        change_date: d.journal_date,
+        oper_types: {},
+        indicators: []
+      }
+
+      _.each(['A', 'D'], operation_kind => {
+        p.data.oper_types[operation_kind] = [];
+      });
+    }
+    page.untouch(scope.modal);
+    showModal();
+  }
+
+  model.oper_type_indicators = _.mapRows(model.oper_type_indicators, ['page_id', 'oper_type_id', 'indicator_id']);
+
+  model.oper_types = _.chain(model.oper_types)
+                      .mapRows(['page_id', 'oper_type_id', 'oper_type_name', 'operation_kind'])
+                      .each(x => x.indicator_ids = _.chain(model.oper_type_indicators)
+                                                    .filter({ page_id: x.page_id, oper_type_id: x.oper_type_id })
+                                                    .pluck('indicator_id')
+                                                    .value())
+                      .groupBy('operation_kind')
+                      .value();
+
+  _.each(['A', 'D'], operation_kind => {
+    model.oper_types[operation_kind] = model.oper_types[operation_kind] || [];
+  });
+
+  model.indicators = _.mapRows(model.indicators, ['page_id', 'indicator_id', 'name', 'indicator_value']);
+
+  model.wage_changes = _.chain(model.wage_changes)
+                        .mapRows(['page_id', 'change_date', 'staff_id', 'employee_id', 'staff_name', 'currency_id', 'currency_name', 'contractual_wage', 'access_to_hidden_salary_job'])
+                        .each( x => {
+                          x.indicators = {};
+                          x.oper_types = {};
+                          x.oper_types_all = [];
+                          _.chain(model.indicators).filter({ page_id: x.page_id }).each(indicator => x.indicators[indicator.indicator_id] = indicator);
+                          x.oper_types['A'] = _.filter(model.oper_types['A'], { page_id: x.page_id });
+                          x.oper_types['D'] = _.filter(model.oper_types['D'], { page_id: x.page_id });
+                          x.oper_types_all = [...x.oper_types['A'], ...x.oper_types['D']];
+                        })
+                        .value();
+
+  d.wage_changes = model.wage_changes;
+  q.user_id = AppSession.si.user.user_id;
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+})
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="wageChangeModal()"><t>add</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has"><t>delete</t></button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="wage_changes"/>
+          </div>
+        </div>
+        <b-pg-grid  name="wage_changes" local_data="d.wage_changes" search="staff_name" on-check="onCheck(checked)" iterator="item" current-limit="1000"
+                    searchable="" sort="rownum">
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1">
+              <div class="text-center">{{ item.rownum }}</div>
+            </b-pg-col>
+            <b-pg-col name="staff_name" size="11"/>
+            <b-pg-col name="indicators" size="10">
+              <div ng-repeat="op in item.oper_types_all">
+                <div ng-if="op.indicator_ids.length">
+                  <div ng-repeat="id in op.indicator_ids">
+                    <div class="form-row">
+                      <label class="col-sm-18" ng-class="{'mb-2': !$last }">{{ op.oper_type_name + ' - ' + item.indicators[id].name }}</label>
+                      <div class="col-sm-6" ng-class="{'mb-2': !$last }">
+                        <div type="text">{{ item.indicators[id].indicator_value }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div ng-if="!op.indicator_ids.length">
+                  <div class="form-row">
+                    <label class="col-sm-18" ng-class="{'mb-2': !$last}">{{ op.oper_type_name }}</label>
+                  </div>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="actions" size="1">
+              <div class="text-left">
+                <button type="button" class="btn btn-default btn-icon" ng-click="wageChangeModal(item)"><i class="fa fa-edit"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title" ng-if="q.addMode"><t>add wage change</t></h4>
+            <h4 class="modal-title" ng-if="!q.addMode"><t>edit wage change</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>change date</t><r/></label>
+                    <input type="text" class="form-control" ng-model="p.data.change_date" ng-blur="getStaffInfo(p.data)" b-date-picker required/>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>staff</t><r/></label>
+                  <b-input name="staffs"
+                           model="p.data.staff_name | name"
+                           model-key="p.data.staff_id | staff_id"
+                           column="staff_number, hiring_date, dismissal_date, staff_kind_name, employee_id"
+                           search="staff_number, name"
+                           on-change="changeStaffQuery(p.data, query, value)"
+                           on-select="setStaff(p.data, row)"
+                           is-view="fi.select_staff"
+                           on-view="selectStaff(p.data)"
+                           required-key>
+                    <header>
+                      <div class="col-sm-6"><t>staff number</t></div>
+                      <div class="col-sm-12"><t>staff name</t></div>
+                      <div class="col-sm-6"><t>staff kind name</t></div>
+                    </header>
+                    <content>
+                      <div class="col-sm-6">{{ row.staff_number }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                      <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                    </content>
+                  </b-input>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-6"></div>
+            <div ng-if="p.data.access_to_hidden_salary_job == 'N' && q.user_id != p.data.employee_id">
+              <div class="d-flex justify-content-center" style="width: auto; height: 300px;">
+                <div class="align-self-center">
+                  <div class="text-center mb-4">
+                    <i style="font-size: 6rem; color: #e0e0e0" class="fas fa-eye-slash"></i>
+                  </div>
+                  <div class="font-weight-bolder text-center">
+                    <h5><t>you don't have access to add or view salaries</t></h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div ng-if="p.data.access_to_hidden_salary_job != 'N' || q.user_id == p.data.employee_id">
+              <div class="form-row mb-4" ng-if="q.allowed_currencies.length > 0 || !!p.data.currency_id">
+                <div class="col-sm-12">
+                  <label><t>currency</t><r ng-show="p.data.oper_types['A'].length > 0 || p.data.oper_types['D'].length > 0"/></label>
+                  <b-input model="p.data.currency_name | name"
+                           model-key="p.data.currency_id | currency_id"
+                           local-data="q.allowed_currencies"
+                           search="name"
+                           required-key="p.data.oper_types['A'].length > 0 || p.data.oper_types['D'].length > 0">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+              </div>
+              <h5 class="text-primary mb-4"><t>accruals</t></h5>
+              <b-pg-grid name="accruals_multiple" local-data="p.data.oper_types['A']" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="oper_type" size="11">
+                    <b-input name="oper_types"
+                             model="item.oper_type_name | name"
+                             model-key="item.oper_type_id | oper_type_id"
+                             on-change="changeOperTypeQuery(p.data, query, value, 'A')"
+                             is-add="fi.add_accrual"
+                             is-view="fi.select_accrual"
+                             on-add="addAccrual(p.data, item, value)"
+                             on-view="selectAccrual(p.data, item)"
+                             on-select="setOperType(p.data, item, row)"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </b-pg-col>
+                  <b-pg-col name="indicators" size="11">
+                    <div ng-repeat="id in item.indicator_ids">
+                      <div class="form-row">
+                        <label class="col-sm-18" ng-class="{'mb-2': !$last }">{{ p.data.indicators[id].name }}</label>
+                        <div class="col-sm-6" ng-class="{'mb-2': !$last }">
+                          <input type="text" class="form-control" ng-model="p.data.indicators[id].indicator_value"
+                                 ng-readonly="id == q.wage_id && p.data.contractual_wage == 'N'"
+                                 b-number precision="20" scale="6" ng-required="id != q.wage_id || p.data.contractual_wage != 'N'"/>
+                        </div>
+                      </div>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="actions" size="1">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteOperTypeItem(p.data.oper_types['A'], item)">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+              <div class="mt-4">
+                <button type="button" class="btn btn-icon btn-default" ng-click="addAccrualOperType(p.data)" ng-disabled="!p.data.change_date || !p.data.staff_id">
+                  <i class="fa fa-plus"/>
+                </button>
+              </div>
+              <div class="separator separator-solid my-6"></div>
+              <h5 class="text-primary mb-4"><t>deductions</t></h5>
+              <b-pg-grid name="deduction_multiple" local-data="p.data.oper_types['D']" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="oper_type" size="11">
+                    <b-input name="oper_types"
+                             model="item.oper_type_name | name"
+                             model-key="item.oper_type_id | oper_type_id"
+                             on-change="changeOperTypeQuery(p.data, query, value, 'D')"
+                             is-add="fi.add_deduction"
+                             is-view="fi.select_deduction"
+                             on-add="addDeduction(p.data, item, value)"
+                             on-view="selectDeduction(p.data, item)"
+                             on-select="setOperType(p.data, item, row)"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </b-pg-col>
+                  <b-pg-col name="indicators" size="11">
+                    <div ng-repeat="id in item.indicator_ids">
+                      <div class="form-row">
+                        <label class="col-sm-18" ng-class="{'mb-2': !$last }">{{ p.data.indicators[id].name }}</label>
+                        <div class="col-sm-6" ng-class="{'mb-2': !$last }">
+                          <input type="text" class="form-control" ng-model="p.data.indicators[id].indicator_value"
+                                  ng-readonly="id == q.wage_id && p.data.contractual_wage == 'N'"
+                                  b-number precision="20" scale="6" ng-required="id != q.wage_id || p.data.contractual_wage != 'N'"/>
+                        </div>
+                      </div>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="actions" size="1">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteOperTypeItem(p.data.oper_types['D'], item)">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+              <div class="mt-4">
+                <button type="button" class="btn btn-icon btn-default" ng-click="addDeductionOperType(p.data)" ng-disabled="!p.data.change_date || !p.data.staff_id">
+                  <i class="fa fa-plus"/>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="q.addMode" ng-click="saveWageChange()"><t>save</t></button>
+            <button type="button" class="btn btn-primary" ng-if="!q.addMode" ng-click="saveWageChange()"><t>edit</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

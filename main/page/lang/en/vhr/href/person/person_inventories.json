@@ -1,0 +1,20 @@
+{
+ "add": "Add",
+ "add person inventory": "Add",
+ "close": "Close",
+ "date assigned": "Receive Date",
+ "date returned": "Return Date",
+ "delete": "Delete",
+ "delete person inventory $1{title}?": "Delete inventory  <b>$1</b>?",
+ "edit": "Edit",
+ "edit person inventory": "Edit",
+ "inventories": "Inventories",
+ "inventory type": "Inventory Type",
+ "note": "Note",
+ "pg.person_inventories.action": "Actions",
+ "pg.person_inventories.date_assigned": "Receive Date",
+ "pg.person_inventories.date_returned": "Return Date",
+ "pg.person_inventories.inventory_type_name": "Inventory Type",
+ "pg.person_inventories.note": "Note",
+ "save": "Save"
+}

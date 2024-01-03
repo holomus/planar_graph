@@ -1,0 +1,5 @@
+{
+ "pg.data.before": "Previous Value",
+ "pg.data.current": "Current Value",
+ "pg.data.field_name": "Field"
+}

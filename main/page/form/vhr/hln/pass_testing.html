@@ -1,0 +1,375 @@
+<script biruni>
+page.ctrl(function(scope, model, param, fi, t) {
+  var d = _.extend(_.pick(model, 'exam_name', 'questions_count', 'duration'), param),
+      q = {
+        question_count: [],
+        has_duration: false,
+        finish: false,
+        pause: false,
+        time_expired: false
+      },
+      pickerInterval,
+      waitingInterval;
+
+  page.title(page.title() + ' (' + d.exam_name + ')');
+
+  function loadQuestion(data) {
+    q.waiting = false;
+    d.duration = data.duration;
+    d.answer_type = data.answer_type;
+    d.order_no = +data.order_no;
+    d.marked = data.marked;
+    d.writing_answer = data.writing_answer;
+    d.question_name = data.name;
+    d.question_id = data.question_id;
+    d.photos = _.chain(data.files)
+                .mapRows(['photo_sha', 'photo_name'])
+                .each(x => { x.photo_src = page.loadImageMedium(x.photo_sha) })
+                .value();
+    d.options = _.chain(data.options)
+                 .mapRows(['question_option_id', 'order_no', 'chosen', 'name', 'photo_sha', 'photo_name'])
+                 .each(x => { x.photo_sha ? x.photo_src = page.loadImageMedium(x.photo_sha) : null })
+                 .value();
+    switch (data.status) {
+      case 'P':
+        q.pause = true;
+        clearInterval(pickerInterval);
+        break;
+      case 'F':
+      case 'C':
+        q.finish = true;
+      break;
+    }
+  }
+
+  function loadWaiting(waiting_time) {
+    q.waiting = true;
+    q.waiting_time = waiting_time;
+    startWaiting();
+  }
+
+  function chooseAnswer(opt) {
+    opt.chosen = opt.chosen == 'Y' ? 'N' : 'Y';
+    
+    if (d.answer_type == 'S' && opt.chosen == 'Y') {
+      _.each(d.options, x => x.chosen = 'N');
+      opt.chosen = 'Y';
+    }
+  }
+
+  function sendAnswer(type, index) {
+    let order = 0;
+    switch (type) {
+      case 'P':
+        order = d.order_no - 1;
+      break;
+      case 'N':
+        order = d.order_no + 1;
+      break;
+      case 'M':
+        order = index;
+      break;
+    }
+
+    let option_ids = [];
+    _.each(d.options, x => { if (x.chosen == 'Y') option_ids.push(x.question_option_id) });
+
+    if (option_ids.length > 0 || d.writing_answer) {
+      q.question_count[d.order_no - 1].answered = true;
+    } else {
+      q.question_count[d.order_no - 1].answered = false;
+    }
+
+    let data = {
+      testing_id: d.testing_id,
+      order_no: order,
+      question_id: d.question_id,
+      question_option_ids: option_ids,
+      writing_answer: d.answer_type == 'W' ? d.writing_answer : null
+    }
+
+    page.post(':send_answer', data).then(loadQuestion, page.alert);
+  }
+
+  function markQuestion() {
+    page.post(':mark', {
+      testing_id: d.testing_id,
+      question_id: d.question_id
+    }).then( res => {
+      q.question_count[d.order_no - 1].marked = q.question_count[d.order_no - 1].marked == 'Y' ? 'N' : 'Y';
+      }, page.alert);
+  }
+
+  function finishTest(specially_pressed) {
+    let option_ids = [];
+    _.each(d.options, x => { if (x.chosen == 'Y') option_ids.push(x.question_option_id) });
+    page.post(':finish', {
+      testing_id: d.testing_id,
+      question_id: d.question_id,
+      question_option_ids: option_ids,
+      writing_answer: d.answer_type == 'W' ? d.writing_answer : null,
+      specially_pressed: specially_pressed
+    }).then( res => {
+        clearInterval(pickerInterval);
+        if (res.duration) {
+          d.duration = res.duration;
+          startDuration();
+        } else {
+          q.finish = true;
+        }
+      }, page.alert);
+  }
+
+  function clickFinish(specially_pressed) {
+    if (specially_pressed == 'Y') {
+      page.confirm(t('Do you finish ? If you want you can go back to review your answers.')(), function() {
+        finishTest(specially_pressed);
+      });
+    } else {
+      finishTest(specially_pressed);
+    }
+  }
+
+  function viweResult() {
+    fi.view_result({ testing_id: d.testing_id });
+  }
+
+  function showPhoto(photo) {
+    page.previewFile({
+      sha: photo.photo_sha,
+      name: photo.photo_name,
+      type: 'image'
+    });
+  }
+
+  function printTime(val) {
+    if (val < 10) return "0" + val;
+    return val;
+  }
+
+  function timeFormat(value) {
+    let hour, minut, second;
+    hour = Math.floor(value / 3600);
+    value = value % 3600;
+    minut = Math.floor(value / 60);
+    second = value % 60;
+
+    return { hour: hour, minut: minut, second: second };
+  }
+
+  function printWaiting() {
+    var $waiting_time = page.$content.find('.waiting-time');
+    let format = timeFormat(q.waiting_time);
+    $waiting_time[0].innerHTML = printTime(format.hour) + ":" + printTime(format.minut) + ":" + printTime(format.second);
+    if (q.waiting_time < 60 && !$waiting_time.hasClass('font-red')) $waiting_time.removeClass('font-blue-steel').addClass('font-red');
+    if (q.waiting_time == 0) waitingOff();
+    q.waiting_time --;
+  }
+
+  function startWaiting() {
+    let format = timeFormat(q.waiting_time);
+    q.time = printTime(format.hour) + ":" + printTime(format.minut) + ":" + printTime(format.second);
+    if (q.waiting_time == 0) page.reload();
+    q.waiting_time--;
+    waitingInterval = setInterval(printWaiting, 1000);
+  }
+
+  function waitingOff() {
+    clearInterval(waitingInterval);
+    page.reload();
+  }
+
+  function printDuration() {
+    var $time_picker = page.$content.find('.time-picker');
+    let format = timeFormat(d.duration);
+    $time_picker[0].innerHTML = printTime(format.hour) + ":" + printTime(format.minut) + ":" + printTime(format.second);
+    if (d.duration < 60 && !$time_picker.hasClass('font-red')) $time_picker.removeClass('font-blue-steel').addClass('font-red');
+    if (d.duration == 0) timeOff();
+    d.duration --;
+  }
+
+  function startDuration() {
+    q.has_duration = true;
+    let format = timeFormat(d.duration);
+    q.time = printTime(format.hour) + ":" + printTime(format.minut) + ":" + printTime(format.second);
+    if (d.duration == 0) clickFinish('N');
+    d.duration--;
+    pickerInterval = setInterval(printDuration, 1000);
+  }
+
+  function timeOff() {
+    clearInterval(pickerInterval);
+    clickFinish('N');
+  }
+
+  if (model.waiting_time) {
+    loadWaiting(model.waiting_time);
+  } else {
+    if (model.time_expired == 'Y') {
+      q.time_expired = true
+    } else {
+      _.each(model.marks, x => {
+        q.question_count.push({
+          marked: (x == 'Y') ? 'Y' : 'N'
+        });
+      });
+      _.each(model.answered_questions, x => {
+        q.question_count[x - 1].answered = 'Y';
+      });
+
+      if (model.status != 'F' && model.status != 'C' && model.duration) startDuration();
+      loadQuestion(model);
+    }
+  }
+  
+  d.order_no = +d.order_no;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-4">
+    <button type="button" class="btn btn-sm btn-success" ng-if="!q.waiting && !q.pause && !q.finish && !q.time_expired" ng-click="clickFinish('Y')"><t>finish</t></button>
+    <button type="button" class="btn btn-sm btn-default" ng-click="page.close()">{{page.close.title}}</button>
+  </div>
+  <style>
+    .custom {
+      width: 120px!important;
+    }
+    .navigate-asnwered {
+      background: #B5DFE7!important;
+    }
+    .navigate {
+      width: 40px!important;
+    }
+    .navigate:hover {
+      border-color: #66BDCF!important;
+      cursor: pointer;
+    }
+    .navigate-activ {
+      background-color: #4CB2E9!important;
+      color: white!important;
+    }
+    .check-answer {
+      background: #B5DFE7!important;
+      border-color: #66BDCF!important;
+    }
+    .border:hover {
+      border-color: #66BDCF!important;
+      cursor: pointer;
+    }
+  </style>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body" ng-if="q.finish">
+      <div class="form-group text-center">
+        <i class="far fa-stop-circle fa-3x mb-5"></i>
+        <h3><t>test finished</t></h3>
+        <button type="button" ng-if="fi.view_result" class="btn btn-sm btn-success h6" ng-click="viweResult()"><t>view result</t></button>
+      </div>
+    </div>
+    <div class="card-body" ng-if="q.pause">
+      <div class="form-group text-center">
+        <i class="far fa-pause-circle fa-3x mb-5"></i>
+        <h3><t>testing paused for some time</t></h3>
+      </div>
+    </div>
+    <div class="card-body" ng-if="q.time_expired">
+      <div class="form-group text-center">
+        <i class="far fa-clock fa-3x mb-5"></i>
+        <h3><t>testing time has expired</t></h3>
+      </div>
+    </div>
+    <div class="card-body" ng-if="q.waiting">
+      <div class="form-group text-center">
+        <i class="fas fa-clock fa-3x"></i>
+        <h4 class="waiting-time font-weight-bolder mt-3 ml-4">{{ q.time }}</h4>
+        <h3><t>before start</t></h3>
+      </div>
+    </div>
+    <div class="card-body ml-4" ng-if="!q.waiting && !q.pause && !q.finish && !q.time_expired">
+      <div class="form-group row">
+        <div class="col-sm-18">
+          <div class="d-flex justify-content-center w-100" ng-if="q.has_duration">
+            <i class="fas fa-clock fa-3x"></i>
+            <h4 class="time-picker font-weight-bolder mt-3 ml-4">{{ q.time }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 d-flex justify-content-end">
+          <button type="button" class="btn btn-sm btn-warning" ng-click="markQuestion()"><t>mark question</t></button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="offset-sm-1 col-sm-17">
+          <div class="form-group">
+            <h4><b><t p1="d.order_no">Question № $1:</t></b>&nbsp;</h4>
+            <div class="inbox-view h6" ng-bind-html="d.question_name"></div>
+          </div>
+          <div class="form-group row">
+            <div class="form-group m-6" ng-repeat="photo in d.photos track by $index">
+              <div class="image-input image-input-outline bgi-position-center">
+                <div class="image-input-wrapper w-300 h-300">
+                  <img class="mw-100 mh-100 cursor-pointer" ngf-src="photo.photo_src" ng-click="showPhoto(photo)">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group mt-8">
+            <div ng-if="d.answer_type == 'S' || d.answer_type == 'M'">
+              <div class="form-group">
+                <h4><b><t>Options</t></b>&nbsp;</h4>
+              </div>
+              <div class="form-group row" ng-repeat="opt in d.options track by $index">
+                <div class="col-sm-1">
+                  <p class="mt-2">{{ $index + 1 }}</p>
+                </div>
+                <div class="col-sm-22 mb-6 border border-2 rounded" ng-class="{ 'check-answer': opt.chosen == 'Y' }" ng-click="chooseAnswer(opt)">
+                  <p class="mt-2">{{ opt.name }}</p>
+                </div>
+                <div class="offset-sm-1 col-sm-6 mb-4" ng-if="opt.photo_src">
+                  <div class="image-input image-input-outline bgi-position-center">
+                    <div class="image-input-wrapper w-300 h-300">
+                      <img class="mw-100 mh-100 cursor-pointer" ngf-src="opt.photo_src" ng-click="showPhoto(opt)">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group row" ng-if="d.answer_type == 'W'">
+              <div class="col-sm-12">
+                <textarea class="form-control" ng-model="d.writing_answer" rows="4" b-maxlength="500"></textarea>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="d-flex justify-content-center">
+                <button type="button" class="btn btn-sm btn-default mr-4 custom" ng-if="d.order_no != 1" ng-click="sendAnswer('P')">
+                  <i class="fas fa-chevron-left"></i>
+                  <t class="ml-2">prev</t>
+                </button>
+                <button type="button" class="btn btn-sm btn-default custom" ng-if="d.order_no != q.question_count.length" ng-click="sendAnswer('N')">
+                  <t class="mr-2">next</t>
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-5">
+          <div class="form-row">
+            <div class="m-1" ng-repeat="x in q.question_count track by $index">
+              <button type="button" class="btn btn-sm ml-2 mb-2 navigate"
+                      ng-class="{ 'border border-3 border-warning': x.marked == 'Y',
+                                  'btn-default': x.marked == 'N',
+                                  'navigate-activ': d.order_no == $index + 1,
+                                  'navigate-asnwered': x.answered }"
+                      ng-click="sendAnswer('M', $index + 1)">{{ $index + 1 }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

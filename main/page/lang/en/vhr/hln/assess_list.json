@@ -1,0 +1,21 @@
+{
+ "assess list": "List of Subjects to be assessed",
+ "pg.persons.subject1": "Subjects 1",
+ "pg.persons.subject10": "Subjects 10",
+ "pg.persons.subject2": "Subjects 2",
+ "pg.persons.subject3": "Subjects 3",
+ "pg.persons.subject4": "Subjects 4",
+ "pg.persons.subject5": "Subjects 5",
+ "pg.persons.subject6": "Subjects 6",
+ "pg.persons.subject7": "Subjects 7",
+ "pg.persons.subject8": "Subjects 8",
+ "pg.persons.subject9": "Subjects 9",
+ "subject group name: $1": "Subjects Group: $1",
+ "total": "Total",
+ "not passed": "Not passed",
+ "pass all?": "Pass all?",
+ "passed": "Passed",
+ "pg.persons.name": "Full Name",
+ "pg.persons.passed": "Passed",
+ "save": "Save"
+}

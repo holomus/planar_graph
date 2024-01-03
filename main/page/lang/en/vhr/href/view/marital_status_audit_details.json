@@ -1,0 +1,5 @@
+{
+ "pg.marital_status.before": "Previous Value",
+ "pg.marital_status.current": "Current Value",
+ "pg.marital_status.field_name": "Field"
+}

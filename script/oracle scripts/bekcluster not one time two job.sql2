@@ -1,0 +1,24 @@
+with Review_Employee as
+ (select q.Employee_Id, count(distinct q.Filial_Id)
+    from Href_Staffs q
+   where q.Company_Id = 580
+     and (q.Hiring_Date >= to_date('01.12.2022', 'dd.mm.yyyy') or q.Dismissal_Date is null or
+         q.Dismissal_Date >= to_date('01.12.2022', 'dd.mm.yyyy'))
+     and exists (select *
+            from Md_Filials w
+           where w.Filial_Id = q.Filial_Id
+)
+   group by q.Employee_Id
+  having count(distinct q.Filial_Id) > 1
+   order by 2)
+select k.Name,
+       (select e.Name
+          from Md_Filials e
+         where e.Filial_Id = w.Filial_Id) Filial_Name,
+       w.*
+  from Review_Employee q
+  join Href_Staffs w
+    on q.Employee_Id = w.Employee_Id
+  join Md_Persons k
+    on k.Person_Id = w.Employee_Id
+ order by w.Employee_Id, w.Filial_Id

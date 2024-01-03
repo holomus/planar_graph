@@ -1,0 +1,15 @@
+select (select w.Name
+          from Md_Persons w
+         where w.Company_Id = q.Company_Id
+           and w.Person_Id = q.Employee_Id) name,
+       q.Employee_Id,
+       q.*
+  from Href_Staffs q
+ where q.Company_Id = 1420
+   and (q.Dismissal_Date is null or q.Dismissal_Date >= to_date('01.07.2023', 'dd.mm.yyyy'))
+   and q.State = 'A'
+   and Hpd_Util.Get_Closest_Oper_Type_Id(i_Company_Id    => q.Company_Id,
+                                         i_Filial_Id     => q.Filial_Id,
+                                         i_Staff_Id      => q.Staff_Id,
+                                         i_Oper_Group_Id => 1807,
+                                         i_Period        => Nvl(q.Dismissal_Date, Trunc(sysdate))) is null

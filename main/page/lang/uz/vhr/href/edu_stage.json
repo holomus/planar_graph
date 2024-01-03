@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another edu stage": "Kod allaqachon boshqa ta'lim turiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi shart",
+ "order no": "Tartib raqami",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

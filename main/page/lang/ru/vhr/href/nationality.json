@@ -1,0 +1,10 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another nationality": "Код уже закреплен за другим национальностям",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

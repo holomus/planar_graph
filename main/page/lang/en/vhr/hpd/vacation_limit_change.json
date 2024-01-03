@@ -1,0 +1,22 @@
+{
+ "add": "Add",
+ "all items will be removed. continue?": "Department editing will lead to deleting some parts of document. Proceed editing?",
+ "change date": "Change Date",
+ "days limit": "Vacation Days",
+ "delete $1": "Delete $1",
+ "division name": "Department",
+ "journal date": "Date",
+ "journal name": "Document Name",
+ "journal number": "Number",
+ "pg.staffs.limit_days": "Vacation Days",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.staffs": "Employee",
+ "post": "Post",
+ "post?": "Do you want to save and post?",
+ "save": "Save",
+ "save?": "Save?",
+ "select": "Pick-up",
+ "staff kind name": "Employment Type",
+ "staff name": "Employee",
+ "staff number": "PersNo"
+}

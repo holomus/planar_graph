@@ -1,0 +1,185 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout) {
+  var d = _.pick(param, 'person_id'),
+      q = {},
+      p = {};
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      p.fail_msg = false;
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // reference types
+  function setReferenceType(data, row) {
+    if (!row) return;
+    data.reference_type_id = row.reference_type_id;
+    data.reference_type_name = row.name;
+  }
+
+  function addReferenceType(data, value) {
+    fi.add_reference_type(null, _.partial(setReferenceType, data), { name: value });
+  }
+
+  function selectReferenceType(data) {
+    fi.select_reference_type(null, _.partial(setReferenceType, data));
+  }
+
+  // person references
+  function cmpReference(a, b) {
+    let c = a.reference_type_name;
+    let d = b.reference_type_name;
+    return c > d ? 1 : c < d ? -1: 0;
+  }
+
+  function addPersonReference() {
+    p.title = t('add person reference')();
+    p.data = {};
+    showModal();
+  }
+
+  function editPersonReference(row) {
+    p.title = t('edit person reference')();
+    p.data = angular.copy(row);
+    showModal();
+  }
+
+  function savePersonReference() {
+    if (page.valid(scope.modal)) {
+      let data = _.omit(p.data, 'reference_type_name');
+          data.person_id = d.person_id;
+      fi.save_reference(data).then(function(result) {
+        p.data.person_reference_id = result.person_reference_id;
+        d.person_references = _.reject(d.person_references, x => x.person_reference_id == p.data.person_reference_id);
+        d.person_references.push(p.data);
+        d.person_references.sort(cmpReference);
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonReference(row) {
+    page.confirm(t('delete person reference $1{reference type name}?')(row.reference_type_name), function() {
+      fi.del_reference({ person_reference_id: row.person_reference_id }).then(function() {
+        var index = _.findIndex(d.person_references, row);
+        d.person_references.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  d.person_references = _.mapRows(model.person_references, ['person_reference_id',
+                                                            'reference_type_id',
+                                                            'reference_type_name',
+                                                            'ref_number',
+                                                            'ref_date',
+                                                            'start_date',
+                                                            'end_date',
+                                                            'name']);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>person references</t></h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_reference" ng-click="addPersonReference()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <b-pg-grid name="person_references" local-data="d.person_references" min-height="'auto'" search="reference_type_name, ref_number, name"
+               searchable="ref_date, start_date" sort="reference_type_name, ref_number, name, ref_date, start_date" current-limit="1000">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="reference_type_name" size="5"/>
+        <b-pg-col name="ref_number" size="3"/>
+        <b-pg-col name="ref_date" size="3"/>
+        <b-pg-col name="start_date" size="3"/>
+        <b-pg-col name="end_date" size="3"/>
+        <b-pg-col name="name" size="5"/>
+        <b-pg-col name="action" size="2">
+          <div class="text-center w-100 dropdown" ng-if="fi.save_reference || fi.del_reference">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-if="fi.save_reference" ng-click="editPersonReference(row)"><t>edit</t></a>
+              <a class="dropdown-item text-danger" ng-if="fi.del_reference" ng-click="delPersonReference(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+  <!-- PERSON REFERENCE MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>reference type name</t><r/></label>
+              <b-input name="reference_types"
+                       model="p.data.reference_type_name | name"
+                       model-key="p.data.reference_type_id | reference_type_id"
+                       is-add="fi.add_reference_type"
+                       is-view="fi.select_reference_type"
+                       on-add="addReferenceType(p.data, value)"
+                       on-view="selectReferenceType(p.data)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm mb-4 mb-sm-0">
+                <label><t>ref number</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.ref_number" b-maxlength="50" required/>
+              </div>
+              <div class="col-sm">
+                <label><t>ref date</t></label>
+                <input type="text" class="form-control" ng-model="p.data.ref_date" b-date-picker="DD.MM.YYYY"/>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm mb-4 mb-sm-0">
+                <label><t>start date</t></label>
+                <input type="text" class="form-control" ng-model="p.data.start_date" b-date-picker="DD.MM.YYYY"/>
+              </div>
+              <div class="col-sm">
+                <label><t>end date</t></label>
+                <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker="DD.MM.YYYY"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="p.data.name" b-maxlength="100" required/>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.save_reference" ng-click="savePersonReference()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

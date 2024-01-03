@@ -1,0 +1,17 @@
+{
+ "CSV": "CSV",
+ "date": "Sana",
+ "dismissal": "Ishdan bo'shatilganlar",
+ "division": "Bo'lim",
+ "division group": "Bo'lim guruhi",
+ "Excel": "EXCEL",
+ "generate": "Hisobotni tayyorlash",
+ "hiring (new)": "Ishga qabul qilinganlar",
+ "Html": "HTML",
+ "jobs": "Lavozimlar",
+ "parameters": "Filtr",
+ "transfers arrivals": "Ish o'rni o'zgarganlar (kelganlar)",
+ "transfers departed": "Ish o'rni o'zgarganlar (ketganlar)",
+ "view": "Ko'rish",
+ "XML": "XML"
+}

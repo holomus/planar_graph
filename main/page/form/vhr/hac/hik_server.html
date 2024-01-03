@@ -1,0 +1,66 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model ? model : {};
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  function genToken() {
+    page.post(':gen_token').then(result => d.token = result, page.alert);
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="150" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>host url</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.host_url" b-maxlength="300"/>
+          </div>
+          <div class="form-group">
+            <label><t>partner key</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.partner_key" b-maxlength="300"/>
+          </div>
+          <div class="form-group">
+            <label><t>partner secret</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.partner_secret" b-maxlength="300"/>
+          </div>
+          <div class="form-group">
+            <label><t>token</t><r/></label>
+            <div class="input-group">
+              <input type="text" class="form-control" ng-model="d.token" b-maxlength="64" readonly/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-default btn-icon" ng-click="genToken()">
+                  <i class="fa fa-redo"/>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>order_no</t></label>
+              <input type="text" class="form-control" ng-model="d.order_no" b-number scale="0" precision="6"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

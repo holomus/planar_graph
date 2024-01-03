@@ -1,0 +1,56 @@
+<script biruni>
+page.ctrl(function(scope, model, param, xparam, t, bHttp) {
+  var d = model,
+      q = {};
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-8">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>FTP server url</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.ftp_server_url" 
+                   b-maxlength="300" required/>
+          </div>
+          <div class="form-group">
+            <label><t>FTP server username</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.ftp_username" 
+                   b-maxlength="300" required/>
+          </div>
+          <div class="form-group">
+            <label><t>FTP server password</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.ftp_password" 
+                   b-maxlength="300" required/>
+          </div>
+          <div class="form-group">
+            <label><t>Predict server url</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.predict_server_url" 
+                   b-maxlength="300" required/>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>last ftp file load date</t></label>
+              <input type="text" class="form-control" ng-model="d.last_ftp_file_date" 
+                     b-date-picker/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

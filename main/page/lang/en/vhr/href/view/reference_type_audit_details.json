@@ -1,0 +1,5 @@
+{
+ "pg.reference_type.before": "Previous Value",
+ "pg.reference_type.current": "Current Value",
+ "pg.reference_type.field_name": "Field"
+}

@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "identifier": "Identifikator",
+ "identifier is not valid": "Yaroqsiz identifikator",
+ "identifier should be unique": "Identifikator noyob bo'lishi kerak",
+ "name": "Nomi",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "short name": "Qisqa nomi",
+ "state": "Holat"
+}

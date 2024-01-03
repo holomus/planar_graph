@@ -1,0 +1,14 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{drivers_count} driver(s)?": "Удалить драйверы в количестве <b>$1</b>?",
+ "delete driver $1{driver_name}?": "Удалить драйвер <b>$1</b>?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.driver_id": "ИД",
+ "table.measure_name": "Единица измерения",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,17 @@
+# SBT
+boot/
+lib/
+lib_managed/
+target/
+.history
+.bsp/
+
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Build tools
+*.bat
+*.ps1

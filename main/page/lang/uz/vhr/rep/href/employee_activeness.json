@@ -1,0 +1,22 @@
+{
+ "table.code": "Kod",
+ "table.company_id": "Kompaniya ID",
+ "table.email": "E-mail",
+ "table.employee_count": "Xodimlar soni",
+ "table.last_15_days_avg_active_count": "So'nggi 15 kundagi o'rtacha aktiv xodimlar soni",
+ "table.last_15_days_avg_active_perc": "So'nggi 15 kundagi o'rtacha aktiv xodimlar %",
+ "table.last_30_days_max_active_count": "So'nggi 30 kundagi maksimal aktiv xodimlar soni",
+ "table.last_3_days_avg_active_count": "So'nggi 3 kundagi o'rtacha aktiv xodimlar soni",
+ "table.last_3_days_avg_active_perc": "So'nggi 3 kundagi o'rtacha aktiv xodimlar %",
+ "table.last_7_days_avg_active_count": "So'nggi 7 kundagi o'rtacha aktiv xodimlar soni",
+ "table.last_7_days_avg_active_perc": "So'nggi 7 kundagi o'rtacha aktiv xodimlar %",
+ "table.last_month_avg_active_count": "So'nggi oydagi o'rtacha aktiv xodimlar soni",
+ "table.last_month_avg_active_perc": "So'nggi oydagi o'rtacha aktiv xodimlar soni",
+ "table.name": "Nom",
+ "table.phone": "Telefon raqami",
+ "table.rownum": "№",
+ "table.today_active_count": "Bugungi aktivlar soni",
+ "table.today_active_perc": "Bugungi aktivlar %",
+ "table.yesterday_active_count": "Kechagi aktivlar soni",
+ "table.yesterday_active_perc": "Kechagi aktivlar %"
+}

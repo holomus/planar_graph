@@ -1,0 +1,627 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, bHttp, xparam) {
+  var d = model.data,
+      q = _.omit(model, 'data'),
+      t_min_value = t('min value: $1{number}');
+
+  // offerta modal
+  let offertaModal = page.$content.find('form[name=offertaModal]>.modal');
+
+  function showOffertaModal() {
+    $timeout(function() {
+      offertaModal.modal('show');
+    });
+  }
+
+  function hideOffertaModal() {
+    $timeout(function() {
+      offertaModal.modal('hide');
+    });
+  }
+
+  function changeGps() {
+    if (d.staff_gps_tracking == 'Y') {
+      d.staff_gps_tracking = 'N';
+      showOffertaModal();
+    }
+  }
+
+  function changeGpsSetting() {
+    if (d.staff_gps_tracking_user_settings == 'N') d.staff_gps_tracking = 'N';
+  }
+
+  function confirmOffert() {
+    d.staff_gps_tracking = 'Y';
+    hideOffertaModal();
+  }
+
+  // login
+  function validateLogin() {
+    if (d.login) {
+      d.login = d.login.toLowerCase();
+      if (d.login.includes('@')) {
+        q.login_invalid_format = false;
+        return;
+      } else q.login_invalid_format = true;
+
+      bHttp.unblockOnce();
+      page.post(':login_validate', { user_id: d.user_id, login: d.login }).then(function(result) {
+        q.login_valid = result == "Y";
+      }, page.alert);
+    } else {
+      q.login_valid = true;
+      q.login_invalid_format = true;
+    }
+  }
+
+  function passChangeParam(param, value) {
+    q.password[param] = value;
+  }
+
+  // role
+  function whereRole() {
+    return _.isEmpty(d.roles) ? null : ['role_id', '<>', _.pluck(d.roles, 'role_id')];
+  }
+
+  function setRole(row) {
+    if (!row) return;
+    d.roles.push({
+      role_id: row.role_id,
+      name: row.name
+    });
+  }
+
+  function addRole(value) {
+    fi.add_role(null, setRole, { name: value });
+  }
+
+  function selectRole() {
+    fi.select_role(null, setRole, { where: whereRole() });
+  }
+
+  function fixGpsTrackingDistance() {
+    if (parseFloat(d.staff_gps_tracking_distance) < q.gps_tracking_distance_min) {
+      d.staff_gps_tracking_distance = q.gps_tracking_distance_min;
+    }
+  }
+
+  function fixGpsTrackingInterval() {
+    if (parseFloat(d.staff_gps_tracking_interval) < q.gps_tracking_interval_min) {
+      d.staff_gps_tracking_interval = q.gps_tracking_interval_min;
+    }
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.form) && q.login_valid && q.login_invalid_format) {
+      page.confirm(t('save person settings?')(), function() {
+        let data = _.omit(d, 'roles', 'licensing_plans');
+            data.role_ids = _.pluck(d.roles, 'role_id');
+            data.job_group_id = q.restrict_hidden_salary == 'Y' && d.access_hidden_salary == 'N' ? _.pluck(d.job_groups, 'job_group_id') : [];
+            data.access_hidden_salary = q.restrict_hidden_salary == 'N' ? 'N' : d.access_hidden_salary;
+
+        if (fi.licensing_plan) {
+          data.license_codes = _.chain(d.licensing_plans).filter(x => x.granted == 'Y').pluck('license_code').value();
+        }
+
+        page.post(':save', data).then(function(result) {
+          if (d.password_exists == 'N') {
+            d.password_exists = d.password ? 'Y' : 'N';
+          }
+
+          if (q.restrict_hidden_salary == 'N') d.job_groups = [];
+
+          d.user_id = d.person_id;
+          d.password = null;
+
+          _.extend(d, result);
+
+          page.emit('user_change');
+        }, page.alert);
+      });
+    }
+  }
+
+  function reverseTrackTypes() {
+    q.track_steps.reverse();
+    d.staff_track_start = q.track_steps[0] == 'staff_gps_determination' ? 'G' : 'F';
+  }
+
+  //  Job
+  function setJobGroup(row) {
+    if (!row) return;
+    d.job_groups.push(row);
+  }
+
+  function whereJobGroup() {
+    let job_group_ids = _.pluck(d.job_groups, 'job_group_id');
+
+    return !_.isEmpty(job_group_ids) ? ['job_group_id', '<>', job_group_ids] : null;
+  }
+
+  function selectJobGroup() {
+    fi.select_job_group(null, setJobGroup, { where: whereJobGroup() });
+  }
+
+  function viewUser() {
+    fi.view({ user_id: d.person_id });
+  }
+
+  q.gps_tracking_distance_min = parseFloat(q.gps_tracking_distance_min);
+  q.gps_tracking_interval_min = parseFloat(q.gps_tracking_interval_min);
+  q.t_gps_distance_placeholder = t_min_value(q.gps_tracking_distance_min);
+  q.t_gps_interval_placeholder = t_min_value(q.gps_tracking_interval_min);
+  q.track_steps = ['staff_gps_determination', 'staff_face_recognition'];
+  q.recommended_logins = _.map(q.recommended_logins, item => item = { login: item });
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.login_valid = true;
+  q.login_invalid_format = true;
+  q.only_person_info = xparam.only_person_info ? xparam.only_person_info : false;
+  q.password = {
+    type: 'password',
+    popup: false
+  };
+  q.gps_tracking_quality_kinds = _.mapRows(q.gps_tracking_quality_kinds, ['kind', 'name']);
+  q.offerta_text = t('offerta text')();
+  q.tAll = t('access all job group')();
+
+  d.roles = _.mapRows(d.roles, ['role_id', 'name']);
+  d.licensing_plans = _.mapRows(d.licensing_plans, ['license_code', 'name', 'granted']);
+  d.job_groups = _.mapRows(d.job_groups, ['job_group_id', 'name']);
+
+  q.restrict_hidden_salary = d.access_hidden_salary == 'Y' || !_.isEmpty(d.job_groups) ? 'Y' : 'N';
+
+  if (d.staff_track_start == 'F') reverseTrackTypes();
+
+  page.on('state_change', function(result) {
+    d.state = result.state;
+  });
+
+  scope.d = d;
+  scope.q = q;
+  scope.$watchGroup(['d.login'], function() {
+    validateLogin();
+  });
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <!-- Catch autofilling fields -->
+    <input type="text" id="login" class="position-fixed" style="opacity: 0" name="fakeloginremember">
+    <input type="password" id="password" class="position-fixed" style="opacity: 0" name="fakepasswordremember">
+
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>person settings</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-secondary mr-4" ng-if="fi.view"  ng-click="viewUser()"><t>view</t></button>
+          <button type="button" class="btn btn-outline-primary" ng-click="save()"><t>save</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-10">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>login</t></label>
+                <div class="input-group">
+                  <b-input name="recommended_logins"
+                           local-data="q.recommended_logins"
+                           model="d.login | login">
+                    <header>
+                      <div class="col"><t>recommended logins</t></div>
+                    </header>
+                    <content>
+                      <div class="col">{{ row.login }}</div>
+                    </content>
+                  </b-input>
+                  <div class="input-group-append">
+                    <span class="input-group-text">{{ d.company_code }}</span>
+                  </div>
+                </div>
+                <span class="text-danger" ng-hide="q.login_valid"><t>this login is already used</t></span>
+                <span class="text-danger" ng-hide="q.login_invalid_format"><t>you can not use @ in login</t></span>
+              </div>
+              <div class="col-sm-12">
+                <label><t>password</t><r ng-show="d.password_exists != 'Y' && d.login"/></label>
+                <div class="input-group">
+                  <input type="{{ q.password.type }}"
+                         name="password"
+                         class="form-control password-field"
+                         ng-model="d.password"
+                         ng-required="d.password_exists != 'Y' && d.login"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" ng-mousedown="passChangeParam('type', 'text')" ng-mouseup="passChangeParam('type', 'password')">
+                      <i class="fa fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>roles</t></label>
+              <b-input multiple
+                       name="roles"
+                       model="d.roles"
+                       model-key="role_id"
+                       is-add="fi.add_role"
+                       is-view="fi.select_role"
+                       on-add="addRole(value)"
+                       on-view="selectRole()"
+                       label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>code</t></label>
+                  <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.key_person"/>
+                <span>
+                  <t ng-if="d.key_person == 'Y'">key person</t>
+                  <t ng-if="d.key_person == 'N'">not key person</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                <span>
+                  <t ng-if="d.state == 'A'">active</t>
+                  <t ng-if="d.state == 'P'">passive</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.access_all_employee"/>
+                <span>
+                  <t ng-if="d.access_all_employee == 'Y'">access to all employee</t>
+                  <t ng-if="d.access_all_employee == 'N'">no access to all employee</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group" ng-if="d.access_all_employee == 'N' && q.position_enable == 'N'">
+              <label><t>avialable divisions</t></label>
+              <b-tree-select
+                multiple
+                origin="q.divisions"
+                id-key="division_id"
+                model="d.division_ids"/>
+            </div>
+            <div class="form-group" ng-if="d.access_to_salary_setting == 'Y' && q.position_enable == 'N'">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="q.restrict_hidden_salary"/>
+                <span>
+                  <t ng-if="q.restrict_hidden_salary == 'Y'">restrict to view salaries</t>
+                  <t ng-if="q.restrict_hidden_salary == 'N'">no restrict to view salaries</t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group" ng-if="q.restrict_hidden_salary == 'Y' && d.access_to_salary_setting == 'Y' && q.position_enable == 'N'">
+              <label><t>job groups</t></label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <div class="input-group-text" style="height: auto;">
+                    <label class="checkbox mt-n6 m-0">
+                      <input type="checkbox" ng-model="d.access_hidden_salary" ng-true-value="'Y'" ng-false-value="'N'"/><span></span>
+                    </label>
+                  </div>
+                </div>
+                <b-input name="job_groups"
+                         multiple
+                         model="d.job_groups"
+                         model-key="job_group_id"
+                         is-view="fi.select_job_group"
+                         on-view="selectJobGroup()"
+                         ng-if="d.access_hidden_salary != 'Y'">
+                  {{ row.name }}
+                </b-input>
+                <input class="form-control" ng-value="q.tAll" ng-show="d.access_hidden_salary == 'Y'" readonly/>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-14" ng-if="!q.only_person_info">
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.staff_track_user_settings"/>
+                <span>
+                  <t ng-if="d.staff_track_user_settings == 'Y'">staff track user settings</t>
+                  <t ng-if="d.staff_track_user_settings == 'N'">staff track defualt settings</t>
+                </span>
+              </label>
+            </div>
+            <div ng-if="d.staff_track_user_settings == 'Y'">
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_last_track_type" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>staff last track type</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label><t>track type</t></label><br/>
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_track_type_input" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span>{{ q.tt_input }}</span>
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_track_type_output" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span>{{ q.tt_output }}</span>
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_track_type_check"
+                    ng-change="d.staff_track_check_location = d.staff_track_type_check" ng-true-value="'Y'"
+                    ng-false-value="'N'"/>
+                  <span>{{ q.tt_check }}</span>
+                </label>
+                <label class="checkbox checkbox-success" ng-if="d.staff_track_type_check == 'Y'">
+                  <input type="checkbox" ng-model="d.staff_track_check_location" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>check location</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_track_potential" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>setting for check-out with the last track on mobile</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_track_by_qr_code" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>possibility track by qr code</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_ignore_invalid_track" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>ignore invalid track for last track</t></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label><t>track steps</t></label><br/>
+                <div ng-class="{ 'form-group': $last }" ng-repeat="step in q.track_steps">
+                  <i class="fa fa-chevron-down align-middle" style="cursor: pointer;" ng-if="$first" ng-click="reverseTrackTypes()"></i>
+                  <i class="fa fa-chevron-up align-middle" style="cursor: pointer;" ng-if="$last" ng-click="reverseTrackTypes()"></i>
+                  &nbsp;
+                  <label class="checkbox" ng-if="step == 'staff_gps_determination'">
+                    <input type="checkbox" ng-model="d.staff_gps_determination" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>gps determination</t></span>
+                  </label>
+                  <label class="checkbox" ng-if-start="step == 'staff_face_recognition'">
+                    <input type="checkbox" ng-model="d.staff_face_recognition" ng-true-value="'Y'" ng-false-value="'N'"
+                      ng-change="d.staff_emotion_wink = d.staff_face_recognition; d.staff_emotion_smile = d.staff_face_recognition"/>
+                    <span><t>face recognition</t></span>
+                  </label>
+                  <label class="checkbox success" ng-show="d.staff_face_recognition == 'Y'">
+                    <input type="checkbox" ng-model="d.staff_emotion_wink" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>emotion wink</t></span>
+                  </label>
+                  <label class="checkbox success" ng-if-end ng-show="d.staff_face_recognition == 'Y'">
+                    <input type="checkbox" ng-model="d.staff_emotion_smile" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>emotion smile</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid mb-4" ng-if="d.staff_track_user_settings == 'Y' || d.staff_gps_tracking_user_settings == 'Y'"></div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.staff_gps_tracking_user_settings" ng-change="changeGpsSetting()"/>
+                <span>
+                  <t ng-if="d.staff_gps_tracking_user_settings == 'Y'">staff gps tracking user settings</t>
+                  <t ng-if="d.staff_gps_tracking_user_settings == 'N'">staff gps tracking defualt settings</t>
+                </span>
+              </label>
+            </div>
+            <div ng-if="d.staff_gps_tracking_user_settings == 'Y'">
+              <div class="form-group">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.staff_gps_tracking" ng-change="changeGps()"/>
+                  <span><t>staff gps tracking</t></span>
+                </label>
+              </div>
+              <div ng-if="d.staff_gps_tracking == 'Y'">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.staff_gps_tracking_gps_track_collect" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>gps track collect</t></span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="d.staff_gps_tracking_auto_output" ng-true-value="'Y'" ng-false-value="'N'" ng-change="d.disable_auto_checkout = 'N'"/>
+                    <span><t>auto output</t></span>
+                  </label>
+                  <label class="checkbox" ng-if="d.staff_gps_tracking_auto_output == 'Y'">
+                    <input type="checkbox" ng-model="d.disable_auto_checkout" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>accept auto checkouts as invalid</t></span>
+                  </label>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-20 col-md-12 col-lg-12">
+                    <div class="form-group">
+                      <label><t>staff gps tracking quality</t></label><br/>
+                      <style>
+                        .dropdown>.ui-select-dropdown.dropdown-menu {
+                          top: 26px !important;
+                        }
+                      </style>
+                      <ui-select ng-model="d.staff_gps_tracking_quality_kind">
+                        <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                        <ui-select-choices repeat="item.kind as item in q.gps_tracking_quality_kinds | filter: $select.search">
+                          {{ item.name }}
+                        </ui-select-choices>
+                      </ui-select>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row" ng-if="d.staff_gps_tracking_quality_kind == q.gtqk_custom">
+                  <div class="col-sm-10 col-md-6">
+                    <div class="form-group">
+                      <label><t>distance (metr)</t></label>
+                      <input class="form-control" ng-model="d.staff_gps_tracking_distance" ng-blur="fixGpsTrackingDistance()" b-number/>
+                      <span class="form-text text-muted text-right mt-0">
+                        <t p1="q.gps_tracking_distance_min">min value: $1{number}</t>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-sm-10 col-md-6">
+                    <div class="form-group">
+                      <label><t>interval (second)</t></label>
+                      <input class="form-control" ng-model="d.staff_gps_tracking_interval" ng-blur="fixGpsTrackingInterval()" b-number/>
+                      <span class="form-text text-muted text-right mt-0">
+                        <t p1="q.gps_tracking_interval_min">min value: $1{number}</t>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="separator separator-solid mb-4"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group ml-2">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.staff_face_register_user_settings"/>
+                  <span>
+                    <t ng-if="d.staff_face_register_user_settings == 'Y'">staff face registration user settings</t>
+                    <t ng-if="d.staff_face_register_user_settings == 'N'">staff face registration defualt settings</t>
+                  </span>
+                </label>
+              </div>
+              <div ng-if="d.staff_face_register_user_settings == 'Y'">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.staff_face_register" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>allow face registration</t></span>
+                </label>
+                <label class="checkbox" ng-if="d.staff_face_register == 'Y'">
+                  <input type="checkbox" ng-model="d.staff_allow_gallery" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>allow device gallery</t></span>
+                </label>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group ml-2">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.request_status_user_settings"/>
+                  <span>
+                    <t ng-if="d.request_status_user_settings == 'Y'">request manager approval user settings</t>
+                    <t ng-if="d.request_status_user_settings == 'N'">request manager approval defualt settings</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group ml-2" ng-if="d.request_status_user_settings == 'Y'">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="d.enable_request" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>enable request</t></span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" ng-model="d.request_status_settings" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>request manager approval setting</t></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="form-group ml-2">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.change_status_user_settings"/>
+                  <span>
+                    <t ng-if="d.change_status_user_settings == 'Y'">change schedule manager approval user settings</t>
+                    <t ng-if="d.change_status_user_settings == 'N'">change schedule manager approval settings</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group ml-2" ng-if="d.change_status_user_settings == 'Y'">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="d.enable_schedule_change" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>enable chedule change</t></span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" ng-model="d.change_status_settings" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>change schedule manager approval setting</t></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="form-group ml-2">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.change_restriction_day_user_settings"/>
+                  <span>
+                    <t ng-if="d.change_restriction_day_user_settings == 'Y'">schedule change request restriction days user setting</t>
+                    <t ng-if="d.change_restriction_day_user_settings == 'N'">schedule change request restriction days setting</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group ml-2" ng-if="d.change_restriction_day_user_settings == 'Y'">
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.change_with_restriction_days" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>schedule change request with restriction days</t></span>
+                </label>
+              </div>
+              <div class="row" ng-if="d.change_with_restriction_days == 'Y'">
+                <div class="col-sm-8 mb-4">
+                  <label><t>schedule change request restriction days</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.change_restriction_days" b-number="signed" precision="3" scale="0" ng-required="d.change_with_restriction_days == 'Y'"/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.change_with_monthly_limit" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>schedule change request with monthly limit</t></span>
+                </label>
+              </div>
+              <div class="row" ng-if="d.change_with_monthly_limit == 'Y'">
+                <div class="col-sm-8 mb-4">
+                  <label><t>schedule change request monthly limit</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.change_monthly_limit" b-number="unsigned" precision="3" scale="0" ng-required="d.change_with_monthly_limit == 'Y'"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-header" ng-if="fi.licensing_plan && d.licensing_plans.length > 0">
+        <div class="card-title">
+          <h3 class="card-label"><t>user license ownerships</t></h3>
+        </div>
+      </div>
+      <div class="card-body" ng-if="fi.licensing_plan && d.licensing_plans.length > 0">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group" ng-repeat="license in d.licensing_plans">
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="license.granted"/>
+                <span>{{ license.name }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="offertaModal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>this function allows you to process geolocation data</t></h4>
+          </div>
+          <div class="modal-body">
+            <div ng-bind-html="q.offerta_text"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="confirmOffert()"><t>confirm</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

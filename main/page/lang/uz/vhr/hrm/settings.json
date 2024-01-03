@@ -1,0 +1,12 @@
+{
+ "notification enable": "Kadrlarga oid hujjatlar bildirishnomalari",
+ "parttime enable": "To'liqsiz ish vaqti turlaridan foydalanish",
+ "position booking": "Ish o'rinlarini band qilishdan foydalanish",
+ "position check": "Kadrlarga oid hujjatlarni ish o'rinlari jadvaliga mosligini avtomatik tekshirish",
+ "position enable": "Ish o'rinlari jadvalini yuritish",
+ "position fixing enabled": "Ish o'rinlari tashkiliy tuzilmasini tahrirlashga ruxsat berish",
+ "position history": "Ish o'rinlari jadvali o'zgarishlar tarixini yuritish",
+ "rank enable": "Ish o'rinlari jadvali yuritilmagan holatda darajalardan foydalanish",
+ "save": "Saqlash",
+ "wage scale enable": "Ish o'rinlari jadvali yuritilmagan holatda tarif setkalaridan foydalanish"
+}

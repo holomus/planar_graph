@@ -1,0 +1,161 @@
+<script biruni>
+page.require('jquery-orgchart', 'html2canvas', 'jspdf');
+page.ctrl(function(scope, model, t, $compile) {
+  var d = model || {}, tree = [], chart_data = {};
+  d.nodes = _.mapRows(d.nodes, ['node_id', 'name', 'parent_id', 'kind', 'robot_count']);
+
+  // Node Kind: (H)ead, (D)epartment, (T)eam, (R)obot
+  tree = makeTree(d.nodes, 'node_id');
+
+  if (tree.length == 1) {
+    chart_data = tree[0];
+    chart_data.kind = 'H';
+  } else {
+    chart_data = { name: d.filial_name, kind: 'H', level: 0, children: tree };
+  }
+
+  var chart = page.$content.find('.chart-western');
+  var orgchart = chart.orgchart({ 'data': chart_data, 'createNode': createNode });
+  var mouseDown = false, lastPageX, scrollLeft;
+
+  chart.on('mousedown', function(event) {
+    mouseDown = true;
+    lastPageX = event.pageX;
+    scrollLeft = chart.scrollLeft();
+  });
+  chart.on('mouseup mouseleave', () => mouseDown = false);
+  chart.on('mousemove', event => mouseDown && chart.scrollLeft(scrollLeft + lastPageX - event.pageX));
+
+  function makeTree(list, id_key, parent_key = 'parent_id', parent_id = '', child_key = 'children', level_key = 'level') {
+    const children_of = parent_id => _.filter(list, child => child[parent_key] == parent_id);
+    const iteratee = (parent, level) => {
+      parent[level_key] = level;
+      parent[child_key] = children_of(parent[id_key]);
+      _.each(parent[child_key], child => iteratee(child, level + 1));
+      return parent;
+    }
+    return _.map(children_of(parent_id), child => iteratee(child, 1));
+  }
+
+  function createNode($node, data) {
+    var isolate = scope.$new(true);
+    var elem = $(nodeTemplate($node, data));
+    $compile(elem.contents())(isolate);
+    $node.empty();
+    $node.append(elem);
+  }
+
+  function nodeTemplate($node, data) {
+    var kind_class, template, robot_template;
+    data.isHybrid = data.level > 1 && _.any(data.children, x => x.kind == 'R');
+
+    switch (data.kind) {
+      case 'H': kind_class = 'header'; break;
+      case 'D': kind_class = 'department'; break;
+      case 'T': kind_class = 'team'; break;
+      case 'R': kind_class = 'robot'; break;
+    }
+
+    if (data.kind == 'R') {
+      template = `
+        <div class="org-card ${ kind_class }">
+          <div style="width: 20%;">${ data.robot_count }</div>
+          <span class="separator"></span>
+          <div class="org-card-title" style="width: 80%;" data-toggle="tooltip" data-placement="top" title="${ data.name }">${ data.name }</div>
+        </div>`;
+    } else {
+      template = `
+        <div class="org-card ${ kind_class }">
+          <div class="org-card-title" style="width: 100%;" data-toggle="tooltip" data-placement="top" title="${ data.name }">${ data.name }</div>
+        </div>`;
+    }
+
+    return template;
+  }
+
+  function exportChart(extension) {
+    orgchart.export(t('organization-structure')(), extension);
+  }
+});
+</script>
+<div class="b-content">
+  <style>
+    .org-card {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      height: 4em;
+      width: 15em;
+      border-radius: 4px;
+      color: white;
+      font-weight: 600;
+    }
+
+    .org-card-title {
+      padding: 0 .7em;
+      overflow:hidden; 
+      white-space:nowrap; 
+      text-overflow: ellipsis;
+    }
+
+    /* header */
+    .org-card.header {
+      background-color: #2C3E50;
+      border: 1px solid #1f274af5;
+    }
+    .org-card.header > span.separator {
+      background-color: #1f274af5;
+    }
+
+    /* department */
+    .org-card.department {
+      background-color: #4B77BE;
+      border: 1px solid #3436b6;
+    }
+    .org-card.department > span.separator {
+      background-color: #3436b6;
+    }
+    
+    /* team */
+    .org-card.team {
+      background-color: #e76f51;
+      border: 1px solid #7B3E19;
+    }
+    .org-card.team > span.separator {
+      background-color: #7B3E19;
+    }
+    
+    /* robot */
+    .org-card.robot {
+      background-color: #2a9d8f;
+      border: 1px solid #185750
+    }
+    .org-card.robot > span.separator {
+      background-color: #185750;
+    }
+
+    .org-card > span.separator {
+      height: 75%;
+      width: 1px;
+    }
+  </style>
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>export</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-click="exportChart('png')">
+            <span class="text-muted mr-3"><i class="fas fa-file-image" style="font-size: 1.4em;"></i></span>
+            <t>export to png</t>
+          </a>
+          <a href class="dropdown-item" ng-click="exportChart('pdf')">
+            <span class="text-muted mr-3"><i class="fas fa-file-pdf" style="font-size: 1.4em;"></i></span>
+            <t>export to pdf</t>
+          </a>
+        </div>
+      </div>
+      <div class="chart-western" align="center" style="overflow: auto; position: relative;"></div>
+    </div>
+  </div>
+</div>

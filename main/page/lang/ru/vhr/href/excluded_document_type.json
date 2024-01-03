@@ -1,0 +1,8 @@
+{
+ "divisions": "Отдел",
+ "do you want to exclude no document types?": "Вы действительно хотите очистить исключения?",
+ "job name": "Должность",
+ "required document types": "Типы документов при приеме",
+ "save": "Сохранить",
+ "you have not excluded any document types, do you want to leave?": "Вы не исключили ни одного типа документов, хотите выйти?"
+}

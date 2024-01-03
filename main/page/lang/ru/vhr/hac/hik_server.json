@@ -1,0 +1,9 @@
+{
+ "host url": "URL-адрес",
+ "name": "Название",
+ "order_no": "Порядковый номер",
+ "partner key": "Partner Key",
+ "partner secret": "Partner Secret",
+ "save": "Сохранить",
+ "token": "Токен"
+}

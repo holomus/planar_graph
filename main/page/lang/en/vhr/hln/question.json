@@ -1,0 +1,13 @@
+{
+ "do you really want to delete the group from this question": "Do you really want to delete this group from current question?",
+ "name is required": "Question text is required",
+ "there must be at least 1 correct answer": "There must be at least 1 correct answer",
+ "active": "Active",
+ "answer type": "Answer Type",
+ "code": "Code",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status",
+ "text question": "Text",
+ "writing hint": "Hint"
+}

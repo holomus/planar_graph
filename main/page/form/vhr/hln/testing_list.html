@@ -1,0 +1,280 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table').param(param);
+
+  var pg = page.grid('table'),
+      statusClass = { N: 'primary', E: 'info', P: 'warning', C: 'danger', F: 'success' },
+      passedClass = { Y: 'primary', N: 'danger', I: 'secondary' };
+
+  pg.asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+  pg.asHtml('passed_html', 'passed, passed_name', row => {
+    return `<span class="badge badge-${ passedClass[row.passed] }">${ row.passed_name }</span>`;
+  });
+});
+page.ctrl(function(scope, model, t, fi, param, bUtil, $timeout) {
+  var q = model || {},
+      p = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ testing_id: row.testing_id }, closeIfDialog);
+  }
+
+  function enter(row) {
+    fi.enter({ testing_id: row.testing_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ testing_id: row.testing_id });
+  }
+
+  function check(row) {
+    fi.check({ testing_id: row.testing_id, attestation_id: q.attestation_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit && row.status == 'N' ? edit(row) : null;
+  }
+
+  function doAction(doFunc, doTrans, testing_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ testing_id: testing_id, attestation_id: q.attestation_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans, is_modal, modal_key, action) {
+    return is_modal ? function(row) {
+      p.title = doTrans(row.testing_number, row.testing_date);
+      p.data = { testing_id: row.testing_id, attestation_id: q.attestation_id, period_is_valid: true };
+      p.action = function() {
+        let data = angular.copy(p.data);
+        if (data.begin_time_period_begin || data.begin_time_period_end) {
+          if (!page.valid(scope.setBeginTimeModal)) return;
+          data.begin_time_period_begin = bUtil.timeToMinutes(data.begin_time_period_begin);
+          data.begin_time_period_end = q.is_period == 'Y' ? bUtil.timeToMinutes(data.begin_time_period_end) : null;
+
+          if (q.is_period == 'Y' && data.begin_time_period_begin > data.begin_time_period_end) {
+            p.data.period_is_valid = false;
+            return;
+          }
+        }
+        doFunc(data).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      modal = page.$content.find(`form[name=${ modal_key }]>.modal`);
+      $timeout(() => modal.modal('show'));
+    } : function(row) {
+      doAction(doFunc, doTrans(row.testing_number, row.testing_date), row.testing_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key, is_modal, modal_key) {
+    return is_modal ? function(row) {
+      p.title = doTrans(q[key].size);
+      p.data = { testing_id: _.pluck(q[key].rows, 'testing_id'), attestation_id: q.attestation_id, period_is_valid: true };
+      if (page.valid(scope.form)) {
+        p.action = function() {
+          let data = angular.copy(p.data);
+          if (data.begin_time_period_begin || data.begin_time_period_end) {
+            if (!page.valid(scope.setBeginTimeModal)) return;
+            data.begin_time_period_begin = bUtil.timeToMinutes(data.begin_time_period_begin);
+            data.begin_time_period_end = q.is_period == 'Y' ? bUtil.timeToMinutes(data.begin_time_period_end) : null;
+
+            if (q.is_period == 'Y' && data.begin_time_period_begin > data.begin_time_period_end) {
+              p.data.period_is_valid = false;
+              return;
+            }
+          }
+          doFunc(data).then(page.reload, page.alert);
+        };
+      }
+      p.action_title = doFunc.title;
+      modal = page.$content.find(`form[name=${ modal_key }]>.modal`);
+      $timeout(() => modal.modal('show'));
+    } : function() {
+      doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'testing_id'));
+    }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {};
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_delete', checked, x => x.status == 'N');
+
+    _.map(q.actions, x => prepChecked(x.action_title, checked, x.filterFunc));
+    q.actions_exists = _.any(q.actions, x => q[x.action_title].has);
+  }
+
+  q.actions = _.chain([
+    [ fi.set_new, row => row.status != 'N', t('new testing $1{testing_number}?'), t('new $1{testing_count} testing(s)?') , 'to_new' ],
+    [ fi.set_begin_time, row => row.status == 'N', t('set begin time testing $1{testing_number}?'), t('set begin time $1{testing_count} testing(s)?'), 'to_set_begin_time', true, 'setBeginTimeModal'] ,
+    [ fi.start, row => row.status == 'N', t('start testing $1{testing_number}?'), t('start $1{testing_count} testing(s)?'), 'to_start'] ,
+    [ fi.return_execute, row => row.status == 'C' || row.status == 'F', t('return execute testing $1{testing_number}?'), t('return execute $1{testing_count} testing(s)?'), 'to_return_execute' ],
+    [ fi.pause, row => row.status == 'E', t('pause testing $1{testing_number}?'), t('pause $1{testing_count} testing(s)?'), 'to_pause' ],
+    [ fi.continue, row => row.status == 'P', t('continue testing $1{testing_number}?'), t('continue $1{testing_count} testing(s)?'), 'to_continue' ],
+    [ fi.add_time, row => row.duration && (row.status == 'E' || row.status == 'P'), t('add time to testing $1{testing_number}?'), t('add time to $1{testing_count} testing(s)?') , 'to_add_time', true, 'addTimeModal' ],
+    [ fi.stop, row => row.status == 'E' || row.status == 'P', t('stop testing $1{testing_number}?'), t('stop $1{testing_count} testing(s)?'), 'to_stop' ],
+    [ fi.return_checking, row => row.status == 'F' && row.has_writing_question == 'Y', t('return checking testing $1{testing_number}?'), t('return checking $1{testing_count} testing(s)?'), 'to_return' ],
+    [ fi.finish, row => row.status == 'N' || row.status == 'C', t('finish testing $1{testing_number}?'), t('finish $1{testing_count} testing(s)?'), 'to_finish' ],
+  ])
+  .mapRows(['grant', 'filterFunc', 'transOne', 'transMany', 'action_title', 'isModal', 'modalKey'])
+  .reject(x => !x.grant)
+  .each(x => {
+    x.data = {};
+    x.funcOne = prepActionOne(x.grant, x.transOne, x.isModal, x.modalKey, x.action_title);
+    x.funcMany = prepActionMany(x.grant, x.transMany, x.action_title, x.isModal, x.modalKey);
+  })
+  .value();
+
+  q.attestation_id = param.attestation_id;
+
+  scope.q = q;
+  scope.p = p;
+
+  scope.deleteOne = prepActionOne(fi.delete, t('delete testing $1{testing_number}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{testing_count} testings?'), 'to_delete');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <div class="btn-group" ng-show="q.actions_exists">
+      <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>choose action</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcMany()" ng-if="action.grant && q[action.action_title].has">
+          {{ action.grant.title }} {{ q[action.action_title].size }}
+        </a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog()" ng-show="q.checked.has">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst() && !q.attestation_id">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="testing_id, testing_number, testing_date, status, duration, has_writing_question" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-testing_date" search="exam_name" searchable="testing_id"
+          extra-columns="testing_id, testing_number, examiner_name, pause_time, begin_time_period_end, fact_begin_time, fact_end_time, note, current_question_no, passing_score, question_count,
+          attestation_name, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="testing_date" size=2/>
+      <b-col name="person_name" size=3/>
+      <b-col name="exam_name" size=4/>
+      <b-col name="passing_percent" size=2/>
+      <b-col name="duration" size=2/>
+      <b-col name="begin_time_period_begin" size=3/>
+      <b-col name="end_time" size=3/>
+      <b-col name="passed_name" size=2 as-html="passed_html"/>
+      <b-col name="status_name" size=2 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.status == 'N'">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="check(row)" ng-if="fi.check && row.status == 'C'">{{ fi.check.title }}</button>
+      <div class="btn-group" ng-if="q.actions.length > 0">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>choose action</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-repeat="action in q.actions" ng-click="action.funcOne(row)" ng-if="action.grant && action.filterFunc(row)">
+            {{ action.grant.title }}
+          </a>
+        </div>
+      </div>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N'">{{ fi.delete.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="enter(row)" ng-if="fi.enter && (row.status == 'N' || row.status == 'E')">{{ fi.enter.title }}</button>
+    </b-action>
+
+    <b-filter name="testing_id" directive="equal" extra/>
+    <b-filter name="exam_id" decorate-with="exam_name"/>
+    <b-filter name="duration"/>
+    <b-filter name="passing_percent"/>
+    <b-filter name="person_id" decorate-with="person_name"/>
+    <b-filter name="testing_date"/>
+    <b-filter name="begin_time_period_begin" extra/>
+    <b-filter name="begin_time_period_end" extra/>
+    <b-filter name="examiner_id" decorate-with="examiner_name" extra/>
+    <b-filter name="passed" decorate-with="passed_name" extra/>
+    <b-filter name="passing_score" extra/>
+    <b-filter name="question_count" extra/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form>
+<form name="addTimeModal">
+  <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" ng-bind-html="p.title"></h5>
+          <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label><t>added time</t></label>
+            <input class="form-control" ng-model="p.data.added_time" b-number/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" ng-click="p.action()">{{ p.action_title }}</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+<form name="setBeginTimeModal">
+  <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" ng-bind-html="p.title"></h5>
+          <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group" ng-if="q.is_period == 'N'">
+            <label><t>set begin time</t></label>
+            <input class="form-control" ng-model="p.data.begin_time_period_begin" b-date-picker="HH:mm"/>
+          </div>
+          <div class="form-row" ng-if="q.is_period == 'Y'">
+            <div class="col-sm-12">
+              <label><t>set begin time period begin</t><r ng-if="p.data.begin_time_period_end"/></label>
+              <input class="form-control" ng-model="p.data.begin_time_period_begin" b-date-picker="HH:mm" ng-required="p.data.begin_time_period_end"/>
+            </div>
+            <div class="col-sm-12">
+              <label><t>set begin time period end</t><r ng-if="p.data.begin_time_period_begin"/></label>
+              <input class="form-control" ng-model="p.data.begin_time_period_end" b-date-picker="HH:mm" ng-required="p.data.begin_time_period_begin"/>
+            </div>
+            <div class="col-sm">
+              <span class="text-danger" ng-hide="p.data.period_is_valid"><t>period begin must be less than period end</t></span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" ng-click="p.action()">{{ p.action_title }}</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

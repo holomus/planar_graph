@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{relation_degree_count} relation degree(s)?": "Удалить степени родства в количестве <b>$1</b>?",
+ "delete $1{relation_degree_name}?": "Удалить степень родства <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.name": "Название",
+ "table.relation_degree_id": "ИД",
+ "table.state_name": "Статус"
+}

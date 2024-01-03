@@ -1,0 +1,1017 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, blockUI) {
+  var d = model,
+      q = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (section == 'sign') {
+      page.subpage(section).run(fi[section].uri, null);
+    }
+  }
+
+  function addIntegrateJob() {
+    d.integrate_jobs.push({});
+  }
+
+  function removeIntegrateJob(item) {
+    let index = _.findIndex(d.integrate_jobs, item);
+    d.integrate_jobs.splice(index, 1);
+  }
+
+  function addIntegrateRegion() {
+    d.integrate_regions.push({});
+  }
+
+  function removeIntegrateRegion(item) {
+    let index = _.findIndex(d.integrate_regions, item);
+    d.integrate_regions.splice(index, 1);
+  }
+
+  // Job Groups
+  function whereSystemJobGroup() {
+    let ids = _.chain(d.integrate_jobs).pluck('job_group_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['job_group_id', '<>', ids];
+  }
+
+  function changeSystemJobQuery(query, value) {
+    query.where(whereSystemJobGroup()).searchValue(value);
+  }
+
+  function whereHhJob() {
+    let codes = _.chain(d.integrate_jobs).pluck('job_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhJobQuery(query, value) {
+    query.where(whereHhJob()).searchValue(value);
+  }
+
+  function setSystemJob(item, row) {
+    if (!row) row;
+    item.system_job_group_name = row.name;
+    item.job_group_id = row.job_group_id
+  }
+
+  function setHhJob(item, row) {
+    if (!row) return;
+    item.hh_job_name = row.name;
+    item.job_code = row.code;
+  }
+
+  // Region
+  function whereHhRegion() {
+    let codes = _.chain(d.integrate_regions).pluck('region_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhRegionQuery(query, value) {
+    query.where(whereHhRegion()).searchValue(value);
+  }
+
+  function whereSystemRegion() {
+    let ids = _.chain(d.integrate_regions).pluck('region_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['region_id', '<>', ids];
+  }
+
+  function changeSystemRegionQuery(query, value) {
+    query.where(whereSystemRegion()).searchValue(value);
+  }
+
+  function setHhRegion(item, row) {
+    if (!row) return;
+    item.hh_region_name = row.name;
+    item.region_code = row.code;
+  }
+
+  function setSystemRegion(item, row) {
+    if (!row) return;
+    item.system_region_name = row.name;
+    item.region_id = row.region_id;
+  }
+
+  // Langs
+  function addIntegrateLang() {
+    d.integrate_langs.push({});
+  }
+
+  function removeIntegrateLang(item) {
+    let index = _.findIndex(d.integrate_langs, item);
+    d.integrate_langs.splice(index, 1);
+  }
+
+  function whereHhLang() {
+    let codes = _.chain(d.integrate_langs).pluck('lang_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhLangQuery(query, value) {
+    query.where(whereHhLang()).searchValue(value);
+  }
+
+  function whereSystemLang() {
+    let ids = _.chain(d.integrate_langs).pluck('lang_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['lang_id', '<>', ids];
+  }
+
+  function changeSystemLangQuery(query, value) {
+    query.where(whereSystemLang()).searchValue(value);
+  }
+
+  function setHhLang(item, row) {
+    if (!row) return;
+    item.hh_lang_name = row.name;
+    item.lang_code = row.code;
+  }
+
+  function setSystemLang(item, row) {
+    if (!row) return;
+    item.system_lang_name = row.name;
+    item.lang_id = row.lang_id;
+  }
+
+  // Lang Level
+  function addIntegrateLangLevel() {
+    d.integrate_lang_levels.push({});
+  }
+
+  function removeIntegrateLangLevel(item) {
+    let index = _.findIndex(d.integrate_lang_levels, item);
+    d.integrate_lang_levels.splice(index, 1);
+  }
+
+  function whereHhLangLevel() {
+    let codes = _.chain(d.integrate_lang_levels).pluck('lang_level_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhLangLevelQuery(query, value) {
+    query.where(whereHhLangLevel()).searchValue(value);
+  }
+
+  function whereSystemLangLevel() {
+    let ids = _.chain(d.integrate_lang_levels).pluck('lang_level_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['lang_level_id', '<>', ids];
+  }
+
+  function changeSystemLangLevelQuery(query, value) {
+    query.where(whereSystemLangLevel()).searchValue(value);
+  }
+
+  function setHhLangLevel(item, row) {
+    if (!row) return;
+    item.hh_lang_level_name = row.name;
+    item.lang_level_code = row.code;
+  }
+
+  function setSystemLangLevel(item, row) {
+    if (!row) return;
+    item.system_lang_level_name = row.name;
+    item.lang_level_id = row.lang_level_id;
+  }
+
+  // Schedule
+  function addIntegrateSchedule() {
+    d.integrate_schedules.push({});
+  }
+
+  function removeIntegrateSchedule(item) {
+    let index = _.findIndex(d.integrate_schedules, item);
+    d.integrate_schedules.splice(index, 1);
+  }
+
+  function whereHhSchedule() {
+    let codes = _.chain(d.integrate_schedules).pluck('schedule_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhScheduleQuery(query, value) {
+    query.where(whereHhSchedule()).searchValue(value);
+  }
+
+  function whereSystemSchedule() {
+    let ids = _.chain(d.integrate_schedules).pluck('schedule_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['schedule_id', '<>', ids];
+  }
+
+  function changeSystemScheduleQuery(query, value) {
+    query.where(whereSystemSchedule()).searchValue(value);
+  }
+
+  function setHhSchedule(item, row) {
+    if (!row) return;
+    item.hh_schedule_name = row.name;
+    item.schedule_code = row.code;
+  }
+
+  function setSystemSchedule(item, row) {
+    if (!row) return;
+    item.system_schedule_name = row.name;
+    item.schedule_id = row.schedule_id;
+  }
+
+  // Experience
+  function addIntegrateExperience() {
+    d.integrate_experiences.push({});
+  }
+
+  function removeIntegrateExperience(item) {
+    let index = _.findIndex(d.integrate_experiences, item);
+    d.integrate_experiences.splice(index, 1);
+  }
+
+  function whereHhExperience() {
+    let codes = _.chain(d.integrate_experiences).pluck('experience_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhExperienceQuery(query, value) {
+    query.where(whereHhExperience()).searchValue(value);
+  }
+
+  function whereSystemExperience() {
+    let ids = _.chain(d.integrate_experiences).pluck('vacancy_type_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['vacancy_type_id', '<>', ids];
+  }
+
+  function changeSystemExperienceQuery(query, value) {
+    query.where(whereSystemExperience()).param({ pcode: d.pcode_experience }).searchValue(value);
+  }
+
+  function setHhExperience(item, row) {
+    if (!row) return;
+    item.hh_experience_name = row.name;
+    item.experience_code = row.code;
+  }
+
+  function setSystemExperience(item, row) {
+    if (!row) return;
+    item.system_experience_name = row.name;
+    item.vacancy_type_id = row.vacancy_type_id;
+  }
+
+  // Employments
+  function addIntegrateEmployment() {
+    d.integrate_employments.push({});
+  }
+
+  function removeIntegrateEmployment(item) {
+    let index = _.findIndex(d.integrate_employments, item);
+    d.integrate_employments.splice(index, 1);
+  }
+
+  function whereHhEmployment() {
+    let codes = _.chain(d.integrate_employments).pluck('employment_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhEmploymentsQuery(query, value) {
+    query.where(whereHhEmployment()).searchValue(value);
+  }
+
+  function whereSystemEmployment() {
+    let ids = _.chain(d.integrate_employments).pluck('vacancy_type_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['vacancy_type_id', '<>', ids];
+  }
+
+  function changeSystemEmploymentQuery(query, value) {
+    query.where(whereSystemEmployment()).param({ pcode: d.pcode_employments }).searchValue(value);
+  }
+
+  function setHhEmployment(item, row) {
+    if (!row) return;
+    item.hh_employment_name = row.name;
+    item.employment_code = row.code;
+  }
+
+  function setSystemEmployment(item, row) {
+    if (!row) return;
+    item.system_employment_name = row.name;
+    item.vacancy_type_id = row.vacancy_type_id;
+  }
+
+  // Driver Licence
+  function addIntegrateDriverLicence() {
+    d.integrate_driver_licences.push({});
+  }
+
+  function removeIntegrateDriverLicence(item) {
+    let index = _.findIndex(d.integrate_driver_licences, item);
+    d.integrate_driver_licences.splice(index, 1);
+  }
+
+  function whereHhDriverLicence() {
+    let codes = _.chain(d.integrate_driver_licences).pluck('driver_licence_code').compact().value();
+    return _.isEmpty(codes) ? [] : ['code', '<>', codes];
+  }
+
+  function changeHhDriverLicenceQuery(query, value) {
+    query.where(whereHhDriverLicence()).searchValue(value);
+  }
+
+  function whereSystemDriverLicence() {
+    let ids = _.chain(d.integrate_driver_licences).pluck('vacancy_type_id').compact().value();
+    return _.isEmpty(ids) ? [] : ['vacancy_type_id', '<>', ids];
+  }
+
+  function changeSystemDriverLicenceQuery(query, value) {
+    query.where(whereSystemDriverLicence()).param({ pcode: d.pcode_driver_licences }).searchValue(value);
+  }
+
+  function setHhDriverLicence(item, row) {
+    if (!row) return;
+    item.hh_driver_licence_name = row.name;
+    item.driver_licence_code = row.code;
+  }
+
+  function setSystemDriverLicence(item, row) {
+    if (!row) return;
+    item.system_driver_licence_name = row.name;
+    item.vacancy_type_id = row.vacancy_type_id;
+  }
+
+  async function sync() {
+    let message = q.need_sync ? t('sync with head hunter?')() : t('all data wil be removed, do you agree?')();
+    page.confirm(message, async () => {
+      blockUI.start();
+      try {
+        let sync_job          = await fi.sync_jobs();
+        let sync_region       = await fi.sync_regions();
+        let sync_lang         = await fi.sync_langs();
+        let sync_dictionaries = await fi.sync_dictionaries();
+      }  catch (err) {
+        page.alert(err);
+      }
+
+      blockUI.stop();
+      page.reload();
+    });
+  }
+
+  function saveAuth() {
+    if (page.valid(scope.auth_form)) {
+      page.confirm(t('save credentials?')(), () => {
+        fi.save_auth({
+          client_id: d.client_id,
+          client_secret: d.client_secret,
+          employer_id: d.employer_id }).then(notify(t('information successfully saved')()), page.alert);
+      });
+    }
+  }
+
+  function clearAuth() {
+    page.confirm(t('clear auth credentials?')(), () => {
+      fi.clear_auth().then(page.reload, page.alert);
+    });
+  }
+
+  function saveDataMap() {
+    if (page.valid(scope.data_map)) {
+      page.confirm(t('save?')(), () => {
+        let data = _.omit(d, ['head_hunter_job_count', 'head_hunter_region_count', 'hh_stages', 'integrate_jobs']);
+        data.integrate_stages = [];
+        _.each(_.filter(d.hh_stages, (x) => { return !_.isEmpty(x.system_stages) }), x => {
+          let stage = {
+            stage_code: x.code,
+            stage_ids: _.pluck(x.system_stages, ['stage_id'])
+          }
+
+          data.integrate_stages.push(stage);
+        });
+
+        data.integrate_jobs = [];
+        _.each(d.integrate_jobs, x => {
+          data.integrate_jobs.push({ job_code: x.job_code, job_ids: _.pluck(x.jobs, 'job_id') });
+        })
+
+        fi.save_data_map(data).then(notify(t('information successfully saved')()), page.alert);
+      });
+    }
+  }
+
+  function whereStage() {
+    let stage_ids = [];
+    _.each(d.hh_stages, x => {
+      let ids = _.pluck(x.system_stages, 'stage_id');
+      if (!_.isEmpty(ids)) stage_ids = stage_ids.concat(ids);
+    });
+
+    return _.isEmpty(stage_ids) ? [] : ['stage_id', '<>', stage_ids];
+  }
+
+  function changeStageQuery(query, value) {
+    query.where(whereStage()).searchValue(value);
+  }
+
+  // Subscribe to Webhook
+  function subscribe() {
+    page.confirm(t('subscribe to events?')(), () => {
+      fi.subscribe({ url: document.location.origin }).then(() => {
+        notify(t('you are subcribed to event')());
+        d.webhook_subscribed = 'Y';
+      }, page.alert);
+    });
+  }
+
+  function unsubscribe() {
+    page.confirm(t('unsubscribe to events?')(), () => {
+      fi.unsubscribe().then(() => {
+        notify(t('you are unsubcribed to event')());
+        d.webhook_subscribed = 'N';
+      }, page.alert);
+    });
+  }
+
+  d.integrate_regions         = _.mapRows(d.integrate_regions, ['region_id', 'system_region_name', 'region_code', 'hh_region_name']);
+  d.integrate_stages          = _.mapRows(d.integrate_stages, ['stage_id', 'name', 'stage_code']);
+  d.integrate_langs           = _.mapRows(d.integrate_langs, ['lang_id', 'system_lang_name', 'lang_code', 'hh_lang_name']);
+  d.integrate_lang_levels     = _.mapRows(d.integrate_lang_levels, ['lang_level_id', 'system_lang_level_name', 'lang_level_code', 'hh_lang_level_name']);
+  d.integrate_schedules       = _.mapRows(d.integrate_schedules, ['schedule_id', 'system_schedule_name', 'schedule_code', 'hh_schedule_name']) || [];
+  d.integrate_experiences     = _.mapRows(d.integrate_experiences, ['vacancy_type_id', 'system_experience_name', 'experience_code', 'hh_experience_name']);
+  d.integrate_employments     = _.mapRows(d.integrate_employments, ['vacancy_type_id', 'system_employment_name', 'employment_code', 'hh_employment_name']);
+  d.integrate_driver_licences = _.mapRows(d.integrate_driver_licences, ['vacancy_type_id', 'system_driver_licence_name', 'driver_licence_code', 'hh_driver_licence_name']);
+  d.hh_stages                 = _.mapRows(d.hh_stages, ['code', 'name']);
+  d.vacancy_groups            = _.mapRows(d.vacancy_groups, ['name', 'pcode', 'state']);
+  d.integrate_jobs            = d.integrate_jobs || [];
+
+  q.activeSection = fi.sign ? 'sign' : 'auth';
+  q.need_sync = d.head_hunter_job_count == 0 || d.head_hunter_region_count == 0;
+  q.tConfirmDelete = t('delete this item?');
+  q.experience_group = _.findWhere(d.vacancy_groups, { pcode: d.pcode_experience });
+  q.employments_group = _.findWhere(d.vacancy_groups, { pcode: d.pcode_employments });
+  q.driver_licences_group = _.findWhere(d.vacancy_groups, { pcode: d.pcode_driver_licences });
+
+  changeSection(q.activeSection);
+
+  if (_.isEmpty(d.integrate_regions))         addIntegrateRegion();
+  if (_.isEmpty(d.integrate_langs))           addIntegrateLang();
+  if (_.isEmpty(d.integrate_lang_levels))     addIntegrateLangLevel();
+  if (_.isEmpty(d.integrate_schedules))       addIntegrateSchedule();
+  if (_.isEmpty(d.integrate_experiences))     addIntegrateExperience();
+  if (_.isEmpty(d.integrate_employments))     addIntegrateEmployment();
+  if (_.isEmpty(d.integrate_driver_licences)) addIntegrateDriverLicence();
+  if (_.isEmpty(d.integrate_jobs))            addIntegrateJob();
+  else {
+    _.each(d.integrate_jobs, x => { x.jobs = _.mapRows(x.jobs, ['job_id', 'name']) });
+  }
+  if (!_.isEmpty(d.integrate_stages)) {
+    _.each(d.hh_stages, (x, i) => {
+      x.system_stages = [];
+
+      _.each(d.integrate_stages, (y, i) => {
+        if (x.code == y.stage_code) {
+          x.system_stages.push({ stage_id: y.stage_id, name: y.name });
+        }
+      })
+    })
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch">
+        <div class="card-body pt-4">
+          <div class="navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'sign' }" ng-click="changeSection('sign')">
+                <span class="navi-icon mr-2"><i class="fas fa-user-check"></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>sign</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'data_map' }" ng-click="changeSection('data_map')">
+                <span class="navi-icon mr-2"><i class="fas fa-exchange-alt"></i></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>data mapping</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'auth' }" ng-click="changeSection('auth')">
+                <span class="navi-icon mr-2"><i class="fas fa-key"></i></span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>auth</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'sign'">
+      <b-subpage name="sign"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'auth'">
+      <div class="card card-custom card-stretch">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>auth</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <form name="auth_form">
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-if="fi.save_auth" ng-click="saveAuth()">{{ fi.save_auth.title }}</button>
+              <button type="button" class="btn btn-danger" ng-if="fi.clear_auth" ng-click="clearAuth()">{{ fi.clear_auth.title }}</button>
+            </div>
+            <div class="form-group">
+              <label><t>client id</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.client_id" required/>
+            </div>
+            <div class="form-group">
+              <label><t>client secret</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.client_secret" required/>
+            </div>
+            <div class="form-group">
+              <label><t>employer id</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.employer_id" required/>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'data_map'">
+      <div class="card card-custom card-stretch">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>data mapping</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <form name="data_map">
+            <div class="d-flex justify-content-between">
+              <div class="form-group">
+                <button type="button" class="btn btn-primary" ng-if="fi.save_data_map && !q.need_sync" ng-click="saveDataMap()">{{ fi.save_data_map.title }}</button>
+                <button type="button" class="btn btn-primary" ng-if="fi.sync" ng-click="sync()">{{ fi.sync.title }}</button>
+              </div>
+              <div class="form-group">
+                <button type="button" class="btn btn-success" ng-if="fi.subscribe && d.webhook_subscribed == 'N'" ng-click="subscribe()">{{ fi.subscribe.title }}</button>
+                <button type="button" class="btn btn-danger" ng-if="fi.unsubscribe && d.webhook_subscribed == 'Y'" ng-click="unsubscribe()">{{ fi.unsubscribe.title }}</button>
+              </div>
+            </div>
+            <label ng-if="q.need_sync"><t>first need sync with head hunter</t></label>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync && fi.isFilial">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>jobs</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Jobs</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Jobs</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_jobs">
+                  <div class="col-sm-10">
+                    <b-input multiple
+                             name="system_jobs"
+                             model="item.jobs"
+                             model-key="job_id"
+                             label="name"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_jobs"
+                             model="item.hh_job_name | name"
+                             model-key="item.job_code | code"
+                             on-change="changeHhJobQuery(query, value)"
+                             on-select="setHhJob(item, row)"
+                             on-delete="setHhJob(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateJob()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateJob(item)" ng-disabled="d.integrate_jobs.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>regions</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Regions</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Regions</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_regions">
+                  <div class="col-sm-10">
+                    <b-input name="system_regions"
+                             model="item.system_region_name | name"
+                             model-key="item.region_id | region_id"
+                             on-change="changeSystemRegionQuery(query, value)"
+                             on-select="setSystemRegion(item, row)"
+                             on-delete="setSystemRegion(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_regions"
+                             model="item.hh_region_name | name"
+                             model-key="item.region_code | code"
+                             on-change="changeHhRegionQuery(query, value)"
+                             on-select="setHhRegion(item, row)"
+                             on-delete="setHhRegion(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateRegion()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateRegion(item)" ng-disabled="d.integrate_regions.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>langs</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Langs</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Langs</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_langs">
+                  <div class="col-sm-10">
+                    <b-input name="system_langs"
+                             model="item.system_lang_name | name"
+                             model-key="item.lang_id | lang_id"
+                             on-change="changeSystemLangQuery(query, value)"
+                             on-select="setSystemLang(item, row)"
+                             on-delete="setSystemLang(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_langs"
+                             model="item.hh_lang_name | name"
+                             model-key="item.lang_code | code"
+                             on-change="changeHhLangQuery(query, value)"
+                             on-select="setHhLang(item, row)"
+                             on-delete="setHhLang(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateLang()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateLang(item)" ng-disabled="d.integrate_langs.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>langs levels</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Lang Levels</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Lang Levels</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_lang_levels">
+                  <div class="col-sm-10">
+                    <b-input name="system_lang_levels"
+                             model="item.system_lang_level_name | name"
+                             model-key="item.lang_level_id | lang_level_id"
+                             on-change="changeSystemLangLevelQuery(query, value)"
+                             on-select="setSystemLangLevel(item, row)"
+                             on-delete="setSystemLangLevel(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_lang_levels"
+                             model="item.hh_lang_level_name | name"
+                             model-key="item.lang_level_code | code"
+                             on-change="changeHhLangLevelQuery(query, value)"
+                             on-select="setHhLangLevel(item, row)"
+                             on-delete="setHhLangLevel(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateLangLevel()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateLangLevel(item)" ng-disabled="d.integrate_lang_levels.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync && fi.isFilial">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>schedules</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Schedules</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Schedules</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_schedules">
+                  <div class="col-sm-10">
+                    <b-input name="system_schedules"
+                             model="item.system_schedule_name | name"
+                             model-key="item.schedule_id | schedule_id"
+                             on-change="changeSystemScheduleQuery(query, value)"
+                             on-select="setSystemSchedule(item, row)"
+                             on-delete="setSystemSchedule(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_schedules"
+                             model="item.hh_schedule_name | name"
+                             model-key="item.schedule_code | code"
+                             on-change="changeHhScheduleQuery(query, value)"
+                             on-select="setHhSchedule(item, row)"
+                             on-delete="setHhSchedule(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateSchedule()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateSchedule(item)" ng-disabled="d.integrate_schedules.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync && q.experience_group.state == 'A'">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>experience</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t p1="q.experience_group.name">Verifix: $1</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Experiences</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_experiences">
+                  <div class="col-sm-10">
+                    <b-input name="system_experiences"
+                             model="item.system_experience_name | name"
+                             model-key="item.vacancy_type_id | vacancy_type_id"
+                             on-change="changeSystemExperienceQuery(query, value)"
+                             on-select="setSystemExperience(item, row)"
+                             on-delete="setSystemExperience(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_experiences"
+                             model="item.hh_experience_name | name"
+                             model-key="item.experience_code | code"
+                             on-change="changeHhExperienceQuery(query, value)"
+                             on-select="setHhExperience(item, row)"
+                             on-delete="setHhExperience(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateExperience()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateExperience(item)" ng-disabled="d.integrate_experiences.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync && q.employments_group.state == 'A'">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>employments</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t p1="q.employments_group.name">Verifix: $1</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Employment</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_employments">
+                  <div class="col-sm-10">
+                    <b-input name="system_employments"
+                             model="item.system_employment_name | name"
+                             model-key="item.vacancy_type_id | vacancy_type_id"
+                             on-change="changeSystemEmploymentQuery(query, value)"
+                             on-select="setSystemEmployment(item, row)"
+                             on-delete="setSystemEmployment(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_employments"
+                             model="item.hh_employment_name | name"
+                             model-key="item.employment_code | code"
+                             on-change="changeHhEmploymentQuery(query, value)"
+                             on-select="setHhEmployment(item, row)"
+                             on-delete="setHhEmployment(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateEmployment()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateEmployment(item)" ng-disabled="d.integrate_employments.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync && q.driver_licences_group.state == 'A'">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>driver licence</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t p1="q.driver_licences_group.name">Verifix: $1</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Driver Licences</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.integrate_driver_licences">
+                  <div class="col-sm-10">
+                    <b-input name="system_driver_licences"
+                             model="item.system_driver_licence_name | name"
+                             model-key="item.vacancy_type_id | vacancy_type_id"
+                             on-change="changeSystemDriverLicenceQuery(query, value)"
+                             on-select="setSystemDriverLicence(item, row)"
+                             on-delete="setSystemDriverLicence(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <b-input name="hh_driver_licences"
+                             model="item.hh_driver_licence_name | name"
+                             model-key="item.driver_licence_code | code"
+                             on-change="changeHhDriverLicenceQuery(query, value)"
+                             on-select="setHhDriverLicence(item, row)"
+                             on-delete="setHhDriverLicence(item, {})"
+                             required-key>
+                        {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="text-center">
+                      <button class="btn btn-icon btn-default" ng-click="addIntegrateDriverLicence()"><i class="fas fa-plus"></i></button>
+                      <button class="btn btn-icon btn-hover-text-danger btn-default" b-toggle data-title="{{ q.tConfirmDelete() }}" on-click-yes="removeIntegrateDriverLicence(item)" ng-disabled="d.integrate_driver_licences.length == 1">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card card-custom bg-white mb-6" ng-if="!q.need_sync">
+              <div class="card-header">
+                <div class="card-title">
+                  <h6 class="mb-0"><t>stages</t></h6>
+                </div>
+              </div>
+              <div class="card-body pt-4">
+                <div class="row mb-4">
+                  <div class="col-sm-10">
+                    <label><t>Verifix Stages</t></label>
+                  </div>
+                  <div class="col-sm-1"></div>
+                  <div class="col-sm-10">
+                    <label><t>Head Hunter Stages</t></label>
+                  </div>
+                </div>
+                <div class="row mb-4 d-flex align-items-center" ng-repeat="item in d.hh_stages">
+                  <div class="col-sm-10">
+                    <b-input multiple
+                             name="stages"
+                             model="item.system_stages"
+                             model-key="stage_id"
+                             on-change="changeStageQuery(query, value)">
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="col-sm-1">
+                    <span class="navi-icon"><i class="fas fa-long-arrow-alt-right fa-lg"></i></span>
+                  </div>
+                  <div class="col-sm-10">
+                    <span>{{ item.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

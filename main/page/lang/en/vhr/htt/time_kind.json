@@ -1,0 +1,15 @@
+{
+ "active": "Active",
+ "coefficient must be between 0 and 1": "Coefficient must be between 0 and 1",
+ "color": "Color",
+ "digital code": "Digital Code",
+ "letter code": "Letter Code",
+ "name": "Name",
+ "parent time kind": "Parent",
+ "passive": "Inactive",
+ "plan load": "Plan Overload",
+ "save": "Save",
+ "save?": "Save?",
+ "state": "Status",
+ "timesheet coef": "Coefficient"
+}

@@ -1,0 +1,112 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  var pg = page.grid('table');
+
+  pg.asHtml('description_html', 'description', row => {
+    return row.description;
+  });
+  pg.asHtml('state_html', 'state, state_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.asHtml('late_html', 'count_late, count_late_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_late == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_late_name }</div></div>`;
+  });
+  pg.asHtml('early_html', 'count_early, count_early_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_early == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_early_name }</div></div>`;
+  });
+  pg.asHtml('lack_html', 'count_lack, count_lack_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_lack == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_lack_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t, xparam) {
+  var q = {};
+
+  function deleteAction(message, template_id) {
+    page.confirm(message, function() {
+      fi.delete({ template_id: template_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete schedule_template $1{schedule_template_name}?')(row.name), row. template_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{schedule_template_count} schedule_template(s)?')(q.checked.size), _.pluck(q.checked.rows(), ' template_id'));
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ template_id: row.template_id }, closeIfDialog);
+  }
+
+  function addSchedule(row) {
+    fi.add_schedule({ template_id: row.template_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required=" template_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="order_no, name" search="name" searchable="template_id, description"
+          extra-columns="template_id, shift_time, input_acceptance_time, output_acceptance_time, track_duration_time">
+    <b-row>
+      <b-col name="name" size=4/>
+      <b-col name="description" as-html="description_html" size=19/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="count_late_name" as-html="late_html"/>
+      <b-col name="count_early_name" as-html="early_html"/>
+      <b-col name="count_lack_name" as-html="lack_html"/>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="addSchedule(row)" ng-if="fi.add_schedule">{{ fi.add_schedule.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+  </b-grid>
+</form></div>

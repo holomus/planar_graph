@@ -1,0 +1,2137 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model, param, bUtil, $timeout) {
+  var d = _.omit(model, ['references', 'days', 'marks']);
+      q = model.references,
+      p = {},
+      t_rest_day = t('R')();
+
+  // util functions
+  function pF(val) {
+    return parseFloat(parseFloat(val || 0).toFixed(1));
+  }
+
+  function dayIndex(date) {
+    return date.format('D') - 1;
+  }
+
+  function getMonthFormat() {
+    return moment(d.month, 'MM.YYYY').format('DD.MM.YYYY');
+  }
+
+  function prepareDefaultDays() {
+    let days = [];
+
+    _.each(q.month_days, x => {
+      days.push({
+        schedule_date: x.date,
+        day_kind: 'R',
+        break_enabled: 'N',
+        day_view: t_rest_day,
+        begin_time: '09:00',
+        end_time: '18:00',
+        break_enabled: 'Y',
+        break_begin_time: '13:00',
+        break_end_time: '14:00',
+        plan_time: '08:00',
+        marks: [],
+        day_color: '#FFC7CE'
+      });
+    });
+
+    return days;
+  }
+
+  function checkHour(key, maxvalue) {
+    var hour = `${key}_hour`;
+    if (q[hour] > maxvalue) q[hour] = maxvalue;
+    if (q[hour] == maxvalue) {
+      let minute = `${key}_minute`;
+      q[minute] = 0;
+    }
+  }
+
+  function checkMinute(key, maxvalue) {
+    var minute = `${key}_minute`,
+        hour = `${key}_hour`;
+
+    if (q[minute] > 59) {
+       q[hour] = q[hour] * 1 + Math.floor(q[minute] / 60);
+       q[minute] = q[minute] % 60;
+    }
+
+    checkHour(key, maxvalue);
+  }
+
+  // modal day
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    page.untouch(scope.modal);
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function showModalDay(data, day) {
+    if (day.swapped_day) {
+      p.swapped_day = day.swapped_day;
+      p.swapped_date_view = day.swapped_day.schedule_date.toMoment().format("D MMMM YYYY");
+    }
+    p.day = angular.copy(_.omit(day, 'swapped_day', 'calendar_day_swap'));
+    p.unit_index = _.indexOf(d.units, data);
+    p.day_index = _.indexOf(data.days, day);
+    p.schedule_date_view = day.schedule_date.toMoment().format("D MMMM YYYY");
+
+    showModal();
+  }
+
+  function updateDay() {
+    if (page.valid(scope.modal)) {
+      let day = _.extend(d.units[p.unit_index].days[p.day_index], p.day);
+          day.plan_time_view = pF(bUtil.timeToMinutes(day.plan_time) / 60);
+
+      // swapped day fix
+      let cday = day.calendar_day_swap;
+      if (cday) fixDay(cday.day, cday);
+      else fixDayView(day);
+
+      calcAvgDayAndHours(p.unit_index);
+
+      $timeout(function() {
+        modal.modal('hide');
+      });
+    }
+  }
+
+  // modal fill with template
+  var modalTemplate = page.$content.find('form[name=template]>.modal');
+
+  function prepareOrderNo() {
+    var order_no = 1;
+    var len = parseInt((p.template.schedule_days.length + 1) / 2);
+    for (var i = 0; i < len; i ++) {
+      p.template.schedule_days[i].order_no = order_no ++;
+      if (i + len < p.template.schedule_days.length) p.template.schedule_days[i + len].order_no = order_no ++;
+    }
+  }
+
+  function periodicityChange() {
+    p.template.schedule_days = [];
+    for (let i = 0; i < p.template.count_days; i++) {
+      let day = angular.copy(q.pattern_day);
+          day.break_enabled = 'Y';
+          day.day_no = i + 1;
+          day.day_kind = 'W';
+      p.template.schedule_days.push(day);
+    }
+    prepareOrderNo();
+  }
+
+  function scheduleKindChange() {
+    if (p.template.pattern_kind == 'W') {
+      p.template.schedule_days = [];
+      p.template.count_days = q.week_days.length;
+
+      _.each(q.week_days, function(week_day, i) {
+        let day = angular.copy(q.pattern_day);
+            day.break_enabled = 'Y';
+            day.day_no = i + 1;
+            day.day_kind = week_day.working ? 'W' : 'R';
+        p.template.schedule_days.push(day);
+      });
+      prepareOrderNo();
+    } else {
+      periodicityChange();
+    }
+  }
+
+  function dayName(index) {
+    return p.template.pattern_kind == 'W' ? q.week_days[index].name : t('$1 day')(index + 1);
+  }
+
+  function fillWithTemplate() {
+    $timeout(function() {
+      modalTemplate.modal('show');
+    });
+  }
+
+  function fillWithSettings() {
+    if (page.valid(scope.template)) {
+      if (p.template.all_days_equal == 'Y') {
+        // if all days is equal then schedule days will be updated
+        for (let i = 0; i < p.template.schedule_days.length; i++) {
+          _.extend(p.template.schedule_days[i], angular.copy(q.pattern_day));
+        }
+      }
+
+      let date = moment(d.month, 'MM.YYYY'),
+          days_count = date.daysInMonth(),
+          begin_week_day = date.startOf('month').isoWeekday() - 1, // 0 - Mon, 6 - Sun
+          index,
+          day;
+
+      _.each(q.checked.rows, row => {
+        let unit_index = _.indexOf(d.units, row);
+            unit = d.units[unit_index],
+            begin_date = moment(d.month, 'MM.YYYY').startOf('month');
+
+        for (let i = 0; i < days_count; i ++) {
+          if (p.template.pattern_kind == 'W') {
+            index = (i + begin_week_day) % 7; // week day
+          } else {
+            index = i % p.template.count_days; // periodic day
+          }
+
+          day = unit.days[dayIndex(begin_date)];
+          day = _.extend(day, _.omit(p.template.schedule_days[index], ['day_no', 'order_no']));
+          day.plan_time_view = pF(bUtil.timeToMinutes(day.plan_time) / 60);
+
+          let cday = day.calendar_day_swap;
+          if (cday) fixDay(cday.day, cday);
+          else fixDayView(day);
+
+          begin_date.add({ day: 1 });
+        }
+
+        calcAvgDayAndHours(unit_index);
+      });
+
+      unCheckAll();
+
+      $timeout(function() {
+        modalTemplate.modal('hide');
+      });
+    }
+  }
+
+  // marks
+  function addMarkItem(marks) {
+    marks.push({});
+  }
+
+  function removeMarkItem(marks, marks_key) {
+    _.each(p.checked[marks_key].rows(), function(row) {
+      let index = _.findIndex(marks, row);
+      marks.splice(index, 1);
+    });
+    p.checked[marks_key] = {};
+  }
+
+  function onCheckMark(checked, marks_key) {
+    p.checked[marks_key] = checked;
+  }
+
+  // calculating day
+  function maxPlanMins(day) {
+    let end_time = bUtil.timeToMinutes(day.end_time);
+    let begin_time = bUtil.timeToMinutes(day.begin_time);
+    let break_begin_time = bUtil.timeToMinutes(day.break_begin_time);
+    let break_end_time = bUtil.timeToMinutes(day.break_end_time);
+    let break_time = 0;
+    let full_time = 0;
+
+    if (day.break_enabled == 'Y' && break_begin_time != null && break_end_time != null) {
+      if (break_end_time > break_begin_time) {
+        break_time = break_end_time - break_begin_time;
+      } else {
+        break_time = (break_end_time + 1440) - break_begin_time;
+      }
+    }
+
+    if (end_time > begin_time) {
+      full_time = end_time - begin_time;
+    } else {
+      full_time = (end_time + 1440) - begin_time;
+    }
+
+    return full_time - break_time;
+  }
+  
+  function calcDay(day) {
+    day.plan_time = bUtil.minutesToTime(maxPlanMins(day));
+  }
+
+  // validate break time
+  function isBreakTimeValid(day) {
+    if (day.break_enabled == 'N' || !day.begin_time || !day.end_time) return true;
+
+    let begin_time = bUtil.timeToMinutes(day.begin_time);
+    let end_time = bUtil.timeToMinutes(day.end_time);
+    let break_begin_time = bUtil.timeToMinutes(day.break_begin_time);
+    let break_end_time = bUtil.timeToMinutes(day.break_end_time);
+
+    end_time = begin_time < end_time ? end_time : end_time + 1440;
+    break_end_time = break_begin_time < break_end_time ? break_end_time : break_end_time + 1440;
+
+    if (break_begin_time >= break_end_time) return false;
+    if (break_begin_time <= begin_time || break_end_time >= end_time) return false;
+ 
+    return true;
+  }
+
+  // validate break time
+  function isPlanTimeValid(day) {
+    if (!day.begin_time || !day.end_time) return true;
+    let max_plan_mins = maxPlanMins(day);
+    let plan_mins = bUtil.timeToMinutes(day.plan_time);
+    return plan_mins <= max_plan_mins;
+  }
+
+  function calcAvgDayAndHours(index) {
+    let monthly_days = 0;
+    let monthly_hours = 0;
+
+    for (let j = 0; j < d.units[index].days.length; j++) {
+      let day = d.units[index].days[j];
+      if (day.day_kind == 'W' &&
+          (day.calendar_day_kind == 'N' ||
+          _.isUndefined(day.calendar_day_kind))) {
+        monthly_days ++;
+        monthly_hours += day.plan_time_view;
+      } else if (day.calendar_day_kind == 'S' && day.day_kind == 'R') {
+        monthly_days ++;
+        monthly_hours += day.swapped_day.plan_time_view;
+      }
+    }
+    d.units[index].monthly_hours = pF(monthly_hours);
+    d.units[index].monthly_days = monthly_days;
+  }
+
+   function fixDayView(day) {
+    day.day_view = t_rest_day;
+
+    if (day.calendar_day_kind == 'H') {
+      day.day_color = '#A1E1DC';
+      day.text_color = '#1C8531';
+    } else if (day.calendar_day_kind == 'A') {
+      day.day_color = '#A1E1DC';
+      day.text_color = '#1C8531';
+    } else if (day.calendar_day_kind == 'N') {
+      day.day_color = '#FAE078';
+      day.text_color = '#BD9700';
+
+      if (day.day_kind == 'W') day.day_view = day.plan_time_view;
+    } else if (day.calendar_day_kind == 'S') {
+      day.day_color = '#A9DCF8';
+      day.text_color = '#006DCC';
+      day.swapped_day.day_color = '#A9DCF8';
+      day.swapped_day.text_color = '#006DCC';
+
+      if (day.day_kind == 'R') {
+        day.day_view = day.swapped_day.plan_time_view;
+        day.swapped_day.day_view = t_rest_day;
+      } else {
+        day.swapped_day.day_view = day.plan_time_view;
+      }
+    } else if (day.day_kind == 'W') {
+      day.day_color = '';
+      day.day_view = day.plan_time_view;
+    } else day.day_color = '#FFC7CE';
+  }
+
+  function fixDay(day, cday) {
+    let data = _.pick(cday, 'calendar_day_kind', 'day_name');
+
+    if (d.use_calendar != 'Y' || !d.calendar_id) data = {};
+    else if (cday.calendar_day_kind == 'H' && d.take_holidays != 'Y') data = {}; // holiday
+    else if (cday.calendar_day_kind == 'N' && d.take_nonworking != 'Y') data = {}; // nonworking
+    else if (cday.calendar_day_kind == 'A' && d.take_additional_rest_days != 'Y') data = {}; // additional rest days
+    else if (cday.calendar_day_kind == 'S') {
+      if (cday.day.day_kind == cday.day.swapped_day.day_kind) data = {}; // swapped
+    }
+
+    day.calendar_day_kind = data.calendar_day_kind;
+    day.day_name = data.day_name;
+    fixDayView(day);
+
+    if (day.swapped_day) {
+      day.swapped_day.calendar_day_kind = data.calendar_day_kind;
+      day.swapped_day.day_name = data.day_name;
+      fixDayView(day.swapped_day);
+    }
+  }
+
+  // function depend on calendar
+  function clearCalendarDays() {
+    _.each(d.units, unit => {
+      _.each(unit.calendar_days, cday => fixDay(cday.day, {}) );
+    });
+  }
+
+  function fixCalendarDays() {
+    _.each(d.units, unit => {
+      _.each(unit.calendar_days, cday => fixDay(cday.day, cday) );
+    });
+  }
+
+  function applyCalendayDays(unit) {
+    let month = moment(d.month, 'MM.YYYY').format('MM');
+    unit.calendar_days = angular.copy(q.calendar_days);
+
+    _.each(unit.calendar_days, cday => {
+      let date = moment(cday.calendar_date, 'DD.MM.YYYY');
+
+      if (cday.calendar_day_kind == 'S') {
+        cday.day = date.month() + 1 == month ? unit.days[dayIndex(date)] : {};
+
+        let swapped_day;
+        date = moment(cday.swapped_date, 'DD.MM.YYYY');
+        swapped_day = date.month() + 1 == month ? unit.days[dayIndex(date)] : {};
+
+        cday.day.swapped_day = swapped_day;
+        swapped_day.swapped_day = cday.day;
+        cday.day.calendar_day_swap = cday;
+        swapped_day.calendar_day_swap = cday;
+      } else {
+        cday.day = unit.days[dayIndex(date)];
+      }
+
+      fixDay(cday.day, cday);
+    });
+  }
+
+  function getCalendarDays() {
+    page.post(':get_calendar_days', { month: getMonthFormat(), calendar_id: d.calendar_id }).then(function(result) {
+      q.calendar_days = _.mapRows(result.calendar_days, ['calendar_date', 'day_name', 'calendar_day_kind', 'swapped_date']);
+
+      _.each(d.units, unit => applyCalendayDays(unit) );
+    }, page.alert);
+  }
+
+  function loadCalendarDays() {
+    if (!d.month || !d.calendar_id) return;
+    getCalendarDays();
+  }
+
+  function setCalendar(row) {
+    if (!row) return;
+    clearCalendarDays();
+
+    d.calendar_id = row.calendar_id;
+    d.calendar_name = row.name;
+
+    if (row.calendar_id) {
+      loadCalendarDays();
+    }
+  }
+
+  function addCalendar(value) {
+    fi.add_calendar(null, setCalendar, { name: value });
+  }
+
+  function selectCalendar() {
+    fi.select_calendar(null, setCalendar);
+  }
+
+  // modal Limit Exceeded
+  var modalLimitExceeded = page.$content.find('form[name=modalLimitExceeded]>.modal');
+
+  function showModalLimitExceeded() {
+    $timeout(function () {
+      modalLimitExceeded.modal('show');
+    });
+  }
+
+  function hideModalLimitExceeded() {
+    $timeout(function () {
+      modalLimitExceeded.modal('hide');
+    });
+  }
+
+  // save
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      if (d.use_calendar == 'N' || posted == 'N') {
+        saveData(posted);
+        return;
+      }
+      
+      var data = {
+        'calendar_id': d.calendar_id,
+        'month': moment(d.month, 'MM.YYYY').format('DD.MM.YYYY')
+      };
+
+      data.units = [];
+
+      _.each(d.units, x => {
+        var unit = {};
+        unit.staff_name = x.staff_name;
+        unit.robot_name = x.robot_name;
+        unit.monthly_days = x.monthly_days;
+        unit.days = [];
+
+        _.each(x.days, (y, index) => {
+          var day = {
+            plan_time: bUtil.timeToMinutes(y.plan_time),
+            day_kind: y.day_kind,
+            calendar_day_kind: y.calendar_day_kind,
+            schedule_date: y.schedule_date
+          }
+
+          if(x.days[index + 1]) {
+            day.tomorrow_day_kind = x.days[index + 1].day_kind;
+            day.tomorrow_calendar_day_kind = x.days[index + 1].calendar_day_kind;
+          }
+
+          unit.days.push(day);
+        });
+
+        data.units.push(unit);
+      });
+
+      page.post(':check_by_calendar_limit', data).then(function(result) {
+        p.data = {};
+
+        if (result.exceeded_days.length > 0) {
+          p.data.type = 'D';
+          p.data.title = t('daily plan time exceeded from calendar plan time')();
+
+          // solutions for error
+          p.data.solutions = [];
+          p.data.solutions.push(t('turn of daily limit from calendar')());
+          p.data.solutions.push(t('reduse daily plan time')());
+          p.data.solutions.push(t('remove calendar')());
+
+          p.data.exceeded_days = _.chain(result.exceeded_days)
+                                  .mapRows(['name', 'schedule_date', 'plan_time', 'limit_time'])
+                                  .map(x => {
+                                    x.plan_time = bUtil.minutesToTime(x.plan_time);
+                                    x.limit_time = bUtil.minutesToTime(x.limit_time);
+
+                                    return x;
+                                  })
+                                  .value();
+
+
+          showModalLimitExceeded();
+        } else 
+        if (result.exceeded_months.length) {
+          p.data.type = 'M'; 
+          p.data.title = 'monthly working day count is not the same with calendar day limit'; 
+
+          // solutions for error
+          p.data.solutions = [];
+          p.data.solutions.push(t('turn of monthly limit from calendar')());
+          p.data.solutions.push(t('make the same working day count with working day limit of calendar')());
+          p.data.solutions.push(t('remove calendar')());
+          
+          p.data.exceeded_months = _.mapRows(result.exceeded_months, ['name', 'plan_days', 'limit_days']);
+
+          showModalLimitExceeded();
+        } else {
+          saveData(posted);
+        }
+      }, page.alert);
+    }
+  }
+
+  function saveData(posted) {
+    page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+      let data = _.omit(d, 'units', 'allowed_late_time', 'allowed_early_time', 'begin_late_time', 'end_early_time'),
+          unit;
+      data.units = [];
+      data.input_acceptance = q.input_acceptance_hour * 60 + q.input_acceptance_minute * 1;
+      data.output_acceptance = q.output_acceptance_hour * 60 + q.output_acceptance_minute * 1;
+      data.track_duration = q.track_duration_hour * 60 + q.track_duration_minute * 1;
+      data.shift = bUtil.timeToMinutes(data.shift);
+      data.month = getMonthFormat();
+
+      if (data.use_calendar == 'N') data.calendar_id = null;
+
+      if (d.advanced_setting == 'Y') {
+        if (d.additional_time_type == q.additional_time_type_allowed) {
+          data.allowed_late_time = d.allowed_late_time.sign * d.allowed_late_time.amount;
+          data.allowed_early_time = d.allowed_early_time.sign * d.allowed_early_time.amount;
+        } else {
+          data.begin_late_time = -d.begin_late_time;
+          data.end_early_time = d.end_early_time;
+        }
+      }
+
+      _.each(d.units, x => {
+        unit = {};
+        unit.unit_id = x.unit_id;
+        unit.staff_id = x.staff_id;
+        unit.robot_id = x.robot_id;
+        unit.monthly_days = x.monthly_days
+        unit.monthly_minutes = x.monthly_hours * 60;
+        unit.days = [];
+        unit.marks = [];
+
+        _.each(x.days, y => {
+          unit.days.push({
+            begin_time: bUtil.timeToMinutes(y.begin_time),
+            end_time: bUtil.timeToMinutes(y.end_time),
+            break_begin_time: bUtil.timeToMinutes(y.break_begin_time),
+            break_end_time: bUtil.timeToMinutes(y.break_end_time),
+            plan_time: bUtil.timeToMinutes(y.plan_time),
+            day_kind: y.day_kind,
+            break_enabled: y.break_enabled,
+            schedule_date: y.schedule_date
+          });
+
+          if (d.use_marks == 'Y') {
+            let day_marks = {
+              schedule_date: y.schedule_date,
+              marks: _.chain(y.marks)
+                      .reject(x => { return !x.begin_time || !x.end_time })
+                      .map(x => {
+                        return {
+                          begin_time: bUtil.timeToMinutes(x.begin_time),
+                          end_time: bUtil.timeToMinutes(x.end_time),
+                        };
+                      })
+                      .value()
+            };
+
+            day_marks.marks.length > 0 ? unit.marks.push(day_marks) : null;
+          }
+        });
+
+        data.units.push(unit);
+      });
+
+      data.posted = posted;
+      page.post(':save', data).then(page.close, page.alert);
+    });
+  }
+
+  function onChangeDivision() {
+    if (d.units.length > 0) {
+      page.confirm(t('all records will removed, do you agree?')(), () => {
+        d.units = [];
+        q.old_division_id = d.division_id;
+      }, () => { d.division_id = q.old_division_id; });
+    } else {
+      q.old_division_id = d.division_id;
+    }
+  }
+
+  // staff
+  function whereStaff() {
+    let date = moment(d.month, 'MM.YYYY'),
+        staff_ids = _.chain(d.units).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['schedule_id', '=', q.schedule_id],
+                  ['hiring_date', '<=', date.endOf('month').format('DD.MM.YYYY')],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', date.startOf('month').format('DD.MM.YYYY') ]
+                  ]]]];
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+
+    return where;
+  }
+
+  function whereStaffQuery() {
+    let staff_ids = _.chain(d.units).pluck('staff_id').compact().value(),
+        where;
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['staff_id', '<>', staff_ids];
+    }
+
+    return where;
+  }
+
+  function setStaff(data, row) {
+    if (!row) return;
+    data.staff_id = row.staff_id;
+    data.staff_name = row.name;
+    data.robot_name = '';
+
+    if (row.staff_id) {
+      page.post(':get_robot_name', { staff_id: row.staff_id }).then(res => {
+        data.robot_name = res;
+      }, page.alert);
+    }
+  }
+
+  function selectStaff(data) {
+    fi.select_staff(null, _.partial(setStaff, data), { where: whereStaff() });
+  }
+
+  function changeStaffQuery(query, value) {
+    query.param({ division_id: d.division_id, month: getMonthFormat() });
+    query.where(whereStaffQuery()).searchValue(value);
+  }
+
+  // robot
+  function whereRobot() {
+    let robot_ids = _.chain(d.units).pluck('robot_id').compact().value(),
+        where;
+
+    if (!_.isEmpty(robot_ids)) {
+      where = ['robot_id', '<>', robot_ids];
+    }
+
+    if (d.division_id) {
+      where = where ? ['and', [['division_id', '=', d.division_id], where]] : ['division_id', '=', d.division_id];
+    }
+
+    return where;
+  }
+
+  function setRobot(data, row) {
+    if (!row) return;
+    data.robot_id = row.robot_id;
+    data.robot_name = row.name;
+    data.staff_name = '';
+
+    if (row.robot_id) {
+      page.post(':get_staff_name', { robot_id: row.robot_id }).then(res => {
+        data.staff_name = res;
+      }, page.alert);
+    }
+  }
+
+  function selectRobot(data) {
+    fi.select_robot(null, _.partial(setRobot, data), { where: whereRobot() });
+  }
+
+  function changeRobotQuery(query, value) {
+    query.param({ division_id: d.division_id, month: getMonthFormat() });
+    query.where(whereRobot()).searchValue(value);
+  }
+
+  // checks
+  function fixChecked() {
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+
+    let checked = q.checked.size > 0 && q.checked.size == q.pageUnits.length,
+        indeterminate = q.checked.size > 0 && q.checked.size < q.pageUnits.length;
+
+    q.checkBoxType = checked ? 'A' : indeterminate ? 'I' : null;
+    q.checkBoxAllTotal.indeterminate = indeterminate;
+    q.checkBoxAllTotal.checked = checked;
+  }
+
+  function checkAll() {
+    _.each(q.pageUnits, item => {
+      if (!item.checked) {
+        item.checked = true;
+        q.checked.rows.push(item);
+      }
+    });
+
+    fixChecked();
+  }
+
+  function unCheckAll() {
+    _.each(q.checked.rows, item => item.checked = false);
+    q.checked.rows = [];
+    fixChecked();
+  }
+
+  function onCheckAll() {
+    if (q.pageUnits.length == 0) return;
+    if (q.checkBoxType == 'I' || q.checkBoxType == 'A') unCheckAll();
+    else checkAll();
+  }
+
+  function onCheck(data) {
+    if (data.checked){
+      q.checked.rows.push(data);
+    } else {
+      let index = _.indexOf(q.checked.rows, data);
+      q.checked.rows.splice(index, 1);
+    }
+    fixChecked();
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows, item => {
+      let index = _.findIndex(d.units, item);
+      d.units.splice(index, 1);
+    });
+    unCheckAll();
+  }
+
+  function searchStaff(data, srchTerm) {
+    return String(data.staff_name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1
+           || String(data.robot_name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1;
+  }
+
+  function addDefaults(unit) {
+    _.extend(unit, { monthly_hours: 0, monthly_days: 0, days: prepareDefaultDays() });
+    d.calendar_id ? applyCalendayDays(unit) : null;
+  }
+
+  function addUnit() {
+    let unit = {};
+    d.units.push(unit);
+    addDefaults(unit);
+  }
+
+  function fillUnits() {
+    if (d.registry_kind == 'S') {
+      let staff_ids = _.chain(d.units).pluck('staff_id').compact().value();
+
+      page.post(':load_staffs', { month: getMonthFormat(), division_id: d.division_id, staff_ids: staff_ids }).then(res => {
+        if (res.staffs.length > 0) {
+          let units = _.chain(res.staffs).mapRows(['staff_id', 'staff_name', 'robot_name']).sortBy('staff_name').value();
+          _.each(units, x => addDefaults(x));
+
+          d.units = [...d.units, ...units];
+        }
+      }, page.alert);
+    } else {
+      let robot_ids = _.chain(d.units).pluck('robot_id').compact().value();
+
+      page.post(':load_robots', { month: getMonthFormat(), division_id: d.division_id, robot_ids: robot_ids }).then(res => {
+        if (res.robots.length > 0) {
+          let units = _.chain(res.robots).mapRows(['robot_id', 'robot_name', 'staff_name']).sortBy('robot_name').value();
+          _.each(units, x => addDefaults(x));
+
+          d.units = [...d.units, ...units];
+        }
+      }, page.alert);
+    }
+  }
+
+  function setMonth() {
+    q.month_days = [];
+    q.old_month = d.month;
+    let date = moment(d.month, 'MM.YYYY'),
+        year = date.format('YYYY'),
+        month = date.format('MM');
+
+    for (let i = 0; i < date.daysInMonth(); i++) {
+      q.month_days.push({
+        date: moment({ year: year, month: month - 1, day: i + 1 }).format('DD.MM.YYYY'),
+        week_day: moment({ year: year, month: month - 1, day: i + 1 }).format('dd'),
+        day_number: i + 1
+      });
+    }
+  }
+
+  function reloadMonth() {
+    if (d.units.length > 0) {
+      page.confirm(t('all records will removed, do you agree?')(), () => {
+        d.units = [];
+        setMonth();
+        d.calendar_id ? getCalendarDays() : null;
+      }, () => { d.month = q.old_month });
+    } else {
+      setMonth();
+    }
+  }
+
+  var rootToggle = page.$content.find('.root-toggle');
+
+  function slideAdvancedSettings() {
+    rootToggle.children('.fa').toggleClass('fa-chevron-up').toggleClass('fa-chevron-down');
+    rootToggle.closest('.col-sm').children('.leaf-toggle').slideToggle(250);
+  }
+
+  let date = moment(d.month, 'MM.YYYY');
+
+  q.week_days = [];
+  date.day(1); // moving date to Monday
+  for (let i = 1; i <= 7; i ++) {
+    let name = date.format('dddd');
+        name = name[0].toUpperCase() + name.slice(1);
+    q.week_days.push({ name, working: i < 6 });
+    date.add({ day: 1 });
+  }
+
+  if (_.isUndefined(d.registry_id)) d.units = [];
+  else {
+    let marks = _.chain(model.marks)
+                 .mapRows(['unit_id', 'schedule_date', 'begin_time', 'end_time'])
+                 .each(x => {
+                   x.begin_time = bUtil.minutesToTime(x.begin_time);
+                   x.end_time = bUtil.minutesToTime(x.end_time);
+                 })
+                 .value();
+
+    let days = _.chain(model.days)
+                .mapRows(['unit_id',
+                          'schedule_date',
+                          'day_kind',
+                          'break_enabled',
+                          'full_time',
+                          'plan_time',
+                          'shift_begin_time',
+                          'shift_end_time',
+                          'input_border',
+                          'output_border',
+                          'begin_time',
+                          'end_time',
+                          'break_begin_time',
+                          'break_end_time'])
+                .each( x => {
+                  x.marks = [];
+                  x.plan_time_view = pF(parseInt(x.plan_time) / 60);
+                  x.plan_time = bUtil.minutesToTime(x.plan_time);
+                  x.marks = _.filter(marks, { unit_id: x.unit_id, schedule_date: x.schedule_date });
+
+                  if (x.day_kind == 'R') {
+                    x.break_enabled = 'Y';
+                    x.begin_time = '09:00';
+                    x.end_time = '18:00';
+                    x.break_begin_time = '13:00';
+                    x.break_end_time = '14:00';
+                    x.plan_time = '08:00';
+                  }
+
+                  fixDayView(x);
+                })
+                .groupBy('unit_id')
+                .value();
+
+    d.units = _.chain(d.units)
+               .mapRows(['unit_id', 'staff_id', 'staff_name', 'robot_id', 'robot_name', 'monthly_days', 'monthly_minutes'])
+               .each(x => {
+                 x.days = days[x.unit_id];
+                 x.monthly_hours = x.monthly_minutes / 60;
+               })
+               .value();
+
+    loadCalendarDays();
+  };
+
+  // Import
+  var modalErrors = page.$content.find('form[name=errors]>.modal');
+
+  function openErrors() {
+    $timeout(function() {
+      modalErrors.modal('show');
+    });
+  }
+
+  function importFile() {
+    if (q.template) {
+      page.confirm(t('do you want to import file?')(), function () {
+        let data = { template: q.template, month: getMonthFormat() };
+
+        page.post(':import', data, 'excel').then(function(result) {
+          q.error_messages = result.errors;
+          let units = _.chain(result.items)
+                       .each(item => {
+                         item.days = _.mapRows(item.days, ['begin_time', 'end_time', 'break_enabled', 'break_begin_time', 'break_end_time', 'plan_time', 'day_kind', 'schedule_date']);
+                         _.each(item.days, day => {
+                           if (day.day_kind == 'W') {
+                             if (day.plan_time.search(':') < 0) day.plan_time = bUtil.minutesToTime(day.plan_time * 60);
+                             day.plan_time_view = pF(bUtil.timeToMinutes(day.plan_time) / 60);
+                           }
+                         })
+                       })
+                       .value();
+
+          _.each(units, x => {
+            _.each(d.units, (unit, index) => {
+              if (d.registry_kind == 'S' && unit.staff_id == x.staff_id) {
+                unit.days = x.days;
+                _.each(unit.days, d => fixDayView(d));
+                calcAvgDayAndHours(index);
+              } else if (d.registry_kind == 'R' && unit.robot_id == x.robot_id) {
+                unit.days = x.days;
+                _.each(unit.days, d => fixDayView(d));
+                calcAvgDayAndHours(index);
+              }
+            });
+          });
+
+          loadCalendarDays();
+        }, page.alert);
+      });
+    }
+  }
+
+  function downloadTemplate() {
+    let key = d.registry_kind == 'S' ? 'staff_id' : 'robot_id';
+
+    let data = {
+      month: getMonthFormat(),
+      clarifier_ids: _.chain(d.units).pluck(key).compact().value()
+    }
+
+    window.open(page.url('template', data));
+  }
+
+  function changeAdvancedSetting(key, sign) {
+    d[key].sign = sign;
+  }
+
+  function isRest(day) {
+    if (day.calendar_day_kind == 'S') {
+      return day.swapped_day.day_kind == 'R';
+    }
+
+    return day.calendar_day_kind == 'H' || day.day_kind == 'R';
+  }
+
+  // schedule shift list
+  var modalShiftList = page.$content.find('form[name=shiftList]>.modal');
+
+  function openShiftList() {
+    p.data = {};
+    page.post(':load_preferences').then(result => {
+      p.data.shift_list = result.shift_list || [];
+      $timeout(() => {
+        var options = {
+          show: true,
+          keyboard: false,
+          backdrop: 'static'
+        };
+        page.untouch(scope.shiftList);
+        modalShiftList.modal(options);
+      });
+    }, page.alert);
+  }
+
+  function isUniqueShiftCode(code) {
+    return _.filter(p.data.shift_list, x => x.code == code).length < 2;
+  }
+
+  function saveShiftList() {
+    if (!page.valid(scope.shiftList)) return;
+    let shift_list = _.map(p.data.shift_list, shift => {
+      if (shift.break_enabled == 'N') {
+        shift.break_begin_time = '';
+        shift.break_end_time = '';
+      }
+      return shift;
+    });
+    page.post(':save_preferences', { shift_list }).then(notify(t('shift list successfully saved!')()), page.alert);
+    p.data = {};
+    modalShiftList.modal('hide');
+  }
+
+  function addShift() {
+    p.data.shift_list.push({ break_enabled: 'Y', break_begin_time: '13:00', break_end_time: '14:00' });
+  }
+
+  function deleteShift(index) {
+    p.data.shift_list.splice(index, 1);
+  }
+
+  setMonth();
+
+  $timeout(function() {
+    scheduleKindChange();
+  })
+
+  let default_track_duration = d.schedule_kind == q.sk_hourly ? 720 : 1440;
+  let default_plan_time = d.schedule_kind == q.sk_hourly ? '12:00' : '08:00';
+
+  if (d.advanced_settings == 'N') slideAdvancedSettings();
+  d.shift = d.shift || 0;
+  d.input_acceptance = d.input_acceptance || 0;
+  d.output_acceptance = d.output_acceptance || 0;
+  d.track_duration = d.track_duration || 1440;
+
+  _.each(['allowed_late_time', 'allowed_early_time', 'begin_late_time', 'end_early_time'], x => {
+    model[x] = model[x] || 0;
+
+    if (_.contains(['allowed_late_time', 'allowed_early_time'], x)) {
+      d[x] = {
+        sign: model[x] < 0 ? -1 : 1,
+        amount: model[x] != 0 ? Math.abs(model[x]) : null
+      }
+    } else {
+      d[x] = model[x] != 0 ? Math.abs(model[x]) : null;
+    }
+  });
+
+  q.tMinute = t('minute')();
+  q.tBefore = t('before')();
+  q.tAfter = t('after')();
+  q.tAnd = t('and')();
+  q.t_advanced_setting_title = t("advanced setting for lateness and early output")();
+
+  q.pattern_day = {
+    begin_time: '09:00',
+    end_time: '18:00',
+    break_enabled: 'Y',
+    break_begin_time: '13:00',
+    break_end_time: '14:00',
+    plan_time: default_plan_time,
+    marks: [],
+  };
+
+  q.checked = { rows: [] };
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.old_division_id = model.division_id;
+  q.input_acceptance_hour = Math.floor(d.input_acceptance / 60);
+  q.input_acceptance_minute = d.input_acceptance % 60;
+  q.output_acceptance_hour = Math.floor(d.output_acceptance / 60);
+  q.output_acceptance_minute = d.output_acceptance % 60;
+  d.track_duration = d.track_duration || default_track_duration;
+  q.track_duration_hour = Math.floor(d.track_duration / 60);
+  q.track_duration_minute = d.track_duration % 60;
+  q.t_hour = t('hour')();
+  q.t_minute = t('minute')();
+  q.day_plan_view = 'Y';
+  q.check_box_all_ready = false;
+
+  p.checked = {};
+  p.template = {
+    pattern_kind: 'W',
+    all_days_equal: 'Y'
+  };
+
+  bUtil.minutesToTime(d, ['shift', 'input_acceptance', 'output_acceptance', 'track_duration']);
+
+  page.$content.find('.scroll-table').hScroll();
+
+  $timeout( function() {
+    q.checkBoxAllTotal = page.$content.find('.ui-vhr446.checkBoxAll')[0];
+    q.check_box_all_ready = true;
+  });
+
+  scope.$watchGroup(['q.pageUnits'], function() {
+    if (q.check_box_all_ready) unCheckAll();
+  });
+
+  let t_title_custom_add    = t('schedule_title:add custom schedule')(),
+      t_title_custom_edit   = t('schedule_title:edit custom schedule')(),
+      t_title_hourly_add    = t('schedule_title:add hourly schedule')(),
+      t_title_hourly_edit   = t('schedule_title:edit hourly schedule')(),
+      t_title_flexible_add  = t('schedule_title:add flexible schedule')(),
+      t_title_flexible_edit = t('schedule_title:edit flexible schedule')();
+
+  let t_title = d.schedule_kind == q.sk_custom && !d.registry_id   ? t_title_custom_add
+              : d.schedule_kind == q.sk_custom && !!d.registry_id  ? t_title_custom_edit
+              : d.schedule_kind == q.sk_hourly && !d.registry_id   ? t_title_hourly_add
+              : d.schedule_kind == q.sk_hourly && !!d.registry_id  ? t_title_hourly_edit
+              : d.schedule_kind == q.sk_flexible && !d.registry_id ? t_title_flexible_add
+              : t_title_flexible_edit;
+
+  page.title(t_title);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar d-flex justify-content-between">
+  <div>
+    <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+    <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div>
+    <button type="button" class="btn btn-default" ng-click="openShiftList()"><t>shift list</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <style>
+    .ui-vhr446 .table-custom {
+      background-color: white;
+    }
+
+    .ui-vhr446 .table-custom .td-bordered {
+      border: 1px solid #ecf0f3;
+    }
+
+    .ui-vhr446 .table-custom td {
+      vertical-align: middle;
+    }
+
+    .ui-vhr446 .table-custom tbody:nth-child(2n+1) tr:nth-child(2n+1) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr446 .table-custom tbody:nth-child(2n) tr:nth-child(2n) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr446 .table-custom tbody + tbody {
+      border-top: 1px solid rgb(228, 228, 228);
+    }
+
+    .ui-vhr446 .table-custom tbody:hover td[rowspan],
+    .ui-vhr446 .table-custom tbody tr:hover td {
+      background: #f0f0f1;
+    }
+
+    .ui-vhr446 .table.table-custom {
+      width: 3700px;
+    }
+
+    .h-parent-scrollable {
+      position: static !important;
+    }
+
+    .ui-vhr446.scroll-table {
+      position: static !important;
+    }
+
+    .sticky-col {
+      position: sticky;
+      background-color: white;
+    }
+
+    .check-col {
+      width: 30px;
+      min-width: 30px;
+      max-width: 30px;
+      left: 0px;
+    }
+
+    .number-col {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      left: 30px;
+    }
+
+    .first-col {
+      width: 250px;
+      min-width: 250px;
+      max-width: 250px;
+      left: 70px;
+    }
+
+    .second-col {
+      width: 150px;
+      min-width: 150px;
+      max-width: 150px;
+      left: 320px;
+    }
+
+    .day-col {
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
+      left: 470px;
+    }
+
+    .hour-col {
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
+      left: 520px;
+    }
+
+  </style>
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>registry date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.registry_date" b-date-picker view-format="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>registry number</t></label>
+                <input type="text" class="form-control" ng-model="d.registry_number"/>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>month</t><r/></label>
+                <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="reloadMonth()" required/>
+              </div>
+              <div class="col-sm-12" ng-if="d.registry_kind == 'R'">
+                <label><t>division name</t></label>
+                  <b-tree-select
+                    origin="q.divisions"
+                    id-key="division_id"
+                    model="d.division_id"
+                    on-change="onChangeDivision()"/>
+              </div>
+              <div class="col-sm-12" ng-if="d.registry_kind == 'S'">
+                <label><t>division name</t></label>
+                  <b-tree-select
+                    origin="q.divisions"
+                    id-key="division_id"
+                    model="d.division_id"
+                    on-change="onChangeDivision()"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="3" ng-model="d.note"/>
+            </div>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group mt-6">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.use_calendar" ng-change="fixCalendarDays()"/>
+                    <span><t>use calendar</t></span>
+                  </label>
+                </div>
+                <div class="mb-4" ng-if="d.use_calendar == 'Y'">
+                  <div class="form-group">
+                    <label><t>calendar</t><r/></label>
+                    <b-input name="calendars"
+                             model="d.calendar_name | name"
+                             model-key="d.calendar_id | calendar_id"
+                             on-select="setCalendar(row)"
+                             on-delete="setCalendar({})"
+                             is-add="fi.add_calendar"
+                             on-add="addCalendar(value)"
+                             is-view="fi.select_calendar"
+                             on-view="selectCalendar(row)"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                  <div class="form-row">
+                    <div class="col-sm-12">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_holidays" ng-change="fixCalendarDays()"/>
+                        <span><t>take holidays</t></span>
+                      </label>
+                    </div>
+                    <div class="col-sm-12">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_nonworking" ng-change="fixCalendarDays()"/>
+                        <span><t>take nonworking</t></span>
+                      </label>
+                    </div>
+                    <div class="col-sm-12">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.take_additional_rest_days" ng-change="fixCalendarDays()"/>
+                        <span><t>take additional rest days</t></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12" ng-if="d.schedule_kind != q.sk_hourly">
+                <div class="form-group">
+                  <label><t>day schedule display method</t></label><br/>
+                  <label class="radio">
+                    <input type="radio" name="day_view" value="Y" ng-model="q.day_plan_view"/>
+                    <span><t>plan</t></span>
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="day_view" value="N" ng-model="q.day_plan_view"/>
+                    <span><t>time begin and end</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group row" ng-if="!d.registry_id">
+              <div class="col-sm-12">
+                <label class="checkbox">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="q.use_template"/>
+                  <span><t>use template</t></span>
+                </label>
+              </div>
+              <div class="col-sm-12 text-right" ng-if="q.use_template == 'Y'">
+                <button type="button" class="btn btn-primary" ng-click="downloadTemplate()"><t>template</t></button>
+                <button type="button" class="btn btn-success" ng-click="importFile()" ng-disabled="!q.template"><t>import</t></button>
+                <button type="button" class="btn btn-danger" ng-click="openErrors()" ng-if="q.error_messages.length > 0"><t p1="q.error_messages.length">errors $1</t></button>
+              </div>
+            </div>
+            <div class="form-group" ng-if="q.use_template == 'Y'">
+              <b-dropzone model="q.template" accept="'.xls, .xlsx'"></b-dropzone>
+            </div>
+            <div class="separator separator-solid m-2" ng-if="q.use_template == 'Y'"></div>
+            <div class="form-row" ng-show="d.schedule_kind == q.sk_hourly">
+              <div class="col-sm-8">
+                <label><t>max worktime length {track_duration}</t></label>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.track_duration" ng-readonly="d.is_attached == 'Y'"/>
+              </div>
+            </div>
+            <div class="form-row" ng-show="d.schedule_kind != q.sk_hourly">
+              <div class="col-sm">
+                <div class="form-row mb-4" ng-show="d.schedule_kind == q.sk_custom">
+                  <div class="col-sm-6">
+                    <label><t>shift time</t></label>
+                    <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="d.shift" ng-readonly="d.is_attached == 'Y'"/>
+                  </div>
+                </div>
+                <div class="form-row mb-4" ng-show="d.schedule_kind == q.sk_custom">
+                  <div class="col-sm-6">
+                    <label><t>input acceptance</t></label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkHour('input_acceptance', 36)" ng-model="q.input_acceptance_hour" b-number scale="0" maxlength="2"/>
+                      <div class="input-group-prepend input-group-append">
+                        <span class="input-group-text">:</span>
+                      </div>
+                      <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkMinute('input_acceptance', 36)" ng-model="q.input_acceptance_minute" b-number scale="0" maxlength="2"/>
+                    </div>
+                  </div>
+                  <div class="col-sm-6">
+                    <label><t>output acceptance</t>
+                    </label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkHour('output_acceptance', 36)" ng-model="q.output_acceptance_hour" b-number scale="0" maxlength="2"/>
+                      <div class="input-group-prepend input-group-append">
+                        <span class="input-group-text">:</span>
+                      </div>
+                      <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkMinute('output_acceptance', 36)" ng-model="q.output_acceptance_minute" b-number scale="0" maxlength="2"/>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row mb-4" ng-show="d.schedule_kind == q.sk_custom">
+                  <div class="col-sm-6">
+                    <label><t>track duration</t>
+                    </label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" placeholder="{{ q.t_hour }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkHour('track_duration', 72)" ng-model="q.track_duration_hour" b-number scale="0" maxlength="2"/>
+                      <div class="input-group-prepend input-group-append">
+                        <span class="input-group-text">:</span>
+                      </div>
+                      <input type="text" class="form-control" placeholder="{{ q.t_minute }}" ng-readonly="d.is_attached == 'Y'" ng-blur="checkMinute('track_duration', 72)" ng-model="q.track_duration_minute" b-number scale="0" maxlength="2"/>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row mb-4" ng-if="false"> <!-- temporarily disabled -->
+                  <div class="col-sm-5">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.use_marks"/>
+                      <span><t>use marks</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-4">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.is_attached == 'Y'" ng-model="d.count_free"/>
+                      <span><t>count free</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-5">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.is_attached == 'Y'" ng-model="d.count_late"/>
+                      <span><t>count late</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-5">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.is_attached == 'Y'" ng-model="d.count_early"/>
+                      <span><t>count early</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-5">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.is_attached == 'Y'" ng-model="d.count_lack"/>
+                      <span><t>count lack</t></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div ng-if="d.schedule_kind != q.sk_hourly">
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.is_attached == 'Y'" ng-model="d.advanced_setting"/>
+                  <span>{{ q.t_advanced_setting_title }}</span>
+                </label>
+              </div>
+              <div class="form-group mb-1" ng-if="d.advanced_setting == 'Y'">
+                <label><t>additional time type</t></label><br/>
+                <label class="radio mb-1">
+                  <input type="radio" name="additional_time" value="A" ng-disabled="d.is_attached == 'Y'" ng-model="d.additional_time_type"/>
+                  <span><t>allowed</t></span>
+                </label>
+                <label class="radio mb-1">
+                  <input type="radio" name="additional_time" value="E" ng-disabled="d.is_attached == 'Y'" ng-model="d.additional_time_type"/>
+                  <span><t>extra</t></span>
+                </label>
+              </div>
+              <div ng-if="d.advanced_setting == 'Y'">
+                <span class="form-text text-muted mb-1" ng-if="d.additional_time_type == q.additional_time_type_allowed"><t>by allowed time you can allow to be a few minutes late before/after the begin time or early output before/after the end time</t></span>
+                <span class="form-text text-muted mb-1" ng-if="d.additional_time_type == q.additional_time_type_extra"><t>by extra time you can set few minutes extra late time befor begin time or early time after end time</t></span>
+              </div>
+              <div class="form-group" ng-if="d.additional_time_type == q.additional_time_type_allowed && d.advanced_setting == 'Y'">
+                <div class="form-row">
+                  <div class="col-sm-6" ng-if="d.count_late == 'Y'">
+                    <label><t>allowed late time</t></label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <button class="btn btn-outline-secondary dropdown-toggle" ng-disabled="d.is_attached == 'Y'" style="width: 80px"
+                          type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ d.allowed_late_time.sign == 1 ? q.tAfter : q.tBefore }}</button>
+                        <div class="dropdown-menu">
+                          <a class="dropdown-item" ng-click="changeAdvancedSetting('allowed_late_time', 1)"
+                            ng-show="d.allowed_late_time.sign == -1">{{ q.tAfter }}</a>
+                          <a class="dropdown-item" ng-click="changeAdvancedSetting('allowed_late_time', -1)"
+                          ng-show="d.allowed_late_time.sign == 1">{{ q.tBefore }}</a>
+                        </div>
+                      </div>
+                      <input type="text" class="form-control" ng-disabled="d.is_attached == 'Y'" placeholder="{{ q.tMinute }}" ng-model="d.allowed_late_time.amount" b-number scale="0" maxlength="3" />
+                    </div>
+                  </div>
+                  <div class="col-sm-6" ng-if="d.count_early == 'Y'">
+                    <label><t>allowed early time</t></label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <button class="btn btn-outline-secondary dropdown-toggle" ng-disabled="d.is_attached == 'Y'" style="width: 80px"
+                          type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ d.allowed_early_time.sign == 1 ? q.tAfter : q.tBefore }}</button>
+                        <div class="dropdown-menu">
+                          <a class="dropdown-item" ng-click="changeAdvancedSetting('allowed_early_time', 1)"
+                            ng-show="d.allowed_early_time.sign == -1">{{ q.tAfter }}</a>
+                          <a class="dropdown-item" ng-click="changeAdvancedSetting('allowed_early_time', -1)"
+                          ng-show="d.allowed_early_time.sign == 1">{{ q.tBefore }}</a>
+                        </div>
+                      </div>
+                      <input type="text" class="form-control" ng-disabled="d.is_attached == 'Y'" placeholder="{{ q.tMinute }}" ng-model="d.allowed_early_time.amount" b-number scale="0" maxlength="3" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group" ng-if="d.additional_time_type == q.additional_time_type_extra && d.advanced_setting == 'Y'">
+                <div class="form-row">
+                  <div class="col-sm-6" ng-if="d.count_late == 'Y'">
+                    <label><t>extra late time</t></label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="form-view text-center" style="width: 80px">{{ q.tBefore }}</span>
+                      </div>
+                      <input type="text" class="form-control" ng-disabled="d.is_attached == 'Y'" placeholder="{{ q.tMinute }}" ng-model="d.begin_late_time" b-number scale="0" maxlength="3" />
+                    </div>
+                  </div>
+                  <div class="col-sm-6" ng-if="d.count_early == 'Y'">
+                    <label><t>extra early time</t></label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="form-view text-center" style="width: 80px">{{ q.tAfter }}</span>
+                      </div>
+                      <input type="text" class="form-control" ng-disabled="d.is_attached == 'Y'" placeholder="{{ q.tMinute }}" ng-model="d.end_early_time" b-number scale="0" maxlength="3" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="separator separator-solid my-2"></div>
+        <div class="form-row mt-4 mb-2">
+          <div class="col-sm-14">
+            <button type="button" class="btn btn-default" ng-click="addUnit()"><t>add</t></button>
+            <button type="button" class="btn btn-default" ng-click="fillUnits()"><t>fill</t></button>
+            <button type="button" class="btn btn-primary" ng-click="fillWithTemplate()" ng-show="q.checked.has">
+              <t>fill with template</t>
+            </button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10">
+            <b-pagination from="d.units" to="q.pageUnits" search-by="searchStaff"/>
+          </div>
+        </div>
+        <div class="ui-vhr446 scroll-table" style="position: static !important;">
+          <table class="table table-custom" cellspacing='0' cellpadding='0'>
+            <colgroup>
+              <col span="6"/>
+              <col width="100" ng-repeat="day in q.month_days">
+            </colgroup>
+            <thead class="text">
+              <tr>
+                <td class="text-center sticky-col check-col">
+                  <label class="checkbox">
+                    <input type="checkbox" class="ui-vhr446 checkBoxAll" ng-click="onCheckAll()">
+                    <span></span>
+                  </label>
+                </td>
+                <td class="sticky-col number-col"><t>№</t></td>
+                <td class="sticky-col first-col" ng-if="d.registry_kind == 'S'"><t>staff</t></td>
+                <td class="sticky-col second-col" ng-if="d.registry_kind == 'S'"><t>robot</t></td>
+                <td class="sticky-col first-col" ng-if="d.registry_kind == 'R'"><t>robot</t></td>
+                <td class="sticky-col second-col" ng-if="d.registry_kind == 'R'"><t>staff</t></td>
+                <td class="sticky-col day-col"><t>avg days</t></td>
+                <td class="sticky-col hour-col"><t>avg hours</t></td>
+                <td class="text-center" ng-repeat="day in q.month_days">
+                  {{ day.day_number }}<br>{{ day.week_day }}
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="data in q.pageUnits track by $index">
+                <td class="text-center sticky-col check-col">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="data.checked" ng-change="onCheck(data)">
+                    <span></span>
+                  </label>
+                </td>
+                <td class="text-right sticky-col number-col">{{ $index + 1 }}</td>
+                <td ng-if="d.registry_kind == 'S'" class="sticky-col first-col">
+                  <div class="form-group">
+                    <b-input name="staffs"
+                             model="data.staff_name | name"
+                             model-key="data.staff_id | staff_id"
+                             on-change="changeStaffQuery(query, value)"
+                             on-select="setStaff(data, row)"
+                             on-delete="setStaff(data, {})"
+                             is-add="fi.add_staff"
+                             is-view="fi.select_staff"
+                             on-add="addStaff(data, value)"
+                             on-view="selectStaff(data)"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                </td>
+                <td class="sticky-col second-col" ng-if="d.registry_kind == 'S'">{{ data.robot_name }}</td>
+                <td ng-if="d.registry_kind == 'R'" class="sticky-col first-col">
+                  <div class="form-group">
+                    <b-input name="robots"
+                             model="data.robot_name | name"
+                             model-key="data.robot_id | robot_id"
+                             on-change="changeRobotQuery(query, value)"
+                             on-select="setRobot(data, row)"
+                             on-delete="setRobot(data, {})"
+                             is-add="fi.add_robot"
+                             is-view="fi.select_robot"
+                             on-add="addRobot(data, value)"
+                             on-view="selectRobot(data)"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </div>
+                </td>
+                <td class="sticky-col second-col" ng-if="d.registry_kind == 'R'">{{ data.staff_name }}</td>
+                <td class="sticky-col day-col">{{ data.monthly_days }}</td>
+                <td class="sticky-col hour-col">{{ data.monthly_hours }}</td>
+                <td class="text-center" ng-repeat="day in data.days track by $index" ng-click="showModalDay(data, day)" style="cursor: pointer;" ng-style="{ 'background-color': day.day_color }">
+                  <p ng-if="q.day_plan_view == 'Y'">
+                    {{ day.day_view }}
+                  </p>
+                  <div ng-if="q.day_plan_view == 'N'">
+                    <p ng-if="isRest(day)"><t>R</t></p>
+                    <p ng-if="!isRest(day)">{{ day.begin_time }} - {{ day.end_time }}</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="template">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 1000px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>registry settings</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="col-sm-24">
+              <div class="form-group row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>schedule kind</t></label><br/>
+                    <label class="radio">
+                      <input type="radio" name="pattern_kind" value="W" ng-model="p.template.pattern_kind" ng-change="scheduleKindChange()"/>
+                      <span><t>weekly</t></span>
+                    </label>
+                    <label class="radio">
+                      <input type="radio" name="pattern_kind" value="P" ng-model="p.template.pattern_kind" ng-change="scheduleKindChange()"/>
+                      <span><t>periodic</t></span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label>&nbsp;</label><br/>
+                    <label class="switch">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.template.all_days_equal"/>
+                      <span><t>all days equal</t></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="col-sm-6" ng-if="p.template.pattern_kind == 'P'">
+                  <div class="form-group">
+                    <label><t>count days</t><r/></label>
+                    <input type="text" class="form-control" min="1" ng-model="p.template.count_days" ng-change="periodicityChange()" b-number scale="0" required/>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-24">
+              <div ng-repeat="day in p.template.schedule_days" ng-if="p.template.all_days_equal == 'N'">
+                <div class="form-group">
+                  <div class="form-row">
+                    <div class="col-sm-6" style="display: flex; align-items: center;">
+                      <label>&nbsp;</label>
+                      <label class="checkbox" ng-class="{ 'font-weight-bolder': day.day_kind == 'W' }">
+                        <input type="checkbox" ng-model="day.day_kind" ng-true-value="'W'" ng-false-value="'R'" ng-change="dayKindChange(day)"/>&emsp;<span>{{ dayName($index) }}</span>
+                      </label>
+                    </div>
+                    <div class="col-sm-8">
+                      <div class="form-row">
+                        <div class="col-sm-12" ng-if="d.schedule_kind != q.sk_hourly">
+                          <div class="form-group">
+                            <label><t>begin time</t><r/></label>
+                            <input type="text" class="form-control" ng-change="calcDay(p.template.schedule_days[$index])" ng-model="day.begin_time" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                          </div>
+                        </div>
+                        <div class="col-sm-12" ng-if="d.schedule_kind != q.sk_hourly">
+                          <label><t>end time</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(p.template.schedule_days[$index])" ng-model="day.end_time" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                        </div>
+                        <div class="col-sm-12">
+                          <label><t>plan time</t><r/></label>
+                          <input type="text" class="form-control" ng-model="day.plan_time" b-validate="{ s: day.day_kind == 'R' || d.schedule_kind == q.sk_hourly || isPlanTimeValid(day) }" b-date-picker="HH:mm" ng-disabled="day.day_kind == 'R'" ng-required="day.day_kind == 'W'"/>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-2" ng-if="d.schedule_kind != q.sk_hourly">
+                      <label>&nbsp;</label>
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="day.break_enabled" ng-true-value="'Y'" ng-false-value="'N'" ng-change="calcDay(p.template.schedule_days[$index])" ng-disabled="day.day_kind == 'R'"/>
+                        <span><t>break enable</t></span>
+                      </label>
+                    </div>
+                    <div class="col-sm-8" ng-if="d.schedule_kind != q.sk_hourly && day.break_enabled == 'Y'">
+                      <div class="form-row">
+                        <div class="col-12">
+                          <label><t>break begin</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(p.template.schedule_days[$index])" ng-model="day.break_begin_time" b-validate="{ s: day.day_kind == 'R' || isBreakTimeValid(day) }" b-date-picker="HH:mm"
+                                ng-disabled="day.day_kind == 'R' || day.break_enabled == 'N'" ng-required="day.day_kind == 'W' && day.break_enabled == 'Y'"/>
+                        </div>
+                        <div class="col-12">
+                          <label><t>break end</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(p.template.schedule_days[$index])" ng-model="day.break_end_time" b-validate="{ s: day.day_kind == 'R' || isBreakTimeValid(day) }" b-date-picker="HH:mm"
+                                ng-disabled="day.day_kind == 'R' || day.break_enabled == 'N'" ng-required="day.day_kind == 'W' && day.break_enabled == 'Y'"/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <div class="text-danger" ng-hide="!day || day.day_kind != 'W' || isBreakTimeValid(day)"><t>invalid break time</t></div>
+                    <div class="text-danger" ng-hide="!day || day.day_kind != 'W' || isPlanTimeValid(day)"><t>invalid plan time</t></div>
+                  </div>
+                  <div ng-if="d.schedule_kind != q.sk_hourly && d.use_marks == 'Y' && day.day_kind == 'W'">
+                    <div class="form-row">
+                      <div class="col-sm-14 mb-2">
+                        <button type="button" class="btn btn-default" ng-click="addMarkItem(day.marks)"><t>add</t></button>
+                        <button type="button" class="btn btn-danger" ng-click="removeMarkItem(day.marks, day.day_no)" ng-show="p.checked[day.day_no].has">
+                          <t p1="p.checked[day.day_no].size">delete $1</t>
+                        </button>
+                      </div>
+                      <div class="col-sm-10 mb-2">
+                        <b-pg-controller name="{{ 'marks' + $index }}"/>
+                      </div>
+                    </div>
+                    <b-pg-grid name="{{ 'marks' + $index }}" local-data="day.marks" iterator="item" on-check="onCheckMark(checked, day.day_no)" limit="50">
+                      <b-pg-header name="begin_time"><t>mark begin time</t></b-pg-header>
+                      <b-pg-header name="end_time"><t>mark end time</t></b-pg-header>
+                      <b-pg-row>
+                        <b-pg-col name="begin_time" size="11">
+                          <input type="text" class="form-control" ng-model="item.begin_time" b-date-picker="HH:mm" required/>
+                        </b-pg-col>
+                        <b-pg-col name="end_time" size="11">
+                          <input type="text" class="form-control" ng-model="item.end_time" b-date-picker="HH:mm" required/>
+                        </b-pg-col>
+                      </b-pg-row>
+                    </b-pg-grid>
+                  </div>
+                </div>
+                <div class="separator separator-solid my-6" ng-if="!$last"></div>
+              </div>
+              <div class="form-group" ng-if="p.template.all_days_equal == 'Y'">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <h5 class="font-weight-bolder"><t>schedule days</t></h5><br>
+                    <div class="form-group row">
+                      <div class="col-sm-12 mb-4" ng-repeat="day in p.template.schedule_days | orderBy: 'order_no'" style="display: flex; align-items: center;">
+                        <label class="checkbox" ng-class="{ 'font-weight-bolder': day.day_kind == 'W' }">
+                          <input type="checkbox" ng-model="day.day_kind" ng-true-value="'W'" ng-false-value="'R'" ng-change="dayKindChange(day)"/>&emsp;<span>{{ dayName(day.day_no - 1) }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <h5 class="font-weight-bolder"><t>schedule time</t></h5>
+                    <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly">
+                      <div class="col-sm-12 mb-sm-0 mb-4">
+                        <label><t>begin time</t><r/></label>
+                        <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.begin_time" b-date-picker="HH:mm" required/>
+                      </div>
+                      <div class="col-sm-12">
+                        <label><t>end time</t><r/></label>
+                        <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.end_time" b-date-picker="HH:mm" required/>
+                      </div>
+                    </div>
+                    <div class="form-group" ng-if="d.schedule_kind != q.sk_hourly">
+                      <label class="switch">
+                        <input type="checkbox" ng-model="q.pattern_day.break_enabled" ng-change="calcDay(q.pattern_day)" ng-true-value="'Y'" ng-false-value="'N'"/>
+                        <span><t>break enable</t></span>
+                      </label>
+                    </div>
+                    <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly && q.pattern_day.break_enabled == 'Y'">
+                      <div class="col-sm-12 mb-sm-0 mb-4">
+                        <label><t>break begin</t><r/></label>
+                        <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.break_begin_time" b-validate="{ s: isBreakTimeValid(q.pattern_day) }" b-date-picker="HH:mm" ng-required="q.pattern_day.break_enabled == 'Y'"/>
+                      </div>
+                      <div class="col-sm-12">
+                        <label><t>break end</t><r/></label>
+                        <input type="text" class="form-control" ng-change="calcDay(q.pattern_day)" ng-model="q.pattern_day.break_end_time" b-validate="{ s: isBreakTimeValid(q.pattern_day) }" b-date-picker="HH:mm" ng-required="q.pattern_day.break_enabled == 'Y'"/>
+                      </div>
+                    </div>
+                    <div class="form-row mb-4">
+                      <div class="col-sm-12">
+                        <label><t>plan time</t><r/></label>
+                        <input type="text" class="form-control" ng-model="q.pattern_day.plan_time" b-validate="{ s: d.schedule_kind == q.sk_hourly || isPlanTimeValid(q.pattern_day) }" b-date-picker="HH:mm" required/>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div ng-if="d.schedule_kind != q.sk_hourly && d.use_marks == 'Y'">
+                  <div class="form-row">
+                    <div class="col-sm-14 mb-2">
+                      <button type="button" class="btn btn-default" ng-click="addMarkItem(q.pattern_day.marks)"><t>add</t></button>
+                      <button type="button" class="btn btn-danger" ng-click="removeMarkItem(q.pattern_day.marks, 'pattern_marks')" ng-show="p.checked['pattern_marks'].has">
+                        <t p1="p.checked['pattern_marks'].size">delete $1</t>
+                      </button>
+                    </div>
+                    <div class="col-sm-10 mb-2">
+                      <b-pg-controller name="pattern_marks"/>
+                    </div>
+                  </div>
+                  <b-pg-grid name="pattern_marks" local-data="q.pattern_day.marks" iterator="item" on-check="onCheckMark(checked, 'pattern_marks')" limit="50">
+                    <b-pg-row>
+                      <b-pg-col name="begin_time" size="11">
+                        <input type="text" class="form-control" ng-model="item.begin_time" b-date-picker="HH:mm" required/>
+                      </b-pg-col>
+                      <b-pg-col name="end_time" size="11">
+                        <input type="text" class="form-control" ng-model="item.end_time" b-date-picker="HH:mm" required/>
+                      </b-pg-col>
+                    </b-pg-row>
+                  </b-pg-grid>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <span>
+              <div class="text-danger" ng-hide="p.template.all_days_equal == 'N' || !q.pattern_day || isBreakTimeValid(q.pattern_day)"><t>invalid break time</t></div>
+              <div class="text-danger" ng-hide="p.template.all_days_equal == 'N' || !q.pattern_day || isPlanTimeValid(q.pattern_day)"><t>invalid plan time</t></div>
+            </span>
+            <span>
+              <button type="button" class="btn btn-primary" ng-click="fillWithSettings()"><t>generate</t></button>
+              <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">{{ p.schedule_date_view }}</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="col-sm-24">
+              <div class="form-row mb-2">
+                <div class="col-sm-12">
+                  <label class="radio">
+                    <input type="radio" name="day_kind" value="W" ng-model="p.day.day_kind"/>
+                    <span><t>working</t></span>
+                  </label>
+                </div>
+                <div class="col-sm-12">
+                  <label class="radio">
+                    <input type="radio" name="day_kind" value="R" ng-model="p.day.day_kind"/>
+                    <span><t>rest</t></span>
+                  </label>
+                </div>
+              </div>
+              <div ng-if="p.day.day_kind == 'W'">
+                <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>begin time</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(p.day)" ng-model="p.day.begin_time" b-date-picker="HH:mm" required/>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>end time</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(p.day)" ng-model="p.day.end_time" b-date-picker="HH:mm" required/>
+                  </div>
+                </div>
+                <div class="form-group" ng-if="d.schedule_kind != q.sk_hourly">
+                  <label class="switch">
+                    <input type="checkbox" ng-model="p.day.break_enabled" ng-change="calcDay(p.day)" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>break enable</t></span>
+                  </label>
+                </div>
+                <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly && p.day.break_enabled == 'Y'">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>break begin</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(p.day)" ng-model="p.day.break_begin_time" b-validate="{ s: isBreakTimeValid(p.day) }" b-date-picker="HH:mm" ng-required="p.day.break_enabled == 'Y'"/>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>break end</t><r/></label>
+                    <input type="text" class="form-control" ng-change="calcDay(p.day)" ng-model="p.day.break_end_time" b-validate="{ s: isBreakTimeValid(p.day) }" b-date-picker="HH:mm" ng-required="p.day.break_enabled == 'Y'"/>
+                  </div>
+                </div>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>plan time</t><r/></label>
+                    <input type="text" class="form-control" ng-model="p.day.plan_time" b-validate="{ s: d.schedule_kind == q.sk_hourly || isPlanTimeValid(p.day) }" b-date-picker="HH:mm" required/>
+                  </div>
+                </div>
+                <div ng-if="d.schedule_kind != q.sk_hourly && d.use_marks == 'Y'">
+                  <div class="form-row">
+                    <div class="col-sm-10 mb-2">
+                      <button type="button" class="btn btn-default" ng-click="addMarkItem(p.day.marks)"><t>add</t></button>
+                      <button type="button" class="btn btn-danger" ng-click="removeMarkItem(p.day.marks, 'day_marks')" ng-show="p.checked['day_marks'].has">
+                        <t p1="p.checked['day_marks'].size">delete $1</t>
+                      </button>
+                    </div>
+                    <div class="col-sm mb-2">
+                      <b-pg-controller name="day_marks"/>
+                    </div>
+                  </div>
+                  <b-pg-grid name="day_marks" local-data="p.day.marks" min-width="auto" iterator="item" on-check="onCheckMark(checked, 'day_marks')" limit="50">
+                    <b-pg-row>
+                      <b-pg-col name="begin_time" size="11">
+                        <input type="text" class="form-control" ng-model="item.begin_time" b-date-picker="HH:mm" required/>
+                      </b-pg-col>
+                      <b-pg-col name="end_time" size="11">
+                        <input type="text" class="form-control" ng-model="item.end_time" b-date-picker="HH:mm" required/>
+                      </b-pg-col>
+                    </b-pg-row>
+                  </b-pg-grid>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-header" ng-if="p.day.calendar_day_kind == 'S'">
+            <h4 class="modal-title">{{ p.swapped_date_view }}</h4>
+          </div>
+          <div class="modal-body" ng-if="p.day.calendar_day_kind == 'S'">
+            <div class="col-sm-24">
+              <div class="form-row mb-2">
+                <div class="col-sm-12">
+                  <label class="radio">
+                    <input type="radio" name="swapped_day_kind" value="W" ng-model="p.swapped_day.day_kind" disabled/>
+                    <span><t>working</t></span>
+                  </label>
+                </div>
+                <div class="col-sm-12">
+                  <label class="radio">
+                    <input type="radio" name="swapped_day_kind" value="R" ng-model="p.swapped_day.day_kind" disabled/>
+                    <span><t>rest</t></span>
+                  </label>
+                </div>
+              </div>
+              <div ng-if="p.swapped_day.day_kind == 'W'">
+                <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>begin time</t></label>
+                    <span type="text" class="form-view">{{ p.swapped_day.begin_time }}</span>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>end time</t></label>
+                    <span type="text" class="form-view">{{ p.swapped_day.end_time }}</span>
+                  </div>
+                </div>
+                <div class="form-group" ng-if="d.schedule_kind != q.sk_hourly">
+                  <label class="switch">
+                    <input type="checkbox" ng-model="p.swapped_day.break_enabled" ng-true-value="'Y'" ng-false-value="'N'" disabled/>
+                    <span><t>break enable</t></span>
+                  </label>
+                </div>
+                <div class="form-row mb-4" ng-if="d.schedule_kind != q.sk_hourly && p.swapped_day.break_enabled == 'Y'">
+                  <div class="col-sm-12 mb-sm-0 mb-4">
+                    <label><t>break begin</t></label>
+                    <span type="text" class="form-view">{{ p.swapped_day.break_begin_time }}</span>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>break end</t></label>
+                    <span type="text" class="form-view">{{ p.swapped_day.break_end_time }}</span>
+                  </div>
+                </div>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>plan time</t></label>
+                    <span type="text" class="form-view">{{ p.swapped_day.plan_time }}</span>
+                  </div>
+                </div>
+                <div ng-if="d.schedule_kind != q.sk_hourly && d.use_marks == 'Y'">
+                  <div class="form-row">
+                    <div class="offset-sm-10 col-sm mb-2">
+                      <b-pg-controller name="swapped_marks"/>
+                    </div>
+                  </div>
+                  <b-pg-grid name="swapped_marks" local-data="p.swapped_day.marks" min-width="'auto'" iterator="item" limit="50">
+                    <b-pg-row>
+                      <b-pg-col name="begin_time" size="12"></b-pg-col>
+                      <b-pg-col name="end_time" size="12"></b-pg-col>
+                    </b-pg-row>
+                  </b-pg-grid>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-body" ng-if="p.day.calendar_day_kind || (p.day.calendar_day_kind == 'H' && d.take_holidays == 'Y' || p.day.calendar_day_kind == 'N' && d.take_nonworking == 'Y')">
+            <label style="text-align: left;" ng-style="{ 'color': p.day.text_color }"><h4>{{ p.day.day_name }}</h4></label>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <span>
+              <div class="text-danger" ng-hide="!p.day || p.day.day_kind != 'W' || isBreakTimeValid(p.day)"><t>invalid break time</t></div>
+              <div class="text-danger" ng-hide="!p.day || p.day.day_kind != 'W' || isPlanTimeValid(p.day)"><t>invalid plan time</t></div>
+            </span>
+            <span>
+              <button type="button" class="btn btn-primary" ng-click="updateDay()"><t>edit</t></button>
+              <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="errors">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 700px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>errors</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="col-sm-24 mb-4">
+              <div class="mb-2">
+                <b-pg-controller name="error_messages"/>
+              </div>
+              <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+                <b-pg-row>
+                  <b-pg-col name="row_id" size=3/>
+                  <b-pg-col name="error" size=21>
+                    <div ng-repeat="item in row.items">
+                      {{ item }}<br/><hr ng-if="!$last"/>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modalLimitExceeded">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">
+              <h4 class="mb-0 d-flex align-items-center">
+                <i class="fa fa-exclamation-circle fa-2x text-danger my-n4 mr-4 opacity-50 h1 font-weight-bolder"></i>
+                <div>{{ p.data.title }}</div>
+              </h4>
+            </div>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <h3><t>solutions</t></h3>
+                  <div class="separator separator-solid mt-2 mb-2"></div>
+                  <ul ng-repeat="message in p.data.solutions">
+                    <li>{{ message }}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div ng-if="p.data.type == 'D'">
+              <div class="row" ng-if="p.data.exceeded_days.length > 10">
+                <div class="offset-sm-8 col-sm-16 mb-2">
+                  <b-pg-controller name="exceededDays"/>
+                </div>
+              </div>
+              <b-pg-grid name="exceededDays" local-data="p.data.exceeded_days" min-width="500" iterator="item" max-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="name" size="8"/>
+                  <b-pg-col name="schedule_date" size="8"/>
+                  <b-pg-col name="plan_time" size="4"/>
+                  <b-pg-col name="limit_time" size="4"/>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+            <div ng-if="p.data.type == 'M'">
+              <b-pg-grid name="exceededMonths" local-data="p.data.exceeded_months" min-width="500" iterator="item" max-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="name" size="12"/>
+                  <b-pg-col name="plan_days" size="6"/>
+                  <b-pg-col name="limit_days" size="6"/>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="shiftList">
+    <style>
+      b-pg-grid .tbl {
+        max-height: none !important;
+      }
+    </style>
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>schedule shift list</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <button type="button" class="btn btn-default" ng-click="addShift()"><t>add</t></button>
+            </div>
+            <b-pg-grid name="shift_list" local-data="p.data.shift_list" iterator="item" limit="1000" min-width="'auto'">
+              <b-pg-header name="actions" />
+              <b-pg-row>
+                <b-pg-col name="code" size=4>
+                  <input type="text" class="form-control" ng-model="item.code" b-validate="{ s: !item.code.length || isUniqueShiftCode(item.code) }" required />
+                  <span class="text-danger" ng-hide="!item.code.length || isUniqueShiftCode(item.code)"><t>code should be unique</t></span>
+                </b-pg-col>
+                <b-pg-col name="begin_time" size=3>
+                  <input type="text" class="form-control" ng-model="item.begin_time" ng-change="calcDay(item)" b-date-picker="HH:mm" required />
+                </b-pg-col>
+                <b-pg-col name="end_time" size=3>
+                  <input type="text" class="form-control" ng-model="item.end_time" ng-change="calcDay(item)" b-date-picker="HH:mm" required />
+                </b-pg-col>
+                <b-pg-col name="break_enabled" size=3>
+                  <label class="checkbox">
+                    <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="item.break_enabled" ng-change="calcDay(item)" />
+                    <span></span>
+                  </label>
+                </b-pg-col>
+                <b-pg-col name="break_begin_time" size=3>
+                  <input type="text" class="form-control" ng-if="item.break_enabled == 'Y'" ng-model="item.break_begin_time" ng-change="calcDay(item)" b-validate="{ s: isBreakTimeValid(item) }" b-date-picker="HH:mm" required />
+                  <div class="text-danger" ng-hide="isBreakTimeValid(item)"><t>invalid break time</t></div>
+                </b-pg-col>
+                <b-pg-col name="break_end_time" size=3>
+                  <input type="text" class="form-control" ng-if="item.break_enabled == 'Y'" ng-model="item.break_end_time" ng-change="calcDay(item)" b-validate="{ s: isBreakTimeValid(item) }" b-date-picker="HH:mm" required />
+                  <div class="text-danger" ng-hide="isBreakTimeValid(item)"><t>invalid break time</t></div>
+                </b-pg-col>
+                <b-pg-col name="plan_time" size=3>
+                  <input type="text" class="form-control" ng-model="item.plan_time" b-validate="{ s: isPlanTimeValid(item) }" b-date-picker="HH:mm" required />
+                  <div class="text-danger" ng-hide="isPlanTimeValid(item)"><t>invalid plan time</t></div>
+                </b-pg-col>
+                <b-pg-col name="actions" size=2>
+                  <div class="b-right">
+                    <button type="button" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="deleteShift($index)"><i class="fas fa-trash"></i></button>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveShiftList()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

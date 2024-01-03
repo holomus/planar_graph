@@ -1,0 +1,168 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, param, $timeout) {
+  var d = _.pick(param, 'person_id'),
+      q = {},
+      p = {};
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      p.fail_msg = false;
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // person files
+  function cmpFile(a, b) {
+    let c = a.title;
+    let d = b.title;
+    return c > d ? 1 : c < d ? -1: 0;
+  }
+
+  function downloadFile(file_sha) {
+    window.open(page.downloadFile(file_sha));
+  }
+
+  function hasFileSha(file_sha) {
+    return !_.isObject(file_sha);
+  }
+
+  function addPersonFile() {
+    p.title = t('add person file')();
+    p.data = {};
+    p.file = null;
+    p.index = null;
+    showModal();
+  }
+
+  function editPersonFile(row, index) {
+    p.title = t('edit person file')();
+    p.data = angular.copy(row);
+    p.file = row.file_sha;
+    p.index = index;
+    showModal();
+  }
+
+  modal.on('shown.bs.modal', function(){
+    if (scope.modal_content == 'person_file_vhr13.html') {
+      page.dropzone('file').files = [{ name: p.data.file_name }];
+      scope.$digest();
+    }
+  });
+
+  function savePersonFile() {
+    if (!p.file) {
+      p.fail_msg = true;
+    } else if (page.valid(scope.modal)) {
+      let data = angular.copy(p.data);
+          data.person_id = d.person_id;
+          data.file_sha = p.file;
+      fi.save_file(data).then(function(result) {
+        if (_.isNumber(p.index)) {
+          d.person_files.splice(p.index, 1);
+        }
+
+        d.person_files.push(result);
+        d.person_files.sort(cmpFile);
+        hideModal();
+        page.dropzone('file').clear();
+      }, page.alert);
+    }
+  }
+
+  function delPersonFile(row) {
+    page.confirm(t('delete person file $1{title}?')(row.title), function() {
+      fi.del_file({ person_id: d.person_id, file_sha: row.file_sha }).then(function() {
+        var index = _.findIndex(d.person_files, row);
+        d.person_files.splice(index, 1);
+      }, page.alert);
+    });
+  }
+
+  page.post(':get_person_files', { person_id: d.person_id }).then(function(result) {
+    d.person_files = _.mapRows(result, ['title', 'note', 'file_sha', 'file_name']);
+  }, page.alert);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content card card-custom gutter-b"  style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>files</t></h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_file" ng-click="addPersonFile()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row" ng-if="d.person_files.length > 10">
+      <div class="offset-sm-12 col-sm-12 mb-2">
+        <b-pg-controller name="person_files"/>
+      </div>
+    </div>
+    <b-pg-grid name="person_files" local-data="d.person_files" min-height="'auto'" search="title" sort="title" limit="50">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="title" size="11"/>
+        <b-pg-col name="note" size="10"/>
+        <b-pg-col name="action" size="3">
+          <div class="text-center w-100 dropdown" ng-if="hasFileSha(row.file_sha) || fi.save_file || fi.del_file">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-if="fi.save_file" ng-click="editPersonFile(row, $index)"><t>edit</t></a>
+              <a class="dropdown-item" ng-if="hasFileSha(row.file_sha)" ng-click="downloadFile(row.file_sha)"><t>download</t></a>
+              <a class="dropdown-item text-danger" ng-if="fi.del_file" ng-click="delPersonFile(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+  <!-- PERSON FILE MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>title</t><r /></label>
+              <input type="text" class="form-control" ng-model="p.data.title" b-maxlength="100" required/>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="4" ng-model="p.data.note" style="resize: none;" b-maxlength="200"></textarea>
+            </div>
+            <div class="form-group">
+              <b-dropzone name="file" model="p.file" on-select="p.fail_msg = false;"/>
+            </div>
+            <div class="form-group" ng-show="p.fail_msg">
+              <label class="text-danger"><t>file selection is required</t></label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.save_file" ng-click="savePersonFile()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

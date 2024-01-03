@@ -1,0 +1,13 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{actions_count} action(s)?": "Delete <b>$1</b> actions ?",
+ "delete action $1{action_name}?": "Delete action <b>$1</b>?",
+ "select": "Pick-up",
+ "table.action_id": "ID",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

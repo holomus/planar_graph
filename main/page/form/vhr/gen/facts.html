@@ -1,0 +1,632 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bUtil) {
+  var d = model.data,
+      q = model.references;
+
+  // staff
+  function addStaffItem() {
+    d.staffs.push({
+      request_kinds: [],
+      is_valid: 'Y',
+      skip_inputs: 'N',
+      skip_outputs: 'N',
+      only_check: 'N',
+      input: 'N',
+      output: 'N'
+    });
+  }
+
+  function removeStaffItems() {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(d.staffs, row);
+      d.staffs.splice(index, 1);
+    });
+    q.checked = {};
+  }
+
+  function whereStaff() {
+    let staff_ids = _.chain(d.staffs).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=',  d.period_begin],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>', d.period_end]]
+                  ]]
+                ];
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function setStaff(item, row) {
+    if (!row) return;
+    item.staff_id = row.staff_id;
+    item.name = row.name;
+    item.staff_number = row.staff_number;
+    item.employee_id = row.employee_id;
+    item.schedule_name = row.schedule_name;
+  }
+
+  function selectStaffs() {
+    fi.select_staffs(null, function(result) {
+      if (!result || result.length == 0) return;
+      _.each(result, function(staff) {
+        staff.request_kinds = [];
+        staff.is_valid = 'Y';
+        staff.skip_inputs = 'N';
+        staff.skip_outputs = 'N';
+        staff.only_check = 'N';
+        staff.input = 'N';
+        staff.output = 'N';
+      });
+
+      page.post(':get_schedule', { staff_id: _.pluck(result, 'staff_id') }).then(function(res) {
+        _.each(res, (x, index) => {
+          result[index].schedule_name = x;
+        });
+      }, page.alert);
+
+      d.staffs.push(...result);
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  // division
+  function onChangeDivision() {
+    if (!_.isEmpty(d.staffs)) {
+      page.confirm(t('all staffs will be removed. continue?')(), function() {
+        d.staffs = [];
+        q.old_division_id = d.division_id;
+      }, function() {
+        d.division_id = q.old_division_id;
+      });
+    } else {
+        q.old_division_id = d.division_id;
+    }
+  }
+
+  function applyDateTime(item, border_kind) {
+    _.chain(d.staffs).filter(x => !x[border_kind]).each(staff => staff[border_kind] = item[border_kind]);
+  }
+
+  function applyRequestKinds(item) {
+    _.chain(d.staffs).filter(x => _.isEmpty(x.request_kinds)).each(staff => staff.request_kinds = angular.copy(item.request_kinds));
+  }
+
+  // checks
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function refreshAllCheckbox(check_kind) {
+    let checked_size = _.chain(q.pageItems)
+                        .filter(x => x[check_kind] == 'Y')
+                        .pluck(check_kind)
+                        .value()
+                        .length;
+
+    q[check_kind].indeterminate = false;
+    q[check_kind].checked = false;
+    if (checked_size < q.pageItems.length && checked_size > 0) {
+      q[check_kind].indeterminate = true;
+    }
+    else if (checked_size == q.pageItems.length && q.pageItems.length > 0) {
+      q[check_kind].checked = true;
+    }
+  }
+
+  function toggleAllCheckbox(check_kind) {
+    let checked_size = _.chain(q.pageItems)
+                        .filter(x => x[check_kind] == 'Y')
+                        .pluck(check_kind)
+                        .value()
+                        .length;
+
+    _.each(q.pageItems, function(item) {
+      item[check_kind] = q[check_kind].checked && checked_size == 0 ? 'Y' : 'N';
+    });
+    q[check_kind].checked = checked_size == 0;
+  }
+
+  function onDateChange() {
+    let period_begin = moment(d.period_begin, `DD.MM.YYYY`).format("YYYYMMDD"),
+        period_end = moment(d.period_end, `DD.MM.YYYY`).format("YYYYMMDD");
+    if (period_end < period_begin) {
+      d.period_end = d.period_begin;
+    }
+  }
+
+  function whereRequestKind(item) {
+    let request_kind_id = _.pluck(item.request_kinds, 'request_kind_id'),
+        where = ['time_kind_id', '=', q.time_kind_ids];
+    return _.isEmpty(request_kind_id) ? where : ['and', [['request_kind_id', '<>', request_kind_id], where]];
+  }
+
+  function changeRequestKind(item, query, value) {
+    query.where(whereRequestKind(item)).searchValue(value);
+  }
+
+  function selectRequestKind(item) {
+    fi.select_request_kind(null, function(request_kinds) {
+      if (_.isEmpty(request_kinds)) return;
+      item.request_kinds.push(...request_kinds);
+    }, { where: whereRequestKind(item), multiple_select: true });
+  }
+
+  function whereDevices() {
+    let ids = _.pluck(d.devices, 'device_id');
+    return _.isEmpty(ids) ? null : ['device_id', '<>', ids];
+  }
+
+  function selectDevices() {
+    fi.select_devices(null, function(devices) {
+      if(_.isEmpty(devices)) return;
+      d.devices.push(...devices);
+    }, { where: whereDevices(), multiple_select: true });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    q.activeGrid = section == q.generate_tracks ? 'staffs' : section == q.generate_track_by_schedule ? 'staff_tracks' : 'request_staffs';
+  }
+
+  // generate
+  function generate() {
+    if (page.valid(scope.form)) {
+      let confirmMessage = q.activeSection == q.generate_tracks ? q.tConfirmGenerateTracks : q.tConfirmGenerateRequests;
+      page.confirm(confirmMessage(), function() {
+        d.device_ids = _.pluck(d.devices, 'device_id');
+        d.device_ids.push(null);
+        let data = _.pick(d, ['period_begin', 'period_end', 'device_ids']);
+        data.staffs = _.chain(d.staffs)
+                       .values()
+                       .flatten()
+                       .each(function(staff) {
+                          staff.input_left = bUtil.timeToMinutes(staff.input_left_date);
+                          staff.input_right = bUtil.timeToMinutes(staff.input_right_date);
+                          staff.output_left = bUtil.timeToMinutes(staff.output_left_date);
+                          staff.output_right = bUtil.timeToMinutes(staff.output_right_date);
+                          staff.request_left = bUtil.timeToMinutes(staff.request_left_date);
+                          staff.request_right = bUtil.timeToMinutes(staff.request_right_date);
+                          staff.request_kind_id = _.pluck(staff.request_kinds, 'request_kind_id');
+                       })
+                       .value();
+        data.generate_kind = q.activeSection;
+
+        page.post(':generate', data).then(page.reload, page.alert);
+      });
+    }
+  }
+
+  q.activeSection = q.generate_tracks;
+  q.checkBoxesReady = false;
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.old_division_id = d.division_id;
+  q.checked = {};
+  q.tConfirmApplyInputLeft = t('apply input left border to empty fields?');
+  q.tConfirmApplyInputRight = t('apply input right border to empty fields?');
+  q.tConfirmApplyOutputLeft = t('apply output left border to empty fields?');
+  q.tConfirmApplyOutputRight = t('apply output right border to empty fields?');
+  q.tConfirmApplyRequestLeft = t('apply request left border to empty fields?');
+  q.tConfirmApplyRequestRight = t('apply request right border to empty fields?');
+  q.tConfirmApplyRequestKinds = t('apply request kinds to empty fields?');
+  q.tConfirmGenerateTracks = t('generate tracks for these staffs?');
+  q.tConfirmGenerateRequests = t('generate requests for these staffs?');
+
+  d.staffs = [];
+
+  var intervalId = setInterval(function(){
+      let elem1 = page.$content.find('input.ui-vhr232.is_valid[type=checkbox]')[0];
+      let elem2 = page.$content.find('input.ui-vhr232.skip_inputs[type=checkbox]')[0];
+      let elem3 = page.$content.find('input.ui-vhr232.skip_outputs[type=checkbox]')[0];
+      let elem4 = page.$content.find('input.ui-vhr232.only_check[type=checkbox]')[0];
+      let elem5 = page.$content.find('input.ui-vhr232.input[type=checkbox]')[0];
+      let elem6 = page.$content.find('input.ui-vhr232.output[type=checkbox]')[0];
+      if (elem1 && elem2 && elem3 && elem4 && elem5 && elem6) {
+        _.mapObject(q['is_valid'], function(val, key) {
+          elem1[key] = val;
+        });
+        _.mapObject(q['skip_inputs'], function(val, key) {
+          elem2[key] = val;
+        });
+        _.mapObject(q['skip_outputs'], function(val, key) {
+          elem3[key] = val;
+        });
+        _.mapObject(q['only_check'], function(val, key) {
+          elem4[key] = val;
+        });
+        _.mapObject(q['input'], function(val, key) {
+          elem5[key] = val;
+        });
+        _.mapObject(q['output'], function(val, key) {
+          elem6[key] = val;
+        });
+        q['is_valid'] = elem1;
+        q['skip_inputs'] = elem2;
+        q['skip_outputs'] = elem3;
+        q['only_check'] = elem4;
+        q['input'] = elem5;
+        q['output'] = elem6;
+        refreshAllCheckbox('is_valid');
+        refreshAllCheckbox('skip_inputs');
+        refreshAllCheckbox('skip_outputs');
+        refreshAllCheckbox('only_check');
+        refreshAllCheckbox('input');
+        refreshAllCheckbox('output');
+        clearInterval(intervalId);
+        q.checkBoxesReady = true;
+      }
+    }, 500);
+
+  q.activeGrid = 'staffs';
+
+  scope.d = d;
+  scope.q = q;
+
+  scope.$watchGroup(["page.pgGrid('staffs').g.pageItems", "page.pgGrid('staff_tracks').g.pageItems", "q.activeGrid"], function() {
+    q.pageItems = page.pgGrid(q.activeGrid).g.pageItems;
+    if(q.checkBoxesReady) {
+      refreshAllCheckbox('is_valid');
+      refreshAllCheckbox('skip_inputs');
+      refreshAllCheckbox('skip_outputs');
+      refreshAllCheckbox('only_check');
+      refreshAllCheckbox('input');
+      refreshAllCheckbox('output');
+    }
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="generate()" b-hotkey="save"><t>generate</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>gen period begin</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.period_begin" ng-blur="onDateChange()" required/>
+            </div>
+            <div class="col-sm">
+              <label><t>gen period end</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.period_end" min-date="d.period_begin" ng-blur="onDateChange()" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>division name</t></label>
+            <b-tree-select origin="q.divisions" id-key="division_id" model="d.division_id" on-change="onChangeDivision()"/>
+          </div>
+        </div>
+        <div class="col-sm mb-4">
+          <div ng-show="q.activeSection == q.generate_tracks">
+            <label><t>random devices</t></label>
+            <b-input name='devices'
+                     model='d.devices'
+                     model-key='device_id'
+                     label='name'
+                     is-view="fi.select_devices"
+                     on-view="selectDevices()"
+                     multiple>
+                     {{ row.name }}
+            </b-input>
+          </div>
+        </div>
+      </div>
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.generate_tracks }" role="tab" ng-click="changeSection(q.generate_tracks)">
+            <span><t>tracks</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.generate_requests }" role="tab" ng-click="changeSection(q.generate_requests)">
+            <span><t>requests</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.generate_track_by_schedule }" role="tab" ng-click="changeSection(q.generate_track_by_schedule)">
+            <span><t>track by schedule</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4 mb-4">
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.generate_tracks }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addStaffItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectStaffs()" ng-if="fi.select_staffs"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeStaffItems()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="staffs"/>
+            </div>
+          </div>
+          <b-pg-grid name="staffs" search="staff_name" on-check="onCheck(checked)" local-data="d.staffs" iterator="item" current-limit="1000">
+            <b-pg-header name="is_valid">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 is_valid" ng-click="toggleAllCheckbox('is_valid')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>is_valid</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-header name="skip_inputs">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 skip_inputs" ng-click="toggleAllCheckbox('skip_inputs')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>skip_inputs</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-header name="skip_outputs">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 skip_outputs" ng-click="toggleAllCheckbox('skip_outputs')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>skip_outputs</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-header name="only_check">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 only_check" ng-click="toggleAllCheckbox('only_check')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>only_check</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="staff_name" size="4">
+                <b-input name="staffs"
+                         model="item.name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, employee_id, staff_kind_name"
+                         on-change="changeStaffQuery(query, value)"
+                         on-select="setStaff(item, row)"
+                         on-delete="setStaff(item, {})"
+                         hint-width="700"
+                         required-key>
+                    <header>
+                      <div class="col-sm-6"><t>staff number</t></div>
+                      <div class="col-sm-12"><t>staff name</t></div>
+                      <div class="col-sm-6"><t>staff kind name</t></div>
+                    </header>
+                    <content>
+                      <div class="col-sm-6">{{ row.staff_number }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                      <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                    </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="input_left" size="3">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.input_left_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_tracks"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyInputLeft() }}" on-click-yes="applyDateTime(item, 'input_left_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="input_right" size="3">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.input_right_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_tracks"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyInputRight() }}" on-click-yes="applyDateTime(item, 'input_right_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="output_left" size="3">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.output_left_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_tracks"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyOutputLeft() }}" on-click-yes="applyDateTime(item, 'output_left_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="output_right" size="3">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.output_right_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_tracks"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyOutputRight() }}" on-click-yes="applyDateTime(item, 'output_right_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="is_valid" size="1">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.is_valid" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('is_valid')"/><span></span>
+                </label>
+              </b-pg-col>
+              <b-pg-col name="skip_inputs" size="1">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.skip_inputs" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('skip_inputs')"/><span></span>
+                </label>
+              </b-pg-col>
+              <b-pg-col name="skip_outputs" size="1">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.skip_outputs" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('skip_outputs')"/><span></span>
+                </label>
+              </b-pg-col>
+              <b-pg-col name="only_check" size="1">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.only_check" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('only_check')"/><span></span>
+                </label>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.generate_requests }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addStaffItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectStaffs()" ng-if="fi.select_staffs"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeStaffItems()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="request_staffs"/>
+            </div>
+          </div>
+          <b-pg-grid name="request_staffs" search="staff_name" on-check="onCheck(checked)" local-data="d.staffs" iterator="item" current-limit="1000">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="staff_name" size="4">
+                <b-input name="staffs"
+                         model="item.name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, employee_id, staff_kind_name"
+                         on-change="changeStaffQuery(query, value)"
+                         on-select="setStaff(item, row)"
+                         on-delete="setStaff(item, {})"
+                         hint-width="700"
+                         required-key>
+                    <header>
+                      <div class="col-sm-6"><t>staff number</t></div>
+                      <div class="col-sm-12"><t>staff name</t></div>
+                      <div class="col-sm-6"><t>staff kind name</t></div>
+                    </header>
+                    <content>
+                      <div class="col-sm-6">{{ row.staff_number }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                      <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                    </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="request_kinds" size="8">
+                <div class="input-group">
+                  <b-input name="request_kinds"
+                           model="item.request_kinds"
+                           model-key="request_kind_id"
+                           label="name"
+                           on-change="changeRequestKind(item, query, value)"
+                           is-view="fi.select_request_kind"
+                           on-view="selectRequestKind(item)"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyRequestKinds() }}" on-click-yes="applyRequestKinds(item)">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="request_left" size="4">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.request_left_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_requests"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyRequestLeft() }}" on-click-yes="applyDateTime(item, 'request_left_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="request_right" size="4">
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-model="item.request_right_date" b-date-picker="HH:mm" ng-required="q.activeSection == q.generate_requests"/>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyRequestRight() }}" on-click-yes="applyDateTime(item, 'request_right_date')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.generate_track_by_schedule }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addStaffItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectStaffs()" ng-if="fi.select_staffs"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeStaffItems()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="staff_tracks"/>
+            </div>
+          </div>
+          <b-pg-grid name="staff_tracks" search="staff_name" on-check="onCheck(checked)" local-data="d.staffs" iterator="item" current-limit="1000">
+            <b-pg-header name="input">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 input" ng-click="toggleAllCheckbox('input')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>input</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-header name="output">
+              <label class="checkbox">
+                <input type="checkbox" class="ui-vhr232 output" ng-click="toggleAllCheckbox('output')" ng-hide="d.staffs.length == 0"/>
+                <span ng-hide="d.staffs.length == 0"></span>
+                <span><t>output</t></span>
+              </label>
+            </b-pg-header>
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="staff_name" size="4">
+                <b-input name="staffs"
+                         model="item.name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, employee_id, schedule_name"
+                         on-change="changeStaffQuery(query, value)"
+                         on-select="setStaff(item, row)"
+                         on-delete="setStaff(item, {})"
+                         hint-width="700"
+                         required-key>
+                    <header>
+                      <div class="col-sm-6"><t>staff number</t></div>
+                      <div class="col-sm-12"><t>staff name</t></div>
+                      <div class="col-sm-6"><t>staff kind name</t></div>
+                    </header>
+                    <content>
+                      <div class="col-sm-6">{{ row.staff_number }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                      <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                    </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="schedule" size="3">
+                <div class="text-center">{{ item.schedule_name }}</div>
+              </b-pg-col>
+              <b-pg-col name="input" size="3">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.input" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('input')"/><span></span>
+                </label>
+              </b-pg-col>
+              <b-pg-col name="output" size="3">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="item.output" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllCheckbox('output')"/><span></span>
+                </label>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

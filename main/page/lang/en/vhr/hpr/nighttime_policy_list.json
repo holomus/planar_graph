@@ -1,0 +1,20 @@
+{
+ "add": "Add",
+ "common": "Company policy",
+ "common_policies.month": "Month",
+ "common_policies.name": "Name",
+ "common_policies.nighttime_policy_id": "Night-time policy ID",
+ "common_policies.state_name": "Status",
+ "copy": "Copy",
+ "delete": "Delete",
+ "delete $1": "Delete $1",
+ "delete $1{policy_count} nighttime policy(ies)?": "Delete $1 Night-time policy(ies)?",
+ "delete nighttime policy for $1{month_name}?": "Delete night-time policy for $1?",
+ "edit": "Edit",
+ "standart": "Department policy",
+ "standart_policies.division_name": "Department",
+ "standart_policies.month": "Month",
+ "standart_policies.name": "Name",
+ "standart_policies.nighttime_policy_id": "Night-time policy ID",
+ "standart_policies.state_name": "Status"
+}

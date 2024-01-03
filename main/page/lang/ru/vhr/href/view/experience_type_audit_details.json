@@ -1,0 +1,5 @@
+{
+ "pg.experience_type.before": "Старое значение",
+ "pg.experience_type.current": "Новое значение",
+ "pg.experience_type.field_name": "Поле"
+}

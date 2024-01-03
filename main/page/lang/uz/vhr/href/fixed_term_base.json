@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another base": "Kod allaqachon boshqa muddatli shartnoma asosiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi kerak",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat",
+ "text": "Qaror uchun matn"
+}

@@ -1,0 +1,11 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{fixed_term_base_count}  fixed term bases?": "Haqiqatan ham <b>$1</b> asos(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete fixed term base $1{fixed_term_base_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.fixed_term_base_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat",
+ "table.text": "Qaror uchun matn"
+}

@@ -1,0 +1,104 @@
+<script biruni>
+page.ctrl(function(scope, model, param, fi, t) {
+  var d = model ? model : {}, q = {};
+
+  function save() {
+    if (page.valid(scope.form) && q.valid_location) {
+      d.server_id = param.server_id;
+      page.post(':save', _.omit(d, ['company_name', 'company_code'])).then(page.close, page.alert);
+    }
+  }
+
+  function getDeviceName() {
+    if (!q.valid_location) return;
+    d.device_name = (d.company_id ? d.company_code : '') + (d.location ? d.location : '');
+  }
+
+  function setCompany(row) {
+    if (!row) return;
+    d.company_id = row.company_id;
+    d.company_name = row.name;
+    d.company_code = row.code;
+    getDeviceName();
+  }
+
+  function changeCompanyQuery(query, value) {
+    query.param({ device_id: d.device_id, server_id: param.server_id }).searchValue(value);
+  }
+
+  function changeLocation() {
+    let format = /^[a-z0-9]+$/;
+    q.valid_location = format.test(d.location);
+    getDeviceName();
+  }
+
+  function copyDeviceName() {
+    navigator.clipboard.writeText(d.device_name).then(() => { notify(t('copied to clipboard')()); }, page.alert);
+  }
+
+  q.valid_location = true;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>primary company</t><r/></label>
+            <b-input name="companies"
+                     model="d.company_name | name"
+                     model-key="d.company_id | company_id"
+                     column="code"
+                     search="code"
+                     on-select="setCompany(row)"
+                     on-change="changeCompanyQuery(query, value)"
+                     required-key>
+              <div class="col-sm">{{ row.name }}</div>
+              <div class="col-sm">{{ row.code }}</div>
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>location</t><r></label>
+            <input type="text" class="form-control" ng-change="changeLocation()" ng-model="d.location" required/>
+            <p class="text-danger" ng-hide="q.valid_location"><t>location should be only small latin letters and numbers</t></p>
+          </div>
+          <div class="form-group">
+            <label><t>device name</t></label>
+            <div class="input-group">
+              <span class="form-view">{{ d.device_name }}</span>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-default btn-icon" ng-click="copyDeviceName()">
+                  <i class="far fa-copy"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>login</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.login" required/>
+          </div>
+          <div class="form-group">
+            <label><t>password</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.password" required/>
+          </div>
+          <div class="form-group">
+            <label><t>device ip</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.device_ip" required/>
+          </div>
+          <div class="form-group">
+            <label><t>device MAC</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.device_mac" required/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

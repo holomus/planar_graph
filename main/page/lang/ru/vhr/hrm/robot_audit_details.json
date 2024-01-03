@@ -1,0 +1,16 @@
+{
+ "before": "Старое значение",
+ "current": "Новое значение",
+ "extra robot": "Дополнительная",
+ "field_name": "Поле",
+ "main robot": "Основная",
+ "pg.{{ data.tab }}.before": "Старое значение",
+ "pg.{{ data.tab }}.current": "Новое значение",
+ "pg.{{ data.tab }}.field_name": "Поле",
+ "robot divisions": "Подразделение",
+ "robot indicators": "Показатели",
+ "robot job groups": "Группа должностей",
+ "robot oper types": "Оплата труда",
+ "robot roles": "Роль",
+ "robot vacation limit": "Лимит отпускных дней"
+}

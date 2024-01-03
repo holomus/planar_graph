@@ -1,0 +1,21 @@
+{
+ "details": "Details",
+ "table_audit.calc_kind_name": "Result Calculation Type",
+ "table_audit.fact_amount": "Fact Amount",
+ "table_audit.fact_note": "Note",
+ "table_audit.fact_percent": "Fact (%)",
+ "table_audit.fact_value": "Fact",
+ "table_audit.item_plan_type_name": "Measures Type",
+ "table_audit.note": "Note",
+ "table_audit.plan_amount": "Plan (amount)",
+ "table_audit.plan_type_name": "Measures Type",
+ "table_audit.plan_value": "Plan",
+ "table_audit.staff_plan_id": "Calculation ID",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User"
+}

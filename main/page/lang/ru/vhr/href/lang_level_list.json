@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{lang_level_count} lang level(s)?": "Удалить степени знания языка в количестве <b>$1</b>?",
+ "delete lang level $1{lang_level_name}?": "Удалить степень знания языка <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.lang_level_id": "ИД",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.state_name": "Статус"
+}

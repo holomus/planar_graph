@@ -1,0 +1,17 @@
+{
+ "ignore tracks from this device": "Игнорировать отметки с устройства",
+ "no": "Нет",
+ "yes": "Да",
+ "copied to clipboard": "Скопировано в буфер обмена.",
+ "device ip": "IP-адрес",
+ "device MAC": "MAC-адрес устройства",
+ "device name": "Название",
+ "event type": "Тип события",
+ "isup password": "Пароль ISUP",
+ "location": "Локация",
+ "location should be only latin small letters and numbers": "Локация должно содержать только строчные латинские буквы или цифры.",
+ "login": "Логин",
+ "password": "Пароль",
+ "primary company": "Компания",
+ "save": "Сохранить"
+}

@@ -1,0 +1,10 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another science branch": "Код уже закреплен за другой отраслью наук",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

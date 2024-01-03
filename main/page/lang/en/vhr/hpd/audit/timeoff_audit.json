@@ -1,0 +1,14 @@
+{
+ "details": "Details",
+ "table_audit.begin_date": "Start Date",
+ "table_audit.end_date": "End Date",
+ "table_audit.journal_id": "Document ID",
+ "table_audit.staff_name": "Employee",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User"
+}

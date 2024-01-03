@@ -1,0 +1,20 @@
+{
+ "indicators": "Indicators",
+ "base wage": "Base Tariff",
+ "main": "General Information",
+ "note": "Note",
+ "pg.ranks.coefficient": "Coefficient",
+ "pg.ranks.rank_name": "Rank (category)",
+ "pg.ranks.rownum": "No.",
+ "pg.ranks.wage_html": "Salary",
+ "posted": "Posted",
+ "register date": "Date",
+ "register number": "Number",
+ "round model": "Rounding",
+ "round type": "Rounding Type",
+ "unposted": "Unposted",
+ "valid from": "Valid From",
+ "wage": "Salary",
+ "wage scale": "Tariff Group",
+ "with base wage": "Tariff amounts set in relation to base tariff"
+}

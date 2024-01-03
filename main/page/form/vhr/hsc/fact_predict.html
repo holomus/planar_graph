@@ -1,0 +1,189 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'references'),
+      q = model.references;
+
+  // object
+  function setObject(row) {
+    if (!row) return;
+    d.object_name = row.name;
+    d.object_id = row.object_id;
+  }
+
+  function selectObject() {
+    fi.select_object(null, setObject, { where: ['state', '=', 'A'] });
+  }
+
+  // area
+  function setArea(rows) {
+    if (!rows) return;
+    d.areas.push(...rows);
+  }
+
+  function selectArea() {
+    fi.select_area(null, setArea, { where: ['state', '=', 'A'] });
+  }
+
+  // driver
+  function setDriver(rows) {
+    if (!rows) return;
+    d.drivers.push(...rows);
+  }
+
+  function selectDriver() {
+    fi.select_driver(null, setDriver, { 
+      where: ['and', 
+                [
+                  ['state', '=', 'A'], 
+                  ['action_type', '=', 'P']
+                ]
+              ]
+    });
+  }
+
+  function notifyResult(result) {
+    if (result.success_cnt > 0)
+      notify(t('successfully predicted $1{success_cnt} categories')(result.success_cnt));
+    _.each(result.errors, x => {
+      console.error(x.log);
+      notify(x.message, 'danger');
+    });
+  }
+
+  function predictObject(object_id) {
+    let data = _.pick(d, 'train_begin', 
+                         'train_end',
+                         'fact_type');
+
+    data.object_id = object_id;                         
+
+    data.area_ids = _.pluck(d.areas, 'area_id');
+    data.driver_ids = _.pluck(d.drivers, 'driver_id');
+    
+    let start_date = moment(d.predict_begin, 'DD.MM.YYYY');
+    let end_date = moment(d.predict_end, 'DD.MM.YYYY');
+
+    let period = data.fact_type == q.monthly_type
+                ? 'month'
+                : data.fact_type == q.quarterly_type
+                ? 'quarter'
+                : data.fact_type == q.yearly_type
+                ? 'year'
+                : 'isoWeek';
+
+    while (start_date <= end_date) {
+      data.predict_begin = start_date.startOf(period).format('DD.MM.YYYY');
+      data.predict_end = start_date.endOf(period).format('DD.MM.YYYY');
+
+      page.post(':predict', data).then(notifyResult, page.alert);
+      
+      data.train_end = data.predict_end;
+      
+      start_date.add(1, 'd');
+    }
+  }
+
+  function predict() {
+    if (page.valid(scope.form)) {
+      let object_ids = _.pluck(d.objects, 'object_id');
+
+      if (_.isEmpty(object_ids)) object_ids = q.object_ids;
+
+      _.each(object_ids, predictObject);
+    }
+  }
+
+  function openSettings() {
+    if (!fi.server_settings) return;
+    fi.server_settings();
+  }
+
+  q.fact_types = _.chain(q.fact_types)
+                  .mapRows(['fact_type', 'fact_type_name'])
+                  .reject(x => x.fact_type == q.actual_type)
+                  .value();
+
+  d.areas = [];
+  d.drivers = [];
+  d.objects = [];
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="predict()"><t>predict</t></button>
+  <button type="button" class="btn btn-default" ng-if="fi.server_settings" ng-click="openSettings()">{{ fi.server_settings.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>object</t></label>
+              <b-input name="objects"
+                       multiple
+                       model="d.objects"
+                       model-key="object_id"
+                       is-view="fi.select_object"
+                       on-view="selectObject()">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>areas</t></label>
+              <b-input name="areas"
+                       multiple          
+                       model="d.areas"
+                       model-key="area_id"
+                       is-view="fi.select_area"
+                       on-view="selectArea()">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>drivers</t></label>
+              <b-input name="drivers"
+                       multiple
+                       model="d.drivers"
+                       model-key="driver_id"
+                       is-view="fi.select_driver"
+                       on-view="selectDriver()">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>predict type</t><r/></label><br/>
+              <label class="radio" ng-repeat="type in q.fact_types">
+                <input type="radio" name="fact_type" value="{{ type.fact_type }}" ng-model="d.fact_type"/><span>{{ type.fact_type_name }}</span>
+              </label>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>train start</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.train_begin" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>train end</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.train_end" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>predict start</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.predict_begin" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>predict end</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.predict_end" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>  
+    </div>
+  </form>
+</div>

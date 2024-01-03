@@ -1,0 +1,228 @@
+<script biruni>
+page.init(function() {
+  page.grid('standard_plans').asHtml('plan_date_html', 'plan_date', row => {
+    return `<span style="text-transform: capitalize;">${row.plan_date.toMoment().format("MMMM YYYY")}</span>`;
+  });
+  page.grid('contract_plans').asHtml('plan_date_html', 'plan_date', row => {
+    return `<span style="text-transform: capitalize;">${row.plan_date.toMoment().format("MMMM YYYY")}</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, bFrame, AppSession, bStorage, $timeout) {
+  var q = model;
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  q.active_tab = storage.active_tab || 'standard_plans';
+
+  function setActiveTab(active_tab) {
+    q.active_tab = active_tab;
+    bStorage.json(storage_key, { active_tab: active_tab });
+    q.checked = {};
+  }
+
+  function hasAccessDirect(row, is_contract) {
+    return q.access_all_employee == 'Y' || is_contract && row.access_level == q.ual_direct_employee;
+  }
+
+  function add(plan_kind, row) {
+    let data = { plan_kind };
+    if (row) data.plan_id = row.plan_id;
+    fi.add(data);
+  }
+
+  function edit(row) {
+    fi.edit({ plan_id: row.plan_id });
+  }
+
+  function deleteAction(message, plan_id) {
+    page.confirm(message, function() {
+      fi.delete({ plan_id: plan_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete plan?')(), row.plan_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1 plan(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'plan_id'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row, is_contract) {
+    fi.edit && hasAccessDirect(row, is_contract) ? edit(row) : null;
+  }
+
+  var modal = page.$content.find("form[name='gen_plans']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function openGenPlansModal() {
+    q.plan_date = moment().format('MM.YYYY');
+
+    page.untouch(scope.gen_plans);
+    showModal();
+  }
+
+  function genPlans() {
+    if (page.valid(scope.gen_plans)) {
+      fi.gen_plans({ plan_date: q.plan_date }).then(hideModal, page.alert);
+    }
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar" ng-hide="page.isFirst()">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-header card-header-tabs-line">
+        <div class="card-toolbar align-items-end">
+          <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link" ng-class="{'active': q.active_tab == 'standard_plans'}" data-toggle="tab" ng-click="setActiveTab('standard_plans')" role="tab">
+                <span><t>standard plans</t></span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" ng-class="{'active': q.active_tab == 'contract_plans'}" data-toggle="tab" ng-click="setActiveTab('contract_plans')" role="tab">
+                <span><t>contract plans</t></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tab-content">
+          <div class="tab-pane" ng-class="{'active': q.active_tab == 'standard_plans'}">
+            <div class="row">
+              <div class="col-sm-14 mb-2">
+                <button type="button" class="btn btn-success" ng-click="add('S')" ng-if="fi.add && q.access_all_employee == 'Y'">{{ fi.add.title }}</button>
+                <button type="button" class="btn btn-success" ng-click="openGenPlansModal()" ng-if="fi.gen_plans && q.access_all_employee == 'Y'"><t>gen plans</t></button> <!-- todo form -->
+                <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.access_all_employee == 'Y'" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+              </div>
+              <div class="col-sm-10 mb-2">
+                <b-grid-controller name="standard_plans"/>
+              </div>
+            </div>
+            <b-grid name="standard_plans" on-check="onCheck(checked)" required="plan_id" search="division_name, job_name, rank_name, employment_type_name"
+                    searchable="plan_id" on-dblclick="onDblclick(row, false)" sort="-plan_date, division_name, job_name, rank_name, employment_type_name"
+                    extra-columns="plan_id, main_calc_type_name, extra_calc_type_name, extra_type_names, note">
+              <b-row>
+                <b-col name="plan_date" size=2 as-html="plan_date_html"/>
+                <b-col name="division_name" size=3/>
+                <b-col name="job_name" size=3/>
+                <b-col name="rank_name" size=3/>
+                <b-col name="employment_type_name" size=6/>
+                <b-col name="main_type_names" size=6/>
+              </b-row>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-if="fi.edit && q.access_all_employee == 'Y'" ng-click="edit(row)">{{ fi.edit.title }}</button>
+                <button type="button" class="btn btn-default" ng-if="fi.add && q.access_all_employee == 'Y'" ng-click="add('S', row)"><t>copy</t></button>
+                <button type="button" class="btn btn-default" ng-if="fi.delete && q.access_all_employee == 'Y'" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+              </b-action>
+
+              <b-filter name="plan_id" directive="equal" extra/>
+              <b-filter name="plan_date" date-level="month"/>
+              <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+              <b-filter name="job_id" decorate-with="job_name"/>
+              <b-filter name="rank_id" decorate-with="rank_name"/>
+              <b-filter name="type_id" decorate-with="employment_type_name"/>
+              <b-filter name="main_type_ids" decorate-with="main_type_names"/>
+              <b-filter name="main_calc_type" decorate-with="main_calc_type_name" extra/>
+              <b-filter name="extra_calc_type" decorate-with="extra_calc_type_name" extra/>
+              <b-filter name="extra_type_ids" decorate-with="extra_type_names" extra/>
+            </b-grid>
+          </div>
+          <div class="tab-pane" ng-class="{'active': q.active_tab == 'contract_plans'}">
+            <div class="row">
+              <div class="col-sm-14 mb-2">
+                <button type="button" class="btn btn-success" ng-click="add('C')" ng-if="fi.add && (q.access_all_employee == 'Y' || q.exist_direct_employee == 'Y')">{{ fi.add.title }}</button>
+                <button type="button" class="btn btn-success" ng-click="openGenPlansModal()" ng-if="fi.gen_plans && (q.access_all_employee == 'Y' || q.exist_direct_employee == 'Y')"><t>gen plans</t></button>
+                <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && (q.access_all_employee == 'Y' || q.exist_direct_employee == 'Y')" ng-show="q.checked.has">
+                  <t p1="q.checked.size">delete $1</t>
+                </button>
+              </div>
+              <div class="col-sm-10 mb-2">
+                <b-grid-controller name="contract_plans"/>
+              </div>
+            </div>
+            <b-grid name="contract_plans" on-check="onCheck(checked)" required="plan_id, access_level" search="employee_name, division_name, job_name, rank_name, employment_type_name"
+                    searchable="plan_id" on-dblclick="onDblclick(row, true)" sort="-plan_date, division_name, job_name, rank_name, employment_type_name, employee_name"
+                    extra-columns="plan_id, extra_type_names, access_level_name">
+              <b-row>
+                <b-col name="plan_date" size=2 as-html="plan_date_html"/>
+                <b-col name="division_name" size=3/>
+                <b-col name="job_name" size=3/>
+                <b-col name="rank_name" size=3/>
+                <b-col name="employment_type_name" size=3/>
+                <b-col name="employee_name" size=3/>
+                <b-col name="main_type_names" size=6/>
+              </b-row>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-if="fi.edit && hasAccessDirect(row, true)" ng-click="edit(row)">{{ fi.edit.title }}</button>
+                <button type="button" class="btn btn-default" ng-if="fi.add && hasAccessDirect(row, true)" ng-click="add('C', row)"><t>copy</t></button>
+                <button type="button" class="btn btn-default" ng-if="fi.delete && hasAccessDirect(row, true)" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+              </b-action>
+
+              <b-filter name="plan_id" directive="equal" extra/>
+              <b-filter name="plan_date" date-level="month"/>
+              <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+              <b-filter name="job_id" decorate-with="job_name"/>
+              <b-filter name="rank_id" decorate-with="rank_name"/>
+              <b-filter name="employment_type" decorate-with="employment_type_name"/>
+              <b-filter name="employee_id" decorate-with="employee_name"/>
+              <b-filter name="main_type_ids" decorate-with="main_type_names"/>
+              <b-filter name="extra_type_ids" decorate-with="extra_type_names" extra/>
+              <b-filter name="access_level" decorate-with="access_level_name" extra/>
+            </b-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="gen_plans">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>gen plans title</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>plan date</t><r></label>
+                <input class="form-control" ng-model="q.plan_date" b-date-picker="MM.YYYY" required/>
+              </div>
+            </div>
+            <span class="breakable text-muted"><t>plans will be generated only for employees who don't have plans yet. if you want regenerate existing, remove them first!</t>&nbsp;
+              <a href ng-if="fi.emp_plans" ng-click="fi.emp_plans()"><span>{{ fi.emp_plans.title }}</span></a>
+            </span>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="genPlans()"><t>gen</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

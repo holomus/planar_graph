@@ -1,0 +1,11 @@
+{
+ "copied to clipboard": "Copied to clipboard.",
+ "delete $1": "Delete $1",
+ "delete $1{device_count} device(s)?": "Do you really want to delete <b>$1</b> device(s)?",
+ "delete device $1{serial_number}?": "Delete device $1?",
+ "table.company_id": "Company ID",
+ "table.company_name": "Company",
+ "table.device_token": "Token",
+ "table.person_auth_type_name": "Authentication type",
+ "table.serial_number": "Serial No."
+}

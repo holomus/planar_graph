@@ -1,0 +1,5 @@
+{
+ "pg.doc_type.before": "Previous Value",
+ "pg.doc_type.current": "Current Value",
+ "pg.doc_type.field_name": "Field"
+}

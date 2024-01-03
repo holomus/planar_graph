@@ -1,0 +1,14 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{subject_count} subject(s)?": "Вы действительно хотите удалить <b>$1</b> тематику(и)?",
+ "delete subject $1{subject_name}?": "Вы действительно хотите удалить тематику  <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.subject_id": "ИД"
+}

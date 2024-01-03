@@ -1,0 +1,11 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another funnel": "Код должен быть уникальным",
+ "name": "Название",
+ "name should be unique": "Название должно быть уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "stages": "Этапы",
+ "state": "Статус"
+}

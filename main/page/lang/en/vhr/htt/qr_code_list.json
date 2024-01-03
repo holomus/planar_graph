@@ -1,0 +1,12 @@
+{
+ "deactivate $1": "Deactivate $1",
+ "deactivate $1{qr_code_count} qr code(s)?": "Do you really want to deactivate <b>$1</b> QR Сode(s)?",
+ "deactivate qr code $1{created_on}?": "Do you really want to deactivate <b>$1</b>?",
+ "delete $1": "Delete $1",
+ "delete $1{qr_codes_count} qr code(s)?": "Do you really want to delete <b>$1</b> QR Сode(s)?",
+ "delete qr code $1{created_on}?": "Do you really want to delete <b>$1</b>?",
+ "table.created_on": "Created on",
+ "table.location_name": "Location",
+ "table.state_name": "Status",
+ "table.unique_key": "Unique key"
+}

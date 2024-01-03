@@ -1,0 +1,10 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another relation degree": "Kod allaqachon boshqa qarindoshlik darajasiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nomi noyob bo'lishi kerak",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

@@ -1,0 +1,9 @@
+{
+ "active": "Active",
+ "name": "Name",
+ "order no": "No.",
+ "passive": "Inactive",
+ "save": "Save",
+ "source kind": "Source Type",
+ "state": "Status"
+}

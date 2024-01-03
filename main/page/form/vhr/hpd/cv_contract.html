@@ -1,0 +1,310 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, $timeout, t) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {};
+
+  function pageId(key) {
+    return key + page.id();
+  }
+
+   // person
+   function setPerson(row) {
+    if (!row) return;
+    d.person_id = row.person_id;
+    d.person_name = row.name;
+  }
+
+  function addPerson(value) {
+    fi.add_person(null, setPerson, { name: value });
+  }
+
+  function selectPerson() {
+    fi.select_person(null,  setPerson);
+  }
+
+  function save(posted) {
+    let filters = [];
+    _.each(d.services, x => {
+      x.service_name_is_valid = x.name.length <= 500;
+      if (!x.service_name_is_valid) filters.push(x);
+    });
+
+    if (page.valid(scope.form) && filters.length == 0) {
+      page.confirm(t('save?')(), function() {
+        let data = _.omit(d, 'division_name', 'person_name', 'files');
+        data.files = _.chain(d.files).map(x => x = _.pick(x, 'file_sha', 'note')).value();
+        data.posted = posted;
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  // modal file
+  var modalFile = page.$content.find('form[name=modalFile]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modalFile.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modalFile.modal('hide');
+  }
+
+  function addService() {
+    d.services.push({ service_name_is_valid: true });
+  }
+
+  function deleteService(item) {
+    let index = _.indexOf(d.services, item);
+    d.services.splice(index, 1);
+  }
+
+  function saveFile() {
+    if (!q.file) {
+      q.fail_msg = true;
+      return;
+    }
+
+    let data = {
+        file_name: q.file.name,
+        note: q.note,
+        file_sha: q.file
+      }
+
+    if (q.index >= 0) {
+      d.files[q.index] = data;
+    } else {
+      d.files.push(data);
+    }
+
+    hideModal();
+    page.dropzone('file').clear();
+  }
+
+  function addFile() {
+    q.file = null;
+    q.note = null;
+    q.index = -1;
+    p.title = t('add file')();
+    page.dropzone('file').clear();
+    showModal();
+  }
+
+  function updateFile(item) {
+    q.file = item.file_sha;
+    q.note = item.note;
+    q.index = _.indexOf(d.files, item);
+    p.title = t('update file')();
+    page.dropzone('file').files = [{ name: item.file_name }];
+    showModal();
+  }
+
+  function deleteFile(item) {
+    let index = _.indexOf(d.files, item);
+    d.files.splice(index, 1);
+  }
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+
+  if (model.contract_id) {
+    d.services = _.mapRows(model.services, ['contract_item_id', 'name', 'quantity', 'amount']);
+    d.files = _.mapRows(model.files, ['file_sha', 'file_name', 'note']);
+  } else {
+    d.services = [];
+    d.files = [];
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>contract number</t></label>
+                  <input type="text" class="form-control" ng-model="d.contract_number" b-maxlength="50"/>
+                </div>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>division</t><r/></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"
+                  required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>person</t><r/></label>
+                <b-input name="persons"
+                         model="d.person_name | name"
+                         model-key="d.person_id | person_id"
+                         is-add="fi.add_person"
+                         is-view="fi.select_person"
+                         on-add="addPerson(value)"
+                         on-view="selectPerson()"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12">
+                <label><t>contract kind</t></label><br/>
+                <label class="radio">
+                  <input type="radio" name="contract_kind" value="S" ng-model="d.contract_kind"/><span><t>simple</t></span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="contract_kind" value="C" ng-model="d.contract_kind"/><span><t>cyclical</t></span>
+                </label>
+              </div>
+              <div class="col-sm-12">
+                <label><t>access to add item</t></label><br/>
+                <label class="radio">
+                  <input type="radio" name="access_to_add_item" value="Y" ng-model="d.access_to_add_item"/><span><t>yes</t></span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="access_to_add_item" value="N" ng-model="d.access_to_add_item"/><span><t>no</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.begin_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>end date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.end_date" b-date-picker required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+            <li class="nav-item">
+              <a data-target="{{ pageId('#services') }}" class="nav-link active" data-toggle="tab" role="tab">
+                <span><t>services</t></span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a data-target="{{ pageId('#files') }}" class="nav-link" data-toggle="tab" role="tab">
+                <span><t>files</t></span>
+              </a>
+            </li>
+          </ul>
+          <div class="tab-content mt-4">
+            <div class="tab-pane active" id="{{ pageId('services') }}" role="tabpanel">
+              <div class="mb-2">
+                <button type="button" class="btn btn-default" ng-click="addService()"><t>add</t></button>
+              </div>
+              <b-pg-grid name="services" local-data="d.services" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="service" size="12">
+                    <b-input name="services"
+                             model="item.name | name"
+                             required>
+                      {{ row.name }}
+                    </b-input>
+                    <span class="text-danger mt-0" ng-show="item.name.length > 500">
+                      <t>service name must be less than 500 letters</t>
+                    </span>
+                  </b-pg-col>
+                  <b-pg-col name="quantity" size="5">
+                    <input type="text" class="form-control" ng-model="item.quantity" b-number/>
+                  </b-pg-col>
+                  <b-pg-col name="amount" size="5">
+                    <input type="text" class="form-control" ng-model="item.amount" b-number/>
+                  </b-pg-col>
+                  <b-pg-col name="actions" size="1">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteService(item)"><i class="fa fa-trash"></i></button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+            <div class="tab-pane" id="{{ pageId('files') }}" role="tabpanel">
+              <div class="mb-2">
+                <button type="button" class="btn btn-default" ng-click="addFile()"><t>add</t></button>
+              </div>
+              <b-pg-grid name="files" local-data="d.files" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="file_name" size="12"/>
+                  <b-pg-col name="note" size="9"/>
+                  <b-pg-col name="actions" size="2">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon" ng-click="updateFile(item)"><i class="fa fa-pencil-alt"></i></button>
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteFile(item)"><i class="fa fa-trash"></i></button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modalFile">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">{{ p.title }}</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="q.note" b-maxlength="300"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>file</t></label>
+              <b-dropzone name="file" model="q.file" on-select="q.fail_msg = false;"/>
+            </div>
+            <div class="form-group" ng-show="q.fail_msg">
+              <label class="text-danger"><t>file selection is required</t></label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveFile()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,15 @@
+{
+ "address": "Адрес",
+ "begin date": "Дата и время начала",
+ "delete $1": "Удалить $1",
+ "mentor name": "Ментор",
+ "pg.persons.name": "ФИО",
+ "pg.persons.rownum": "№",
+ "save": "Сохранить",
+ "select": "Подбор",
+ "subject group name": "Группа тематик",
+ "subject name": "Тематика тренинга",
+ "there is no subjects depends on for this subject group, select another one": "Для данной группы тематик не выбраны тематики. Пожалуйста, укажите соответствующие тематики тренингов для этой группы, чтобы успешно сформировать тренинги.",
+ "training number": "Номер тренинга",
+ "you must select at least one subject": "Необходимо выбрать хотя бы одну тематику!"
+}

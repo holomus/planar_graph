@@ -1,0 +1,11 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another base": "The code is already assigned to another fixed-term contract proof",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status",
+ "text": "Text"
+}

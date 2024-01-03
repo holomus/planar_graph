@@ -1,0 +1,19 @@
+create or replace package Test_Pck is
+  ----------------------------------------------------------------------------------------------------
+  c_Is_Debug constant boolean := false;
+end Test_Pck;
+/
+
+create or replace Function Test_Fnc return varchar2 is
+  Functionresult varchar2(100);
+begin
+  $if test_pck.c_Is_Debug $then
+  Functionresult := 'Debugging';
+  $else
+  Functionresult := 'Release';
+  $end
+
+  return(Functionresult);
+end Test_Fnc;
+/
+

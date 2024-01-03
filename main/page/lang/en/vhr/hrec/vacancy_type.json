@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another vacancy group": "Code is already used by another Type",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

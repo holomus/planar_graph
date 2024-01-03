@@ -1,0 +1,174 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var postedClass = {
+    Y: 'primary',
+    N: 'secondary'
+  };
+
+  var pg = page.grid('table');
+
+  pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${ postedClass[row.posted] }">${ row.posted_name }</span>`;
+  });
+  pg.asHtml('month_html', 'month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t) {
+  var q = _.extend({
+      to_post: {},
+      to_unpost: {},
+      to_delete: {}
+    }, model.references),
+    actions = {};
+
+  function doAction(doFunc, doTrans, registry_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ registry_id: registry_id }).then(function() {
+        page.query('table').fetch();
+
+        q.to_post = {};
+        q.to_unpost = {};
+        q.to_delete = {};
+      }, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post registry No. $1{registry_number} of $2{registry_date}?')(row.registry_number, row.registry_date), row.registry_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1 registry(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'registry_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost registry No. $1{registry_number} of $2{registry_date}?')(row.registry_number, row.registry_date), row.registry_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1 registry(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'registry_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete registry No. $1{registry_number} of $2{registry_date}?')(row.registry_number, row.registry_date), row.registry_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{registry_count} registry(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'registry_id'));
+  }
+
+  function edit(row) {
+    fi.edit({ registry_id: row.registry_id });
+  }
+
+  function grandHas(schedule_kind) {
+    return schedule_kind == q.sk_custom ? fi.custom :
+           schedule_kind == q.sk_flexible ? fi.flexible :
+           schedule_kind == q.sk_hourly ? fi.hourly : null;
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N' && grandHas(x.schedule_kind));
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y' && grandHas(x.schedule_kind));
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N' && grandHas(x.schedule_kind));
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit && grandHas(row.schedule_kind)  ? edit(row) : null;
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function add(schedule_kind, row) {
+    let data = {
+      schedule_kind: schedule_kind
+    };
+    fi.add(data, closeIfDialog);
+  }
+
+  q.actions = _.filter([
+    {
+      has_access: fi.flexible && fi.add,
+      title: fi.flexible?.title,
+      execute: _.partial(add, q.sk_flexible)
+    },
+    {
+      has_access: fi.hourly && fi.add,
+      title: fi.hourly?.title,
+      execute: _.partial(add, q.sk_hourly)
+    },
+    {
+      has_access: fi.custom && fi.add,
+      title: fi.custom?.title,
+      execute: _.partial(add, q.sk_custom)
+    }
+  ], x => x.has_access);
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.actions.length > 0">
+      <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><t>add</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.has_access" ng-click="action.execute()">{{ action.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="registry_id, registry_date, registry_number, posted, schedule_kind" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-registry_date" search="division_name, registry_number" searchable="registry_id, calendar_name"
+          extra-columns="registry_id, calendar_name, shift_time, input_acceptance_time, output_acceptance_time, track_duration_time, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="registry_date" size=3/>
+      <b-col name="registry_number" size=3/>
+      <b-col name="month" as-html="month_html" size=3/>
+      <b-col name="schedule_kind_name" size=3/>
+      <b-col name="division_name" size=9/>
+      <b-col name="posted_name" as-html="posted_html" size=2/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && grandHas(row.schedule_kind)"><t>edit</t></button>
+      <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && grandHas(row.schedule_kind) && row.posted == 'N'">{{ fi.post.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && grandHas(row.schedule_kind) && row.posted == 'Y'">{{ fi.unpost.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && grandHas(row.schedule_kind) && row.posted == 'N'">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="registry_id" directive="equal" extra/>
+    <b-filter name="registry_number"/>
+    <b-filter name="registry_date"/>
+    <b-filter name="schedule_kind" decorate-with="schedule_kind_name"/>
+    <b-filter name="month" date-level="month" directive="equal"/>
+    <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+    <b-filter name="posted" decorate-with="posted_name"/>
+    <b-filter name="calendar_id" decorate-with="calendar_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

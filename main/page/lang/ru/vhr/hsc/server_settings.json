@@ -1,0 +1,8 @@
+{
+ "FTP server password": "Пароль FTP сервера",
+ "FTP server url": "Адрес FTP сервера",
+ "FTP server username": "Логин FTP сервера",
+ "last ftp file load date": "Дата последней загрузки файла",
+ "Predict server url": "Адрес стороннего сервера для прогнозов",
+ "save": "Сохранить"
+}

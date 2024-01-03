@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{organization_count} organization(s)?": "Удалить <b>$1</b> организаций?",
+ "delete organization $1{organization_name}?": "Удалить организацию <b>$1</b>?",
+ "get organizations from HCP": "Загрузить",
+ "table.created_on": "Дата создания",
+ "table.modified_on": "Дата изменения",
+ "table.organization_code": "Код",
+ "table.organization_name": "Организация"
+}

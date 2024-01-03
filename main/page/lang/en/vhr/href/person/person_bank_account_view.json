@@ -1,0 +1,11 @@
+{
+ "no": "No",
+ "pg.bank_account.bank_account_code": "Current Account",
+ "pg.bank_account.bank_account_name": "Name",
+ "pg.bank_account.bank_code": "BIC",
+ "pg.bank_account.bank_name": "Bank",
+ "pg.bank_account.currency_name": "Currency",
+ "pg.bank_account.is_main_name": "Main",
+ "pg.bank_account.note": "Note",
+ "yes": "Yes"
+}

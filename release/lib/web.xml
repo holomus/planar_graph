@@ -1,0 +1,31 @@
+<listener>
+    <listener-class>com.verifix.vhr.listener.VerifixContextListener</listener-class>
+</listener>
+
+<servlet>
+    <servlet-name>hikvision_servlet</servlet-name>
+    <servlet-class>com.verifix.vhr.hikvision.HikvisionServlet</servlet-class>
+</servlet>
+<servlet-mapping>
+    <servlet-name>hikvision_servlet</servlet-name>
+    <url-pattern>/hik/event_receiver</url-pattern>
+</servlet-mapping>
+
+<servlet>
+    <servlet-name>hik_device_listener_servlet</servlet-name>
+    <servlet-class>com.verifix.vhr.hikvision.HikEventListener</servlet-class>
+</servlet>
+<servlet-mapping>
+    <servlet-name>hik_device_listener_servlet</servlet-name>
+    <url-pattern>/hik/device/event_receiver</url-pattern>
+</servlet-mapping>
+
+<servlet>
+    <servlet-name>OAuth2Servlet</servlet-name>
+    <servlet-class>com.verifix.vhr.oauth2.OAuth2Servlet</servlet-class>
+</servlet>
+<servlet-mapping>
+    <servlet-name>OAuth2Servlet</servlet-name>
+    <url-pattern>/receive/oauth2/hh</url-pattern>
+    <url-pattern>/receive/oauth2/olx</url-pattern>
+</servlet-mapping>

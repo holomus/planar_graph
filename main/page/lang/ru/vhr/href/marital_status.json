@@ -1,0 +1,10 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another marital status": "Код уже закреплен за другим состоянием в браке",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

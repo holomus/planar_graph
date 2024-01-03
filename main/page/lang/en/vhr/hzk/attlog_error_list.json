@@ -1,0 +1,12 @@
+{
+ "eval": "Fix",
+ "eval $1": "Fix $1",
+ "eval $1 error(s)?": "Do you want to fix <b>$1</b> error(s)?",
+ "eval error $1?": "Do you want to fix <b>$1</b>?",
+ "table.command": "Command",
+ "table.device_id": "Device ID",
+ "table.device_name": "Device",
+ "table.error": "Error",
+ "table.error_id": "Error ID",
+ "table.status_name": "Status"
+}

@@ -1,0 +1,771 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bUtil, $timeout) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {};
+      q.blocked_staffs = [];
+
+  // modal
+  let modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+// ------------------------------ staff formatting ------------------------------//
+  function formatFacts(facts) {
+    return _.chain(facts)
+            .mapRows(['staff_id',
+                      'date',
+                      'day_kind',
+                      'facts_changed',
+                      'time_kind_id',
+                      'fact_value'])
+            .filter(x => { return _.isEmpty(q.settings.time_kind_ids) || _.contains(q.settings.time_kind_ids, x.time_kind_id) })
+            .groupBy('staff_id')
+            .mapObject(function(staff_facts, staff_id) {
+              return _.chain(staff_facts)
+                      .groupBy('date')
+                      .mapObject(function(facts, date) {
+                        let day_facts = _.chain(facts)
+                                         .map(fact => [fact.time_kind_id, fact.fact_value])
+                                         .object()
+                                         .value();
+
+                        day_facts.day_kind = facts[0].day_kind;
+                        day_facts.facts_changed = facts[0].facts_changed;
+
+                        return day_facts;
+                      })
+                      .value();
+            })
+            .value();
+  }
+
+  function formatFactTotals(fact_totals) {
+    return _.chain(fact_totals)
+            .mapRows(['staff_id',
+                      'time_kind_id',
+                      'fact_value'])
+            .filter(x => { return _.isEmpty(q.settings.time_kind_ids) || _.contains(q.settings.time_kind_ids, x.time_kind_id) })
+            .groupBy('staff_id')
+            .mapObject(function(staff, staff_id) {
+              return {
+                      min_time_kind: _.chain(staff)
+                                      .pluck('time_kind_id')
+                                      .min()
+                                      .value(),
+                      facts: _.chain(staff)
+                              .map(staff => [staff.time_kind_id, staff.fact_value])
+                              .object()
+                              .value()
+                    };
+            })
+            .value();
+  }
+
+  function formatTotals(totals) {
+    var fact_totals = formatFactTotals(totals.fact_totals)
+
+    return _.chain(totals.totals)
+            .mapRows(['staff_id',
+                      'plan_days',
+                      'plan_hours',
+                      'fact_days',
+                      'fact_hours'])
+            .map(staff => [staff.staff_id, staff])
+            .object()
+            .each(function(staff) {
+              staff.fact_totals = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].facts : {};
+              staff.min_time_kind = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].min_time_kind : null;
+            })
+            .value();
+  }
+
+  function formatStaffs(result) {
+    if (!result.staffs) return [];
+
+    showUnlicensed(_.mapRows(result.unlicensed_staffs, ['staff_id', 'name', 'staff_number']));
+
+    result.facts = formatFacts(result.facts);
+    result.totals = formatTotals(result.totals);
+
+    return _.chain(result.staffs)
+            .mapRows(['staff_id',
+                      'staff_number',
+                      'name',
+                      'job_name',
+                      'division_name',
+                      'schedule_name',
+                      'licensed'])
+            .each(function(staff) {
+              _.extend(staff, result.totals[staff.staff_id]);
+              staff.facts = staff.staff_id in result.facts ? result.facts[staff.staff_id] : {};
+              staff.totals_num = _.size(staff.fact_totals);
+            })
+            .reject(function(staff) {
+              return staff.totals_num == 0 || staff.licensed == 'N';
+            })
+            .value();
+  }
+
+  function searchStaff(staff, srchTerm) {
+    return String(staff.name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1
+        || String(staff.staff_number).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1
+        || String(staff.job_name).toLowerCase().indexOf(srchTerm.toLowerCase()) != -1;
+  }
+
+// ------------------------------ staff ------------------------------//
+  function whereStaff() {
+    let staff_ids = _.chain(d.staffs).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=',  d.period_end],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>', d.period_begin]]
+                  ]]
+                ];
+
+    if (!_.isEmpty(q.blocked_staffs)) {
+      staff_ids.push(...q.blocked_staffs);
+    }
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.param(_.pick(d, 'timebook_id', 'division_id', 'period_begin', 'period_end'));
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function setStaff(item, row) {
+    if (!row) return;
+    item.staff_id = row.staff_id;
+    item.job_name = row.job_name;
+    item.name = row.name;
+
+    if (item.staff_id) loadStaff(item);
+    else {
+      let keys = _.keys(item);
+      _.each(keys, key => item[key] = null);
+    }
+  }
+
+  function addStaff(timebook, value) {
+    fi.add_staff(null, _.partial(setStaff, timebook), { name: value });
+  }
+
+  function setStaffs() {
+    let data = {
+      period_begin: d.period_begin,
+      period_end: d.period_end,
+      timebook_id : d.timebook_id
+    };
+    page.post(':get_blocked_staffs', data).then(result => {
+      q.blocked_staffs = result.staff_ids;
+
+      fi.select_staff({ date: d.period_begin }, function(result) {
+        if (!result || result.length == 0) return;
+        let data = _.pick(d, 'division_id', 'period_begin', 'period_end');
+            data.staff_ids = _.pluck(result, 'staff_id');
+
+        page.post(':load_staffs', data).then(result => {
+          d.staffs.push(...(formatStaffs(result)));
+        }, page.alert);
+      }, { where: whereStaff(), multiple_select: true });
+    }, page.alert);
+  }
+
+  function selectStaff(item) {
+    fi.select_staff({ date: d.period_begin }, _.partial(setStaff, item), { where: whereStaff() });
+  }
+
+  function showUnlicensed(staffs) {
+    if (staffs.length > 0) {
+      p.staffs = staffs;
+      showModal();
+    }
+  }
+
+  function loadStaff(item){
+    let data = _.pick(d, 'timebook_id', 'division_id', 'period_begin', 'period_end');
+        data.staff_id = item.staff_id;
+    page.post(':load_staff', data).then(result => {
+      if (result.staff.unlicensed == 'Y') {
+        setStaff(item, {});
+        showUnlicensed([result.staff]);
+      } else {
+        result.facts = formatFacts(result.facts);
+        result.totals = formatTotals(result.totals);
+
+        _.extend(result.staff, result.totals[result.staff.staff_id]);
+        result.staff.facts = result.staff.staff_id in result.facts ? result.facts[result.staff.staff_id] : {};
+        result.staff.totals_num = _.size(result.staff.fact_totals);
+
+        _.chain(result.staff).keys().each(key => item[key] = result.staff[key]);
+      }
+    }, page.alert);
+  }
+
+  function loadAllStaffs(){
+    page.post(':load_all_staffs', _.pick(d, 'timebook_id', 'division_id', 'period_begin', 'period_end')).then(result => {
+      d.staffs = formatStaffs(result);
+    }, page.alert);
+  }
+
+// ------------------------------ division  ------------------------------//
+  function onChangeDivision() {
+    if (!q.division_inited && d.timebook_id) {
+      q.division_inited = true;
+      return;
+    }
+    if (!_.isEmpty(d.staffs)) {
+      page.confirm(t('all facts will be removed. continue?')(), function() {
+        d.staffs= [];
+        q.old_division_id = d.division_id;
+      }, function() {
+        d.division_id = q.old_division_id;
+      });
+    } else {
+        q.old_division_id = d.division_id;
+    }
+  }
+
+  function fixPeriodValues() {
+    let month_begin = moment(d.month, 'MM.YYYY').startOf('month').format('YYYYMMDD');
+    let month_end = moment(d.month, 'MM.YYYY').endOf('month').format('YYYYMMDD');
+
+    if (d.period_kind != q.period_kind_custom) {
+      d.period_begin = moment(month_begin);
+      d.period_end = moment(month_end);
+
+      let diff = moment(d.period_end).diff(d.period_begin, 'days') + 1;
+      let month_middle = moment(d.period_begin).add(Math.floor(diff/2) - 1, 'days');
+
+      if (d.period_kind == q.period_kind_first_half)
+        d.period_end = moment(month_middle).format('YYYYMMDD');
+      if (d.period_kind == q.period_kind_second_half)
+        d.period_begin = moment(month_middle).add(1, 'days').format('YYYYMMDD');
+    }
+    else {
+      d.period_begin = moment(d.period_begin, 'DD.MM.YYYY').format('YYYYMMDD');
+      d.period_end = moment(d.period_end, 'DD.MM.YYYY').format('YYYYMMDD');
+
+      if (moment(d.period_begin).isSame(month_begin, 'month')) {
+        d.period_begin = _.max([d.period_begin, month_begin]);
+        d.period_end = _.min([d.period_end, month_end]);
+      }
+      else {
+        d.period_begin = month_begin;
+        d.period_end = month_end;
+      }
+    }
+
+    d.period_begin = moment(d.period_begin, 'YYYYMMDD').format('DD.MM.YYYY');
+    d.period_end = moment(d.period_end, 'YYYYMMDD').format('DD.MM.YYYY');
+  }
+
+  function changeDate() {
+    fixPeriodValues();
+
+    if (d.staffs.length > 0) {
+      $timeout(function() {
+        loadAllStaffs();
+      });
+    }
+  }
+
+  function addItem() {
+    d.staffs.push({ first_time_kind: {}, dates: [], totals: {} });
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'N' ? t('save?')() : t('post?')(), function() {
+        var data = _.pick(d, 'timebook_id', 'timebook_number', 'timebook_date', 'division_id', 'period_begin', 'period_end', 'period_kind', 'note');
+            data.staff_ids = _.pluck(d.staffs, 'staff_id');
+            data.posted = posted;
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function fixChecked() {
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+
+    // fix checkBox
+    let checked = q.checked.size > 0 && q.checked.size == q.pageStaffs.length,
+        indeterminate = q.checked.size > 0 && q.checked.size < q.pageStaffs.length;
+
+    q.checkBoxType = checked ? 'A' : indeterminate ? 'I' : null;
+    q.checkBoxAllTotal.checked = q.checkBoxAllDetails.checked = checked;
+    q.checkBoxAllTotal.indeterminate = q.checkBoxAllDetails.indeterminate = indeterminate;
+  }
+
+  function checkAll() {
+    let fix = _.after(q.pageStaffs.length, fixChecked);
+    _.each(q.pageStaffs, item => {
+      if (!item.checked) {
+        item.checked = true;
+        q.checked.rows.push(item);
+      }
+      fix();
+    });
+  }
+
+  function unCheckAll() {
+    _.each(q.checked.rows, item => item.checked = false);
+    q.checked.rows = [];
+    fixChecked();
+  }
+
+  function onCheckAll(data) {
+    if (q.pageStaffs.length == 0) return;
+    if (q.checkBoxType == 'I' || q.checkBoxType == 'A') unCheckAll();
+    else checkAll();
+  }
+
+  function onCheck(staff) {
+    if (staff.checked){
+      q.checked.rows.push(staff);
+    } else {
+      let index = _.indexOf(q.checked.rows, staff);
+      q.checked.rows.splice(index, 1);
+    }
+    fixChecked();
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows, item => {
+      let index = _.findIndex(d.staffs, item);
+      d.staffs.splice(index, 1);
+    });
+    unCheckAll();
+  }
+
+  function pageId(key) {
+    return key + page.id();
+  }
+
+  if (_.isUndefined(d.timebook_id)) d.staffs = []
+  else {
+    var facts = formatFacts(d.staffs.facts),
+        fact_totals = formatFactTotals(d.staffs.fact_totals);
+
+    d.staffs = _.chain(d.staffs.totals)
+                .mapRows(['staff_id',
+                          'staff_number',
+                          'name',
+                          'job_name',
+                          'division_name',
+                          'schedule_name',
+                          'plan_days',
+                          'plan_hours',
+                          'fact_days',
+                          'fact_hours'])
+                .each(function(staff) {
+                  staff.fact_totals = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].facts : {};
+                  staff.min_time_kind = staff.staff_id in fact_totals ? fact_totals[staff.staff_id].min_time_kind : null;
+                  staff.facts = staff.staff_id in facts ? facts[staff.staff_id] : {};
+                  staff.totals_num = _.size(staff.fact_totals);
+                })
+                .value();
+  };
+
+  q.time_kinds = _.mapRows(q.time_kinds, ['time_kind_id', 'name']);
+  q.time_kind_names = _.chain(q.time_kinds)
+                       .map(time_kind => [time_kind.time_kind_id, time_kind.name])
+                       .object()
+                       .value();
+  q.time_kind = {};
+  q.period_kinds = _.mapRows(q.period_kinds, ['value', 'name']);
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.old_division_id = d.division_id;
+  q.dates = [];
+  q.checked = { rows: [] };
+  q.tClearAllStaffs = t('clear all staffs?');
+  q.checkBoxAllTotal = page.$content.find('.ui-vhr75.checkBoxAll')[0];
+  q.checkBoxAllDetails = page.$content.find('.ui-vhr75.checkBoxAll')[1];
+
+  page.$content.find('.scroll-table').hScroll();
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+
+  scope.$watchGroup(['d.period_begin', 'd.period_end'], function() {
+    q.dates = [];
+
+    let startDay = moment(d.period_begin, 'DD.MM.YYYY');
+    let lastDay = moment(d.period_end, 'DD.MM.YYYY');
+
+    while (startDay <= lastDay) {
+      q.dates.push({ value: startDay.format("DD.MM.YYYY"), name: startDay.format('dd'), num: startDay.format('D') });
+      startDay.add(1, 'days');
+    }
+  });
+
+  scope.$watchGroup(['q.pageStaffs'], function() {
+    unCheckAll();
+    for (time_kind of q.time_kinds) {
+        q.time_kind[time_kind.time_kind_id] = _.some(
+          _.pluck(q.pageStaffs, 'fact_totals'),
+          (fact_totals) => !!fact_totals && fact_totals[time_kind.time_kind_id] > 0
+        );
+      }
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <style>
+    .ui-vhr75 .table-custom {
+      background-color: white;
+    }
+
+    .ui-vhr75 .table-custom .td-bordered {
+      border: 1px solid #ecf0f3;
+    }
+
+    .ui-vhr75 .table-custom td {
+      vertical-align: middle;
+    }
+
+    .ui-vhr75 .table-custom tbody:nth-child(2n+1) tr:nth-child(2n+1) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr75 .table-custom tbody:nth-child(2n) tr:nth-child(2n) {
+      background: #f2f5ff;
+    }
+
+    .ui-vhr75 .table-custom tbody + tbody {
+      border-top: 1px solid rgb(228, 228, 228);
+    }
+
+    .ui-vhr75 .table-custom tbody:hover td[rowspan],
+    .ui-vhr75 .table-custom tbody tr:hover td {
+      background: #f0f0f1;
+    }
+
+    .ui-vhr75 .table.table-custom {
+      width: 2100px;
+    }
+
+    .h-parent-scrollable {
+      position: static !important;
+    }
+
+    .ui-vhr75.scroll-table {
+      position: static !important;
+    }
+  </style>
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>timebook date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.timebook_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>timebook number</t></label>
+                <input type="text" class="form-control" ng-model="d.timebook_number"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <b-tree-select
+                origin="q.divisions"
+                id-key="division_id"
+                model="d.division_id"
+                on-change="onChangeDivision()"/>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="4" ng-model="d.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>month</t><r/></label>
+                <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="changeDate()" required/>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>period kind</t></label><br/>
+                <ui-select  ng-model="d.period_kind" ng-change="changeDate()">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.value as item in q.period_kinds | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4" ng-if="d.period_kind == q.period_kind_custom">
+                <label><t>period begin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.period_begin" max-date="d.period_end" b-date-picker ng-change="changeDate()" required/>
+              </div>
+              <div class="col-sm-12 mb-4" ng-if="d.period_kind == q.period_kind_custom">
+                <label><t>period end</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.period_end" min-date="d.period_begin" b-date-picker ng-change="changeDate()" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item">
+            <a data-target="{{ pageId('#total') }}" class="nav-link active" data-toggle="tab" role="tab">
+              <span><t>total</t></span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a data-target="{{ pageId('#detail') }}" class="nav-link" data-toggle="tab" role="tab">
+              <span><t>detail</t></span>
+            </a>
+          </li>
+        </ul>
+        <div class="form-row mt-4">
+          <div class="col-sm-10">
+            <div class="form-group mb-2">
+              <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+              <button type="button" class="btn btn-default" ng-click="loadAllStaffs()"><t>fill</t></button>
+              <button type="button" class="btn btn-success" ng-click="setStaffs()"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+          </div>
+          <div class="col-sm-14 mb-2">
+            <b-pagination from="d.staffs" to="q.pageStaffs" search-by="searchStaff"/>
+          </div>
+        </div>
+        <div class="tab-content">
+          <div class="tab-pane active" id="{{ pageId('total') }}" role="tabpanel">
+            <div class="ui-vhr75 scroll-table" style="position: static !important;">
+              <table class="table table-striped table-hover" style="background-color: white">
+                <thead class="text">
+                  <tr>
+                    <td class="text-center">
+                      <label class="checkbox">
+                        <input type="checkbox" class="ui-vhr75 checkBoxAll" ng-click="onCheckAll()">
+                        <span></span>
+                      </label>
+                    </td>
+                    <td><t>№</t></td>
+                    <td><t>staff number</t></td>
+                    <td><t>staff name</t></td>
+                    <td><t>job</t></td>
+                    <td><t>division</t></td>
+                    <td><t>schedule</t></td>
+                    <td class="text-center"><t>plan days</t></td>
+                    <td class="text-center"><t>plan hours</t></td>
+                    <td class="text-center"><t>fact days</t></td>
+                    <td class="text-center"><t>fact hours</t></td>
+                    <td class="text-center" ng-repeat="time_kind in q.time_kinds" ng-if="q.time_kind[time_kind.time_kind_id]">{{ time_kind.name }}</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="(stf_ind, staff) in q.pageStaffs">
+                    <td class="text-center">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="staff.checked" ng-change="onCheck(staff)">
+                        <span></span>
+                      </label>
+                    </td>
+                    <td class="text-right">{{ stf_ind + 1 }}</td>
+                    <td>{{ staff.staff_number }}</td>
+                    <td>
+                      <div class="form-group"  style="width: 300px;">
+                        <b-input name="staffs"
+                                 model="staff.name | name"
+                                 model-key="staff.staff_id | staff_id"
+                                 column="staff_number, job_name, dismissal_date, hiring_date, division_id, staff_kind_name"
+                                 on-change="changeStaffQuery(query, value)"
+                                 on-select="setStaff(staff, row)"
+                                 on-delete="setStaff(staff, {})"
+                                 is-add="fi.add_staff"
+                                 is-view="fi.select_staff"
+                                 on-add="addStaff(staff, value)"
+                                 on-view="selectStaff(staff)"
+                                 hint-width="700"
+                                 required-key>
+                          <header>
+                            <div class="col-sm-6"><t>staff number</t></div>
+                            <div class="col-sm-12"><t>staff name</t></div>
+                            <div class="col-sm-6"><t>staff kind name</t></div>
+                          </header>
+                          <content>
+                            <div class="col-sm-6">{{ row.staff_number }}</div>
+                            <div class="col-sm-12">{{ row.name }}</div>
+                            <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                          </content>
+                        </b-input>
+                      </div>
+                    </td>
+                    <td>{{ staff.job_name }}</td>
+                    <td>{{ staff.division_name }}</td>
+                    <td>{{ staff.schedule_name }}</td>
+                    <td class="text-center">{{ staff.plan_days }}</td>
+                    <td class="text-center">{{ staff.plan_hours }}</td>
+                    <td class="text-center">{{ staff.fact_days }}</td>
+                    <td class="text-center">{{ staff.fact_hours }}</td>
+                    <td class="text-center" ng-repeat="time_kind in q.time_kinds" ng-if="q.time_kind[time_kind.time_kind_id]">{{ staff.fact_totals[time_kind.time_kind_id] }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tab-pane" id="{{ pageId('detail') }}" role="tabpanel">
+            <div class="ui-vhr75 scroll-table">
+              <table class="table table-custom" cellspacing='0' cellpadding='0'>
+                <colgroup>
+                  <col width="10"/>
+                  <col width="10"/>
+                  <col width="100"/>
+                  <col width="200"/>
+                  <col width="90"/>
+                  <col width="50"/>
+                  <col width="50"/>
+                  <col width="50"/>
+                  <col width="50"/>
+                  <col width="75"/>
+                  <col width="50" ng-repeat="date in q.dates"/>
+                </colgroup>
+                <thead class="text-center">
+                  <tr>
+                    <td rowspan="2" class="text-center">
+                      <label class="checkbox">
+                        <input type="checkbox" class="ui-vhr75 checkBoxAll" ng-click="onCheckAll()">
+                        <span></span>
+                      </label>
+                    </td>
+                    <td rowspan="2"><t>№</t></td>
+                    <td rowspan="2"><t>staff number</t></td>
+                    <td rowspan="2"><t>staff name</t></td>
+                    <td rowspan="2"><t>job</t></td>
+                    <td rowspan="2" ng-if="q.settings.by_plan_day == 'Y'"><t>plan days</t></td>
+                    <td rowspan="2" ng-if="q.settings.by_plan_hour == 'Y'"><t>plan hours</t></td>
+                    <td rowspan="2" ng-if="q.settings.norm_day == 'Y'"><t>fact days</t></td>
+                    <td rowspan="2" ng-if="q.settings.norm_hour == 'Y'"><t>fact hours</t></td>
+                    <td class="td-bordered" rowspan="2"><t>time kinds</t></td>
+                    <td class="td-bordered" ng-repeat="date in q.dates">{{ date.num }}</td>
+                  </tr>
+                  <tr>
+                    <td class="td-bordered" ng-repeat="date in q.dates">{{ date.name }}</td>
+                  </tr>
+                </thead>
+                <tbody ng-repeat="(stf_ind, staff) in q.pageStaffs">
+                  <tr>
+                    <td class="text-center" rowspan="{{ staff.totals_num }}">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="staff.checked" ng-change="onCheck(staff)">
+                        <span></span>
+                      </label>
+                    </td>
+                    <td class="text-right" rowspan="{{ staff.totals_num }}">{{ stf_ind + 1 }}</td>
+                    <td rowspan="{{ staff.totals_num }}">{{ staff.staff_number }}</td>
+                    <td rowspan="{{ staff.totals_num }}">
+                      <div class="form-group">
+                        <b-input name="staffs"
+                                 model="staff.name | name"
+                                 model-key="staff.staff_id | staff_id"
+                                 column="staff_number, job_name, dismissal_date, hiring_date, division_id, staff_kind_name"
+                                 on-change="changeStaffQuery(query, value)"
+                                 on-select="setStaff(staff, row)"
+                                 on-delete="setStaff(staff, {})"
+                                 is-add="fi.add_staff"
+                                 is-view="fi.select_staff"
+                                 on-add="addStaff(staff, value)"
+                                 on-view="selectStaff(staff)"
+                                 hint-width="700"
+                                 required-key>
+                          <header>
+                            <div class="col-sm-6"><t>staff number</t></div>
+                            <div class="col-sm-12"><t>staff name</t></div>
+                            <div class="col-sm-6"><t>staff kind name</t></div>
+                          </header>
+                          <content>
+                            <div class="col-sm-6">{{ row.staff_number }}</div>
+                            <div class="col-sm-12">{{ row.name }}</div>
+                            <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                          </content>
+                        </b-input>
+                      </div>
+                    </td>
+                    <td rowspan="{{ staff.totals_num }}">{{ staff.job_name }}</td>
+                    <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.by_plan_day == 'Y'">{{ staff.plan_days }}</td>
+                    <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.by_plan_hour == 'Y'">{{ staff.plan_hours }}</td>
+                    <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.norm_day == 'Y'">{{ staff.fact_days }}</td>
+                    <td rowspan="{{ staff.totals_num }}" ng-if="q.settings.norm_hour == 'Y'">{{ staff.fact_hours }}</td>
+                    <td class="text-center td-bordered">{{ q.time_kind_names[staff.min_time_kind] }}</td>
+                    <td class="text-center td-bordered" ng-repeat="date in q.dates" ng-style="(staff.facts[date.value].day_kind != 'W') && {'background': 'pink'}">{{ staff.facts[date.value][staff.min_time_kind] }}</td>
+                  </tr>
+                  <tr class="text-center" ng-repeat="time_kind in q.time_kinds" ng-if="time_kind.time_kind_id != staff.min_time_kind && staff.fact_totals[time_kind.time_kind_id] > 0">
+                    <td class="td-bordered">{{ time_kind.name }}</td>
+                    <td class="td-bordered" ng-repeat="date in q.dates" ng-style="(staff.facts[date.value].day_kind != 'W') && {'background': 'pink'}">{{ staff.facts[date.value][time_kind.time_kind_id] }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>unlicensed staffs</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="offset-sm-10 col-sm-14">
+                <b-pg-controller name="unlicensed_staffs"/>
+              </div>
+            </div>
+            <b-pg-grid name="unlicensed_staffs" local-data="p.staffs" search="staff_id, name, staff_number" sort="name, staff_number">
+              <b-pg-row>
+                <b-pg-col name="rownum" size=1/>
+                <b-pg-col name="name" size=12/>
+                <b-pg-col name="staff_number" size=11/>
+              </b-pg-row>
+
+              <b-pg-extra-col name="staff_id"/>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

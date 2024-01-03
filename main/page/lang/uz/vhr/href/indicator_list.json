@@ -1,0 +1,15 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{indicator_count} indicator(s)?": "Haqiqatan ham <b>$1</b> koʻrsatkich(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete indicator $1{indicator_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.identifier": "Identifikator",
+ "table.indicator_id": "ID",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.short_name": "Qisqa nomi",
+ "table.state_name": "Holat"
+}

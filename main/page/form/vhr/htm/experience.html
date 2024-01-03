@@ -1,0 +1,747 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, xparam) {
+  var d = _.isUndefined(model.experience_id) ? _.extend(_.omit(model, 'references'), xparam) : _.omit(model, 'references'),
+      q = model.references;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'experience_id', 'name', 'code', 'order_no', 'state');
+        data.periods = [];
+        _.each(d.periods, x => {
+          let period = _.pick(x, 'from_rank_id', 'to_rank_id', 'attempts', 'order_no');
+          
+          _.each(period.attempts, attempt => {
+            attempt.indicator_ids = _.chain(attempt.indicators)
+                                     .pluck('indicator_id')
+                                     .unique()
+                                     .compact()
+                                     .value();
+            attempt.subject_ids = _.chain(attempt.subjects)
+                                   .pluck('subject_id')
+                                   .unique()
+                                   .compact()
+                                   .value();
+          });
+
+          data.periods.push(period);
+        });
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function enablePopovers() {
+    $(function () {
+      $('[data-toggle="popover"]').popover()
+    })
+  }
+
+  function deletePeriods() {
+    _.each(q.checked.rows, item => {
+      item.showAttempts = false;
+      d.periods.splice(_.findIndex(d.periods, item), 1);
+    });
+    unCheckAll();
+  }
+
+  function addPeriod() {
+    let period = {
+      attempts: [],
+    };
+    addAttempt(period);
+    d.periods.push(period);
+  }
+
+  function setFromRank(item, row) {
+    item.from_rank_id = row.rank_id;
+    item.from_rank_name = row.name;
+  }
+
+  function setToRank(item, row) {
+    item.to_rank_id = row.rank_id;
+    item.to_rank_name = row.name;
+  }
+
+  function whereFromRank() {
+    let rank_ids = _.chain(d.periods).pluck('from_rank_id').compact().value(),
+        where;
+
+    if (!_.isEmpty(rank_ids)) {
+      where = ['rank_id', '<>', rank_ids];
+    }
+
+    return where;
+  }
+
+  function whereToRank() {
+    let rank_ids = [..._.chain(d.periods).pluck('to_rank_id').compact().value(), ..._.chain(d.periods).pluck('from_rank_id').compact().value()],
+        where;
+
+    if (!_.isEmpty(rank_ids)) {
+      where = ['rank_id', '<>', rank_ids];
+    }
+
+    return where;
+  }
+
+  function selectFromRank(item) {
+    fi.select_rank(null, _.partial(setFromRank, item), { where: whereFromRank() });
+  }
+
+  function selectToRank(item) {
+    fi.select_rank(null, _.partial(setToRank, item), { where: whereToRank() });
+  }
+
+  function changeFromRankQuery(query, value) {
+    query.where(whereFromRank()).searchValue(value);
+  }
+
+  function setIndicator(item, row) {
+    if (!row) return;
+    item.indicator_id = row.indicator_id;
+    item.indicator_name = row.name;
+    item.pcode = row.pcode;
+  }
+
+  function whereIndicator(attempt) {
+    let indicator_ids = _.chain(attempt.indicators)
+                         .pluck('indicator_id')
+                         .unique()
+                         .compact()
+                         .value(),
+        where = ['indicator_group_id', '=', q.experience_indicator_group];
+
+    if (!_.isEmpty(indicator_ids)) {
+      where = ['and', [['indicator_id', '<>', indicator_ids], where]];
+    }
+
+    return where;
+  }
+
+  function selectIndicator(item, attempt) {
+    fi.select_indicator(null, _.partial(setIndicator, item), { where: whereIndicator(attempt) });
+  }
+
+  function changeIndicatorQuery(query, value, attempt) {
+    query.where(whereIndicator(attempt)).searchValue(value);
+  }
+
+  function whereSubjects(attempt) {
+    let subject_ids = _.chain(attempt.subjects)
+                       .pluck('subject_id')
+                       .unique()
+                       .compact()
+                       .value(),
+        where = {};
+
+    if (!_.isEmpty(subject_ids)) {
+      where = ['subject_id', '<>', subject_ids];
+    }
+
+    return where;
+  }
+
+  function changeSubjectQuery(attempt, query, value) {
+    query.where(whereSubjects(attempt)).searchValue(value);
+  }
+
+  function changeExamQuery(query, value) {
+    query.where({}).searchValue(value);
+  }
+
+  function changeToRankQuery(query, value) {
+    query.where(whereToRank()).searchValue(value);
+  }
+
+  function removeAttempt(period, index) {
+    if (period.attempts.length == 1) return;
+    period.attempts.splice(index, 1);
+  }
+
+  function addAttempt(period, attempt) {
+    let data = attempt || {
+      indicators: [],
+    };
+    if (_.isEmpty(data.indicators)) addIndicator(data);
+    period.attempts.push(data);
+  }
+
+  function copyAttempt(period, attempt) {
+    addAttempt(period, angular.copy(attempt));
+    enablePopovers();
+  }
+
+  function removeIndicator(attempt, index) {
+    attempt.indicators.splice(index, 1);
+  }
+
+  function addIndicator(attempt) {
+    attempt.indicators.push({});
+    enablePopovers();
+  }
+
+  function periodName(item) {
+    item.period_name = [+item.year > 0 ? t('$1 years')(item.year) : '',
+                        +item.month > 0 ? t('$1 months')(item.month) : '',
+                        +item.day > 0 ? t('$1 days')(item.day) : ''].join(' ')
+    item.penalty_period_name = [+item.penalty_year > 0 ? t('$1 years')(item.penalty_year) : '',
+                                +item.penalty_month > 0 ? t('$1 months')(item.penalty_month) : '',
+                                +item.penalty_day > 0 ? t('$1 days')(item.penalty_day) : ''].join(' ');         
+  } 
+
+  function calcPeriod(item) {
+    item.period = (+item.year || 0) * 365 + (+item.month || 0) * 30 + (+item.day || 0);
+    item.penalty_period = (+item.penalty_year || 0) * 365 + (+item.penalty_month || 0) * 30 + (+item.penalty_day || 0);
+    periodName(item);
+  }
+
+  function preparePeriod(period) {
+    let year = Math.floor(period / 365);
+    let month = Math.floor((period - year * 365) / 30);
+    let day = period - year * 365 - month * 30;
+
+    return [year, month, day];
+  }
+
+  function fixChecked() {
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+
+    // fix checkBox
+    let checked = q.checked.size > 0 && q.checked.size == d.periods.length,
+        indeterminate = q.checked.size > 0 && q.checked.size < d.periods.length;
+
+    q.checkBoxType = checked ? 'A' : indeterminate ? 'I' : null;
+    q.checkBoxAll.checked = checked;
+    q.checkBoxAll.indeterminate = indeterminate;
+  }
+
+  function onCheck(period) {
+    if (period.checked){
+      q.checked.rows.push(period);
+    } else {
+      let index = _.indexOf(q.checked.rows, period);
+      q.checked.rows.splice(index, 1);
+    }
+    fixChecked();
+  }
+
+  function checkAll() {
+    _.each(d.periods, item => {
+      if (!item.checked) {
+        item.checked = true;
+        q.checked.rows.push(item);
+      }
+    });
+    fixChecked();
+  }
+
+  function unCheckAll() {
+    _.each(q.checked.rows, item => item.checked = false);
+    q.checked.rows = [];
+    fixChecked();
+  }
+
+  function onCheckAll(data) {
+    if (d.periods.length == 0) return;
+    if (q.checkBoxType == 'I' || q.checkBoxType == 'A') unCheckAll();
+    else checkAll();
+  }
+
+  function editPeriod(period) {
+    if (q.currentPeriod) q.currentPeriod.showAttempts = false;
+    period.showAttempts = true;
+    q.currentPeriod = period;
+    page.untouch(scope.form);
+    enablePopovers();
+  }
+
+  // definition of settings
+  function makeDefinitionSettings(id, title, message) {
+    q[`t_title_${id}`] = title;
+    q[`t_definition_${id}`] = message;
+  }
+
+  makeDefinitionSettings('training_subjects', t('training subjects')(), t('number of completed subjects in last 6 months')());
+  makeDefinitionSettings('exam_score', t('exam score')(), t('exam score for last exam of chosen type')());
+  makeDefinitionSettings('attendance_percentage', t('attendance percentage')(), t('attendance percentage for last month (doesnt include current month)')());
+  makeDefinitionSettings('perfomance_percentage', t('perfomance percentage')(), t('perfomance percentage for last month (doesnt include current month)')());
+
+  if (!_.isUndefined(model.experience_id)) {
+    let subjects = _.chain(d.subjects)
+                    .mapRows(['from_rank_id', 
+                              'attempt_no',
+                              'subject_id',
+                              'name'])
+                    .groupBy(x => x.from_rank_id + "#" + x.attempt_no)
+                    .value(),
+        indicators = _.chain(d.indicators)
+                      .mapRows(['from_rank_id', 
+                                'attempt_no',
+                                'indicator_id',
+                                'indicator_name'])
+                      .groupBy(x => x.from_rank_id + "#" + x.attempt_no)
+                      .value(),
+        attempts = _.chain(d.attempts)
+                    .mapRows(['from_rank_id', 
+                              'attempt_no', 
+                              'period', 
+                              'nearest', 
+                              'penalty_period',
+                              'exam_id',
+                              'exam_name',
+                              'success_score',
+                              'ignore_score',
+                              'recommend_failure'])
+                    .each(x => {
+                      [x.year, x.month, x.day] = preparePeriod(x.period);
+                      [x.penalty_year, x.penalty_month, x.penalty_day] = preparePeriod(x.penalty_period);
+
+                      x.period = +x.period;
+                      x.penalty_period = +x.penalty_period;
+                      x.nearest = +x.nearest;
+        
+                      x.subjects = subjects[x.from_rank_id + "#" + x.attempt_no] || [];
+                      x.indicators = indicators[x.from_rank_id + "#" + x.attempt_no] || [ {} ];
+
+                      periodName(x);
+                    })
+                    .groupBy('from_rank_id')
+                    .value();
+
+    d.periods = _.chain(d.periods)
+                 .mapRows(['from_rank_id',
+                           'from_rank_name',
+                           'to_rank_id',
+                           'to_rank_name',
+                           'order_no'])
+                 .each(x => {
+                  x.attempts = attempts[x.from_rank_id];
+                 })
+                 .value();                    
+  } else d.periods = [];
+
+  q.checked = { rows: [] };
+  q.checkBoxAll = page.$content.find('.vhr528.checkBoxAll')[0];
+
+  page.$content.find('.scroll-table').hScroll();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <style type="text/css">
+    .vhr528 .panel {
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border: 1px solid rgba(0,0,0,.1);
+      box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.1);
+      border-radius: .25rem;
+    }
+
+    .vhr528 .panel-header {
+      display: -ms-flexbox;
+      display: flex;
+      -ms-flex-align: center;
+      align-items: center;
+      padding: .25rem .75rem;
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+
+    .vhr528.card-custom-header {
+      display: -ms-flexbox;
+      display: flex;
+      -ms-flex-align: center;
+      align-items: center;
+      padding: .25rem .75rem;
+      background-color: #e5eaee;
+      background-clip: padding-box;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+    }
+
+    .vhr528 .panel-body {
+      padding: .75rem;
+    }
+
+    .vhr528 table.table-custom.table-bordered > thead > tr > th{
+      border:1px solid #e8e8e8;
+    }
+
+    .h-parent-scrollable {
+      position: static !important;
+    }
+
+    .vhr528.scroll-table {
+      position: static !important;
+    }
+  </style>
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>code</t></label>
+                <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>order no</t></label>
+                <input type="text" class="form-control" ng-model="d.order_no" b-number precision="3" scale="0"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>state</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                <span>
+                  <t ng-if="d.state == 'A'">active</t>
+                  <t ng-if="d.state == 'P'">passive</t>
+                </span>
+              </label>
+            </div>
+            <div class="separator separator-solid my-2"></div>
+            <div class="form-group">
+              <div class="form-row mt-4">
+                <div class="col-sm-14 mb-2">
+                  <button type="button" class="btn btn-default" ng-click="addPeriod()"><t>add</t></button>
+                  <button type="button" class="btn btn-danger" ng-click="deletePeriods()" ng-show="q.checked.has">
+                    <t p1="q.checked.size">delete $1</t>
+                  </button>
+                </div>
+              </div>
+              <div class="vhr528 scroll-table" style="position: static !important;">
+                <table class="table table-custom table-bordered" style="background-color: white;">
+                  <colgroup>
+                    <col width="0.005%">
+                    <col width="20%">
+                    <col width="20%">
+                    <col width="10%">
+                    <col width="25%">
+                    <col width="25%">
+                    <col width="3%">
+                  </colgroup>
+                  <thead class="text">
+                    <tr>
+                      <td class="text-center align-middle">
+                        <label class="checkbox">
+                          <input type="checkbox" class="vhr528 checkBoxAll" ng-click="onCheckAll()">
+                          <span></span>
+                        </label>
+                      </td>
+                      <td><t>from rank</t></td>
+                      <td><t>to rank</t></td>
+                      <td><t>attempt</t></td>
+                      <td><t>period</t></td>
+                      <td><t>penalty period</t></td>
+                      <td><t>actions</t></td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-repeat-start="period in d.periods">
+                      <td class="text-center align-middle" rowspan="{{ period.attempts.length }}">
+                        <label class="checkbox">
+                          <input type="checkbox" ng-model="period.checked" ng-change="onCheck(period)">
+                          <span></span>
+                        </label>
+                      </td>
+                      <td class="align-middle" rowspan="{{ period.attempts.length }}">
+                        <b-input name="rank"
+                                 model="period.from_rank_name | name"
+                                 model-key="period.from_rank_id | rank_id"
+                                 on-change="changeFromRankQuery(query, value)"
+                                 on-select="setFromRank(period, row)"
+                                 on-delete="setFromRank(period, {})"
+                                 is-view="fi.select_rank"
+                                 on-view="selectFromRank(period)"
+                                 sort="order_no"
+                                 required-key>
+                          {{ row.name }}
+                        </b-input>
+                      </td>
+                      <td class="align-middle" rowspan="{{ period.attempts.length }}">
+                        <b-pg-col name="to_rank_name" size="5">
+                          <b-input name="rank"
+                                   model="period.to_rank_name | name"
+                                   model-key="period.to_rank_id | rank_id"
+                                   on-change="changeToRankQuery(query, value)"
+                                   on-select="setToRank(period, row)"
+                                   on-delete="setToRank(period, {})"
+                                   is-view="fi.select_rank"
+                                   on-view="selectToRank(period)"
+                                   sort="order_no"
+                                   required-key>
+                            {{ row.name }}
+                          </b-input>
+                        </b-pg-col>
+                      </td>
+                      <td>
+                        <t p1="1" ng-if="period.attempts.length > 0">attempt $1</t>
+                      </td>
+                      <td>
+                        <span ng-if="period.attempts.length > 0">
+                          {{ period.attempts[0].period_name }}
+                        </span>
+                      </td>
+                      <td>
+                        <span ng-if="period.attempts.length > 0">
+                          {{ period.attempts[0].penalty_period_name }}
+                        </span>
+                      </td>
+                      <td class="align-middle" rowspan="{{ period.attempts.length }}">
+                        <button type="button" class="btn btn-default btn-icon" ng-click="editPeriod(period)">
+                          <i class="fa fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr ng-repeat="(attempt_no, attempt) in period.attempts | limitTo : -(period.attempts.length - 1)" ng-repeat-end>
+                      <td>
+                        <t p1="{{ attempt_no + 2 }}">attempt $1</t>
+                      </td>
+                      <td>
+                        {{ attempt.period_name }}
+                      </td>
+                      <td>
+                        {{ attempt.penalty_period_name }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b" ng-repeat="period in d.periods" ng-if="period.showAttempts">
+          <div class="vhr528 card-custom-header justify-content-center">
+            <strong>
+              {{ period.from_rank_name }}&nbsp;<i class="fa fa-arrow-right"></i>&nbsp;{{ period.to_rank_name }}
+            </strong>
+          </div>
+          <div class="card-body">
+            <div class="vhr528" style="display: grid;">
+              <div class="panel mb-2" ng-class="{ 'mt-2': !$fisrt }" ng-repeat="(attempt_no, attempt) in period.attempts">
+                <div class="panel-header pt-2 pr-3 pb-2 pl-3 bg-secondary">
+                  <strong class="mr-auto"><t p1="attempt_no + 1">attempt $1</t></strong>
+                  <button type="button" class="close" ng-show="period.attempts.length > 1" ng-click="removeAttempt(period, attempt_no)">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="panel-body p-6">
+                  <h5 class="form-group">
+                    <t>
+                      Terms
+                    </t>
+                  </h5>
+                  <table class="table table-custom table-bordered" style="background-color: white">
+                    <colgroup>
+                      <col width="10%">
+                      <col width="20%">
+                      <col width="20%">
+                      <col width="20%">
+                      <col width="30%">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <td><t>promotion</t></td>
+                        <td><t>year</t></td>
+                        <td><t>month</t></td>
+                        <td><t>day</t></td>
+                        <td><t>nearest</t></td>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="align-middle"><t>current</t></td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.year" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.month" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.day" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.nearest" b-validate="{ s: attempt.period > attempt.nearest }" b-number required/>
+                          <span class="text-danger" ng-show="attempt.nearest >= attempt.period"><t>nearest day must be less than total period day</t></span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="align-middle"><t>penalty period</t></td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.penalty_year" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.penalty_month" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control" ng-model="attempt.penalty_day" ng-change="calcPeriod(attempt)" b-number precision="6" scale="0"/>
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="separator separator-solid my-2"></div>
+                  <h5 class="form-group">
+                    <t>
+                      Conditions
+                    </t>
+                  </h5>
+                  <div class="form-group">
+                    <span>
+                      <a href ng-click="addIndicator(attempt)"><i class="fa fa-plus"></i>&nbsp;<t>add indicator</t></a>
+                    </span>
+                  </div>
+                  <div class="form-group"
+                       ng-repeat-start="(indicator_no, indicator) in attempt.indicators">
+                    <div class="form-row">
+                      <div class="col-sm-11">
+                        <b-input name="indicator"
+                                model="indicator.indicator_name | name"
+                                model-key="indicator.indicator_id | indicator_id"
+                                on-change="changeIndicatorQuery(query, value, attempt)"
+                                column="pcode, indicator_group_id"
+                                on-select="setIndicator(indicator, row)"
+                                on-delete="setIndicator(indicator, {})"
+                                is-view="fi.select_indicator"
+                                on-view="selectIndicator(indicator, attempt)"
+                                required-key>
+                          {{ row.name }}
+                        </b-input>
+                      </div>
+                      <div class="col-sm-1">
+                        <button type="button" class="btn btn-default btn-icon" ng-click="removeIndicator(attempt, indicator_no)">
+                          <i class="fa fa-trash"></i>
+                        </button>
+                      </div>
+                      <div class="col-sm-1">
+                        <div class="text-center w-100">
+                          <a style="cursor: pointer;" ng-show="indicator.indicator_id == q.training_subjects_indicator" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_training_subjects }}" title="{{ q.t_title_training_subjects }}" tabindex="0">
+                            <i class="far fa-question-circle"></i>
+                          </a>
+                          <a style="cursor: pointer;" ng-show="indicator.indicator_id == q.exam_score_indicator" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_exam_score }}" title="{{ q.t_title_exam_score }}" tabindex="0">
+                            <i class="far fa-question-circle"></i>
+                          </a>
+                          <a style="cursor: pointer;" ng-show="indicator.indicator_id == q.attendance_percentage_indicator" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_attendance_percentage }}" title="{{ q.t_title_attendance_percentage }}" tabindex="0">
+                            <i class="far fa-question-circle"></i>
+                          </a>
+                          <a style="cursor: pointer;" ng-show="indicator.indicator_id == q.perfomance_percentage_indicator" data-toggle="popover" data-trigger="focus" data-html="true" data-content="{{ q.t_definition_perfomance_percentage }}" title="{{ q.t_title_perfomance_percentage }}" tabindex="0">
+                            <i class="far fa-question-circle"></i>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-repeat-end class="form-group" ng-if="indicator.indicator_id == q.training_subjects_indicator || indicator.indicator_id == q.exam_score_indicator">
+                    <div class="form-row">
+                      <div class="col-sm-11">
+                        <div ng-if="indicator.indicator_id == q.training_subjects_indicator">
+                          <label><t>training subjects</t><r/></label>
+                          <b-input name="subjects"
+                                   model="attempt.subjects"
+                                   model-key="subject_id"
+                                   label="name"
+                                   on-change="changeSubjectQuery(attempt, query, value)"
+                                   multiple>
+                            {{ row.name }}
+                          </b-input>
+                        </div>
+                        <div ng-if="indicator.indicator_id == q.exam_score_indicator">
+                          <label><t>exam</t><r/></label>
+                          <b-input name="exams"
+                                   model="attempt.exam_name | name"
+                                   model-key="attempt.exam_id | exam_id"
+                                   on-change="changeExamQuery(query, value)"
+                                   required-key>
+                            {{ row.name }}
+                          </b-input>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-if="attempt.indicators.length > 0">
+                    <div class="separator separator-solid my-2"></div>
+                    <h5 class="form-group">
+                      <t>
+                        Scores
+                      </t>
+                    </h5>
+                    <div class="form-row form-group">
+                      <div class="col-sm-8">
+                        <label><t>success score</t></label>
+                        <input type="text" class="form-control" ng-model="attempt.success_score" b-number/>
+                        <span class="form-text text-danger mt-0" ng-if="+attempt.success_score > 100">
+                          <t>success score should be less 100 percent</t>
+                        </span>
+                      </div>
+                      <div class="col-sm-8">
+                        <label><t>recommend failure</t></label><br/>
+                        <label class="switch">
+                          <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="attempt.recommend_failure"/>
+                          <span>
+                            <t ng-if="attempt.recommend_failure == 'Y'">yes</t>
+                            <t ng-if="attempt.recommend_failure == 'N' || !attempt.recommend_failure">no</t>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="form-row form-group" ng-if="attempt.recommend_failure == 'Y'">
+                      <div class="col-sm-8">
+                        <label><t>ignore score</t></label>
+                        <input type="text" class="form-control" ng-model="attempt.ignore_score" b-number/>
+                        <span class="form-text text-danger mt-0" ng-if="+attempt.success_score > 0 && +attempt.ignore_score >= +attempt.success_score">
+                          <t>ignore score should be less than success score</t>
+                        </span>
+                        <span class="form-text text-danger mt-0" ng-if="+attempt.ignore_score >= 100">
+                          <t>ignore score should be less than 100 percent</t>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <div class="offset-sm-16 col-sm-8 text-right">
+                      <span>
+                        <a href ng-click="copyAttempt(period, attempt)"><i class="fa fa-plus"></i>&nbsp;<t>copy attempt</t></a>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group mt-4">
+              <button type="button" class="btn btn-default" ng-click="addAttempt(period)"><t>add attempt</t></button>
+            </div>
+          </div>
+        </div>
+        <div class="card card-custom card-stretch gutter-b" ng-if="!q.currentPeriod || !q.currentPeriod.showAttempts">  
+          <div class="card-body">
+            <div class="d-flex justify-content-center" style="width: auto; height: 300px;">
+              <div class="align-self-center">
+                <div class="text-center mb-4">
+                  <i style="font-size: 6rem; color: #e0e0e0" class="fas fa-list-ol"></i>
+                  <div class="font-weight-bolder text-center mt-4">
+                    <h5><t>here you can watch detailed info and conditions of chosen transition</t></h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

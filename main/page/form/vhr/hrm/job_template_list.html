@@ -1,0 +1,82 @@
+<script biruni>
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function deleteAction(message, template_id) {
+    page.confirm(message, function() {
+      fi.delete({ template_id: template_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete template $1{template_id}?')(row.template_id), row.template_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{template_count} template(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'template_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ template_id: row.template_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="template_id" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="created_on" search="division_name, job_name, rank_name" searchable="template_id, wage_scale_name"
+          extra-columns="template_id, created_on, modified_on, created_by_name, modified_by_name">
+    <b-row>
+      <b-col name="division_name" size=5/>
+      <b-col name="job_name" size=4/>
+      <b-col name="rank_name" size=4/>
+      <b-col name="schedule_name" size=4/>
+      <b-col name="vacation_days_limit" size=2/>
+      <b-col name="wage_scale_name" size=4/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action> 
+
+    <b-filter name="template_id" directive="equal" extra/>
+    <b-filter name="division_id" decorate-with-tree="division_name"/>
+    <b-filter name="job_id" decorate-with="job_name"/>
+    <b-filter name="rank_id" decorate-with="rank_name"/>
+    <b-filter name="schedule_id" decorate-with="schedule_name"/>
+    <b-filter name="vacation_days_limit"/>
+    <b-filter name="wage_scale_id" decorate-with="wage_scale_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

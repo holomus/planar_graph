@@ -1,0 +1,11 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another edu stage": "The code is already assigned to another education type",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "order no": "No.",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.3.0">
+  <help_text>// Uncomment the following line to change the fontsize and font:
+// fontsize=16
+// fontfamily=SansSerif //possible: SansSerif,Serif,Monospaced
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// Welcome to UMLet!
+//
+// Double-click on elements to add them to the diagram, or to copy them
+// Edit elements by modifying the text in this panel
+// Hold Ctrl to select multiple elements
+// Use Ctrl+mouse to select via lasso
+//
+// Use +/- or Ctrl+mouse wheel to zoom
+// Drag a whole relation at its central square icon
+//
+// Press Ctrl+C to copy the whole diagram to the system clipboard (then just paste it to, eg, Word)
+// Edit the files in the "palettes" directory to create your own element palettes
+//
+// Select "Custom Elements &gt; New..." to create new element types
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// This text will be stored with each diagram;  use it for notes.</help_text>
+  <zoom_level>5</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>965</x>
+      <y>265</y>
+      <w>200</w>
+      <h>115</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_ID*
+/NAME/
+ANSWER_TYPE ('S'ingle, 'M'ultiple, 'W'riting)
+/CODE/
+STATE
+/WRITING_HINT/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>965</x>
+      <y>700</y>
+      <w>205</w>
+      <h>65</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAM_MANUAL_QUESTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*EXAM_ID*
+*QUESTION_ID*
+ORDER_NO
+ </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>965</x>
+      <y>395</y>
+      <w>200</w>
+      <h>85</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_OPTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_OPTION_ID*
+NAME
+/FILE_SHA/
+QUESTION_ID
+IS_CORRECT('Y'es, 'N'o)
+ORDER_NO
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>965</x>
+      <y>510</y>
+      <w>205</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAMS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*EXAM_ID*
+NAME
+PICK_KIND ('A'uto, 'M'anual)
+TIME_LIMIT (in seconds)
+PASSING_SCORE
+QUESTION_COUNT
+/RANDOMIZE_QUESTIONS('Y'es, 'N'o)/
+RANDOMIZE_OPTIONS('Y'es, 'N'o)
+STATE ('A', 'P')
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+ </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>920</x>
+      <y>295</y>
+      <w>55</w>
+      <h>165</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>90.0;10.0;10.0;10.0;10.0;310.0;90.0;310.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1230</x>
+      <y>615</y>
+      <w>185</w>
+      <h>65</h>
+    </coordinates>
+    <panel_attributes>*HLN_PATTERN_QUESTION_TYPES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*PATTERN_ID*
+*QUESTION_GROUP_ID*
+*QUESTION_TYPE_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>925</x>
+      <y>535</y>
+      <w>50</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>80.0;10.0;10.0;10.0;10.0;380.0;80.0;380.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>910</x>
+      <y>290</y>
+      <w>65</w>
+      <h>455</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>110.0;10.0;10.0;10.0;10.0;890.0;110.0;890.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1225</x>
+      <y>245</y>
+      <w>180</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_GROUP_BINDS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_ID*
+*QUESTION_GROUP_ID*
+QUESTION_TYPE_ID</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>445</x>
+      <y>110</y>
+      <w>180</w>
+      <h>125</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_GROUPS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_GROUP_ID*
+NAME
+/CODE/
+IS_REQUIRED ('Y'es, 'N'o)
+/ORDER_NO/
+STATE
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>665</x>
+      <y>110</y>
+      <w>180</w>
+      <h>125</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_TYPES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_TYPE_ID*
+QUESTION_GROUP_ID
+NAME
+/CODE/
+/ORDER_NO/
+STATE
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>685</x>
+      <y>315</y>
+      <w>180</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_FILES*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_ID*
+*FILE_SHA*
+/ORDER_NO/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>430</x>
+      <y>95</y>
+      <w>430</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>*Question characteristics*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>860</x>
+      <y>335</y>
+      <w>115</w>
+      <h>15</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;210.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>620</x>
+      <y>130</y>
+      <w>55</w>
+      <h>15</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>90.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1160</x>
+      <y>290</y>
+      <w>75</w>
+      <h>15</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>855</x>
+      <y>130</y>
+      <w>445</w>
+      <h>125</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>870.0;230.0;870.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1230</x>
+      <y>520</y>
+      <w>180</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAM_PATTERNS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*PATTERN_ID*
+*EXAM_ID*
+QUANTITY
+HAS_WRITING_QUESTION
+/ORDER_NO/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1165</x>
+      <y>540</y>
+      <w>75</w>
+      <h>15</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;130.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1405</x>
+      <y>540</y>
+      <w>35</w>
+      <h>105</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;190.0;20.0;190.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>855</x>
+      <y>110</y>
+      <w>595</w>
+      <h>540</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;20.0;1170.0;10.0;1170.0;1060.0;1120.0;1060.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>460</x>
+      <y>410</y>
+      <w>220</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>*HLN_TESTINGS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TESTING_ID*
+EXAM_ID
+PERSON_ID
+EXAMINER_ID
+TESTING_NUMBER
+TESTING_DATE
+/BEGIN_TIME/
+/END_TIME (as begin_time + exam duration)/
+/FACT_BEGIN_TIME/
+/FACT_END_TIME/
+/PAUSE_TIME/
+PASSED('Y'es, 'N'o)
+/CURRENT_QUESTION_NO/
+/CORRECT_QUESTIONS_COUNT/
+STATUS('N'ew, 'E'xecuting, 'P'aused, to be 'C'hecked, 'F'inished)
+/NOTE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>460</x>
+      <y>635</y>
+      <w>220</w>
+      <h>85</h>
+    </coordinates>
+    <panel_attributes>*HLN_TESTING_QUESTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TESTING_ID*
+*QUESTION_ID*
+ORDER_NO
+/WRITING_ANSWER/
+/MARKED/
+/CORRECT ('Y'es, 'N'o)/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>675</x>
+      <y>435</y>
+      <w>300</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;90.0;10.0;90.0;220.0;580.0;220.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>435</x>
+      <y>430</y>
+      <w>35</w>
+      <h>240</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>50.0;460.0;10.0;460.0;10.0;10.0;50.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>460</x>
+      <y>740</y>
+      <w>220</w>
+      <h>85</h>
+    </coordinates>
+    <panel_attributes>*HLN_TESTING_QUESTION_OPTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TESTING_ID*
+*QUESTION_ID*
+*QUESTION_OPTION_ID*
+ORDER_NO
+CHOSEN('Y'es, 'N'o)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>435</x>
+      <y>675</y>
+      <w>35</w>
+      <h>115</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>50.0;210.0;10.0;210.0;10.0;10.0;50.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>965</x>
+      <y>845</y>
+      <w>200</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HLN_TRAINING_SUBJECTS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*SUBJECT_ID*
+NAME
+/CODE/
+STATE ('A', 'P')
+CREATED_ON
+CREATED_BY
+MODIFIED_ON
+MODIFIED_BY</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1225</x>
+      <y>850</y>
+      <w>180</w>
+      <h>125</h>
+    </coordinates>
+    <panel_attributes>*HLN_TRAININGS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRAINING_ID*
+TRAINING_NUMBER
+BEGIN_DATE
+MENTOR_ID
+SUBJECT_ID
+ADRESS
+STATUS ('N', 'E', 'F')
+CREATED_ON
+CREATED_BY
+MODIFIED_ON
+MODIFIED_BY</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1230</x>
+      <y>1020</y>
+      <w>180</w>
+      <h>50</h>
+    </coordinates>
+    <panel_attributes>*HLN_TRAINING_PERSONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*TRAINING_ID*
+*PERSON_ID*
+/PASSED/ ('Y', 'N')</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1200</x>
+      <y>875</y>
+      <w>40</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>50.0;10.0;10.0;10.0;10.0;340.0;60.0;340.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>935</x>
+      <y>865</y>
+      <w>300</w>
+      <h>115</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>580.0;100.0;520.0;100.0;520.0;210.0;10.0;210.0;10.0;10.0;60.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>170</x>
+      <y>405</y>
+      <w>180</w>
+      <h>115</h>
+    </coordinates>
+    <panel_attributes>*HLN_ATTESTATIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*ATTESTATION_ID*
+ATTESTATION_NUMBER
+/NAME/
+ATTESTATION_DATE
+/BEGIN_TIME/
+EXAMINER_ID
+STATUS ((N)ew, (P)roccesing, (F)inished)
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>135</x>
+      <y>430</y>
+      <w>315</w>
+      <h>175</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;330.0;10.0;330.0;10.0;220.0;550.0;220.0;550.0;10.0;610.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>140</x>
+      <y>425</y>
+      <w>40</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>60.0;320.0;10.0;320.0;10.0;10.0;60.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>170</x>
+      <y>560</y>
+      <w>180</w>
+      <h>65</h>
+    </coordinates>
+    <panel_attributes>*HLN_ATTESTESION_TESTINGS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*ATTESTATION_ID*
+*TESTING_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>

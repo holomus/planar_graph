@@ -1,0 +1,12 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{employment_source_count} employment source(s)?": "Haqiqatan ham <b>$1</b> bandlik manba(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete employment source $1{employment_source_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "select $1": "Tanlash $1",
+ "table.kind_name": "Manba turi",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.source_id": "ID",
+ "table.state_name": "Holat"
+}

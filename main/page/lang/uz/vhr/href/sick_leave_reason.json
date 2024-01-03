@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another reason": "Kod allaqachon boshqa Kasallik ta'tili sababiga biriktirilgan",
+ "coefficient": "Koeffitsient",
+ "coefficient must be between 0 and 1": "Koeffitsient 0 dan 1 gacha bo'lishi kerak",
+ "name": "Nomi",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

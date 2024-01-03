@@ -1,0 +1,125 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pq = page.query('table');
+
+  if (xparam.where) pq.where(xparam.where);
+  else if (param.where) pq.where(param.where);
+});
+page.ctrl(function(scope, model, fi, t) {
+  let q = model;
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteAction(message, fact_id) {
+    page.confirm(message, function() {
+      fi.delete({ fact_id: fact_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete fact from $1{fact_date}?')(row.fact_date), row.fact_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{fact_count} fact(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'fact_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    if (fi.add_actual) fi.add_actual({ fact_type: q.actual_type }, closeIfDialog);
+    if (fi.add) fi.add(null, closeIfDialog);
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  function dynamicImportData() {
+    fi.dynamic_import(null, closeIfDialog);
+  }
+
+  function predictFacts() {
+    fi.predict(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ fact_id: row.fact_id }, closeIfDialog);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  q.actions = [
+    { 
+      has_access: fi.import, 
+      title: fi.import?.title, 
+      execute: importData
+    },
+    { 
+      has_access: fi.dynamic_import,
+      title: fi.dynamic_import?.title, 
+      execute: dynamicImportData
+    },
+    { 
+      has_access: fi.predict,
+      title: fi.predict?.title, 
+      execute: predictFacts
+    }
+  ];
+  
+  q.actions = _.filter(q.actions, x => x.has_access);
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add || fi.add_actual" b-hotkey="add"><t>add</t></button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.actions.length > 0" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.actions.length > 0">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.has_access" ng-click="action.execute()">{{ action.title}}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form>
+    <b-grid name="table" required="fact_id, fact_date" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="-fact_date" search="area_name, driver_name, object_name" searchable="fact_id, fact_value" extra-columns="driver_id, area_id, fact_id, object_id">
+      <b-row>
+        <b-col name="fact_date" size=3/>
+        <b-col name="object_name" size=4/>
+        <b-col name="area_name" size=4/>
+        <b-col name="driver_name" size=4/>
+        <b-col name="fact_type_name" size="4"/>
+        <b-col name="fact_value" size=4/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="fact_id" directive="equal" extra/>
+      <b-filter name="object_id" decorate-with="object_name"/>
+      <b-filter name="area_id" decorate-with="area_name"/>
+      <b-filter name="driver_id" decorate-with="driver_name"/>
+      <b-filter name="fact_type" decorate-with="fact_type_name"/>
+      <b-filter name="fact_date"/>
+    </b-grid>
+  </form>
+</div>

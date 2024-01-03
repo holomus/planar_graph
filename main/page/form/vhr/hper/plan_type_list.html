@@ -1,0 +1,101 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  t.param(param);
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+  else if (param.plan_group_id) t.where(['plan_group_id', '=', param.plan_group_id]);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, param, fi, t) {
+  var q = {};
+
+  function deleteAction(message, plan_type_id) {
+    page.confirm(message, function(){
+      fi.delete({ plan_type_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete plan type $1(plan_type_name)?')(row.name), row.plan_type_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{plan_type_count} ?')(q.checked.size), _.pluck(q.checked.rows(), 'plan_type_id'));
+  }
+
+  function closeIfDialog(result) {
+    if(page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add({ plan_group_id: param.plan_group_id }, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ plan_type_id: row.plan_type_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ plan_type_id: row.plan_type_id });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="save">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="plan_type_id, name, calc_kind, order_no, group_name, group_order_no" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="order_no, name" search="name" searchable="plan_type_id" extra-columns="plan_type_id, calc_kind_name, extra_amount_enabled_name, code">
+    <b-row>
+      <b-col name="name" size=10/>
+      <b-col name="group_name" size=10/>
+      <b-col name="calc_kind_name" size=3/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+      <b-col name="order_no" format="amount" align="right"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="plan_type_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="plan_group_id" decorate-with="group_name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="calc_kind" decorate-with="calc_kind_name" extra/>
+    <b-filter name="extra_amount_enabled" decorate-with="extra_amount_enabled_name" extra/>
+  </b-grid>
+</form></div>

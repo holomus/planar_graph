@@ -1,0 +1,15 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{location_type_count} location type(s)?": "Do you really want to delete <b>$1</b> location type(s)?",
+ "delete location type $1{location_type_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.color": "Color",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.location_type_id": "ID",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{wage_count} wages?": "Удалить средние зарплаты в количестве <b>$1</b>?",
+ "delete wage?": "Удалить среднюю зарплату?",
+ "select": "Выбрать",
+ "table.job_name": "Должность",
+ "table.rank_name": "Разряд (категория)",
+ "table.wage_begin": "От",
+ "table.wage_end": "До",
+ "table.wage_id": "ИД"
+}

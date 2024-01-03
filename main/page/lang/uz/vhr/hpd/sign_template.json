@@ -1,0 +1,22 @@
+{
+ "esign required": "",
+ "active": "Faol",
+ "add employee": "Qo'shish",
+ "add group": "Guruh qo'shish",
+ "add level": "Bosqich qo'shish",
+ "employee": "Xodim",
+ "employee placeholder": "Xodimni tanlang...",
+ "group $1": "Guruh $1",
+ "journal type": "Kadrlarga oid hujjat turi",
+ "level $1": "Bosqich $1",
+ "note": "Izoh",
+ "parallel": "Parallel",
+ "passive": "Faol emas",
+ "process": "Jarayon",
+ "save": "Saqlash",
+ "save?": "Saqlash?",
+ "sequential": "Ketma-ket",
+ "sign kind": "Imzolash",
+ "sign min count": "Min. imzolar soni",
+ "state": "Holat"
+}

@@ -1,0 +1,99 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table').param({ vacancy_group_id: param.vacancy_group_id });
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(model, scope, fi, t, param) {
+  var q = { to_delete: {} };
+
+  function deleteAction(message, vacancy_type_id) {
+    page.confirm(message, function() {
+      fi.delete({ vacancy_type_id: vacancy_type_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete vacancy type $1{vacancy_type_name}?')(row.name), row.vacancy_type_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{vacancy_type_count} vacancy type(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'vacancy_type_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add({ vacancy_group_id: param.vacancy_group_id }, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ vacancy_type_id: row.vacancy_type_id, vacancy_group_id: param.vacancy_group_id }, closeIfDialog);
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.delete) prepareChecked('to_delete', checked, x => !x.pcode);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  page.title(page.title() + ', '  + t('vacancy group name')() + ': ' + model.group_name);
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()" b-hotkey="close">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="vacancy_type_id, name, pcode" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name"
+          search="code, name" searchable="vacancy_type_id" extra-columns="vacancy_type_id, created_on, created_by_name, modified_on, modified_by_name">
+    <b-row>
+      <b-col name="code" size=3/>
+      <b-col name="name" size=20/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && !row.pcode">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="vacancy_type_id" directive="equal" extra/>
+    <b-filter name="code"/>
+    <b-filter name="name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,253 @@
+<script biruni>
+page.init(function(param, bBig, xparam, t, $filter, bStorage, bFrame, AppSession) {
+  let date = new Date(),
+      month = moment().add(-1, 'month').format('MM.YYYY'),
+      t_no_access = t('no access to wage')(),
+      formatNumber = $filter('bNumber'),
+      storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id,
+      storage = bStorage.json(storage_key);
+
+  var t = page.query('table').param({ month: storage.filter_on == 'Y' ? storage.month : null });
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var pg = page.grid('table');
+
+  pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${ row.posted == 'Y' ? 'primary' : 'secondary' }">${ row.posted_name }</span>`;
+  });
+  pg.asHtml('barcode_html', 'barcode', function(row) {
+    return `<img src="gen/barcode?text=${ row.barcode }&width=75&height=15&font-size=12"/>`;
+  });
+  pg.asHtml('month_html', 'month', function(row) {
+    return row.month ? `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>` : null;
+  });
+  pg.asHtml('month_html', 'month', function(row) {
+    return row.month ? `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>` : null;
+  });
+  pg.asHtml('c_accrued_amount_base_html', 'c_accrued_amount_base', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_accrued_amount_base || 0).round();
+
+    return row.c_accrued_amount_base == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_deducted_amount_base_html', 'c_deducted_amount_base', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_deducted_amount_base || 0).round();
+
+    return row.c_deducted_amount_base == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_accrued_amount_html', 'c_accrued_amount', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_accrued_amount || 0).round();
+
+    return row.c_accrued_amount == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_deducted_amount_html', 'c_deducted_amount', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_deducted_amount || 0).round();
+
+    return row.c_deducted_amount == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_income_tax_amount_html', 'c_income_tax_amount', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_income_tax_amount || 0).round();
+
+    return row.c_income_tax_amount == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_pension_payment_amount_html', 'c_pension_payment_amount', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_pension_payment_amount || 0).round();
+
+    return row.c_pension_payment_amount == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+  pg.asHtml('c_social_payment_amount_html', 'c_social_payment_amount', row => {
+    let Big = bBig(row.round_model);
+    let amount = Big(row.c_social_payment_amount || 0).round();
+
+    return row.c_social_payment_amount == '-1' ? t_no_access : formatNumber(amount, row.scale, true);
+  });
+});
+page.ctrl(function(scope, fi, model, t, $timeout, bStorage, bFrame, AppSession) {
+  var q = { to_post: {}, to_unpost: {}, to_delete: {} };
+
+  // sections
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  function doAction(doFunc, doTrans, book_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ book_id: book_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post book No. $1{book_number} of $2{book_date}?')(row.book_number, row.book_date), row.book_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1 book(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'book_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost book No. $1{book_number} of $2{book_date}?')(row.book_number, row.book_date), row.book_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1 book(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'book_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete book No. $1{book_number} of $2{book_date}?')(row.book_number, row.book_date), row.book_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{book_count} book(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'book_id'));
+  }
+
+  function add(book_type_id) {
+    fi.add({ book_type_id: book_type_id });
+  }
+
+  function view(row) {
+    fi.view({ book_id: row.book_id }, null, { round_model: row.round_model, scale: row.scale });
+  }
+
+  function edit(row) {
+    fi.edit({ book_id: row.book_id });
+  }
+
+  function transactions(row) {
+    window.open(page.url('transactions', {
+      rt: 'html',
+      book_id: row.book_id
+    }));
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit && row.posted == 'N' ? edit(row) : null;
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N');
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y');
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N');
+  }
+
+  function onDateChange() {
+    $timeout(function() {
+      q.filter_on ? page.query('table').param({ month: q.month }).fetch() : null;
+      bStorage.json(storage_key, { month: q.month, filter_on: q.filter_on ? 'Y' : 'N' });
+    });
+  }
+
+  function changeFilter() {
+    q.filter_on = !q.filter_on;
+    bStorage.json(storage_key, { month: q.month, filter_on: q.filter_on ? 'Y' : 'N' });
+    q.filter_on ? onDateChange() : page.query('table').param({ }).fetch();
+  }
+
+  q.book_types = _.mapRows(model.book_types, ['book_type_id', 'name']);
+  q.month = storage.month || model.month;
+  q.filter_on =  storage.filter_on == 'Y';
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-8">
+    <div class="btn-group" ng-if="fi.add">
+      <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">{{ fi.add.title }}</button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" ng-repeat="book_type in q.book_types" ng-click="add(book_type.book_type_id)">{{ book_type.name }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-3 text-sm-right">
+    <label class="pt-2"><t>month</t></label>
+  </div>
+  <div class="col-sm-3">
+    <div class="input-group">
+      <input type="text"
+             class="form-control"
+             style="text-transform: capitalize;"
+             b-date-picker="MM.YYYY"
+             view-format="MMMM YYYY"
+             ng-model="q.month"
+             ng-change="onDateChange()"/>
+      <div class="input-group-prepend">
+        <span class="input-group-text" style="cursor: pointer;" ng-click="changeFilter()"><i class="fa fa-filter" ng-class="{ 'font-yellow-gold': q.filter_on }" aria-hidden="true"></i></span>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="book_id, book_type_id, book_number, book_date, posted, round_model, scale" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-book_date, -month" search="book_number, book_type_name" searchable="book_id, book_name, division_name, barcode, note"
+          extra-columns="book_id, book_name, division_name, currency_name, note, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="month" size=3 as-html="month_html"/>
+      <b-col name="book_date" size=3/>
+      <b-col name="book_number" size=3/>
+      <b-col name="book_type_name" size=6/>
+      <b-col name="c_accrued_amount_base" as_html="c_accrued_amount_base_html" size=3 format="amount" align="right" scale="2"/>
+      <b-col name="c_deducted_amount_base" as_html="c_deducted_amount_base_html" size=3 format="amount" align="right" scale="2"/>
+      <b-col name="posted_name" size=2 as-html="posted_html"/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="barcode" as-html="barcode_html"/>
+      <b-col name="c_accrued_amount" as_html="c_accrued_amount_html" format="amount" align="right" scale="2"/>
+      <b-col name="c_deducted_amount" as_html="c_deducted_amount_html" format="amount" align="right" scale="2"/>
+      <b-col name="c_income_tax_amount" as_html="c_income_tax_amount_html" format="amount" align="right" scale="2"/>
+      <b-col name="c_pension_payment_amount" as_html="c_pension_payment_amount_html" format="amount" align="right" scale="2"/>
+      <b-col name="c_social_payment_amount" as_html="c_social_payment_amount_html" format="amount" align="right" scale="2"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit"><t>edit</t></button>
+      <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N'">{{ fi.post.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y'">{{ fi.unpost.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N'">{{ fi.delete.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="transactions(row)" ng-if="fi.transactions && row.posted == 'Y'">{{ fi.transactions.title }}</button>
+    </b-action>
+
+    <b-filter name="book_id" directive="equal" extra/>
+    <b-filter name="book_date"/>
+    <b-filter name="book_number"/>
+    <b-filter name="book_type_id" decorate-with="book_type_name"/>
+    <b-filter name="c_accrued_amount_base"/>
+    <b-filter name="c_deducted_amount_base"/>
+    <b-filter name="posted" decorate-with="posted_name"/>
+    <b-filter name="book_name" extra/>
+    <b-filter name="division_id" decorate-with="division_name" extra/>
+    <b-filter name="currency_id" decorate-with="currency_name" extra/>
+    <b-filter name="barcode" extra/>
+    <b-filter name="note" extra/>
+    <b-filter name="c_accrued_amount" extra/>
+    <b-filter name="c_deducted_amount" extra/>
+    <b-filter name="c_income_tax_amount" extra/>
+    <b-filter name="c_pension_payment_amount" extra/>
+    <b-filter name="c_social_payment_amount" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

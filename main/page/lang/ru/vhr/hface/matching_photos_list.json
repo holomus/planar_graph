@@ -1,0 +1,18 @@
+{
+ "table.matched_sha": "Похожая фотография",
+ "calculate image vectors": "Вычислить вектор изображения",
+ "close": "Закрыть",
+ "matching photo found": "Обнаружено совпадающая фотография",
+ "pg.matched_photos.match_percent": "Процент совпадения",
+ "pg.matched_photos.match_score": "Оценка совпадения",
+ "pg.matched_photos.person_name": "Совпадающий сотрудник",
+ "pg.matched_photos.photo": "Фотография",
+ "successfully added vector calculation job": "Вектор вычисления успешно добавлен",
+ "table.match_score": "Оценка совпадения",
+ "table.match_score_percent": "Процент оценки совпадения",
+ "table.matched_person_names": "Совпадающий сотрудник",
+ "table.person_id": "ИД сотрудника",
+ "table.person_name": "Сотрудник",
+ "table.photo_sha": "Фото",
+ "table.vector_calculated_name": "Вычисление вектор изображения"
+}

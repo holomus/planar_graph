@@ -1,0 +1,32 @@
+select q.Company_Id,
+       (select w.Code
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Code,
+       (select w.Name
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Name,
+       count(1) Employee_Count,
+       (select max(w.Track_Date)
+          from Vx_Org_Tracks w
+         where w.Company_Id = q.Company_Id
+           and w.Track_Date >= to_date('01.03.2022')) Last_Track
+  from Vx_Hr_Employees q
+ where exists (select *
+          from Md_Persons w
+         where w.Company_Id = q.Company_Id
+           and w.Person_Id = q.Employee_Id
+           and w.State = 'A')
+   and (exists (select *
+                  from Vx_Org_Tracks w
+                 where w.Company_Id = q.Company_Id
+                   and w.Person_Id = q.Employee_Id
+                   and w.Track_Date >= to_date('01.03.2022')) or exists
+        (select *
+           from Vx_Hr_Emp_Leaves w
+          where w.Company_Id = q.Company_Id
+            and w.Employee_Id = q.Employee_Id
+            and w.Begin_Date <= to_date('01.05.2022')
+            and w.End_Date >= to_date('01.03.2022')))
+   and q.Company_Id not in (663, 840, 123)
+ group by q.Company_Id
+ order by 2

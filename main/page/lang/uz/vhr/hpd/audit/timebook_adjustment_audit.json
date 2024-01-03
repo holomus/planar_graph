@@ -1,0 +1,17 @@
+{
+ "details": "Tafsilotlar",
+ "journal": "Hujjat",
+ "page audit": "Sahifalar",
+ "table_audit.free_time": "Ish vaqtidan tashqari",
+ "table_audit.overtime": "Qo'shimcha ish vaqti",
+ "table_audit.page_id": "Sahifa ID",
+ "table_audit.t_audit_id": "O'zgarishlar tarixi ID",
+ "table_audit.t_date": "Hodisa sanasi",
+ "table_audit.t_event_name": "Hodisa",
+ "table_audit.t_filial_name": "Tashkilot",
+ "table_audit.t_source_project_name": "Loyiha",
+ "table_audit.t_timestamp": "Hodisa sanasi va vaqti",
+ "table_audit.t_user_name": "Foydalanuvchi",
+ "table_audit.turnout_time": "Fakt (vaqt)",
+ "timebook adjustment audit": "Tabel tuzatishlari"
+}

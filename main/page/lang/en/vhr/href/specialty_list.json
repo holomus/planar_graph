@@ -1,0 +1,13 @@
+{
+ "add group specialty": "Create group",
+ "add specialty": "Create",
+ "delete $1": "Delete $1",
+ "delete $1{specialty_count} specialty(ies)?": "Do you really want to delete <b>$1</b> specialty(ies)?",
+ "delete specialty $1{specialty_name}?": "Do you really want to delete <b>$1</b> ?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.kind_name": "Type",
+ "table.name": "Name",
+ "table.specialty_id": "ID",
+ "table.state_name": "Status"
+}

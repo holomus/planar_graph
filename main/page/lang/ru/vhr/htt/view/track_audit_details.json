@@ -1,0 +1,5 @@
+{
+ "pg.track.before": "Старое значение",
+ "pg.track.current": "Новое значение",
+ "pg.track.field_name": "Поле"
+}

@@ -1,0 +1,11 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another reject reason": "Код должен быть уникальным",
+ "name": "Название",
+ "name should be unique": "Название должно быть уникальным",
+ "order no": "Порядковый номер",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

@@ -1,0 +1,21 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1 division(s)?": "Siz haqiqatdan ham <b>$1</b> ta bo'limlarni o'chirmoqchimisiz?",
+ "delete division $1?": "Siz haqiqatdan ham <b>$1</b> bo'limini o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "select $1": "Tanlash $1",
+ "table.closed_date": "Yopilish sanasi",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.division_group_name": "Bo'limlar guruhi",
+ "table.division_id": "ID",
+ "table.is_department_name": "Bo'lim turi",
+ "table.manager_name": "Rahbar",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.opened_date": "Ochilish sanashi",
+ "table.schedule_name": "Ish jadvali",
+ "table.state_name": "Holat"
+}

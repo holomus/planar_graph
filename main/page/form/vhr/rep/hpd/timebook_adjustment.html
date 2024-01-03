@@ -1,0 +1,93 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param) {
+  var d = model, 
+      q = {},
+      frame = page.$content.find('.report-frame')[0];
+
+  function run(rt, form) {
+    if(page.valid(scope.form)) {
+      var data = {
+        begin_date: d.begin_date,
+        end_date: d.end_date,
+        division_ids: d.division_ids,
+        rt: rt
+      };
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        window.open(page.url('run', data));
+      }
+    }
+  }
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P' ? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V' ? 'btn-primary' : 'btn-default';
+  }
+
+  q.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.division_ids = [];
+
+  setFormMode('P');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn btn-primary" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn btn-default" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+  </div>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <form ng-show="q.formMode =='P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>date</t></label><br/>
+              <b-date-range-picker begin="d.begin_date" end="d.end_date"/>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="q.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"
+                row-limit="2000"
+                option-check-childs/>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P'" class="report-frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

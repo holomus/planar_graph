@@ -1,0 +1,11 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{access_level_count} access_level(s)?": "Delete  <b>$1</b> access levels?",
+ "delete access_level $1{access_level_name}?": "Delete  <b>$1</b> access level?",
+ "get access levels from HCP": "Download",
+ "table.access_level_code": "Code",
+ "table.access_level_name": "Access Level",
+ "table.created_on": "Created on",
+ "table.description": "Description",
+ "table.modified_on": "Modified on"
+}

@@ -1,0 +1,326 @@
+<script biruni>
+page.init(function() {
+  var statusClass = { N: 'warning', A: 'success', D: 'danger', C: 'primary' };
+  page.grid('table_audit').asHtml('status_html', 'status,status_name', row => {
+      return `<div class="alert alert-custom alert-light-${ statusClass[row.status] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+  page.grid('table_audit').asHtml('barcode_html', 'barcode', function(row) {
+    return `<img src="gen/barcode?text=${ row.barcode }&width=75&height=15&font-size=12"/>`;
+  });
+
+  page.grid('table_audit').disable();
+});
+page.ctrl(function(scope, model, fi, t, $timeout, param) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {},
+      modal = page.$content.find("form[name=modal]>.modal");
+
+  function edit() {
+    fi.edit({ request_id: d.request_id });
+  }
+
+  function doAction(doFunc, doTrans, request_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ filial_id: param.filial_id, request_id: request_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepAction(doFunc, doTrans, is_modal) {
+    return is_modal ? function() {
+      p.title = doTrans(d.request_kind_name, d.request_date);
+      p.data = { filial_id: param.filial_id, request_id: d.request_id };
+      p.action = function() {
+        doFunc(p.data).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      $timeout(() => modal.modal('show'));
+    } : function() {
+      doAction(doFunc, doTrans(d.request_kind_name, d.request_date), d.request_id);
+    }
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+    if (!_.contains(q.enabledGrids, tableName) && q.activeSection != 'main') {
+      queryTable(tableName);
+    }
+  }
+
+  function queryTable(tableName) {
+    page.query(tableName).param({ filial_id: param.filial_id, request_id: d.request_id });
+    page.grid(tableName).fetch();
+    page.grid(tableName).enable();
+    q.enabledGrids.push(tableName);
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ request_id: d.request_id, context_id: row.t_context_id });
+  }
+
+  function buttonClass(style) {
+    return `btn-${ style }`;
+  }
+
+  switch (d.status) {
+    case q.request_status_new: q.status_class = 'alert-warning'; break;
+    case q.request_status_approved: q.status_class = 'alert-success'; break;
+    case q.request_status_completed: q.status_class = 'alert-primary'; break;
+    case q.request_status_denied: q.status_class = 'alert-danger'; break;
+  }
+
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+
+  scope.approve = prepAction(fi.approve, t('approve request $1{request_kind_name} on $2{request_date}?'), true);
+  scope.deny = prepAction(fi.deny, t('deny request $1{request_kind_name} on $2{request_date}?'), true);
+  scope.complete = prepAction(fi.complete, t('complete request $1{request_kind_name} on $2{request_date}?'));
+  scope.cancel = prepAction(fi.cancel, t('cancel request $1{request_kind_name} on $2{request_date}?'));
+  scope.reset = prepAction(fi.reset, t('reset request $1{request_kind_name} on $2{request_date}?'));
+
+  let actions = [
+    { has_access: fi.approve && d.status == 'N', execute: scope.approve, name: 'approve', class: 'primary' },
+    { has_access: fi.deny && d.status == 'N', execute: scope.deny, name: 'deny', class: 'danger' },
+    { has_access: fi.complete && d.status == 'A', execute: scope.complete, name: 'complete', class: 'primary' },
+    { has_access: fi.cancel && d.status == 'A', execute: scope.cancel, name: 'cancel', class: 'danger' },
+    { has_access: fi.reset && d.status != 'N', execute: scope.reset, name: 'reset', class: 'primary' }
+  ];
+
+  q.actions = _.chain(actions)
+               .reject(x => !x.has_access)
+               .each(x => x.title = fi[x.name].title)
+               .value();
+
+  if (q.actions.length > 0)
+    q.firstAction = q.actions[0];
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && d.status==q.request_status_new" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn" ng-click="q.firstAction.execute()" ng-if="q.actions.length == 1 && q.firstAction.has_access" ng-class="buttonClass(q.firstAction.class)">{{ q.firstAction.title }}</button>
+  <div class="btn-group" ng-if="q.actions.length > 1">
+    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+    <div class="dropdown-menu">
+      <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.has_access" ng-click="action.execute()">{{ action.title }}</a>
+    </div>
+  </div>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-lg-5">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center mb-9">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3">
+                  <t p1="d.staff_name" p2="d.created_on">$1's request by $2</t>
+                  </span>
+                <span class="text-muted">&nbsp;({{ d.request_id }})</span>
+              </div>
+              <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.status_class">
+                <div class="alert-text">{{ d.status_name }}</div>
+              </div>
+            </div>
+            <div class="navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')" ng-if="fi.audit">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-user-clock"></i>
+                  </span>
+                  <span class="navi-text font-size-lg"><t>audit</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-19" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>staff name</t></label>
+                  <span class="form-view">{{ d.staff_name }}</span>
+                </div>
+              </div>
+              <div class="col-sm-6" ng-if="d.filial_name">
+                <label><t>filial name</t></label>
+                <span class="form-view">{{ d.filial_name }}</span>
+              </div>
+              <div class="col-sm-6" ng-if="d.accrual_kind_name">
+                <div class="form-group">
+                  <label><t>accrual kind name</t></label>
+                  <span class="form-view">{{ d.accrual_kind_name }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>request kind name</t></label>
+                  <span class="form-view">{{ d.request_kind_name }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row mb-4">
+                  <div ng-class="d.request_type == q.request_type_part_of_day ? 'col-sm-8 mb-sm-0 mb-4' : 'col-sm-12'" ng-if="d.request_type != q.request_type_multiple_days">
+                    <label><t>begin date</t></label>
+                    <span class="form-view">{{ d.begin_date }}</span>
+                  </div>
+                  <div class="col-sm-8 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_part_of_day">
+                    <label><t>begin time</t></label>
+                    <span class="form-view">{{ d.begin_time }}</span>
+                  </div>
+                  <div class="col-sm-8 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_part_of_day">
+                    <label><t>end time</t></label>
+                    <span class="form-view">{{ d.end_time }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_multiple_days">
+                    <label><t>begin date</t></label>
+                    <span class="form-view">{{ d.begin_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-sm-0 mb-4" ng-if="d.request_type == q.request_type_multiple_days">
+                    <label><t>end date</t></label>
+                    <span class="form-view">{{ d.end_date }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>note</t></label>
+                  <span class="form-view">{{ d.note }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>manager note</t></label>
+                  <span class="form-view">{{ d.manager_note }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>approved by</t></label>
+                <span class="form-view">{{ d.approved_by_name }}</span>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>completed by</t></label>
+                <span class="form-view">{{ d.completed_by_name }}</span>
+              </div>
+            </div>
+            <div class="separator separator-solid my-6"></div>
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>created by</t></label>
+                  <span class="form-view">{{ d.created_by_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>created on</t></label>
+                  <span class="form-view">{{ d.created_on }}</span>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>modified by</t></label>
+                  <span class="form-view">{{ d.modified_by_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>modified on</t></label>
+                  <span class="form-view">{{ d.modified_on }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-19" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header card-header-tabs-line">
+            <div class="card-title align-items-start flex-column">
+              <h5 class="font-weight-bolder mb-0 mt-2"><t>audit</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row mb-2">
+              <div class="offset-sm-12 col-sm-12">
+                <b-grid-controller  name="table_audit"/>
+              </div>
+            </div>
+            <b-grid name="table_audit" required="t_context_id,request_id" on-dblclick="auditDetails(row)"
+                    sort="-t_timestamp" search="t_user_name,t_event_name,request_kind_name"
+                    extra-columns="t_audit_id,t_source_project_name,t_date,t_filial_name,request_id,note,manager_note,created_by_name,created_on,modified_by_name,modified_on">
+              <b-row>
+                <b-col name="t_timestamp" size="3"/>
+                <b-col name="t_user_name" size="3"/>
+                <b-col name="t_event_name" size="3"/>
+                <b-col name="request_kind_name" size=6/>
+                <b-col name="status_name" as-html="status_html" size=3/>
+              </b-row>
+
+              <b-extra-columns>
+                <b-col name="barcode" as-html="barcode_html"/>
+              </b-extra-columns>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+              </b-action>
+
+              <b-filter name="t_date"/>
+              <b-filter name="t_user_id" decorate-with="t_user_name"/>
+              <b-filter name="t_event" decorate-with="t_event_name"/>
+              <b-filter name="t_filial_id" decorate-with="t_filial_name"/>
+              <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+              <b-filter name="request_kind_id" decorate-with="request_kind_name"/>
+              <b-filter name="status" decorate-with="status_name"/>
+            </b-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>manager note</t></label>
+              <textarea class="form-control" rows=3 ng-model="p.data.manager_note"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="p.action()">{{ p.action_title }}</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

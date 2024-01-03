@@ -1,0 +1,19 @@
+{
+ "base wage": "Asos tarif",
+ "main": "Asosiy ma'lumotlar",
+ "note": "Izoh",
+ "pg.ranks.coefficient": "Koeffitsient",
+ "pg.ranks.rank_name": "Daraja",
+ "pg.ranks.rownum": "№",
+ "pg.ranks.wage_html": "Maosh",
+ "posted": "O'tgan",
+ "register date": "Sana",
+ "register number": "Raqam",
+ "round model": "Yaxlitlash",
+ "round type": "Yaxlitlash turi",
+ "unposted": "O'tmagan",
+ "valid from": "Kuchga kirish sanasi",
+ "wage": "Maosh",
+ "wage scale": "Tarif setkasi",
+ "with base wage": "Asos tarifga nisbatan belgilangan tarif qiymatlari"
+}

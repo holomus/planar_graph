@@ -1,0 +1,5 @@
+{
+ "pg.vacation.before": "Старое значение",
+ "pg.vacation.current": "Новое значение",
+ "pg.vacation.field_name": "Поле"
+}

@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{lang_count} lang(s)?": "<b>$1</b> ta tillarni o'chirish?",
+ "delete lang $1{lang_name}?": "Haqiqatdan ham <b>$1</b> ni o'chirmoqchimiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.lang_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

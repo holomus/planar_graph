@@ -1,0 +1,12 @@
+{
+ "deactivate $1": "Faollikni o'chirish $1",
+ "deactivate $1{qr_code_count} qr code(s)?": "<b>$1</b> ta QR-kod(lar)ning faolligini to'xtatmoqchimisiz?",
+ "deactivate qr code $1{created_on}?": "<b>$1</b> sanadagi QR-kodning faolligini to'xtatmoqchimisiz?",
+ "delete $1": "O'chirish $1",
+ "delete $1{qr_codes_count} qr code(s)?": "<b>$1</b> ta QR-kod(lar)ning o'chirmoqchimisiz?",
+ "delete qr code $1{created_on}?": "<b>$1</b> sanadagi QR-kodning o'chirmoqchimisiz?",
+ "table.created_on": "Yaratilgan sana",
+ "table.location_name": "Joylashuv",
+ "table.state_name": "Holat",
+ "table.unique_key": "Maxsus kalit"
+}

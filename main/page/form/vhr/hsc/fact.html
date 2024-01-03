@@ -1,0 +1,139 @@
+<script biruni>
+page.ctrl(function(scope, model, fi) {
+  let d = _.omit(model, 'references'),
+      q = model.references;
+
+  // object 
+  function setObject(row) {
+    if (!row) return;
+    d.object_id = row.object_id;
+    d.object_name = row.name;
+  }
+
+  function selectObject() {
+    fi.select_object(null, setObject, { where: ['state', '=', 'A'] });
+  }
+
+  // area
+  function setArea(row) {
+    if (!row) return;
+    d.area_id = row.area_id;
+    d.area_name = row.name;
+  }
+
+  function selectArea() {
+    fi.select_area(null, setArea, { where: ['state', '=', 'A'] });
+  }
+
+  function addArea(value) {
+    fi.add_area(null, setArea, { name: value });
+  }
+
+  // driver
+  function setDriver(row) {
+    if (!row) return;
+    d.driver_id = row.driver_id;
+    d.driver_name = row.name;
+  }
+
+  function selectDriver() {
+    fi.select_driver(null, setDriver, { 
+      where: ['and', 
+                [
+                  ['state', '=', 'A'], 
+                  ['action_type', '=', 'P']
+                ]
+              ]
+    });
+  }
+
+  function addDriver(value) {
+    fi.add_driver(null, setDriver, { name: value });
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  q.fact_types = _.chain(q.fact_types)
+                  .mapRows(['fact_type', 'fact_type_name'])
+                  .reject(x => x.fact_type == q.actual_type)
+                  .value();
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-12">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>fact date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.fact_date" b-date-picker="DD.MM.YYYY" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>object</t><r/></label>
+              <b-input name="objects"
+                       model="d.object_name | name"
+                       model-key="d.object_id | object_id"
+                       is-view="fi.select_object"
+                       on-view="selectObject()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>areas</t><r/></label>
+              <b-input name="areas"
+                       model="d.area_name | name"
+                       model-key="d.area_id | area_id"
+                       is-add="fi.add_area"
+                       on-add="addArea(value)"
+                       is-view="fi.select_area"
+                       on-view="selectArea()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>drivers</t><r/></label>
+              <b-input name="drivers"
+                       model="d.driver_name | name"
+                       model-key="d.driver_id | driver_id"
+                       is-add="fi.add_driver"
+                       on-add="addDriver(value)"
+                       is-view="fi.select_driver"
+                       on-view="selectDriver()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group" ng-if="d.fact_type != q.actual_type">
+              <label><t>fact type</t><r/></label><br/>
+              <label class="radio" ng-repeat="type in q.fact_types">
+                <input type="radio" name="fact_type" value="{{ type.fact_type }}" ng-model="d.fact_type"/><span>{{ type.fact_type_name }}</span>
+              </label>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>fact value</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.fact_value" b-number required/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

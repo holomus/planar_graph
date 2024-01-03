@@ -1,0 +1,415 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'operations', 'references'), 
+      q = model.references;
+
+  // staff
+  function whereStaff() {
+    let month_begin = moment(d.month,'MM.YYYY').format('DD.MM.YYYY'),
+        month_end = moment(d.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+        blocked_staffs = _.compact(q.blocked_staffs),
+        where = ['and', [
+                  ['hiring_date', '<=', month_end],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', month_begin]
+                  ]]]
+                ];
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+
+    if (!_.isEmpty(blocked_staffs)) {
+      where = ['and', [['staff_id', '<>', blocked_staffs], where]];
+    }
+
+    return where;
+  }
+
+  function setStaff(item, row) {
+    if (!row) return;
+    item.staff_id = row.staff_id;
+    item.staff_name = row.name;
+
+    if (row.staff_id) {
+      page.post(':get_employee_wage', { staff_id: row.staff_id, month: moment(d.month, 'MM.YYYY').format('DD.MM.YYYY') }).then(function (result) {
+        item.wage = result.wage;
+      }, page.alert);
+    }
+  }
+
+  function selectStaff(item) {
+    fi.select_staff(null, _.partial(setStaff, item), { where: whereStaff() });
+  }
+
+  function changeStaffQuery(query, value) {
+    query.param({ month: d.month, division_id: d.division_id }).searchValue(value);
+  }
+  
+  // currency
+  function setCurrency(row) {
+    if (!row) return;
+    d.currency_id = row.currency_id;
+    d.currency_name = row.name;
+  }
+
+  function addCurrency(value) {
+    fi.add_currency(null, setCurrency, { name: value });
+  }
+
+  function selectCurrency() {
+    fi.select_currency(null, setCurrency);
+  }
+
+  // oper type
+  function accessAddOperType() {
+    return d.document_kind == 'A' ? fi.add_accrual_oper_type : fi.add_deduction_oper_type;
+  }
+
+  function accessListOperType() {
+    return d.document_kind == 'A' ? fi.select_accrual_oper_type : fi.select_deduction_oper_type;
+  }
+
+  function setOperType(data, row) {
+    if (!row) return;
+    data.oper_type_id = row.oper_type_id;
+    data.oper_type_name = row.name;
+  }
+
+  function addOperType(data, value) {
+    var xdata = {
+      name: value, 
+      estimation_type: q.estimation_type_entered 
+    };
+
+    if (d.document_kind == 'A') {
+      fi.add_accrual_oper_type(null, _.partial(setOperType, data), xdata);
+    } else {
+      fi.add_deduction_oper_type (null, _.partial(setOperType, data), xdata);
+    }
+  }
+
+  function selectOperType(data) {
+    var xdata = {
+      where: ['estimation_type', '=', q.estimation_type_entered]
+    }
+    
+    if (d.document_kind == 'A') {
+      fi.select_accrual_oper_type(null, _.partial(setOperType, data), xdata);
+    } else {
+      fi.select_deduction_oper_type(null, _.partial(setOperType, data), xdata);
+    }
+  }
+
+  function changeOperTypeQuery(query, value) {
+    query.param({ operation_kind: d.document_kind }).searchValue(value);
+  }
+
+  function addOperation() {
+    d.operations.push({ access_to_hidden_salary: 'Y' });
+  }
+
+  function removeOperation(item) {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(d.operations, row);
+      d.operations.splice(index, 1);
+    });
+  }
+
+  function applyData(item, key) {
+    _.chain(d.operations).filter(x => !x[key]).each(function(operation) {
+      operation[key] = item[key];
+    });
+  }
+
+  function fill(staff_ids) {
+    var data = {
+      month_begin: moment(d.month,'MM.YYYY').format('DD.MM.YYYY'),
+      month_end: moment(d.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+      division_id: d.division_id,
+      staff_ids: staff_ids
+    };
+
+    page.post(':load_staffs', data).then(function (result) {
+      d.operations = _.chain(result.staffs)
+                      .mapRows(['staff_id', 'staff_name', 'wage'])
+                      .each(x => {x.access_to_hidden_salary = 'Y';})
+                      .value();
+    }, page.alert);
+  }
+
+  function setStaffs() {
+    var data = {
+      month_begin: moment(d.month,'MM.YYYY').format('DD.MM.YYYY'),
+      month_end: moment(d.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+      division_id: d.division_id
+    };
+
+    page.post(':load_blocked_staffs', data).then((result) => {
+      q.blocked_staffs = result.staff_ids;
+
+      fi.select_staff(null, function(result) {
+        var staff_ids = _.pluck(result, 'staff_id');
+
+        if (staff_ids.length > 0) {
+          page.post(':load_staffs', _.extend(data, { staff_ids: staff_ids })).then(function (result) {
+            d.operations.push(... _.chain(result.staffs)
+                                   .mapRows(['staff_id', 'staff_name', 'wage'])
+                                   .each(x => {x.access_to_hidden_salary = 'Y';})
+                                   .value());
+          }, page.alert);
+        } 
+      }, { where: whereStaff(), multiple_select: true });
+    }, page.alert);
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'N' ? t('save?')() : t('post?')(), function() {
+        var data = _.pick(d, 'document_id', 'document_date', 'document_number', 'document_name', 'document_kind', 'month', 'currency_id', 'division_id', 'oper_type_id');
+            data.posted = posted;
+
+        if (q.only_one_oper_type != 'Y') {
+          data.oper_type_id = null;
+        }
+        
+        data.operations = _.map(d.operations, x => { 
+          x = _.pick(x, 'operation_id', 'staff_id', 'charge_id', 'oper_type_id', 'amount', 'note');
+          return x;
+        });
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  // change month
+  function changeMonth() {
+    if (!_.isEmpty(d.operations)) {
+      page.confirm(t('all operations will be removed. continue?')(), function() {
+        d.operations = [];
+      });
+    }
+  }
+
+  function fillAmountByPercentage() {
+    if(q.percentage_amount) {
+      _.each(d.operations, x => {
+        
+        if(x.access_to_hidden_salary == 'Y') {
+          x.amount = x.wage * q.percentage_amount / 100;
+        }
+      });
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  d.operations = _.mapRows(model.operations, ['operation_id', 'staff_id', 'staff_name', 'charge_id', 'oper_type_id', 'oper_type_name', 'amount', 'note', 'access_to_hidden_salary', 'wage']);
+  
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => {x.disabled = x.enabled == 'N'; x.parent_id = x.parent_id || ''})
+                 .value();
+  q.only_one_oper_type = d.oper_type_id ? 'Y' : 'N';
+  q.tConfirmApplyAmount = t('apply amount to empty fields?');
+  q.tConfirmApplyNote = t('apply note to empty fields?');
+  q.t_no_access = t('no access to wage')();
+  q.by_percentage = 'N';
+  
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom gutter-b">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>document date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.document_date" b-date-picker required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>document number</t><r ng-if="d.document_id"/></label>
+              <input type="text" class="form-control" ng-model="d.document_number" b-maxlength="50" ng-required="d.document_id"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>document name</t></label>
+            <input type="text" class="form-control" ng-model="d.document_name" b-maxlength="150"/>
+          </div>
+          <div class="form-group">
+            <label><t>division name</t></label>
+            <b-tree-select
+              origin="q.divisions"
+              id-key="division_id"
+              model="d.division_id"/>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>month</t></label>
+              <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="changeMonth()" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>currency name</t><r/></label>
+            <b-input name="currencies"
+                     model="d.currency_name | name"
+                     model-key="d.currency_id | currency_id"
+                     column="round_model"
+                     on-select="setCurrency(row)"
+                     on-delete="setCurrency({})"
+                     is-add="fi.add_currency"
+                     is-view="fi.select_currency"
+                     on-add="addCurrency(value)"
+                     on-view="selectCurrency()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>calculation type</t></label><br/>
+              <label class="radio">
+                <input type="radio" value="N" ng-model="q.by_percentage"/><span><t>by selected amount</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" value="Y" ng-model="q.by_percentage"/><span><t>by percentage</t></span>
+              </label>
+            </div>
+            <div class="col-sm mb-4" ng-if="q.by_percentage == 'Y'">
+              <label><t>percentage amount(%)</t></label>
+              <div class="form-row">
+                <div class="col-8">
+                  <input type="text" class="form-control" b-number precision="3" scale="0" ng-model="q.percentage_amount"/>
+                </div>
+                <div class="col-6">
+                  <button type="button" class="btn btn-default" ng-disabled="!q.percentage_amount" ng-click="fillAmountByPercentage()"><t>calc</t></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group mb-0 pt-8">
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="q.only_one_oper_type" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>use only one operation type</t></span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group" ng-if="q.only_one_oper_type == 'Y'">
+                <label><t>oper type name</t><r/></label>
+                <b-input name="oper_type"
+                         model="d.oper_type_name | name"
+                         model-key="d.oper_type_id | oper_type_id"
+                         on-change="changeOperTypeQuery(query, value)"
+                         on-select="setOperType(d, row)"
+                         on-delete="setOperType(d, {})"
+                         is-add="accessAddOperType()"
+                         is-view="accessListOperType()"
+                         on-add="addOperType(d, value)"
+                         on-view="selectOperType(d)"
+                         required-key>
+                {{ row.name }}
+              </b-input>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row mt-4 mb-2">
+        <div class="col-sm-12">
+          <button type="button" class="btn btn-default" ng-click="addOperation()"><t>add</t></button>
+          <button type="button" class="btn btn-default" ng-click="fill()"><t>fill</t></button>
+          <button type="button" class="btn btn-success" ng-if="fi.select_staff" ng-click="setStaffs()"><t>select</t></button>
+          <button type="button" class="btn btn-danger" ng-click="removeOperation()" ng-show="q.checked.has">
+            <t p1="q.checked.size">delete $1</t>
+          </button>
+        </div>
+        <div class="col-sm-12">
+          <b-pg-controller name="table"/>
+        </div>
+      </div>
+      <b-pg-grid name="table" local-data="d.operations" on-check="onCheck(checked)" sort="staff_name" iterator="item" search="staff_name, oper_type_name" limit="35" current-limit="1000">
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1"/>
+          <b-pg-col name="staff_name" size="5">
+            <div class="form-group">
+              <b-input name="staffs"
+                       model="item.staff_name | name"
+                       model-key="item.staff_id | staff_id"
+                       column="staff_number"
+                       search="staff_number, name"
+                       is-view="fi.select_staff"
+                       on-change="changeStaffQuery(query, value)"
+                       on-view="selectStaff(item)"
+                       on-select="setStaff(item, row)"
+                       on-delete="setStaff(item, {})">
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-18"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number }}</div>
+                  <div class="col-sm-18">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="oper_type_name" size="7">
+            <div class="form-group" ng-if="item.staff_id && q.only_one_oper_type == 'N'">
+              <b-input name="oper_type"
+                       model="item.oper_type_name | name"
+                       model-key="item.oper_type_id | oper_type_id"
+                       on-change="changeOperTypeQuery(query, value)"
+                       on-select="setOperType(item, row)"
+                       on-delete="setOperType(item, {})"
+                       is-add="accessAddOperType()"
+                       is-view="accessListOperType()"
+                       on-add="addOperType(item, value)"
+                       on-view="selectOperType(item)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="amount" format="number" size="5">
+            <div class="input-group" ng-if="item.access_to_hidden_salary == 'Y'">
+              <input type="text" class="form-control" ng-model="item.amount" b-number/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyAmount() }}" on-click-yes="applyData(item, 'amount')">
+                  <i class="fa fa-check"/>
+                </button>
+              </div>
+            </div>
+            <span class="form-view" ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+          </b-pg-col>
+          <b-pg-col name="note" size="5"> 
+            <div class="input-group">
+              <input type="text" class="form-control" ng-model="item.note" b-maxlength="300"/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyNote() }}" on-click-yes="applyData(item, 'note')">
+                  <i class="fa fa-check"/>
+                </button>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

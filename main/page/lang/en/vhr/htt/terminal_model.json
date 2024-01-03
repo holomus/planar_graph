@@ -1,0 +1,12 @@
+{
+ "active": "Active",
+ "name": "Name",
+ "passive": "Inactive",
+ "photo": "Photo",
+ "save": "Save",
+ "save?": "Save?",
+ "state": "Status",
+ "support face recognation": "Facial recognition support",
+ "support fprint": "Fingerprint support",
+ "support rfid card": "Support RFID card"
+}

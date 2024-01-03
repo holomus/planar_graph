@@ -1,0 +1,17 @@
+{
+ "CSV": "CSV",
+ "date": "Период",
+ "dismissal": "Увольнение",
+ "division": "Подразделения",
+ "division group": "Группа подразделений",
+ "Excel": "EXCEL",
+ "generate": "Составить отчет",
+ "hiring (new)": "Принятые на работу (Новые)",
+ "Html": "HTML",
+ "jobs": "Должности",
+ "parameters": "Фильтр",
+ "transfers arrivals": "Перемещенные (Прибывшие)",
+ "transfers departed": "Перемещенные (Ушедшие)",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

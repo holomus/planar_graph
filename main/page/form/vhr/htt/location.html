@@ -1,0 +1,310 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, xparam, t) {
+  var d = _.isUndefined(model.data.location_id) ? _.extend(model.data, xparam) : model.data;
+  var q = model.references || {};
+  var map = page.getMap('Map'),
+      latlng = d.latlng.split(','),
+      marker;
+
+  d.polygon = d.polygon_vertices?.join('\r\n');
+  q.regions = _.mapRows(q.regions, ['region_id', 'name', 'parent_id']);
+  q.has_polygon = d.polygon_vertices?.length ? 'Y' : 'N';
+
+  map.init({
+    lat: latlng[0],
+    lng: latlng[1],
+    zoom: 15,
+    fullscreen: true,
+    mode: 'select',
+    selectionHandler: polygonHandler,
+    toolbar: {
+      drawRectangle: false,
+      removalMode: false,
+      rotateMode: false,
+      oneBlock: true,
+    }
+  });
+
+  reloadMap();
+
+  function polygonHandler(selectedMarkers, e) {
+    // ignore "selectedMarkers"
+    q.has_polygon = 'Y';
+    // get polygon vertices and remove polygon
+    map.then(api => api.removeLayer(e.layer));
+    d.polygon = _.map(e.layer.toGeoJSON().geometry.coordinates[0], p => p[1] + ', ' + p[0]).join('\r\n');
+    reloadMap();
+  }
+
+  function reloadMap() {
+    q.mapIsReady = false;
+
+    function reload(api) {
+      marker?.remove();
+      api.removeCircle('location');
+      api.removePolygon('polygon');
+      
+      if (q.has_polygon == 'Y') {
+        api.addToolbar();
+      } else {
+        api.removeToolbar();
+      }
+
+      if (isValidLatlng(d.latlng)) {
+        var latlng = d.latlng.split(',');
+        marker = api.selectLatLng(latlng[0], latlng[1], null, e => { d.latlng = e.latlng.lat + ',' + e.latlng.lng; drawCircle(); });
+        drawCircle();
+      }
+      if (q.has_polygon == 'Y' && isValidPolygon(d.polygon)) {
+        let vertices = _.map(parsePolygon(), point => _.map(point.split(','), parseFloat));
+        api.addPolygon('polygon', vertices, { color: '#8950fc' });
+        api.polygonLayer('polygon').on('pm:edit', e => polygonHandler(null, e));
+      }
+      q.mapIsReady = true;
+    }
+    map.then(reload);
+  }
+
+  function drawCircle() {
+    if (!isValidLatlng(d.latlng)) return;
+    map.then(function (api) {
+      api.removeCircle('location');
+      if (d.accuracy) api.addCircle('location', d.latlng.split(','), { radius: d.accuracy }, `<span>${t('accuracy $1 m')(d.accuracy)}</span>`);
+    });
+  }
+
+  function flyToLocation() {
+    if (!isValidLatlng(d.latlng)) return;
+    var latlng = d.latlng.split(',');
+    map.then(api => {
+      api.flyTo(latlng, 16);
+    });
+  }
+
+  function flyToPolygon(else_fly_to_loc = false) {
+    if (q.has_polygon != 'Y' || !isValidPolygon(d.polygon)) {
+      if (else_fly_to_loc) flyToLocation();
+      return;
+    };
+    let vertices = _.map(parsePolygon(), point => _.map(point.split(','), parseFloat));
+    let bounds = _.map(vertices, x => {
+      let point = {};
+      point.lat = x[0];
+      point.lng = x[1];
+      return point;
+    });
+    map.then(api => {
+      api.fitBounds(bounds)
+    });
+  }
+
+  function isValidLatlng(latlng) {
+    try {
+      let [lat, lng] = _.map(latlng.split(','), x => x.replace(/\s/g, ''));
+      var n = /^[+-]?((\.\d+)|(\d+(\.\d+)?))$/;
+      if (!n.test(lat) || !n.test(lng)) return false;
+      lat = parseFloat(lat);
+      lng = parseFloat(lng);
+      return (-90 <= lat && lat <= 90 && -180 <= lng && lng <= 180);
+    } catch (er) {
+      return false;
+    }
+  }
+
+  function isValidPolygon(polygon) {
+    if (!polygon) return false;
+    let vertices = parsePolygon();
+    if (!vertices.length) return false;
+    return !_.any(vertices, point => !isValidLatlng(point));
+  }
+
+  function parsePolygon() {
+    if (!d.polygon) return [];
+    try {
+      var vertices = JSON.parse(d.polygon).coordinates[0][0];
+      vertices = _.map(vertices, point => point[1] + ', ' + point[0]) || [];
+      d.polygon = vertices.join('\r\n');
+      return vertices;
+    } catch {
+      return d.polygon.split(/\r?\n/).filter(point => point) || [];
+    }
+  }
+
+  function validate() {
+    if (!isValidLatlng(d.latlng)) return false;
+    if (q.has_polygon == 'Y' && !isValidPolygon(d.polygon)) return false;
+    return true;
+  }
+
+  function save() {
+    if (!page.valid(scope.form) || !validate()) {
+      if (q.has_polygon == 'Y' && !isValidPolygon(d.polygon)) slideDown('polygon-points');
+      return;
+    };
+    let data = _.pick(d, 'location_id', 'name', 'location_type_id', 'timezone_code', 'region_id', 'address', 'latlng', 'accuracy', 'bssids', 'prohibited', 'state', 'code');
+    if (q.has_polygon == 'Y') {
+      data.polygon_vertices = parsePolygon();
+    } else {
+      data.polygon_vertices = [];
+    }
+    page.post(':save', data).then(page.close, page.alert);
+  }
+
+  function setLocationType(row) {
+    if (!row) return;
+    d.location_type_id = row.location_type_id;
+    d.location_type_name = row.name;
+  }
+
+  function addLocationType(value) {
+    fi.add_location_type(null, setLocationType, { name: value });
+  }
+
+  function selectLocationType() {
+    fi.select_location_type(null, setLocationType);
+  }
+
+  function slideToggle(name) {
+    var block = page.$content.find('#' + name);
+    block.find('#vhr-slider-btn').find('.fas').toggleClass('fa-chevron-right').toggleClass('fa-chevron-down');
+    block.children('#vhr-slider-content').slideToggle(300);
+  }
+
+  function slideDown(name) {
+    var block = page.$content.find('#' + name);
+    block.find('#vhr-slider-btn').find('.fas').removeClass('fa-chevron-right').addClass('fa-chevron-down');
+    block.children('#vhr-slider-content').slideDown(300);
+  }
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+            </div>
+            <div class="form-group">
+              <label><t>address</t></label>
+              <textarea rows="1" class="form-control" style="resize: vertical;" b-maxlength="200" ng-model="d.address"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>location type</t></label>
+              <b-input name="location_types"
+                       model="d.location_type_name | name"
+                       model-key="d.location_type_id | location_type_id"
+                       column="color"
+                       is-add="fi.add_location_type"
+                       on-add="addLocationType(value)"
+                       is-view="fi.select_location_type"
+                       on-view="selectLocationType(row)">
+                <div style="width:20px; height:20px; border-radius:3px;" ng-style="{ 'background-color': row.color }"></div>&nbsp;{{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm mb-sm-0">
+                <label><t>region name</t></label>
+                <b-tree-select
+                  origin="q.regions"
+                  id-key="region_id"
+                  model="d.region_id"/>
+              </div>
+              <div class="col-sm">
+                <label><t>timezone name</t></label>
+                <b-input name="timezones"
+                         model="d.timezone_name | name"
+                         model-key="d.timezone_code | timezone_code"
+                         search="name,timezone_code"
+                         sort="order_no,name">
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-12">{{ row.timezone_code }}</div>
+                </b-input>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>code</t></label>
+                <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>bssids</t></label>
+                <input type="text" class="form-control" ng-model="d.bssids" b-maxlength="2000"/>
+                <span class="form-text text-muted mt-0">
+                  <t>if you have several bssids, you must seperate with ; (semicolon)</t>
+                </span>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-sm">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+              <div class="form-group col-sm">
+                <label><t>prohibited</t></label><br/>
+                <label class="checkbox">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.prohibited"/>
+                  <span>
+                    <t ng-if="d.prohibited == 'Y'">yes</t>
+                    <t ng-if="d.prohibited == 'N'">no</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm">
+                <label><t>latlng</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.latlng" b-validate="{ s: isValidLatlng(d.latlng) }" ng-model-options="{ debounce: 500 }" ng-change="reloadMap(); flyToLocation()" ng-blur="reloadMap(); flyToLocation()" required/>
+              </div>
+              <div class="col-sm mb-sm-0 mb-4">
+                <label><t>accuracy</t><r/></label>
+                <input type="text" class="form-control" b-number scale="0" precision="20" ng-model="d.accuracy" ng-change="drawCircle()" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="q.has_polygon" ng-change="reloadMap(); flyToPolygon(true)" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>add polygon vertices</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <div ng-show="q.mapIsReady">
+                <b-map name="Map" width="100%" height="400px"/>
+              </div>
+              <div class="text-center" ng-hide="q.mapIsReady" style="line-height:300px;">
+                <label class="spinner spinner-success spinner-lg mr-15"></label>
+              </div>
+            </div>
+            <div id="polygon-points" ng-if="q.has_polygon == 'Y'">
+              <div id="vhr-slider-btn" class="cursor-pointer" ng-click="slideToggle('polygon-points')">
+                <t>polygon points</t>
+                <i class="ml-1 fas fa-chevron-right"></i>
+              </div>
+              <div id="vhr-slider-content" class="mt-2" style="display: none;">
+                <textarea class="form-control" rows="15" ng-model="d.polygon" ng-model-options="{ debounce: 500 }" ng-change="reloadMap(); flyToPolygon()" ng-blur="reloadMap(); flyToPolygon()" b-validate="{ s: isValidPolygon(d.polygon) }" required></textarea>
+                <span class="text-danger" ng-hide="!d.polygon || isValidPolygon(d.polygon)"><t>invalid polygon input</t></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{lang_count} lang(s)?": "Удалить языки в количестве <b>$1</b>?",
+ "delete lang $1{lang_name}?": "Удалить язык <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.lang_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

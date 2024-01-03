@@ -1,0 +1,243 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ company_id: param.company_id });
+  if (page.isInit()) {
+    t.filter('person_id', '=', [null]);
+  }
+
+  let tg = page.grid('table');
+
+  tg.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageSmall(row.photo_sha) }"/>` : null;
+  });
+
+  let match_t = page.query('table_persons');
+  match_t.param({ company_id: param.company_id });
+  if (page.isInit()) {
+    match_t.filter('person_code', '=', [null]);
+  }
+
+  let match_tg = page.grid('table_persons');
+
+  match_tg.asHtml('photo_html', 'photo_sha', function(row) {
+    return row.photo_sha ? `<img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="${ page.loadImageSmall(row.photo_sha) }"/>` : null;
+  });
+});
+page.ctrl(function(scope, fi, t, param, $q, $timeout, bAlert) {
+  let q = {
+    nophoto_persons: {},
+  }, p = {};
+
+  function deleteAction(message, person_code) {
+    page.confirm(message, function() {
+      fi.delete({ person_code: person_code, company_id: param.company_id, })
+        .then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete person $1{fisrt_name}?')(row.fisrt_name), row.person_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{person_count} person(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'person_code'));
+  }
+
+  async function getPersons() {
+    let data = { 
+      company_id: param.company_id,
+      page_num: 1
+    }
+    try {
+      let result = { item_count: 1 };
+      let max_loop = 100;
+      while (max_loop > 0 && result.item_count > 0) {
+        result = await page.post(':get_persons', data);
+        data.page_num += 1;
+        max_loop -= 1;
+      }
+      if (max_loop <= 0 && result.item_count >= 0) 
+        notify(t('loop ended before loading all data')(), 'danger');
+      page.reload ();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  function loadPersonPhoto(row) {
+    let data = {
+      company_id: param.company_id,
+      person_code: row.person_code,
+      photo_url: row.photo_url
+    }
+    page.post(':load_person_photo', data)
+        .then(page.reload, page.alert);
+  }
+
+  async function loadPersonPhotos() {
+    let photo_promises = [];
+    try {
+      _.each(q.nophoto_persons.rows, function(row) {
+        let data = {
+          company_id: param.company_id,
+          person_code: row.person_code,
+          photo_url: row.photo_url
+        };
+        photo_promises.push(page.post(':load_person_photo', data));
+      });
+      await $q.all(photo_promises);
+      page.reload();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('nophoto_persons', checked, x => !x.photo_sha && !!x.photo_url);
+    if (q.checked.size == 1) {
+      let person = _.first(q.checked.rows());
+      q.person_code = person.person_code;
+      q.photo_sha = person.photo_sha;
+      q.rfid_code = person.rfid_code;
+    }
+    else {
+      q.person_code = null;
+      q.photo_sha = null;
+      q.rfid_code = null;
+    }
+  }
+
+  function onMatchCheck(checked) {
+    q.matchChecked = checked;
+    if (q.matchChecked.size == 1) q.person_id = _.first(q.matchChecked.rows()).person_id;
+    else q.person_id = null;
+  }
+
+  function matchPersons() {
+    let data = {
+      company_id: param.company_id,
+      person_id: q.person_id,
+      person_code: q.person_code,
+      photo_sha: q.photo_sha,
+      rfid_code: q.rfid_code,
+    }
+    fi.match_persons(data).then(page.reload, page.alert);
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(row) {
+    p.extra_info = JSON.stringify(JSON.parse(row.extra_info),null, 2);
+    p.extra_info = (p.extra_info).trim();
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="form-row mb-2">
+          <div class="col-sm-12">
+            <button type="button" class="btn btn-primary" ng-click="getPersons()"><t>get persons</t></button>
+            <button type="button" class="btn btn-primary" ng-click="loadPersonPhotos()" ng-show="q.nophoto_persons.has"><t p1="q.nophoto_persons.size">load $1 photos</t></button>
+            <button type="button" class="btn btn-primary" ng-click="matchPersons()" ng-if="fi.match_persons" ng-show="!!q.person_id && !!q.person_code"><t>match persons</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+            <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>        
+          </div>
+          <div class="col-sm-12 b-right">
+            <b-grid-controller name="table"/>
+          </div>
+        </div>
+        <b-grid name="table" 
+                required="person_code, first_name, extra_info, photo_url, photo_sha, rfid_code" 
+                on-check="onCheck(checked)" search="first_name, last_name" 
+                extra-columns="photo_url">
+          <b-row>
+            <b-col name="person_code" size="3"/>
+            <b-col name="photo_sha" as-html="photo_html" size="3"/>
+            <b-col name="first_name" size="4"/>
+            <b-col name="last_name" size="4"/>
+            <b-col name="rfid_code" size="4"/>
+            <b-col name="person_id" size="4"/>
+          </b-row>
+
+          <b-action>
+            <button type="button" class="btn btn-default" ng-click="showModal(row)" ng-if="!!row.extra_info"><t>details</t></button>
+            <button type="button" class="btn btn-default" ng-click="loadPersonPhoto(row)" ng-if="!row.photo_sha && !!row.photo_url"><t>load photo</t></button>
+            <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+          </b-action>
+
+          <b-filter name="person_id" directive="equal"/>
+          <b-filter name="first_name"/>
+          <b-filter name="last_name"/>
+        </b-grid>
+      </div>
+      <div class="col-sm-12">
+        <div class="offset-sm-8 col-sm-16 b-right mb-2">
+          <b-grid-controller name="table_persons"/>
+        </div>
+        <b-grid name="table_persons" 
+                required="person_id, photo_sha" 
+                on-check="onMatchCheck(checked)" 
+                search="name" 
+                searchable="first_name, last_name"
+                extra-columns="person_code">
+          <b-row>
+            <b-col name="person_id" size="3"/>
+            <b-col name="photo_sha" as-html="photo_html" size="3"/>
+            <b-col name="first_name" size="5"/>
+            <b-col name="last_name" size="5"/>
+            <b-col name="name" size="5"/>
+          </b-row>
+
+          <b-filter name="person_id" directive="equal"/>
+          <b-filter name="name"/>
+          <b-filter name="first_name" extra/>
+          <b-filter name="last_name" extra/>
+        </b-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>extra details</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <pre><code>{{ p.extra_info }}</code></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-if="fi.update_company_info" ng-click="update_company_info()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div> 

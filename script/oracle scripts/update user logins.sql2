@@ -1,0 +1,18 @@
+
+update Md_Users w
+   set w.Login    = Lower(Md_Lang.Encode_Ascii((select k.First_Name || '.' || k.Last_Name
+                                                 from Mr_Natural_Persons k
+                                                where k.Person_Id = w.User_Id))),
+       w.Password = Fazo.Hash_Sha1(w.User_Id)
+ where w.Company_Id = 560
+   and w.Login is null
+/* and not exists (select 1
+ from Md_Users q
+where q.Company_Id = 560
+  and q.User_Id != w.User_Id
+  and Lower(Md_Lang.Encode_Ascii((select k.First_Name || '.' || k.Last_Name
+                                   from Mr_Natural_Persons k
+                                  where k.Person_Id = w.User_Id))) =
+      Lower(Md_Lang.Encode_Ascii((select k.First_Name || '.' || k.Last_Name
+                                   from Mr_Natural_Persons k
+                                  where k.Person_Id = q.User_Id))))*/

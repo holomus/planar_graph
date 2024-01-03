@@ -1,0 +1,16 @@
+{
+ "before": "Previous Value",
+ "current": "Current Value",
+ "extra robot": "Additional",
+ "field_name": "Field",
+ "main robot": "General",
+ "pg.{{ data.tab }}.before": "Previous Value",
+ "pg.{{ data.tab }}.current": "Current Value",
+ "pg.{{ data.tab }}.field_name": "Field",
+ "robot divisions": "Position Division",
+ "robot indicators": "Indicators",
+ "robot job groups": "Job Group",
+ "robot oper types": "Operation Type",
+ "robot roles": "Role",
+ "robot vacation limit": "Vacation limit"
+}

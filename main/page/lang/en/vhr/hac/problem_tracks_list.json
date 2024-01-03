@@ -1,0 +1,10 @@
+{
+ "table.device_name": "Device",
+ "table.device_type_name": "Device Type",
+ "table.event_type_name": "Mark type",
+ "table.person_name": "Employee",
+ "table.photo_exists_name": "Photo",
+ "table.photo_sha": "Photo for identifying",
+ "table.track_time": "Time",
+ "table.track_type_name": "Mark Type"
+}

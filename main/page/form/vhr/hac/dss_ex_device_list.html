@@ -1,0 +1,176 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+
+  let tg = page.grid('table');
+  let status_class = { 0: 'danger', 1: 'success' };
+  
+  tg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ status_class[row.status] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t, param, $q, $timeout, bAlert) {
+  let q = {
+    unknown_devices: {},
+    is_subpage: scope.bPage.pageType() == 'subpage',
+  }, p = {};
+
+  function fetchQuery() {
+    q.checked = {};
+    q.unknown_devices = {};
+
+    page.query('table').param({ server_id: param.server_id });
+    page.grid('table').fetch();
+  }
+
+  function deleteAction(message, device_code) {
+    page.confirm(message, function() {
+      fi.delete({ device_code: device_code, server_id: param.server_id })
+        .then(fetchQuery, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete device $1{device_name}?')(row.device_name), row.device_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{device_count} device(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_code'));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('unknown_devices', checked, x => !x.serial_number);
+  }
+
+  async function getDevices() {
+    let data = { 
+      server_id: param.server_id, 
+      org_code: param.org_code,
+      page_num: 1
+    };
+    try {
+      let result = { item_count: 1 };
+      let max_loop = 100;
+      while (max_loop > 0 && result.item_count > 0) {
+        result = await page.post(':get_devices', data);
+        data.page_num += 1;
+        max_loop -= 1;
+      }
+      if (max_loop <= 0 && result.item_count >= 0) 
+        notify(t('loop ended before loading all data')(), 'danger'); 
+      fetchQuery();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  function getDeviceInfo(row) {
+    page.post(':get_device_info', { server_id: param.server_id, device_code: row.device_code })
+        .then(fetchQuery, page.alert);
+  }
+
+  async function getDeviceInfos() {
+    let info_promises = [];
+    try {
+      _.each(q.unknown_devices.rows, function(row) {
+        info_promises.push(page.post(':get_device_info', { server_id: param.server_id, device_code: row.device_code }));
+      });
+      await $q.all(info_promises);
+      fetchQuery();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(row) {
+    p.extra_info = JSON.stringify(JSON.parse(row.extra_info),null, 2);
+    p.extra_info = (p.extra_info).trim();
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="getDevices()"><t>get devices</t></button>
+    <button type="button" class="btn btn-primary" ng-click="getDeviceInfos()" ng-show="q.unknown_devices.has"><t p1="q.unknown_devices.size">get $1 device infos</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-12">
+        <button type="button" class="btn btn-primary" ng-click="getDevices()"><t>get devices</t></button>
+        <button type="button" class="btn btn-primary" ng-click="getDeviceInfos()" ng-show="q.unknown_devices.has"><t p1="q.unknown_devices.size">get $1 device infos</t></button>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table" required="device_code, device_name, serial_number, extra_info" on-check="onCheck(checked)" search="device_name" extra-column="department_code, register_code, device_ip">
+      <b-row>
+        <b-col name="device_code" size="4"/>
+        <b-col name="device_name" size="5"/>
+        <b-col name="serial_number" size="4"/>
+        <b-col name="status_name" as-html="status_html" size=3/>
+        <b-col name="created_on" size="3"/>
+        <b-col name="modified_on" size="3"/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="getDeviceInfo(row)"><t>get device info</t></button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showModal(row)" ng-if="!!row.extra_info"><t>details</t></button>
+      </b-action>
+
+      <b-filter name="status" decorate-with="status_name"/>
+    </b-grid>
+  </div>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>extra details</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <pre><code>{{ p.extra_info }}</code></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

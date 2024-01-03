@@ -1,0 +1,23 @@
+{
+ "active": "Активный",
+ "add": "Добавить",
+ "begin time": "Время начала",
+ "coefficient": "Коэффициент",
+ "coefficient must be greater than 1 for $1 rule(s)": "Коэффициент должен быть больше 1 для правил(а) $1",
+ "delete $1": "Удалить $1",
+ "division": "Подразделение",
+ "end time": "Время конца",
+ "main info": "Общая информация",
+ "name": "Название",
+ "passive": "Неактивный",
+ "pg.rules.begin_time": "Время начала",
+ "pg.rules.end_time": "Время конца",
+ "pg.rules.nighttime_coef": "Коэффициент Доплаты",
+ "pg.rules.rownum": "№",
+ "policy month": "Месяц",
+ "policy rules": "Правила",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "state": "Статус",
+ "there is intersection between $1 rule(s)": "Пересечение между $1 правилами"
+}

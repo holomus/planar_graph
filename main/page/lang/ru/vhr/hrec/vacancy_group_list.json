@@ -1,0 +1,17 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{vacancy_group_count} vacancy group(s)?": "Удалить $1 справочник(ов) для вакансий?",
+ "delete vacancy group $1{vacancy_group_name}?": "Удалить <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.is_required_name": "Обязательный",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.multiple_select_name": "Множественный выбор",
+ "table.name": "Название",
+ "table.order_no": "Порядковый номер",
+ "table.state_name": "Состояние",
+ "table.vacancy_group_id": "ИД"
+}

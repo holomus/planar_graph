@@ -1,0 +1,21 @@
+{
+ "bank account": "Расчетный счет",
+ "begin month": "С",
+ "book": "Забронировать",
+ "book?": "Забронировать заём?",
+ "booked date": "Дата брони",
+ "cashbox": "Касса",
+ "complete": "Завершить",
+ "complete?": "Завершить выдачу займа?",
+ "credit amount": "Сумма",
+ "credit date": "Дата займа",
+ "credit number": "Номер займа",
+ "currency name": "Валюта",
+ "employee": "Сотрудник",
+ "end month": "До",
+ "note": "Примечание",
+ "payment type": "Тип оплаты",
+ "save": "Сохранить",
+ "save?": "Сохранить заём?",
+ "wage": "Оклад"
+}

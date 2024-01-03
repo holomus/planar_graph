@@ -1,0 +1,737 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, xparam, bHttp) {
+  var d = _.omit(model, 'indicators', 'oper_types', 'oper_type_indicators', 'references', 'access_edit_div_job_of_robot'),
+      q = model.references;
+
+  function pageId(key) {
+    return key + page.id();
+  }
+
+  // robot group
+  function setRobotGroup(row) {
+    if (!row) return;
+    d.robot_group_id = row.robot_group_id;
+    d.robot_group_name = row.name;
+  }
+
+  function addRobotGroup(value) {
+    fi.add_robot_group(null, setRobotGroup, { name: value });
+  }
+
+  function selectRobotGroup() {
+    fi.select_robot_group(null,  setRobotGroup);
+  }
+
+  // wage scale
+  function setWageScale(row) {
+    if (!row) return;
+    d.wage_scale_id = row.wage_scale_id;
+    d.wage_scale_name = row.name;
+
+    page.post(':get_wage_scale_indicator_ids', { wage_scale_id: d.wage_scale_id, opened_date: d.opened_date }).then(res => {
+      q.wage_scale_indicator_ids = res.ids ? res.ids : [];
+    }, page.alert);
+  }
+
+  function addWageScale(value) {
+    fi.add_wage_scale(null, setWageScale, { name: value });
+  }
+
+  function selectWageScale() {
+    fi.select_wage_scale(null, setWageScale);
+  }
+
+  // job
+  function changeQueryJob(query, value) {
+    query.param({ division_id: d.division_id }).searchValue(value);
+  }
+
+  function setJob(row) {
+    if (!row) return;
+    d.job_id = row.job_id;
+    d.job_name = row.name;
+    loadFromJobTemplate();
+    // get job roles
+    if (!row.job_id) return;
+    page.post(':get_job_roles', { job_id: row.job_id }).then(result => {
+      d.roles = _.mapRows(result.roles, ['role_id', 'name']);
+    });
+  }
+
+  function selectJob() {
+    fi.select_job({ division_id: d.division_id }, setJob, { where: ['state', '=', 'A'] });
+  }
+
+  function addJob(value) {
+    fi.add_job(null, setJob, { name: value, division_ids: [d.division_id] });
+  }
+
+
+  function changeDivision() {
+    q.inited ? setJob({}) : q.inited = !q.inited;
+    d.org_unit_id = null;
+
+    if (d.division_id && q.old_division_id != d.division_id) {
+      bHttp.unblockOnce();
+      page.post(':get_org_units', { division_id: d.division_id }).then(result => {
+        q.org_units = _.mapRows(result.org_units, ['org_unit_id', 'name', 'parent_id']);
+        q.old_division_id = d.division_id;
+      }, page.alert);
+    }
+  }
+
+  // rank
+  function setRank(row) {
+    if (!row) return;
+    d.rank_id = row.rank_id;
+    d.rank_name = row.name;
+    loadFromJobTemplate();
+  }
+
+  function addRank(value) {
+    fi.add_rank(null, setRank, { name: value });
+  }
+
+  function selectRank() {
+    fi.select_rank(null,  setRank);
+  }
+
+  // schedule
+  function setSchedule(row) {
+    if (!row) return;
+    d.schedule_id = row.schedule_id;
+    d.schedule_name = row.name;
+  }
+
+  function addSchedule(value) {
+    fi.add_schedule(null, setSchedule, { name: value });
+  }
+
+  function selectSchedule() {
+    fi.select_schedule(null,  setSchedule);
+  }
+
+  // labor function
+  function setLaborFunction(row) {
+    if (!row) return;
+    d.labor_function_id = row.labor_function_id;
+    d.labor_function_name = row.name;
+  }
+
+  function addLaborFunction(value) {
+    fi.add_labor_function(null, setLaborFunction, { name: value });
+  }
+
+  function selectLaborFunction() {
+    fi.select_labor_function(null,  setLaborFunction);
+  }
+
+  // ------------------------------ load from jobTemplate -----------------------//
+  function loadFromJobTemplate() {
+    if (d.job_id && d.division_id) {
+      bHttp.unblockOnce();
+      page.post(':get_template', _.pick(d, 'division_id', 'job_id', 'rank_id', 'employee_id')).then((res) => {
+        _.extend(d, _.omit(res, 'oper_types', 'indicators'));
+        res.indicators = _.mapRows(res.indicators, ['indicator_id', 'name', 'indicator_value']);
+
+        _.each(res.indicators, indicator => {
+          d.indicators[indicator.indicator_id] = d.indicators[indicator.indicator_id] || indicator;
+          d.indicators[indicator.indicator_id].indicator_value = indicator.indicator_value;
+        });
+        res.oper_type_indicators = _.mapRows(res.oper_type_indicators, ['oper_type_id', 'indicator_id']);
+        d.oper_types = _.chain(res.oper_types)
+          .mapRows(['oper_type_id', 'oper_type_name', 'operation_kind'])
+          .each(x => x.indicator_ids = _.chain(res.oper_type_indicators)
+            .filter({ oper_type_id: x.oper_type_id })
+            .pluck('indicator_id')
+            .value())
+          .groupBy('operation_kind')
+          .value();
+
+        _.each(['A', 'D'], operation_kind => {
+          d.oper_types[operation_kind] = d.oper_types[operation_kind] || [];
+        });
+      }, page.alert)
+    }
+  }
+
+  // oper type
+  function addAccrual() {
+    d.oper_types['A'].push({});
+  }
+
+  function addDeduction() {
+    d.oper_types['D'].push({});
+  }
+
+  function deleteOperTypeItem(oper_types, item) {
+    let index = _.findIndex(oper_types, item);
+    oper_types.splice(index, 1);
+  }
+
+  function whereOperType(operation_kind) {
+    let oper_type_ids = _.chain(d.oper_types[operation_kind]).pluck('oper_type_id').compact().value() || [],
+        where = ['operation_kind', '=', operation_kind];
+
+
+    if (!_.isEmpty(oper_type_ids)) {
+      return  ['and', [where, ['oper_type_id', '<>', oper_type_ids]]];
+    } else return where;
+  }
+
+  function changeOperTypeQuery(query, value, operation_kind) {
+    query.where(whereOperType(operation_kind)).searchValue(value);
+  }
+
+  function setOperType(item, row) {
+    if (!row) return;
+    item.oper_type_id = row.oper_type_id;
+    item.oper_type_name = row.name;
+    item.indicator_ids = [];
+
+    if (item.oper_type_id) {
+      page.post(':get_indicators', _.pick(item, 'oper_type_id')).then((result) => {
+        result = _.mapRows(result, ['indicator_id', 'name']);
+        _.each(result, indicator => {
+          d.indicators[indicator.indicator_id] = d.indicators[indicator.indicator_id] || indicator;
+        });
+        item.indicator_ids = _.pluck(result, 'indicator_id');
+      }, page.alert);
+    }
+  }
+
+  function addAccrualOperType(item, value) {
+    fi.add_accrual_oper_type(null, _.partial(setOperType, item), { name: value });
+  }
+
+  function addDeductionOperType(item, value) {
+    fi.add_deduction_oper_type(null, _.partial(setOperType, item), { name: value });
+  }
+
+  function selectAccrual(item) {
+    fi.select_accrual_oper_type(null, _.partial(setOperType, item), { where: whereOperType('A') });
+  }
+
+  function selectDeduction(item) {
+    fi.select_deduction_oper_type(null, _.partial(setOperType, item), { where: whereOperType('D') });
+  }
+
+  function validateFte() {
+    q.planned_fte_valid = d.planned_fte >= 0 && d.planned_fte <= 1;
+  }
+
+  function save() {
+    if(page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let variables = [
+          'robot_group_name',
+          'wage_scale_name',
+          'division_name',
+          'job_name',
+          'rank_name',
+          'schedule_name',
+          'labor_function_name',
+          'currency_name',
+          'divisions',
+          'oper_types',
+          'indicators'
+        ];
+
+        let data = _.omit(d, variables);
+        data.role_ids = _.pluck(d.roles, 'role_id');
+        data.job_group_ids = q.restrict_hidden_salary == 'Y' && d.access_all_hidden_salary == 'N' ? _.pluck(d.job_groups, 'job_group_id') : [];
+        data.access_all_hidden_salary = q.restrict_hidden_salary == 'N' ? 'N' : d.access_all_hidden_salary;
+
+        let indicators = [];
+        data.oper_types = [...d.oper_types['A'], ...d.oper_types['D']];
+        _.chain(data.oper_types).pluck('indicator_ids').flatten().compact().unique().each(id => indicators.push(d.indicators[id]));
+        data.indicators = indicators;
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function genName() {
+    let name = '';
+    if (d.job_id) name += d.job_name;
+    if (d.rank_id) name += `, ${d.rank_name}`;
+    if (d.division_id) name += `/${_.findWhere(q.divisions, { division_id : d.division_id }).name}/`;
+    d.name = name;
+  }
+
+  function setContractualWage() {
+    if (d.wage_scale_id) {
+      page.post(':get_wage_scale_indicator_ids', { wage_scale_id: d.wage_scale_id, opened_date: d.opened_date }).then(res => {
+        q.wage_scale_indicator_ids = res.ids ? res.ids : [];
+      }, page.alert);
+    } else q.wage_scale_indicator_ids = [];
+  }
+
+  function changeContractualWage() {
+    if (d.contractual_wage == 'Y') {
+      q.contract_indicator_ids = [];
+    } else {
+      setContractualWage();
+    }
+  }
+
+  function findIndicator(id) {
+    return _.find(q.wage_scale_indicator_ids, (x) => { return x == id }) ? true : false;
+  }
+
+  d.indicators = {};
+  d.oper_types = {};
+
+  q.wage_scale_indicator_ids = [];
+
+  model.oper_type_indicators = _.mapRows(model.oper_type_indicators, ['oper_type_id', 'indicator_id']);
+
+  if (_.isUndefined(d.robot_id)) {
+    _.each(['A', 'D'], operation_kind => {
+      d.oper_types[operation_kind] = [];
+    });
+  } else {
+    setContractualWage();
+    d.oper_types = _.chain(model.oper_types)
+                    .mapRows(['oper_type_id', 'oper_type_name', 'operation_kind'])
+                    .each(x => x.indicator_ids = _.chain(model.oper_type_indicators)
+                                                  .filter({ oper_type_id: x.oper_type_id })
+                                                  .pluck('indicator_id')
+                                                  .value())
+                    .groupBy('operation_kind')
+                    .value();
+
+    d.oper_types['A'] = _.isUndefined(d.oper_types['A']) ? [] : d.oper_types['A'];
+    d.oper_types['D'] = _.isUndefined(d.oper_types['D']) ? [] : d.oper_types['D'];
+  }
+
+  model.indicators = _.mapRows(model.indicators, ['indicator_id', 'name', 'indicator_value']);
+  _.chain(model.indicators).each(indicator => d.indicators[indicator.indicator_id] = indicator);
+
+  d.job_groups = _.mapRows(d.job_groups, ['job_group_id', 'name']);
+
+  q.allowed_divisions = _.chain(q.allowed_divisions)
+                         .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                         .each(x => x.disabled = x.enabled == 'N')
+                         .value();
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.org_units = _.mapRows(q.org_units, ['org_unit_id', 'name', 'parent_id']);
+  q.employment_kinds = _.mapRows(q.employment_kinds, ['kind', 'name']);
+  q.old_division_id = d.division_id;
+  q.access_edit_div_job_of_robot = model.access_edit_div_job_of_robot || 'Y';
+  d.division_id = model.division_id || xparam.division_id;
+  d.roles = _.mapRows(d.roles, ['role_id', 'name']) || [];
+
+  q.tAll = t('access all job group')();
+  q.fte_placeholder = t('if not filled, default it takes 1')();
+  q.planned_fte_valid = true;
+  q.restrict_hidden_salary = fi.restrict_hidden_salary && q.position_enabled && (d.access_all_hidden_salary == 'Y' || !_.isEmpty(d.job_groups) ? 'Y' : 'N');
+
+  if (xparam.by_application) d = _.extend(d, xparam);
+
+  scope.q = q;
+  scope.d = d;
+  scope.$watchGroup(['d.division_id', 'd.job_id', 'd.rank_id'], () => {
+    if (!q.gen_name_inited) q.gen_name_inited = true;
+    else genName();
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>division name</t><r></label>
+                <b-tree-select
+                  name="division"
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"
+                  on-change="changeDivision()"
+                  required
+                  ng-if="q.access_edit_div_job_of_robot == 'Y'"/>
+              <span class="form-view" ng-if="q.access_edit_div_job_of_robot == 'N'">{{ d.division_name }}</span>
+            </div>
+            <div class="form-group" ng-if="q.advanced_org_structure == 'Y'">
+              <label><t>org unit</t></label>
+                <b-tree-select
+                  origin="q.org_units"
+                  id-key="org_unit_id"
+                  model="d.org_unit_id"
+                  disabled="!d.division_id"/>
+            </div>
+            <div class="form-group">
+              <label><t>job name</t><r></label>
+              <b-input name="jobs"
+                       model="d.job_name | name"
+                       model-key="d.job_id | job_id"
+                       on-change="changeQueryJob(query, value)"
+                       on-select="setJob(row)"
+                       on-delete="setJob({})"
+                       is-add="fi.add_job"
+                       is-view="fi.select_job"
+                       on-add="addJob(value)"
+                       on-view="selectJob()"
+                       readonly="!d.division_id || q.access_edit_div_job_of_robot == 'N'"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>rank name</t></label>
+              <b-input name="ranks"
+                       model="d.rank_name | name"
+                       model-key="d.rank_id | rank_id"
+                       column="order_no"
+                       sort="order_no, name"
+                       on-select="setRank(row)"
+                       on-delete="setRank({})"
+                       is-add="fi.add_rank"
+                       is-view="fi.select_rank"
+                       on-add="addRank(value)"
+                       on-view="selectRank()">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>roles</t></label>
+              <b-input
+                  multiple
+                  name="roles"
+                  model="d.roles"
+                  model-key="role_id"
+                  label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="200" required/>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-8">
+                <label><t>state</t></label><br>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+              <div class="col-sm-8">
+                <label><t>position employment kind</t></label><br>
+                <div ng-repeat="employment in q.employment_kinds">
+                  <label class="radio" ng-if="!d.robot_id || d.position_employment_kind == employment.kind">
+                    <input type="radio"
+                           name="position_employment_kind"
+                           value="{{ employment.kind }}"
+                           ng-disabled="!!d.robot_id"
+                           ng-model="d.position_employment_kind"/>
+                    <span>{{ employment.name }}</span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <label>&nbsp;</label><br>
+                <label class="checkbox">
+                  <input type="checkbox"
+                         ng-true-value="'Y'" ng-false-value="'N'"
+                         ng-model="d.contractual_wage" ng-disabled="d.access_salary_job == 'N'"
+                         ng-change="changeContractualWage()"/>
+                  <span><t>contractual wage</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>opened date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.opened_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>closed date</t></label>
+                <input type="text" class="form-control" ng-model="d.closed_date" b-date-picker/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>robot group</t></label>
+              <b-input name="robot_groups"
+                       model="d.robot_group_name | name"
+                       model-key="d.robot_group_id | robot_group_id"
+                       is-add="fi.add_robot_group"
+                       is-view="fi.select_robot_group"
+                       on-add="addRobotGroup(value)"
+                       on-view="selectRobotGroup()">
+                  {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>schedule name</t></label>
+                <b-input name="schedules"
+                         model="d.schedule_name | name"
+                         model-key="d.schedule_id | schedule_id"
+                         is-add="fi.add_schedule"
+                         is-view="fi.select_schedule"
+                         on-add="addSchedule(value)"
+                         on-view="selectSchedule()">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>vacation days limit</t></label>
+                <input type="text" class="form-control" ng-model="d.vacation_days_limit" b-number precision="10" scale="0"/>
+              </div>
+            </div>
+            <div class="form-group" ng-if="d.contractual_wage == 'N' && d.access_salary_job == 'Y'">
+              <label><t>wage scale</t><r/></label>
+              <b-input name="wage_scales"
+                       model="d.wage_scale_name | name"
+                       model-key="d.wage_scale_id | wage_scale_id"
+                       is-add="fi.add_wage_scale"
+                       is-view="fi.select_wage_scale"
+                       on-add="addWageScale(value)"
+                       on-view="selectWageScale()"
+                       on-select="setWageScale(row)"
+                       required-key>
+                  {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>code</t></label>
+                <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+              </div>
+              <div class="col-sm-12 mb-4" ng-if="!d.robot_id">
+                <label><t>count</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.count" b-number precision="10" scale="6" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>allowed divisions</t></label>
+                  <b-tree-select
+                    multiple
+                    origin="q.allowed_divisions"
+                    id-key="division_id"
+                    model="d.allowed_division_ids"/>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group" ng-if="q.parttime_enable == 'Y'">
+                  <label><t>planned fte</t></label>
+                  <input type="text" class="form-control" ng-model="d.planned_fte" b-validate="{ s: q.planned_fte_valid }" ng-change="validateFte()" b-number precision="1" scale="6" placeholder="{{ q.fte_placeholder }}">
+                  <span class="text-danger" ng-hide="q.planned_fte_valid"><t>planned fte should be between 0 and 1</t></span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-if="q.access_to_salary_setting == 'Y' && q.position_enabled == 'Y' && fi.restrict_hidden_salary">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="q.restrict_hidden_salary" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>restrict to view salaries</t></span>
+              </label>
+            </div>
+            <div class="form-group" ng-if="q.restrict_hidden_salary == 'Y' && q.access_to_salary_setting == 'Y'">
+              <label><t>job groups</t></label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <div class="input-group-text" style="height: auto;">
+                    <label class="checkbox mt-n6 m-0">
+                      <input type="checkbox" ng-model="d.access_all_hidden_salary" ng-true-value="'Y'" ng-false-value="'N'"/><span></span>
+                    </label>
+                  </div>
+                </div>
+                <b-input name="job_groups"
+                         multiple
+                         model="d.job_groups"
+                         model-key="job_group_id"
+                         ng-if="d.access_all_hidden_salary != 'Y'">
+                  {{ row.name }}
+                </b-input>
+                <input class="form-control" ng-value="q.tAll" ng-show="d.access_all_hidden_salary == 'Y'" readonly/>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+          <li class="nav-item">
+            <a data-target="{{ pageId('#accrual') }}" class="nav-link active" data-toggle="tab" role="tab">
+              <span><t>accrual</t></span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a data-target="{{ pageId('#extra') }}" class="nav-link" data-toggle="tab" role="tab">
+              <span><t>extra</t></span>
+            </a>
+          </li>
+        </ul>
+        <div class="tab-content mt-4">
+          <div class="tab-pane active" id="{{ pageId('accrual') }}" role="tabpanel">
+            <div class="form-row mb-4" ng-if="d.access_salary_job == 'Y' && q.allowed_currencies.length > 0">
+              <div class="col-sm-12">
+                <label><t>currency</t><r ng-show="d.oper_types['A'].length > 0 || d.oper_types['D'].length > 0" />
+                </label>
+                <b-input model="d.currency_name | name"
+                         model-key="d.currency_id | currency_id"
+                         local-data="q.allowed_currencies"
+                         search="name"
+                         required-key="d.oper_types['A'].length > 0 || d.oper_types['D'].length > 0">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div ng-if="d.access_salary_job == 'Y'">
+              <h5 class="text-primary mb-4">
+                <t>accruals</t>
+              </h5>
+              <b-pg-grid name="accruals" local-data="d.oper_types['A']" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="oper_type" size="10">
+                    <b-input name="oper_types"
+                             model="item.oper_type_name | name"
+                             model-key="item.oper_type_id | oper_type_id"
+                             on-change="changeOperTypeQuery(query, value, 'A')"
+                             is-add="fi.add_accrual_oper_type"
+                             is-view="fi.select_accrual_oper_type"
+                             on-add="addAccrualOperType(item, value)"
+                             on-view="selectAccrual(item)"
+                             on-select="setOperType(item, row)"
+                             on-delete="setOperType(item, {})"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </b-pg-col>
+                  <b-pg-col name="indicators" size="11">
+                    <div ng-repeat="id in item.indicator_ids">
+                      <div class="form-row">
+                        <label class="col-sm-18" ng-class="{ 'mb-2': !$last }">{{ d.indicators[id].name }}</label>
+                        <div class="col-sm-6" ng-class="{ 'mb-2': !$last }">
+                          <input type="text" class="form-control"
+                                 ng-readonly="d.contractual_wage == 'N' && findIndicator(d.indicators[id].indicator_id)"
+                                 ng-model="d.indicators[id].indicator_value" b-number precision="20" scale="6">
+                        </div>
+                      </div>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="actions" size="2">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteOperTypeItem(d.oper_types['A'], item)"><i class="fa fa-trash"></i></button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+              <div class="mt-4">
+                <button type="button" class="btn btn-icon btn-default" ng-click="addAccrual()">
+                  <i class="fa fa-plus" />
+                </button>
+              </div>
+              <div class="separator separator-solid my-6"></div>
+              <h5 class="text-primary mb-4">
+                <t>deductions</t>
+              </h5>
+              <b-pg-grid name="deductions" local-data="d.oper_types['D']" iterator="item" current-limit="1000">
+                <b-pg-row>
+                  <b-pg-col name="rownum" size="1">
+                    <div class="text-center">{{ item.rownum }}</div>
+                  </b-pg-col>
+                  <b-pg-col name="oper_type" size="10">
+                    <b-input name="oper_types"
+                             model="item.oper_type_name | name"
+                             model-key="item.oper_type_id | oper_type_id"
+                             on-change="changeOperTypeQuery(query, value, 'D')"
+                             is-add="fi.add_deduction_oper_type"
+                             is-view="fi.select_deduction_oper_type"
+                             on-add="addDeductionOperType(item, value)"
+                             on-view="selectDeduction(item)"
+                             on-select="setOperType(item, row)"
+                             on-delete="setOperType(item, {})"
+                             required-key>
+                      {{ row.name }}
+                    </b-input>
+                  </b-pg-col>
+                  <b-pg-col name="indicators" size="11">
+                    <div ng-repeat="id in item.indicator_ids">
+                      <div class="form-row">
+                        <label class="col-sm-18" ng-class="{ 'mb-2': !$last }">{{ d.indicators[id].name }}</label>
+                        <div class="col-sm-6" ng-class="{ 'mb-2': !$last }">
+                          <input type="text" class="form-control"
+                                 ng-readonly="d.contractual_wage == 'N' && findIndicator(d.indicators[id].indicator_id)"
+                                 ng-model="d.indicators[id].indicator_value" b-number precision="20" scale="6">
+                        </div>
+                      </div>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="actions" size="2">
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="deleteOperTypeItem(d.oper_types['D'], item)"><i class="fa fa-trash"></i></button>
+                    </div>
+                  </b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+              <div class="mt-4">
+                <button type="button" class="btn btn-icon btn-default" ng-click="addDeduction()">
+                  <i class="fa fa-plus" />
+                </button>
+              </div>
+            </div>
+            <div ng-if="d.access_salary_job == 'N'">
+              <div class="d-flex justify-content-center" style="width: auto; height: 300px;">
+                <div class="align-self-center">
+                  <div class="text-center mb-4">
+                    <i style="font-size: 6rem; color: #e0e0e0" class="fas fa-eye-slash"></i>
+                    <div class="font-weight-bolder text-center">
+                      <h5><t>you don't have access to add or view salaries</t></h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane" id="{{ pageId('extra') }}" role="tabpanel">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>labor function name</t></label>
+                  <b-input name="labor_functions"
+                           model="d.labor_function_name | name"
+                           model-key="d.labor_function_id | labor_function_id"
+                           is-add="fi.add_labor_function"
+                           is-view="fi.select_labor_function"
+                           on-add="addLaborFunction(value)"
+                           on-view="selectLaborFunction()">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+                <div class="form-group">
+                  <label><t>hiring condition</t></label>
+                  <textarea class="form-control" rows="2" ng-model="d.hiring_condition" b-maxlength="300"></textarea>
+                </div>
+                <div class="form-group">
+                  <label><t>description</t></label>
+                  <textarea class="form-control" rows="2" ng-model="d.description" b-maxlength="300"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

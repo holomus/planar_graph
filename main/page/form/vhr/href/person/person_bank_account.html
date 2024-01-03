@@ -1,0 +1,299 @@
+<script biruni>
+page.ctrl(function(scope, fi, model, t, $timeout){
+  var d = model,
+      q = {},
+      p = {};
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // bank
+  function setBank(row){
+    if(!row) return;
+    p.data.bank_name = row.name;
+    p.data.bank_id = row.bank_id;
+    p.data.bank_code = row.bank_code;
+
+    if(!p.data.bank_account_name) {
+      p.data.bank_account_name = row.name;
+    }
+  }
+
+  function selectBank() {
+    fi.select_bank(null, setBank);
+  }
+
+  function addBank(){
+    fi.add_bank(null, setBank, {
+      bank_code : p.data.bank_code,
+      name : p.data.bank_name
+
+    })
+  }
+
+  function changeBankQuery(query){
+    query.param({});
+    query.searchValue(p.data.bank_code);
+  }
+
+  function evalBank($event, item, tim){
+    if(item.bank_code && ($event.charCode == 13 || tim)){
+      page.query('banks').param({ bank_code: item.bank_code });
+      page.query('banks').fetch().then(function(res){
+        if (res.table.length > 0){
+          setBank(_.first(res.table));
+        } else {
+          p.data.bank_account_name = " ";
+          p.data.bank_account_id= " ";
+        }
+      })
+    }
+  }
+
+  // currecy
+  function setCurrency(row) {
+    p.data.currency_id = row.currency_id;
+    p.data.currency_name = row.name;
+  }
+
+  function addCurrency() {
+    fi.add_currency(null, setCurrency, { name: p.data.currency_name });
+  }
+
+  function selectCurrency() {
+    fi.select_currency(null, setCurrency);
+  }
+
+  // peson bank account
+  function cmpBankAccount(a, b) {
+    let c = a.bank_account_name;
+    let d = b.bank_account_name;
+
+    return c > d ? 1 : c < d ? -1 : 0;
+  }
+
+  function addPersonBankAccount() {
+    p.title = t('add bank account')();
+    p.data = {
+      is_main: 'N',
+      state: 'A',
+      currency_id : d.base_currency_id,
+      currency_name : d.base_currency_name
+    };
+    p.index = null;
+    showModal();
+  }
+
+  function editPersonBankAccount(row, index) {
+    p.title = t('edit bank account')();
+    p.data = angular.copy(row);
+    p.index = index;
+    showModal();
+  }
+
+  function savePersonBankAccount(){
+    if(page.valid(scope.modal)) {
+      let data = angular.copy(p.data);
+          data.person_id = d.person_id;
+
+      fi.save_bank_account(data).then(function(result) {
+        if (_.isNumber(p.index)) {
+          d.bank_accounts.splice(p.index, 1);
+        }
+        data.bank_account_id = result.bank_account_id;
+        if (data.is_main == 'Y') {
+          _.each(d.bank_accounts, function(bank_account) {
+            bank_account.is_main = 'N';
+          });
+        }
+        d.bank_accounts.push(data);
+        d.bank_accounts.sort(cmpBankAccount);
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function delPersonBankAccount(row) {
+    page.confirm(t('delete person bank account $1{bank_account_name}?')(row.bank_account_name), function() {
+      fi.del_bank_account({ bank_account_id :row.bank_account_id }).then(function() {
+        var index = _.findIndex(d.bank_accounts, row);
+        d.bank_accounts.splice(index, 1);
+      }, page.alert);
+    })
+  }
+
+  d.bank_accounts = _.mapRows(d.bank_accounts, ['bank_id', 'bank_name', 'bank_code', 'bank_account_id', 'bank_account_code',
+                             'bank_account_name', 'is_main', 'currency_id', 'currency_name', 'card_number', 'state', 'note']);
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+})
+</script>
+<div class="b-content card card-custom gutter-b" style="background-color: #fff;">
+  <div class="card-header">
+    <div class="card-title">
+      <h3 class="card-label"><t>bank accounts</t></h3>
+    </div>
+    <div class="card-toolbar">
+      <button type="button" class="btn btn-outline-success" ng-if="fi.save_bank_account" ng-click="addPersonBankAccount()"><t>add</t></button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row" ng-if="d.bank_accounts.length > 10">
+      <div class="offset-sm-12 col-sm-12 mb-2">
+        <b-pg-controller name="bank_account"/>
+      </div>
+    </div>
+    <b-pg-grid name="bank_account" local-data="d.bank_accounts" search="bank_name, bank_account_name, bank_account_code, bank_code" min-height="'auto'" searche="title" limit="50">
+      <b-pg-header name="action">
+        ::label
+      </b-pg-header>
+      <b-pg-row>
+        <b-pg-col name="bank_name" size="5"/>
+        <b-pg-col name="bank_account_name" size="4"/>
+        <b-pg-col name="bank_account_code" size="4"/>
+        <b-pg-col name="card_number" size="3"/>
+        <b-pg-col name="bank_code" size="3"/>
+        <b-pg-col name="is_main_name" size="3">
+          <span>
+            <t ng-if="row.is_main =='Y'">yes</t>
+            <t ng-if="row.is_main =='N'">no</t>
+          </span>
+        </b-pg-col>
+        <b-pg-col name="action" size="2">
+          <div class="text-center w-100 dropdown" ng-if="fi.save_bank_account || fi.del_bank_account">
+            <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+              <i class="fas fa-ellipsis-h"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+              <a class="dropdown-item" ng-if="fi.save_bank_account" ng-click="editPersonBankAccount(row, $index)"><t>edit</t></a>
+              <a class="dropdown-item text-danger" ng-if="fi.del_bank_account" ng-click="delPersonBankAccount(row)"><t>delete</t></a>
+            </div>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+
+      <b-pg-extra-col name="currency_name"/>
+      <b-pg-extra-col name="note"/>
+    </b-pg-grid>
+  </div>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>bank code</t></label>
+              <input type="text" class="form-control" ng-model="p.data.bank_code" ng-keypress="evalBank($event, p.data)" ng-blur="evalBank($event, p.data, true)"/>
+            </div>
+            <div class="form-group">
+              <label><t>bank</t><r/></label>
+              <b-input name="banks"
+                       model="p.data.bank_name | name"
+                       model-key="p.data.bank_id | bank_id"
+                       on-change="changeBankQuery(query)"
+                       column="name, bank_id, bank_code"
+                       search="bank_code, name"
+                       sort="bank_code"
+                       on-select="setBank(row)"
+                       is-add="fi.add_bank"
+                       on-add="addBank()"
+                       is-view="fi.select_bank"
+                       on-view="selectBank()"
+                       required-key>
+                  <header>
+                  <div class="col-sm-16"><t>bank name</t></div>
+                  <div class="col-sm-8"><t>bank code</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                  <div class="col-sm-8">{{ row.bank_code }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>bank account code</t><r/></label>
+              <input type="text" class="form-control" ng-model="p.data.bank_account_code" required/>
+            </div>
+            <div class="form-group">
+              <label><t>bank account name</t><r/></label>
+              <input type="text" class="form-control" ng-model="p.data.bank_account_name" required/>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>main</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="p.data.is_main"/>
+                  <span>
+                    <t ng-if="p.data.is_main =='Y'">yes</t>
+                    <t ng-if="p.data.is_main =='N'">no</t>
+                  </span>
+                </label>
+              </div>
+              <div class="col-sm-12">
+                <label><t>state</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="p.data.state"/>
+                <span>
+                  <t ng-if="p.data.state =='A'">active</t>
+                  <t ng-if="p.data.state =='P'">passive</t>
+                </span>
+              </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>currency</t><r/></label>
+              <b-input name="currencies"
+                       model="p.data.currency_name | name"
+                       model-key="p.data.currency_id | currency_id"
+                       column="code"
+                       search="code"
+                       is-add="fi.add_currency"
+                       is-view="fi.select_currency"
+                       on-add="addCurrency()"
+                       on-view="selectCurrency()"
+                       required-key>
+                <header>
+                  <div class="col-sm-16"><t>currency name</t></div>
+                  <div class="col-sm-8"><t>currency code</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                  <div class="col-sm-8">{{ row.code }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>card number</t></label>
+              <input type="text" class="form-control" ng-model="p.data.card_number" b-maxlength="20"/>
+            </div>
+            <div class="form-group ">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="4" ng-model="p.data.note" style="resize: none;"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="savePersonBankAccount()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">{{ page.close.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

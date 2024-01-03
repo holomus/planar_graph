@@ -1,0 +1,182 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = model;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      let data = _.pick(d, 'income_tax_exists', 'pension_payment_exists', 'social_payment_exists', 'accrual_coa_id', 'deduction_coa_id', 'advance_coa_id', 'credit_coa_id', 'allow_use_subfilial');
+
+      if (data.income_tax_exists == 'Y') {
+        data = _.extend(data, _.pick(d, 'income_tax_coa_id', 'income_tax_rate'));
+      }
+
+      if (data.pension_payment_exists == 'Y') {
+        data = _.extend(data, _.pick(d, 'pension_payment_coa_id', 'pension_payment_rate'));
+      }
+
+      if (data.social_payment_exists == 'Y') {
+        data = _.extend(data, _.pick(d, 'social_payment_coa_id', 'social_payment_rate'));
+      }
+
+      data.currency_ids = d.allow_other_currencies ? _.pluck(d.currencies, 'currency_id') : [];
+
+      fi.save(data).then(page.reload, page.alert);
+    }
+  }
+
+  d.allow_other_currencies = d.currencies.length > 0;
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" ng-if="fi.save" b-hotkey="save">{{ fi.save.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-6 mb-4">
+          <h5 class="font-weight-bolder"><t>employee payment</t></h5>
+          <span class="form-text text-muted mt-0">
+            <t>employee payment description</t>
+          </span>
+          <div class="separator separator-solid my-4"></div>
+          <div class="form-group">
+            <label><t>accrual coa</t></label>
+            <b-input name="coas"
+                     model="d.accrual_coa_name | gen_name"
+                     model-key="d.accrual_coa_id | coa_id">
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>deduction coa</t></label>
+            <b-input name="coas"
+                     model="d.deduction_coa_name | gen_name"
+                     model-key="d.deduction_coa_id | coa_id">
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>advance coa</t></label>
+            <b-input name="coas"
+                     model="d.advance_coa_name | gen_name"
+                     model-key="d.advance_coa_id | coa_id">
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>credit coa</t></label>
+            <b-input name="coas"
+                     model="d.credit_coa_name | gen_name"
+                     model-key="d.credit_coa_id | coa_id">
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.allow_other_currencies"/><span><t>allow other currencies</t></span>
+            </label>
+            <div class="form-group" ng-if="d.allow_other_currencies">
+              <b-input name="currencies"
+                       model="d.currencies"
+                       model-key="currency_id"
+                       label="name"
+                       multiple>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.allow_use_subfilial" ng-true-value="'Y'" ng-false-value="'N'"/><span><t>allow use subfilial</t></span>
+            </label>
+          </div>
+        </div>
+        <div class="col-sm-6 mb-4">
+          <h5 class="font-weight-bolder"><t>income tax</t></h5>
+          <span class="form-text text-muted mt-0">
+            <t>income tax description</t>
+          </span>
+          <div class="separator separator-solid my-4"></div>
+          <label class="checkbox">
+            <input type="checkbox" ng-model="d.income_tax_exists" ng-change="d.pension_payment_exists = 'N'" ng-true-value="'Y'" ng-false-value="'N'"/><span><t>income tax exists</t></span>
+          </label>
+          <div class="form-group row" ng-if="d.income_tax_exists == 'Y'">
+            <div class="col-sm-12">
+              <input type="text" class="form-control" ng-model="d.income_tax_rate" b-number precision="3" scale="2" required/>
+              <span class="form-text text-muted mt-0">
+                <t>income tax rate (%)</t><r/>
+              </span>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.income_tax_exists == 'Y'">
+            <label><t>income tax coa</t><r/></label>
+            <b-input name="coas"
+                     model="d.income_tax_coa_name | gen_name"
+                     model-key="d.income_tax_coa_id | coa_id"
+                     required-key>
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+        </div>
+        <div class="col-sm-6 mb-4">
+          <h5 class="font-weight-bolder"><t>pension payment</t></h5>
+          <span class="form-text text-muted mt-0">
+            <t>pension payment description</t>
+          </span>
+          <div class="separator separator-solid my-4"></div>
+          <label class="checkbox">
+            <input type="checkbox" ng-model="d.pension_payment_exists" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.income_tax_exists == 'N'"/><span><t>pension payment exists</t></span>
+          </label>
+          <div class="form-group row" ng-if="d.pension_payment_exists=='Y'">
+            <div class="col-sm-12">
+              <input type="text" class="form-control" ng-model="d.pension_payment_rate" b-number precision="3" scale="2" required/>
+              <span class="form-text text-muted mt-0">
+                <t>pension payment rate (%)</t><r/>
+              </span>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.pension_payment_exists=='Y'">
+            <label><t>pension payment coa</t><r/></label>
+            <b-input name="coas"
+                     model="d.pension_payment_coa_name | gen_name"
+                     model-key="d.pension_payment_coa_id | coa_id"
+                     required-key>
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+        </div>
+        <div class="col-sm-6 mb-4">
+          <h5 class="font-weight-bolder"><t>social payment</t></h5>
+          <span class="form-text text-muted mt-0">
+            <t>social payment description</t>
+          </span>
+          <div class="separator separator-solid my-4"></div>
+          <label class="checkbox">
+            <input type="checkbox" ng-model="d.social_payment_exists" ng-true-value="'Y'" ng-false-value="'N'"/><span><t>social payment exists</t></span>
+          </label>
+          <div class="form-group row" ng-if="d.social_payment_exists=='Y'">
+            <div class="col-sm-12">
+              <input type="text" class="form-control" ng-model="d.social_payment_rate" b-number precision="3" scale="2" required/>
+              <span class="form-text text-muted mt-0">
+                <t>social payment rate (%)</t><r/>
+              </span>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.social_payment_exists=='Y'">
+            <label><t>social payment coa</t><r/></label>
+            <b-input name="coas"
+                     model="d.social_payment_coa_name | gen_name"
+                     model-key="d.social_payment_coa_id | coa_id"
+                     required-key>
+              {{ row.gen_name }}
+            </b-input>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

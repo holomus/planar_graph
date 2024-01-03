@@ -1,0 +1,20 @@
+{
+ "delete penalty for $1{month_name}?": "Delete penalty for $1?",
+ "add": "Add",
+ "common": "Company policy",
+ "common_penalties.month": "Month",
+ "common_penalties.name": "Name",
+ "common_penalties.penalty_id": "ID",
+ "common_penalties.state_name": "State",
+ "copy": "Copy",
+ "delete": "Delete",
+ "delete $1": "Delete $1",
+ "delete $1{penalty_count} penalty(ies)?": "Do you really want to delete <b>$1</b> fine(s)?",
+ "edit": "Edit",
+ "standart": "Department policy",
+ "standart_penalties.division_name": "Department",
+ "standart_penalties.month": "Month",
+ "standart_penalties.name": "Name",
+ "standart_penalties.penalty_id": "ID",
+ "standart_penalties.state_name": "State"
+}

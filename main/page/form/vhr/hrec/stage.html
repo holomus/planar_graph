@@ -1,0 +1,101 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  var d = _.omit(model, 'references');
+  var q = model.references;
+
+  function save() {
+    if (!page.valid(scope.form)) return;
+    let stages = _.map(d.stages, (s, i) => _.extend(_.pick(s, 'stage_id', 'name', 'state', 'code'), { order_no: i + 1 }));
+    page.post(':save', { stages }).then(page.reload, page.alert);
+  }
+
+  function addStage(index) {
+    d.stages.splice(index + 1, 0, { state: 'A' });
+  }
+
+  function removeStage(index) {
+    page.confirm(t('do you want to delete stage?')(), () => d.stages.splice(index, 1));
+  }
+
+  d.stages = _.mapRows(d.stages, ['stage_id', 'name', 'state', 'order_no', 'code', 'pcode']);
+
+  if (!d.stages.length) {
+    d.stages.push({ state: 'A' });
+  }
+
+  scope.d = d;
+  scope.q = q;
+
+  scope.uiTreeOption = {
+    beforeDrag: function(sourceNodeScope) {
+      let this_pcode = sourceNodeScope.$modelValue.pcode;
+      return this_pcode != q.pcode_stage_todo && this_pcode != q.pcode_stage_rejected;
+    },
+
+    accept: function(sourceNodeScope, destNodesScope, destIndex) {
+      let this_pcode = sourceNodeScope.$modelValue.pcode;
+      let is_const_stage = this_pcode == q.pcode_stage_todo || this_pcode == q.pcode_stage_rejected;
+      let is_const_stage_dest_position = _.contains([q.pcode_stage_todo, q.pcode_stage_rejected], d.stages[destIndex].pcode);
+      return !is_const_stage && !is_const_stage_dest_position;
+    }
+  };
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+</div>
+<div class="b-content">
+  <style>
+    .vhr567-disabled {
+      pointer-events: none;
+      opacity: 0.4;
+    }
+  </style>
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row">
+              <div class="col-18">
+                <label><t>name</t></label>
+                <div><hr></div>
+              </div>
+              <div class="col-6">
+                <label><t>state</t></label>
+                <div><hr></div>
+              </div>
+            </div>
+            <div ui-tree="uiTreeOption">
+              <div ui-tree-nodes ng-model="d.stages">
+                <div ui-tree-node ng-repeat="s in d.stages">
+                  <div class="form-row">
+                    <div class="col-18">
+                      <div class="input-group" ng-style="{ 'margin-bottom': ($last ? '0' : '10px') }">
+                        <span class="input-group-prepend">
+                          <div ui-tree-handle class="btn btn-default btn-icon" ng-class="{ 'vhr567-disabled': s.pcode == q.pcode_stage_todo || s.pcode == q.pcode_stage_rejected }"><i class="fa fa-arrows-alt-v"></i></div>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="addStage($index)" ng-disabled="s.pcode == q.pcode_stage_rejected"><i class="fa fa-plus"></i></button>
+                          <button type="button" class="btn btn-default btn-icon" ng-click="removeStage($index)" ng-disabled="!!s.pcode" tabindex=-1><i class="fa fa-minus"></i></button>
+                        </span>
+                        <input type="text" class="form-control" ng-model="s.name" b-maxlength="100" required/>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <label class="switch">
+                        <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="s.state" ng-disabled="!!s.pcode"/>
+                        <span>
+                          <t ng-if="s.state == 'A'">active</t>
+                          <t ng-if="s.state == 'P'">passive</t>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,18 @@
+{
+ "close": "Закрыть",
+ "delete $1": "Удалить $1",
+ "delete $1{device_count} device(s)?": "Удалить устройства в количестве <b>$1</b>?",
+ "delete device $1{device_name}?": "Удалить устройство <b>$1</b>?",
+ "details": "Детали",
+ "extra details": "Детали",
+ "get $1 device infos": "Загрузить детали $1 устройств(а)",
+ "get device info": "Загрузить детали",
+ "get devices": "Загрузить",
+ "loop ended before loading all data": "Цикл завершился до загрузки всех устройств",
+ "table.created_on": "Дата создания",
+ "table.device_code": "Код",
+ "table.device_name": "Название",
+ "table.modified_on": "Дата изменения",
+ "table.serial_number": "Серийный номер",
+ "table.status_name": "Статус"
+}

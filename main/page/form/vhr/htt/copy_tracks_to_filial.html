@@ -1,0 +1,96 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = { employees: [] },
+      q = model;
+
+  // map rows
+  function mapRows(data) {
+    return _.mapRows(data, ['employee_id', 'name', 'employee_number', 'hiring_date', 'division_name', 'job_name', 'tracks_count']);
+  }
+
+  // pluck
+  function employeeIds(employees) {
+    return _.pluck(employees, 'employee_id');
+  }
+
+  // load data
+  function loadData(employee_ids) {
+    return page.post(':load_data', { employee_ids });
+  }
+
+  // employee
+  function whereEmployee() {
+    let where = ['status', '=', q.ss_working],
+    employee_ids = employeeIds(d.employees);
+
+    if (employee_ids.length > 0) {
+      where = ['and', [
+        where,
+        ['employee_id', '<>', employee_ids]
+      ]];
+    }
+
+    return where;
+  }
+
+  function selectEmployees() {
+    fi.select_employee(null, function name(employees) {
+      if (!!employees && employees.length > 0) {
+        loadData(employeeIds(employees)).then(data => {
+          d.employees.push(...mapRows(data));
+
+          if (data.length == 0) notify(t('no copiable tracks found for selected $1{employee count} employees')(employees.length), 'warning');
+          else notify(t('successfully data loaded, $1{loaded employee count} out of $2{selected employee count} employee(s) have(s) copiable tracks')(data.length, employees.length));
+        }, page.alert);
+      }
+    }, { where: whereEmployee(), multiple_select: true });
+  }
+
+  // fill data
+  function fillData() {
+    loadData().then(data => {
+      d.employees = mapRows(data);
+
+      if (data.length == 0) notify(t('no copiable tracks found for any employees')(), 'warning');
+      else notify(t('successfully data loaded, $1{loaded employee count} employee(s) have(s) copiable tracks')(data.length));
+    }, page.alert);
+  }
+
+  // copy tracks
+  function copyTracks() {
+    fi.copy_tracks({ employee_ids: employeeIds(d.employees) }).then(function() {
+      if (page.isFirst()) {
+        d.employees = [];
+        notify(t('copiable tracks are succesfully copied')());
+      }
+      else page.close();
+    }, page.alert);
+  }
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="copyTracks()" ng-if="fi.copy_tracks" ng-show="d.employees.length > 0">{{ fi.copy_tracks.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="fillData()"><t>fill</t></button>
+    <button type="button" class="btn btn-success" ng-click="selectEmployees()" ng-if="fi.select_employee">{{ fi.select_employee.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10" ng-show="d.employees.length > 50">
+    <b-pg-controller name="employees"/>
+  </div>
+</div>
+<div class="b-content">
+  <b-pg-grid name="employees" local-data="d.employees" limit="50">
+    <b-pg-row>
+      <b-pg-col name="name" size="6"/>
+      <b-pg-col name="employee_number" size="4"/>
+      <b-pg-col name="hiring_date" size="3"/>
+      <b-pg-col name="division_name" size="4"/>
+      <b-pg-col name="job_name" size="4"/>
+      <b-pg-col name="tracks_count" size="3"/>
+    </b-pg-row>
+  </b-pg-grid>
+</div>

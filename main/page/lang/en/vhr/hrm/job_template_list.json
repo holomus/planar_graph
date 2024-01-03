@@ -1,0 +1,18 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{template_count} template(s)?": "Do you really want to delete <b>$1</b> template(s)?",
+ "delete template $1{template_id}?": "Do you really want to delete <b>$1</b> ?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.division_id": "Department ID",
+ "table.division_name": "Department",
+ "table.job_name": "Job",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.rank_name": "Rank (category)",
+ "table.schedule_name": "Work Schedule",
+ "table.template_id": "ID",
+ "table.vacation_days_limit": "Vacation Days (annual)",
+ "table.wage_scale_name": "Tariff Group"
+}

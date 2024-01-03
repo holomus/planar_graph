@@ -1,0 +1,118 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+});
+page.ctrl(function(scope, fi, t, param) {
+  let q = { 
+    is_subpage: scope.bPage.pageType() == 'subpage'
+  }, p = {};
+
+  function fetchQuery() {
+    q.checked = {};
+
+    page.query('table').param({ server_id: param.server_id });
+    page.grid('table').fetch();
+  }
+
+  function deleteAction(message, department_code) {
+    page.confirm(message, function() {
+      fi.delete({ department_code: department_code, server_id: param.server_id })
+        .then(fetchQuery, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete department $1{department_name}?')(row.department_name), row.department_code);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{department_count} department(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'department_code'));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function getDepartments() {
+    if (!fi.get_departments) return;
+    fi.get_departments(param).then(fetchQuery, page.alert);
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal(row) {
+    p.extra_info = JSON.stringify(JSON.parse(row.extra_info),null, 2);
+    p.extra_info = (p.extra_info).trim();
+    modal.modal('show');
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="getDepartments()" ng-if="fi.get_departments">{{ fi.get_departments.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-12">
+        <button type="button" class="btn btn-primary" ng-click="getDepartments()" ng-if="fi.get_departments">{{ fi.get_departments.title }}</button>
+      <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-12">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table" required="department_code, department_name, extra_info" on-check="onCheck(checked)" search="department_name">
+      <b-row>
+        <b-col name="department_code" size="3"/>
+        <b-col name="department_name" size="14"/>
+        <b-col name="created_on" size="3"/>
+        <b-col name="modified_on" size="3"/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showModal(row)" ng-if="!!row.extra_info"><t>details</t></button>
+      </b-action>
+    </b-grid>
+  </div>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>extra details</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <pre><code>{{ p.extra_info }}</code></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

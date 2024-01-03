@@ -1,0 +1,138 @@
+<script biruni>
+page.init(function() {
+  var statusClass = { N: 'primary', E: 'info', F: 'success' };
+
+  page.grid('table').asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ training_id: row.training_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ training_id: row.training_id }, closeIfDialog);
+  }
+
+  function assess(row) {
+    fi.assess({ training_id: row.training_id }, closeIfDialog);
+  }
+
+  function doAction(doFunc, doTrans, training_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ training_id: training_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans, action) {
+    return function(row) {
+      doAction(doFunc, doTrans(row.training_number, row.begin_date), row.training_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key) {
+    return function() {
+      doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'training_id'));
+    }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {},
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('to_new', checked, x => x.status == 'E');
+    prepChecked('to_execute', checked, x => x.status == 'N');
+    prepChecked('to_finish', checked, x => x.status == 'E');
+    prepChecked('to_return_execute', checked, x => x.status =='F');
+    prepChecked('to_delete', checked, x => x.status == 'N');
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit && row.status == 'N' ? edit(row) : null;
+  }
+
+  scope.q = q;
+  scope.setNewOne = prepActionOne(fi.set_new, t('set training $1{training_number} status to new?'));
+  scope.setNewMany = prepActionMany(fi.set_new, t('set $1{training_count} trainings status to new?'), 'to_new');
+
+  scope.executeOne = prepActionOne(fi.execute, t('execute training $1{training_number}?'));
+  scope.executeMany = prepActionMany(fi.execute, t('execute $1{training_count} trainings?'), 'to_execute');
+
+  scope.finishOne = prepActionOne(fi.finish, t('finish training $1{training_number}?'));
+  scope.finishMany = prepActionMany(fi.finish, t('finish $1{training_count} trainings?'), 'to_finish');
+
+  scope.returnOne = prepActionOne(fi.return_execute, t('return to execute training $1{training_number}?'));
+  scope.returnMany = prepActionMany(fi.return_execute, t('return to execute $1{training_count} trainings?'), 'to_return_execute');
+
+  scope.deleteOne = prepActionOne(fi.delete, t('delete training $1{training_number}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{training_count} trainings?'), 'to_delete');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="setNewMany()" ng-if="fi.set_new && q.to_new.has"><t p1="q.to_new.size">new $1</t></button>
+    <button type="button" class="btn btn-info" ng-click="executeMany()" ng-if="fi.execute && q.to_execute.has"><t p1="q.to_execute.size">execute $1</t></button>
+    <button type="button" class="btn btn-success" ng-click="finishMany()" ng-if="fi.finish && q.to_finish.has"><t p1="q.to_finish.size">finish $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="returnMany()" ng-if="fi.return_execute && q.to_return_execute.has"><t p1="q.to_return_execute.size">return $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete && q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="training_id, training_number, begin_date, status" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="training_number" search="training_number" searchable="mentor_name" extra-columns="training_id, address, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="training_number" size=3/>
+      <b-col name="subject_group_name" size=4/>
+      <b-col name="subject_names" size=4/>
+      <b-col name="begin_date" size=3/>
+      <b-col name="mentor_name" size=5/>
+      <b-col name="person_count" size=2/>
+      <b-col name="status_name" as-html="status_html" size=2/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.status =='N'">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="setNewOne(row)" ng-if="fi.set_new && row.status == 'E'">{{ fi.set_new.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="executeOne(row)" ng-if="fi.execute && row.status =='N'">{{ fi.execute.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="assess(row)" ng-if="fi.assess && row.status =='E'">{{ fi.assess.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="finishOne(row)" ng-if="fi.finish && row.status == 'E'">{{ fi.finish.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="returnOne(row)" ng-if="fi.return_execute && row.status == 'F'">{{ fi.return_execute.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N'">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="training_id" directive="equal" extra/>
+    <b-filter name="training_number"/>
+    <b-filter name="begin_date"/>
+    <b-filter name="address"/>
+    <b-filter name="subject_group_id" decorate-with="subject_group_name"/>
+    <b-filter name="mentor_id" decorate-with="mentor_name"/>
+    <b-filter name="subject_ids" decorate-with="subject_names"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

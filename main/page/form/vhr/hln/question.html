@@ -1,0 +1,292 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'photos', 'options', 'references'),
+      q = model.references;
+
+  function changeAnswerType(type) {
+    d.answer_type = type;
+
+    if (type != 'W') {
+      _.isEmpty(d.options) ? addOption() : null;
+    }
+  }
+
+  function changeQuestionType(query, group, value) {
+    query.param({ question_group_id: group.question_group_id }).searchValue(value);
+  }
+
+  function addOption() {
+    d.options.push({}, {});
+  }
+
+  function addOneOption() {
+    d.options.push({});
+  }
+
+  function removeOption(index) {
+    d.options.splice(index, 1);
+    q.correct_number = q.correct_number == index ? null : (q.correct_number > index ? q.correct_number - 1 : q.correct_number);
+  }
+
+  function removePhotoInOption(index) {
+    d.options[index].photo_sha = null;
+    d.options[index].photo_src = null;
+  }
+
+  // photo
+  function getDefaultPhotoSrc() {
+    return 'page/resource/vhr/no_image.png';
+  }
+
+  function removePhoto(index) {
+    d.photos.splice(index, 1);
+    if (d.photos.length == 0) addPhoto();
+  }
+
+  function showPhoto(photo) {
+    if (_.isObject(photo.photo_src)) {
+      page.previewFile(photo.photo_src);
+    } else if (photo.photo_sha) {
+      page.previewFile({
+        sha: photo.photo_sha,
+        name: photo.photo_name,
+        type: 'image'
+      });
+    }
+  }
+
+  function addPhoto() {
+    d.photos.push({});
+  }
+
+  // question types
+  function setQuestionType(group, row) {
+    if (!row) return;
+    group.question_type_id = row.question_type_id;
+    group.question_type_name = row.name;
+  }
+
+  function selectQuestionType(group) {
+    fi.select_question_type({ question_group_id: group.question_group_id }, _.partial(setQuestionType, group), { where: ['state', '=', 'A'] });
+  }
+
+  function addQuestionType(group, value) {
+    fi.add_question_type({ question_group_id: group.question_group_id }, _.partial(setQuestionType, group), { name: value });
+  }
+
+  function removeGroup(index) {
+    page.confirm(t('do you really want to delete the group from this question')(), () => {
+      q.question_groups.splice(index, 1);
+    });
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      if (!d.name) { page.alert(t('name is required')()); return; }
+      let has_correct_option = false;
+      let data = _.omit(d, 'photos', 'options');
+      data.photos = _.chain(d.photos).map(x => _.isObject(x.photo_src) ? x.photo_src : x.photo_sha).compact().value();
+      data.question_groups = [];
+      data.options = [];
+
+      _.each(q.question_groups, x => {
+        data.question_groups.push({
+          question_group_id: x.question_group_id,
+          question_type_id: x.question_type_id
+        });
+      });
+
+      if (d.answer_type != 'W') {
+        data.writing_hint = null;
+        _.each(d.options, (x, i) => {
+          data.options.push({
+            question_option_id: x.question_option_id,
+            name: x.name,
+            photo_sha: _.isObject(x.photo_src) ? x.photo_src : x.photo_sha,
+            is_correct: d.answer_type == 'S' ? (i == q.correct_number ? 'Y' : 'N') : x.is_correct ? x.is_correct : 'N',
+            order_no: i + 1
+          });
+        });
+        has_correct_option = _.any(data.options, x => x.is_correct == 'Y');
+      } else {
+        has_correct_option = true;  
+      }
+
+      has_correct_option ? page.post(':save', data).then(page.close, page.alert) : page.alert(t('there must be at least 1 correct answer')());
+    }
+  }
+
+  q.question_groups = _.mapRows(q.question_groups, ['question_group_id', 'name', 'is_required', 'order_no', 'state']);
+  q.answer_types = _.mapRows(q.answer_types, ['type', 'type_name']);
+
+  q.defaultPhoto = getDefaultPhotoSrc();
+  d.options = [];
+  d.photos = [];
+
+  if (model.question_id) {
+    model.options = _.mapRows(model.options, ['question_option_id', 'name', 'photo_sha', 'photo_name', 'question_id', 'is_correct', 'order_no']);
+    model.photos = _.mapRows(model.photos, ['photo_sha', 'photo_name']); 
+    
+    q.question_types = _.mapRows(model.question_types, ['question_group_id', 'question_type_id', 'name']);
+    
+    _.each(q.question_groups, x => {
+      _.each(q.question_types, y => {
+        if (y.question_group_id == x.question_group_id) {
+          x.question_type_id = y.question_type_id;
+          x.question_type_name = y.name;
+        }
+      });
+    });
+
+    _.each(model.options, (x, i) => {
+      if (x.photo_sha) x.photo_src = page.loadImageLarge(x.photo_sha);
+      if (model.answer_type == 'S' && x.is_correct == 'Y') {
+        q.correct_number = i;
+      }
+    });
+    
+    _.extend(d, model);
+
+    if (!_.isEmpty(d.photos)) {
+      _.each(d.photos, x => {
+        x.photo_src = page.loadImageLarge(x.photo_sha);
+      });
+    } else addPhoto();
+  } else {
+    addPhoto();
+  }
+
+  changeAnswerType(model.answer_type);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="form-row">
+        <div class="col-sm-16">
+          <div class="row">
+            <div class="col-sm-20">
+              <label><t>text question</t><r/></label>
+              <b-editor model="d.name" height="400"/>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="form-group m-4" ng-repeat="photo in d.photos track by $index">
+              <div class="image-input image-input-outline bgi-position-center">
+                <div class="image-input-wrapper w-300 h-300">
+                  <img class="mw-100 mh-100 cursor-pointer" ngf-src="photo.photo_src || q.defaultPhoto" ng-click="showPhoto(photo)">
+                </div>
+                <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" round="false" square="false" b-cropper="photo.photo_src">
+                  <i class="fa fa-pen icon-sm text-muted"></i>
+                </a>
+                <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-danger btn-shadow" ng-if="photo.photo_src || d.photos.length > 1" data-action="remove" ng-click="removePhoto($index)">
+                  <i class="fa fa-times icon-xs text-muted"></i>
+                </span>
+              </div>
+            </div>
+            <div class="form-group ml-8 mt-4">
+              <button type="button" class="btn btn-icon btn-default" ng-click="addPhoto()"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>answer type</t></label><br/>
+            <label class="radio" ng-repeat="answer_type in q.answer_types">
+              <input type="radio" name="answer_type" ng-value="answer_type.type" ng-click="changeAnswerType(answer_type.type)" ng-model="d.answer_type"/><span>{{ answer_type.type_name }}</span>
+            </label>
+          </div>
+          <div class="form-group" ng-if="d.answer_type == 'M' || d.answer_type == 'S'">
+            <div ng-repeat="data in d.options track by $index">
+              <div  class="row">
+                <div class="col-sm-19">
+                  <input class="form-control" type="text" name="option" ng-model="data.name" b-maxlength="1000" required/>
+                </div>
+                <div class="col-sm-2" ng-if="d.answer_type == 'S'">
+                  <label class="radio">
+                    <input type="radio" name="answer" ng-value="$index" ng-model="q.correct_number"/>
+                    <span></span>
+                  </label>
+                </div>
+                <div class="col-sm-2" ng-if="d.answer_type == 'M'">
+                  <label class="checkbox">
+                    <input type="checkbox" name="answer_multi" ng-true-value="'Y'" ng-false-value="'N'" ng-model="data.is_correct"/>
+                    <span></span>
+                  </label>
+                </div>
+                <div class="col-sm-3" ng-if="d.options.length > 2">
+                  <button type="button" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="removeOption($index)"><i class="fas fa-trash"></i></button>
+                </div>
+              </div>
+              <div class="form-group m-4">
+                <div class="image-input image-input-outline bgi-position-center">
+                  <div class="image-input-wrapper w-300 h-300">
+                    <img class="mw-100 mh-100 cursor-pointer" ngf-src="data.photo_src || q.defaultPhoto" ng-click="showPhoto(data)">
+                  </div>
+                  <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" round="false" square="false" b-cropper="data.photo_src">
+                    <i class="fa fa-pen icon-sm text-muted"></i>
+                  </a>
+                  <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-danger btn-shadow" ng-if="data.photo_src" data-action="remove" ng-click="removePhotoInOption($index)">
+                    <i class="fa fa-times icon-xs text-muted"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-icon btn-default" ng-click="addOneOption()"><i class="fas fa-plus"></i></button>
+          </div>
+          <div class="row" ng-if="d.answer_type == 'W'">
+            <div class="col-sm-20">
+              <label><t>writing hint</t></label><br/>
+              <textarea class="form-control" rows="2" ng-model="d.writing_hint" b-maxlength="500"/>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-8">
+          <div class="form-group">
+            <label><t>code</t></label>
+            <input type="text" class="form-control" ng-model="d.code"/>
+          </div>
+          <div class="form-group" ng-repeat="group in q.question_groups track by $index">
+            <label>{{ group.name }}<r ng-if="group.is_required == 'Y' && group.state == 'A'"/></label>
+            <div class="input-group">
+              <b-input name="types"
+                       model="group.question_type_name | name"
+                       model-key="group.question_type_id | question_type_id"
+                       sort="order_no"
+                       search="name"
+                       on-change="changeQuestionType(query, group, value)"
+                       is-add="fi.add_question_type"
+                       is-view="fi.select_question_type"
+                       on-view="selectQuestionType(group)"
+                       on-add="addQuestionType(group, value)"
+                       required-key="group.is_required == 'Y'"
+                       readonly="group.state == 'P'">
+                {{ row.name }}
+              </b-input>
+              <div ng-if="group.state == 'P'">
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="removeGroup($index)"><i class="fas fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

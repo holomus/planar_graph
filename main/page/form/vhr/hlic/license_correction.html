@@ -1,0 +1,215 @@
+<script biruni>
+page.header();
+page.require("amcharts4",
+             "amcharts4-theme-animated");
+page.ctrl(function(scope, model, fi, t, $timeout, bConfig, AppSession) {
+  moment.locale(bConfig.langCode());
+  let d = {},
+      q = model,
+      t_available = t('available')(),
+      t_required = t('required')();
+
+  function hasBuyLicense() {
+    return fi.buy_license && !!q.filial_head;
+  }
+
+  function buyLicense() {
+    if (!hasBuyLicense()) return;
+    if (fi.isFilial) {
+      AppSession.setFilial(AppSession.si.project.hash, q.filial_head);
+    }
+    page.open('/core/kl/license_list');
+  }
+
+  function licenseMonthlyBarchart(data) {
+    if (licenseMonthlyBarchart.chart) {
+      licenseMonthlyBarchart.chart.data = data;
+      licenseMonthlyBarchart.chart.invalidateData();
+      return;
+    }
+
+    let elem = page.$content.find('.license-monthly-barchart');
+
+    assert(elem.length, "license monthly stats barchart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+    chart.responsive.enabled = true;
+
+    // Create category axis
+    var categoryAxis = chart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "license_month";
+    categoryAxis.renderer.cellStartLocation = 0.1;
+    categoryAxis.renderer.cellEndLocation = 0.9;
+    categoryAxis.renderer.minGridDistance = 30;
+    categoryAxis.renderer.inversed = true;
+    categoryAxis.cursorTooltipEnabled = false;
+
+    // Create value axis categoryAxis
+    var valueAxis = chart.xAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.minLabelPosition = 0;
+    valueAxis.renderer.labels.template.disabled = true;
+    valueAxis.maxPrecision = 0;
+    valueAxis.cursorTooltipEnabled = false;
+
+    function addColumnSeries(name, value, color) {
+      let series = chart.series.push(new am4charts.ColumnSeries());
+      series.columns.template.width = am4core.percent(100);
+      series.dataFields.valueX = value;
+      series.dataFields.categoryY = "license_month";
+      series.name = name;
+      series.fill = color;
+      series.stroke = color;
+
+      var categoryLabel = series.bullets.push(new am4charts.LabelBullet());
+      categoryLabel.label.text = value == 'available'
+                                ? '{valueX}'
+                                : t('$1{lic_cnt} licenses required')('{excess_amount}');
+
+      categoryLabel.label.hideOversized = false;
+      categoryLabel.label.truncate = false;
+      categoryLabel.label.adapter.add("text", function(text, target) {
+        if (target.dataItem.values.valueX.value > 0) {
+          if (target.dataItem.dataContext.excess_amount > 0) {
+            return text;
+          }
+          return '{valueX}';
+        }
+        return '';
+      });
+
+      if (value == 'available') {
+        categoryLabel.label.horizontalCenter = "left";
+        categoryLabel.label.dx = 10;
+      }
+      if (value == 'required') {
+        categoryLabel.label.adapter.add("dx", function(dx, target) {
+          if (target.dataItem.dataContext.excess_amount > 0
+           && target.dataItem.values.valueX.value > 10) {
+            return -10;
+          }
+          return 10;
+        });
+        categoryLabel.label.adapter.add("horizontalCenter", function(horizontalCenter, target) {
+          if (target.dataItem.dataContext.excess_amount > 0
+           && target.dataItem.values.valueX.value > 10) {
+            return 'right';
+          }
+          return 'left';
+        });
+        categoryLabel.label.adapter.add("fill", function(color, target) {
+          if (target.dataItem.dataContext.excess_amount > 0
+           && target.dataItem.values.valueX.value > 10) {
+            return am4core.color("#fff");
+          }
+          return color;
+        });
+      }
+    }
+
+    addColumnSeries(t_required, "required", "#5C9BD1");
+    addColumnSeries(t_available, "available", "#7DDC67");
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "none";
+    chart.cursor.lineY.disabled = true;
+    chart.cursor.lineX.disabled = true;
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    licenseMonthlyBarchart.chart = chart;
+  }
+
+  function reloadLicenseMonthlyBarchart(raw_data) {
+    let data = _.chain(raw_data)
+                .mapRows(["license_month", "available", "required"])
+                .each(function(x) {
+                  let month = moment(x.license_month, 'DD.MM.YYYY');
+                  x.sort_date = month.format('YYYYMMDD');
+                  x.license_month = month.format('MMM YYYY');
+                  x.excess_amount = +x.required - +x.available;
+                })
+                .sortBy(x => x.sort_date)
+                .value();
+
+    let current_info = _.first(data) || {};
+
+    d.exceed_amount = +current_info.required - +current_info.available;
+
+    licenseMonthlyBarchart(data);
+  }
+
+  function loadLicenseMonthlyStats() {
+    page.post(':load_license_monthly_barchart').then(function(result) {
+      $timeout(function() {
+        am4core.ready(function() {
+          am4core.useTheme(am4themes_animated);
+
+          reloadLicenseMonthlyBarchart(result.data);
+        });
+      });
+    }, page.alert);
+  }
+
+  d.exceed_amount = 0;
+
+  $timeout(function() {
+    if (!fi.employee_dismissal) return;
+    page.subpage('employee_dismissal').run(fi.employee_dismissal.uri);
+    page.subpage('employee_dismissal').on('dismissal_change', function() {
+      loadLicenseMonthlyStats();
+    });
+  });
+
+  loadLicenseMonthlyStats();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content h-100"><form name="form">
+  <div class="form-row mt-4">
+    <div class="col-sm-14">
+      <div class="card card-custom gutter-b" ng-if="d.exceed_amount > 0">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-16">
+              <div class="text-left" style="font-size: medium;">
+                <i style="font-size: medium;" class="fas fa-exclamation-triangle text-warning"></i>
+                <span class="font-weight-boldest"><t p1="d.exceed_amount">$1{exceed_amount} licenses required to open access</t></span>
+              </div>
+            </div>
+            <div class="col-sm-8 text-right">
+              <button type="button" class="btn btn-success" ng-if="hasBuyLicense()" ng-click="buyLicense()"><t>buy license</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom" ng-if="fi.employee_dismissal">
+        <div class="card-header" ng-if="d.exceed_amount > 0">
+          <div class="card-title">
+            <h3 class="card-label"><t>dismissing nonworking employees will open access</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <b-subpage name="employee_dismissal"/>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-10">
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>montly license balance analysis</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="license-monthly-barchart" style="min-height: 374px; height: 45vh;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

@@ -1,0 +1,133 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, param) {
+  var q = {};
+  q.isdev = param.mode == 'dev';
+
+  function deleteAction(message, server_id) {
+    page.confirm(message, function() {
+      fi.delete({ server_id: server_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete server $1{server_name}?')(row.name), row.server_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{server_count} server(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'server_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ server_id: row.server_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ server_id: row.server_id });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function startNotification() {
+    fi.start_notification().then(function(result) {
+      q.service_data = result;
+      modal.modal('show');
+    }, page.alert);
+  }
+
+  function stopNotification() {
+    fi.stop_notification().then(_.noop, page.alert);
+  }
+
+  function getServiceTokens() {
+    fi.get_service_tokens().then(function(result) {
+      window.text = result;
+      for (var i = 0; i < result.length; i ++) {
+        var token = result[i];
+
+        if (!token.invalid) {
+          result[i].tokenCreateTime = moment(new Date(token.tokenCreateTime)).format("DD.MM.YYYY HH:m:ss");
+          result[i].tokenExpiryTime = moment(new Date(token.tokenExpiryTime)).format("DD.MM.YYYY HH:m:ss");
+          result[i].tokenHardExpiryTime = moment(new Date(token.tokenHardExpiryTime)).format("DD.MM.YYYY HH:m:ss");
+        }
+      }
+      q.service_data = result;
+
+      modal.modal('show');
+    }, page.alert);
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="startNotification()" ng-if="fi.start_notification && q.isdev">{{ fi.start_notification.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="stopNotification()" ng-if="fi.stop_notification && q.isdev">{{ fi.stop_notification.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="getServiceTokens()" ng-if="fi.get_service_tokens && q.isdev">{{ fi.get_service_tokens.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="server_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="order_no, name" search="name" searchable="server_id" extra-columns="server_id, username, password">
+    <b-row>
+      <b-col name="order_no" size=3/>
+      <b-col name="name" size=7/>
+      <b-col name="host_url" size=7/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="server_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="host_url"/>
+  </b-grid>
+
+</form>
+<form name="modal">
+  <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog" style="max-width: 500px;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Service info</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <pre style="font-family: monospace !important;
+                      font-size: inherit !important;
+                      color: inherit !important;
+                      background-color: #f6f6f6;
+                      border-radius: 3px;">
+            {{ q.service_data | json }}
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+</div>

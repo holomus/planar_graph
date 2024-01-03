@@ -1,0 +1,17 @@
+{
+ "CSV": "CSV",
+ "date": "Период",
+ "dismissal reason kind": "Тип основания",
+ "division": "Подразделения",
+ "employee kind": "Ценность",
+ "Excel": "EXCEL",
+ "generate": "Составить отчет",
+ "Html": "HTML",
+ "jobs": "Должности",
+ "last 12 months": "Последние 12 месяцев",
+ "last year": "Прошлый год",
+ "parameters": "Фильтр",
+ "this year": "Текущий год",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

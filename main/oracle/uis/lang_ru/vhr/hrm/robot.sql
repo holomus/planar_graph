@@ -1,0 +1,43 @@
+prompt PATH TRANSLATE /vhr/hrm/robot
+begin
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_accrual_oper_type','Создать начисление');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_deduction_oper_type','Создать удержание');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_job','Создать должность');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_labor_function','Создать трудовую функцию');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_rank','Создать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_robot_group','Создать группу позиций');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_schedule','Создать график работы');
+uis.lang_ru('#a:/vhr/hrm/robot+add$add_wage_scale','Добавить тарифную группу');
+uis.lang_ru('#a:/vhr/hrm/robot+add$restrict_hidden_salary','Доступ к скрытой оплате труда');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_accrual_oper_type','Выбрать начисление');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_deduction_oper_type','Выбрать удержание');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_job','Выбрать должность');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_job_group','Выбрать группу должностей');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_labor_function','Выбрать трудовую функцию');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_rank','Выбрать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_robot_group','Выбрать группу позиций');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_schedule','Выбрать график работы');
+uis.lang_ru('#a:/vhr/hrm/robot+add$select_wage_scale','Выбрать тарифную группу');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_accrual_oper_type','Создать начисление');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_deduction_oper_type','Создать удержание');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_job','Создать должность');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_labor_function','Создать трудовую функцию');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_rank','Создать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_robot_group','Создать группу позиций');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_schedule','Создать график работы');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$add_wage_scale','Добавить тарифную группу');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$restrict_hidden_salary','Доступ к скрытой оплате труда');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_accrual_oper_type','Выбрать начисление');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_deduction_oper_type','Выбрать удержание');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_job','Выбрать должность');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_job_group','Выбрать группу должностей');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_labor_function','Выбрать трудовую функцию');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_rank','Выбрать квалификационный разряд');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_robot_group','Выбрать группу позиций');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_schedule','Выбрать график работы');
+uis.lang_ru('#a:/vhr/hrm/robot+edit$select_wage_scale','Выбрать тарифную группу');
+uis.lang_ru('#f:/vhr/hrm/robot+add','Позиция (создание)');
+uis.lang_ru('#f:/vhr/hrm/robot+edit','Позиция (изменение)');
+commit;
+end;
+/

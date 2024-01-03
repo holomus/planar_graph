@@ -1,0 +1,9 @@
+{
+ "host url": "URL Address",
+ "name": "Name",
+ "order_no": "No.",
+ "partner key": "Partner Key",
+ "partner secret": "Partner Secret",
+ "save": "Save",
+ "token": "Token"
+}

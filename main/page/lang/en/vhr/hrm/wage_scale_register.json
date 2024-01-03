@@ -1,0 +1,23 @@
+{
+ "indicators": "Indicators",
+ "pg.ranks.wage_html": "Salary",
+ "wage": "Salary",
+ "add": "Add",
+ "base wage": "Base Tariff",
+ "delete $1": "Delete $1",
+ "note": "Note",
+ "pg.ranks.coefficient": "Coefficient",
+ "pg.ranks.rank_name": "Rank (category)",
+ "pg.ranks.rownum": "№",
+ "post": "Post",
+ "post?": "Do you want to save and post?",
+ "register date": "Date",
+ "register number": "Number",
+ "round model": "Rounding",
+ "round type": "Rounding Type",
+ "save": "Save",
+ "save?": "Save?",
+ "valid from": "Valid From",
+ "wage scale": "Tariff Group",
+ "with base wage": "Tariff amounts set in relation to base tariff"
+}

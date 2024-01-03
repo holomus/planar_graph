@@ -1,0 +1,125 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  var d = model, q = {};
+
+  // sign
+  function signAction(data) {
+    page.post(':sign', data).then(function() {
+      page.emit('signed');
+      page.reload();
+    }, page.alert);
+  }
+
+  function sign(level_no, group_no, state) {
+    let data = {
+      document_id: d.document_id,
+      level_no: level_no,
+      group_no: group_no,
+      state: state,
+      note: d.sign_note
+    };
+
+    signAction(data);
+  }
+
+  function signAvailable(group, person) {
+    return d.status == 'P' && group.sign_available == 'Y' && person.person_id == d.user_id && person.state == 'N';
+  }
+
+  var all_persons = _.mapRows(model.persons, ['level_no', 'group_no', 'person_id', 'name', 'state', 'state_name', 'note']);
+  var all_groups = _.mapRows(model.groups, ['level_no', 'group_no', 'sign_min_count', 'state', 'state_name', 'sign_available', 'person_count', 'approved_group_count', 'cancelled_group_count']);
+
+  d.levels = _.chain(model.levels)
+              .mapRows(['level_no', 'sign_kind', 'state', 'state_name', 'sign_min_count', 'group_count', 'approved_group_count'])
+              .each(function(x) {
+                let groups = _.where(all_groups, { level_no: x.level_no });
+                _.each(groups, k => k.persons = _.chain(all_persons).where({ level_no: x.level_no, group_no: k.group_no }).map(w => w = _.omit(w, ['level_no', 'group_no'])).value());
+                x.groups = groups;
+              })
+              .value();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form">
+  <style type="text/css">
+    .ui-vhr654 .panel {
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border: 1px solid rgba(0,0,0,.1);
+      box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.1);
+      border-radius: .25rem;
+    }
+    .ui-vhr654 .panel-header {
+      display: -ms-flexbox;
+      display: flex;
+      -ms-flex-align: center;
+      align-items: center;
+      padding: .25rem .75rem;
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .ui-vhr654 .panel-body {
+      padding: .75rem;
+    }
+  </style>
+  <div class="ui-vhr654" style="display: grid;">
+    <div class="panel mb-2" ng-class="{ 'mt-2': !$fisrt }" ng-repeat-start="level in d.levels">
+      <div class="panel-header pt-2 pr-3 pb-2 pl-3 bg-secondary">
+        <strong class="mr-auto"><t p1="$index + 1">level $1</t></strong>
+        <span class="text-muted" ng-show="level.groups.length == 1"><t p1="level.groups[0].sign_min_count">sign min count: $1</t></span>
+      </div>
+      <div class="panel-body">
+        <div style="display: grid;">
+          <div ng-class="{ 'panel mb-2': level.groups.length > 1, 'mt-2': !$first }"
+            ng-repeat-start="group in level.groups">
+            <div class="panel-header pt-2 pr-3 pb-2 pl-3 bg-light" ng-show="level.groups.length > 1">
+              <strong class="mr-auto"><t p1="$index + 1">group $1</t></strong>
+              <span class="text-muted"><t p1="group.sign_min_count">sign min count: $1</t></span>
+            </div>
+            <div ng-class="{ 'panel-body': level.groups.length > 1 }">
+              <div class="form-group row" ng-repeat="person in group.persons">
+                <label class="col-sm-8" ng-class="{ 'font-weight-bold': person.person_id == d.user_id }">{{ person.name }}</label>
+                <span class="col-sm-6" ng-class="{ 'font-weight-bold': person.person_id == d.user_id }" ng-hide="signAvailable(group, person)">
+                  <i ng-class="{ 'far fa-circle': person.state == 'N', 'fa fa-check-circle text-success': person.state == 'A', 'fa fa-times-circle text-danger': person.state == 'C' }"></i>&nbsp;{{ person.state_name }}
+                </span>
+                <label class="col-sm-10 breakable" ng-class="{ 'font-weight-bold': person.person_id == d.user_id }" ng-hide="signAvailable(group, person)">{{ person.note }}</label>
+                <div class="col-sm-24" ng-show="signAvailable(group, person)">
+                  <div class="form-group">
+                    <label><t>sign note</t></label>
+                    <textarea class="form-control" rows=4 ng-model="d.sign_note"></textarea>
+                  </div>
+                  <button type="button" class="btn btn-success" ng-click="sign(level.level_no, group.group_no, 'A')"><t>approve</t></button>
+                  <button type="button" class="btn btn-danger" ng-click="sign(level.level_no, group.group_no, 'C')"><t>cancell</t></button>
+                </div>
+              </div>
+              <div class="w-100 text-right" ng-show="level.groups.length > 1">
+                <span class="text-muted">
+                  <t>group state</t>:&nbsp;<i ng-class="{ 'far fa-circle': group.state == 'N', 'fa fa-check-circle text-success': group.state == 'A', 'fa fa-times-circle text-danger': group.state == 'C' }"></i>&nbsp;{{ level.state_name }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div ng-repeat-end>
+            <div class="ml-4" ng-show="level.sign_kind == 'S' && !$last"><i class="fa fa-arrow-down"></i></div>
+          </div>
+        </div>
+        <div class="w-100 mt-2 text-right">
+          <span class="text-muted">
+            <t>level state</t>:&nbsp;<i ng-class="{ 'far fa-circle': level.state == 'N', 'fa fa-check-circle text-success': level.state == 'A', 'fa fa-times-circle text-danger': level.state == 'C' }"></i>&nbsp;{{ level.state_name }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div ng-repeat-end>
+      <div class="ml-4" ng-show="d.sign_kind == 'S' && !$last"><i class="fa fa-arrow-down"></i></div>
+    </div>
+    <div class="form-group mt-2">
+      <span class="text-muted">
+        <t>document status</t>:&nbsp;<i ng-class="{ 'fa fa-circle': d.status == 'D', 'fa fa-circle text-info': d.status == 'P', 'fa fa-check-circle text-success': d.status == 'A', 'fa fa-times-circle text-danger': d.status == 'C' }"></i>&nbsp;{{ d.status_name }}
+      </span>
+    </div>
+  </div>
+</form></div>

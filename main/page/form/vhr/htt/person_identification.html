@@ -1,0 +1,615 @@
+<script biruni>
+page.ctrl(function(scope, model, t, bRequire, fi, $timeout) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {
+        matched_photos: [],
+      },
+      t_confirm_message = t('save person identification?')();
+
+  // util
+  function showSizes(photo) {
+    if((photo.oldSize - photo.size) < 1024) {
+      return '';
+    }
+    return (~~(photo.oldSize/1024)) + 'Kb \u27A1 ' +  (~~(photo.size/1024)) +'Kb';
+  }
+
+  // qrcode
+  function regenQrCode() {
+    fi.regen_qrcode({ person_id: d.person_id }).then(function(result) {
+      d.qr_code = result.qr_code;
+      qrcode.makeCode(result.qr_code);
+    }, page.alert);
+  }
+
+  // photos
+  function uploadPhotos($file) {
+    page.faceCropper($file, croppedPhoto => {
+      croppedPhoto.oldSize = $file.oldSize;
+      d.photos.push(croppedPhoto);
+    }, false, true);
+    page.dropzone('photo').clear();
+  }
+
+  function removePhoto(photo) {
+    let index = _.indexOf(d.photos, photo);
+    d.photos.splice(index, 1);
+  }
+
+  function fixMainPhoto(index) {
+    _.each(d.photos, (x, ind) => {
+      if (ind != index) {
+        x.is_main = 'N';
+      } else {
+        x.is_main = 'Y';
+      }
+    });
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  modal.on('hidden.bs.modal', function() {
+    if (!p.fail_msg_show) stopFetchData();
+  });
+
+  // matched photos
+  let matched_photos = page.$content.find("form[name='matched_photos']>.modal");
+
+  function showMatchedModal() {
+    $timeout(function() {
+      matched_photos.modal('show');
+    });
+  }
+
+  function hideMatchedModal() {
+    matched_photos.modal('hide');
+  }
+
+  function calculatePhotoVector() {
+    page.confirm(t_confirm_message, function() {
+      if (!page.valid(scope.form)) return;
+      let photo_shas = _.map(d.photos, x => { return x && x.photo_sha ? x.photo_sha : x })
+      if (q.duplicate_prevention == 'N' || _.isEmpty(photo_shas)) { 
+        save(false);
+        return;
+      };
+      page.post(':upload_images', {
+        photo_shas: photo_shas,
+      }).then(function(response) {
+        page.post(':calculate_photo_vector', {
+          person_id: d.person_id,
+          photo_shas: response.photo_shas,
+        }).then(function(response) {
+          p.matched_photos = _.chain(response.matched_photos || [])
+                              .mapRows(['person_id', 'person_name', 'matched_sha', 'match_score', 'match_percent'])
+                              .sortBy(x => +x.match_score)
+                              .value();
+          p.error = response.error;
+          if (!_.isEmpty(p.matched_photos) || !!p.error && !_.isEmpty(p.error)) {
+            showMatchedModal();
+          } else save(false);
+        }).catch(page.alert);
+      }).catch(page.alert);
+    });
+  }
+
+  // fprints
+  var begin_capture_url  = 'beginCapture?type=1&';
+  var cancel_capture_url = 'cancelCapture?';
+  var get_image_url      = 'getImage?';
+  var get_template_url   = 'getTemplate?';
+  var waitingInterval;
+  var fprint_image = page.$content.find("form[name='modal'] .modal-body .fprint_image");
+  var fprint_img = new Image();
+  var fprint_canvas = document.createElement('canvas');
+  var fprint_ctx = fprint_canvas.getContext('2d');
+
+  fprint_canvas.style = "border-radius: 60%; box-shadow: 0px 0px 10px grey;";
+  fprint_canvas.width = 120;
+  fprint_canvas.height = 160;
+  fprint_image.append(fprint_canvas);
+
+  fprint_img.onload = function() {
+    fprint_ctx.drawImage(this, 0, 0, fprint_canvas.width, fprint_canvas.height);
+  }
+
+  function makeUrl(url) {
+    return 'http://127.0.0.1:24008/ISSOnline/' + url + 'random=' + Math.round(Math.random() * 1000);
+  }
+
+  async function fetchUrl(url) {
+    let response = await fetch(makeUrl(url));
+    let data = await response.json();
+    return data;
+  }
+
+  function checkUrl() {
+    p.fail_msg_show = false;
+    p.warning_msg_show = false;
+    p.url_ready = false;
+    p.status = 'check';
+
+    fetchUrl(begin_capture_url)
+    .then(function(data) {
+      if (data.ret == 0) {
+        fetchUrl(cancel_capture_url)
+        .then(() => $timeout(() => {
+          p.url_ready = true;
+          p.status = '';
+        }));
+      } else {
+        $timeout(() => {
+          p.warning_msg_show = true;
+          p.status = '';
+        });
+      }
+    })
+    .catch(function() {
+      $timeout(() => p.fail_msg_show = true);
+    });
+  }
+
+  function stopFetchData() {
+    clearInterval(waitingInterval);
+    p.status = '';
+    return fetchUrl(cancel_capture_url);
+  }
+
+  function fetchData() {
+    $timeout(() => p.status = 'scanning');
+
+    fetchUrl(get_image_url).then(function(data) {
+      if (!data.data) return;
+      $timeout(function() {
+        fprint_img.src = 'data:image/jpeg;base64,' + data.data.jpg_base64;
+        p.steps[p.counter] = !!data;
+        p.counter ++;
+        p.status = 'done';
+        if (p.counter > 2) {
+          clearInterval(waitingInterval);
+          fetchUrl(get_template_url).then(function(template) {
+            $timeout(function() {
+              if (template.ret == 0) {
+                p.finger.tmp = template.data.template;
+                p.status = 'successful';
+              } else {
+                p.status = 'unsuccessful';
+                p.error_finger_no = p.finger.finger_no;
+                p.finger = {};
+              }
+            }, 1000);
+          });
+        }
+      });
+    });
+  }
+
+  function startFetchData() {
+    fetchUrl(begin_capture_url)
+    .then(function(data) {
+      $timeout(() => {
+        if (data.ret == 0) {
+          p.counter = 0;
+          p.status = 'scanning';
+          waitingInterval = setInterval(fetchData, 1000);
+          p.url_ready = true;
+        } else {
+          p.warning_msg_show = true;
+        }
+      });
+    })
+    .catch(function() {
+      $timeout(() => p.fail_msg_show = true);
+    });
+  }
+
+  function changeFPrint(finger) {
+    if (p.fail_msg_show || !p.url_ready) return;
+
+    let last_finger = p.finger;
+    fprint_ctx.clearRect(0, 0, fprint_canvas.width, fprint_canvas.height);
+    p.status = 'starting';
+    p.error_finger_no = -1;
+    p.counter = -1;
+    p.url_ready = false;
+    p.steps = [false, false, false];
+    p.finger = finger;
+
+    if (_.isEmpty(last_finger)) {
+      startFetchData();
+    } else {
+      stopFetchData().then(() => {
+        if (finger != last_finger) startFetchData();
+        else {
+        $timeout(() => {
+          p.finger = {};
+          p.url_ready = true;
+          p.status = '';
+        });
+        }
+      });
+    }
+  }
+
+  function clearFprint(finger) {
+    if (p.finger == finger) changeFPrint(finger);
+    finger.tmp = '';
+  }
+
+  function fprintCount() {
+    d.fprint_count = _.chain(d.hands).pluck('fingers').flatten().pluck('tmp').compact().value().length;
+  }
+
+  function openModal() {
+    fprint_ctx.clearRect(0, 0, fprint_canvas.width, fprint_canvas.height);
+    p.error_finger_no = -1;
+    p.counter = -1;
+    p.steps = [false, false, false];
+    p.hands = angular.copy(d.hands);
+    p.finger = {};
+    checkUrl();
+    showModal();
+  }
+
+  function saveFprints() {
+    d.hands = p.hands;
+    p.hands = [];
+    fprintCount();
+    hideModal();
+  }
+
+  // save
+  function save(doConfirm = true) {
+    function onConfirm() {
+      let data = _.omit(d, 'photos', 'hands');
+      data.photos = _.map(d.photos, x => { return { photo_sha: x && x.photo_sha ? x.photo_sha : x, is_main: x.is_main || 'N' } });
+      data.fprints = _.chain(d.hands).pluck('fingers').flatten().map(finger => _.pick(finger, ['finger_no', 'tmp'])).value();
+
+      page.post(':save', data).then(page.reload, page.alert);
+    }
+
+    if (page.valid(scope.form)) {
+      if (doConfirm) page.confirm(t_confirm_message, onConfirm);
+      else onConfirm();
+    }
+  }
+
+  d.photos = _.map(d.photos || [], x => {
+    return {
+      name: x[0],
+      photo_sha: x[1],
+      photo_src: page.loadImageLarge(x[1]),
+      is_main: x[2]
+    }
+  });
+  d.fingers = _.mapRows(d.fingers, ['finger_no', 'name', 'side', 'tmp']);
+  d.hands = _.chain(d.hands)
+             .mapRows(['side', 'name'])
+             .each(hand => {
+               hand.fingers = _.filter(d.fingers, { side: hand.side });
+             })
+             .value();
+
+  q.track_steps = ['staff_gps_determination', 'staff_face_recognition'];
+  q.tClearFPrint = t('clear finger print?')();
+
+  fprintCount();
+
+  $(document).ready(function() {
+    bRequire.load('qrcode').then(function() {
+      qrcode = new QRCode(page.$content.find('.person-qrcode')[0], { width: 200, height: 200 });
+      qrcodeImage = $(qrcode._el).find('img')[0];
+      qrcode.makeCode(d.qr_code);
+    });
+  });
+
+  page.on('photo_upload', function(result) {
+    d.photos = _.reject(d.photos, x => { return x.photo_sha == result.old_photo_sha; });
+
+    if (result.photo_sha) {
+      let photo = angular.copy(result);
+      photo.photo_src = page.loadImageLarge(photo.photo_sha);
+
+      d.photos.push(photo);
+    }
+  });
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <style>
+    .custom-darker:hover {
+      filter: brightness(85%);
+    }
+    .stepper-horizontal-custom {
+      display:table;
+      width:100%;
+      margin:0 auto;
+    }
+    .stepper-horizontal-custom .step {
+      display:table-cell;
+      position:relative;
+      padding:24px;
+    }
+    .stepper-horizontal-custom .step .step-circle {
+      width:30px;
+      height:30px;
+      margin:0 auto;
+      background-color:#999999;
+      border-radius: 50%;
+      text-align: center;
+      line-height:30px;
+      font-size: 16px;
+      font-weight: 600;
+      color:#FFFFFF;
+    }
+    .stepper-horizontal-custom .step.done .step-circle {
+      background-color:#00AE4D;
+    }
+    .stepper-horizontal-custom .step.active .step-circle {
+      background-color: rgb(33,150,243);
+    }
+    .stepper-horizontal-custom .step.error .step-circle {
+      background-color: rgb(243, 75, 33);
+    }
+    .stepper-horizontal-custom .step .step-bar-left,
+    .stepper-horizontal-custom .step .step-bar-right {
+      position:absolute;
+      top:36px;
+      height:1px;
+      border-top:1px solid #DDDDDD;
+    }
+    .stepper-horizontal-custom .step .step-bar-right {
+      right:0;
+      left:50%;
+      margin-left:20px;
+    }
+    .stepper-horizontal-custom .step .step-bar-left {
+      left:0;
+      right:50%;
+      margin-right:20px;
+    }
+  </style>
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-header">
+        <div class="card-title">
+          <h3 class="card-label"><t>person identification</t></h3>
+        </div>
+        <div class="card-toolbar">
+          <button type="button" class="btn btn-outline-primary" ng-if="q.duplicate_prevention == 'Y'" ng-click="calculatePhotoVector()"><t>save</t></button>
+          <button type="button" class="btn btn-outline-primary" ng-if="q.duplicate_prevention == 'N'" ng-click="save()"><t>save</t></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm mb-4 mb-sm-0">
+                <label><t>pin</t></label>
+                <input type="text" class="form-control" style="text-align:right" pattern="[0-9]+" ng-model="d.pin" b-maxlength="15"/>
+              </div>
+              <div class="col-sm">
+                <label><t>pin code</t></label>
+                <input type="text" class="form-control" ng-model="d.pin_code" b-number precision="8"/>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>rfid code</t></label>
+                <input type="text" class="form-control" ng-model="d.rfid_code" b-maxlength="16"/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>fprints</t></label><br/>
+                <button type="button" class="btn btn-default btn-block" ng-click="openModal()">
+                  <i class="fas fa-edit"></i>
+                  <t p1="d.fprint_count">regestered $1/10 fingers</t>
+                </button>
+              </div>
+            </div>
+            <div class="separator separator-solid my-4" ng-if="d.track_by_qr_code == 'Y'"></div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4 pl-4" ng-show="d.track_by_qr_code == 'Y'">
+                <label><t>qr code</t></label>
+                <div class="d-flex justify-content-left"><div class="person-qrcode"></div></div>
+                <button type="button" class="btn btn-default mt-4" ng-click="regenQrCode()" ng-if="fi.regen_qrcode">
+                  <t>regen qr-code</t>&nbsp;<span class="fa fa-redo"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>photo</t></label>
+              <b-dropzone name="photo" on-select="uploadPhotos($file)" accept="'.png, .jpg, .jpeg, .gif'"/>
+            </div>
+            <div class="form-group row" ng-show="d.photos.length > 0">
+              <div class="m-4" ng-repeat="photo in d.photos">
+                <div class="image-input image-input-outline bgi-position-center">
+                  <div class="image-input-wrapper w-auto h-auto" ng-style="photo.is_main == 'Y' && { 'border': '3px solid #6992ff' }">
+                    <img class="w-auto h-150px cursor-pointer" ngf-src="photo.photo_src || photo" ng-click="fixMainPhoto($index)"/>
+                  </div>
+                  <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto(photo)" style="bottom: 0px;">
+                    <i class="fa fa-times icon-xs text-muted"></i>
+                  </span>
+                  <div class="text-center" ng-if="photo.size != photo.oldSize">
+                    {{ showSizes(photo) }}
+                  </div>
+                  <div class="text-center" ng-if="photo.size == photo.oldSize">&nbsp;</div>
+                </div>
+                <br/>
+                <span ng-if="photo.is_main == 'Y'"><t>is main</t></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- FPRINT -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>save fprint template</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group text-center" ng-repeat="hand in p.hands">
+                  <h5 class="font-weight-boldest">{{ hand.name }}</h5><br/>
+                  <div class="row">
+                    <div class="col-sm p-2" ng-repeat="finger in hand.fingers">
+                      <div class="image-input">
+                        <i class="fas fa-fingerprint icon-3x"
+                           ng-class="[
+                            p.finger.finger_no == finger.finger_no ? 'text-primary' : p.error_finger_no == finger.finger_no ? 'text-danger' : finger.tmp ? 'text-success' : 'text-light-dark',
+                            { 'cursor-pointer custom-darker': p.url_ready }
+                           ]" ng-click="changeFPrint(finger)"></i>
+                        <button type="button"
+                                class="b-offcanvas-hide text-hover-danger"
+                                style="background-color: rgba(0, 0, 0, 0); border: 0px;"
+                                data-action="change"
+                                ng-show="finger.tmp"
+                                b-toggle
+                                data-title="{{ q.tClearFPrint }}"
+                                on-click-yes="clearFprint(finger)">
+                          <i class="fa fa-times icon-sm text-muted"></i>
+                        </button>
+                      </div>
+                      <br/>
+                      <label class="font-weight-boldest">{{ finger.finger_no }}</label>
+                      <br/>
+                      <label class="text-muted">{{ finger.name }}</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="text-center my-2 fprint_image"></div>
+                <div class="stepper-horizontal-custom">
+                  <div class="step" ng-class="p.status == 'unsuccessful' ? 'error' : p.counter == $index ? 'active' : p.counter > $index ? 'done' : ''" ng-repeat="step in p.steps track by $index" ng-click="changeData($index)">
+                    <div class="step-circle">
+                      <span ng-hide="p.status == 'successful' || p.status == 'unsuccessful'">{{ $index + 1 }}</span>
+                      <span ng-show="p.status == 'successful'"><i class="fa fa-check"></i></span>
+                      <span ng-show="p.status == 'unsuccessful'"><i class="fa fa-times"></i></span>
+                    </div>
+                    <div class="step-bar-left" ng-hide="$first"></div>
+                    <div class="step-bar-right" ng-hide="$last"></div>
+                  </div>
+                </div>
+                <h5 class="font-weight-boldest text-center">
+                  <div ng-hide="p.warning_msg_show || p.fail_msg_show">
+                    <t ng-show="p.counter == -1 && !p.status">for scanning, please select finger</t>
+                    <t ng-show="p.status == 'check'">checking the connection to the device</t>
+                    <t ng-show="p.status == 'starting'" p1="p.finger.finger_no">fprint scan starting, finger_no $1</t>
+                    <t ng-show="p.status == 'scanning'" p1="p.counter + 1">scanning $1</t>
+                    <t ng-show="p.status == 'done'" p1="p.counter">successfully scanned $1</t>
+                    <t ng-show="p.status == 'successful'" p1="p.finger.finger_no">fprint scanning successfully finished, finger_no $1</t>
+                    <t ng-show="p.status == 'unsuccessful'" p1="p.error_finger_no">fprint scanning unsuccessfully finished, finger_no $1</t>
+                  </div>
+                  <div class="text-warning" ng-show="p.warning_msg_show">
+                    <t>Sorry, device must be attached!</t>
+                  </div>
+                  <div class="text-danger" ng-show="p.fail_msg_show">
+                    <label><t>Sorry, driver must be installed!</t></label>
+                    <br/>
+                    <a href="page/resource/vhr/Fingerprint Reader Driver.exe" download=""><i class="fa fa-download"></i>&nbsp;<t>download driver</t></a>
+                  </div>
+                </h5>
+                <label ng-show="p.counter != -1" class="text-center">
+                  <t p1="p.counter">Swipe center of fingerprint sensor, successfully registered $1{number} out of 3</t>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveFprints()"><t>save fprints</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="matched_photos">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog" ng-if="!!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">
+              <h4 class="mb-0 d-flex align-items-center">
+                <i class="fa fa-exclamation-circle text-warning my-n4 mr-4 opacity-50 h1 font-weight-bolder"></i>
+                <div>{{ p.error.code }} —  <span class="font-weight-bolder breakable" ng-bind-html="p.error.title"></span></div>
+              </h4>
+            </div>
+            <button type="button" class="close p-4 m-n4" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="error-message mb-5" style="font-weight: 400; line-height: 140%;">
+              <h5 style="color: rgba(12, 42, 62, 0.8);" ng-bind-html="p.error.message"></h5>
+            </div>
+            <div style="color: rgba(12, 42, 62, 0.8); font-weight: 400; line-height: 140%;" id="recoms" ng-if="p.error.solutions.length > 0">
+              <footer class="blockquote-footer h5 text-primary user-select-none">Solutions</footer>
+              <hr class="mt-0 border-primary" style="border-top-style: dashed;"/>
+              <div class="error-solutions">
+                <ul>
+                  <li class="mb-4" ng-repeat="solution in p.error.solutions" ng-bind-html="solution"></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save(false)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-dialog modal-lg" style="max-width: 50vw;" ng-if="!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>matching photo found</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <b-pg-grid name="matched_photos" 
+                       local-data="p.matched_photos" 
+                       iterator="item"
+                       min-width="500"
+                       limit="1000">
+              <b-pg-row>
+                <b-pg-col name="person_name" size="8"/>
+                <b-pg-col name="photo" size="8">
+                  <img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" ng-src="{{ page.loadImageMedium(item.matched_sha) }}"/>
+                </b-pg-col>
+                <b-pg-col name="match_score" size="4"/>
+                <b-pg-col name="match_percent" size="4"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="save(false)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

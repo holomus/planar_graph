@@ -1,0 +1,440 @@
+<script biruni>
+page.ctrl(function(scope, model, t, fi, bHttp, xparam, $timeout) {
+  var d = _.omit((_.isUndefined(model.person_id) ? _.extend(model, xparam) : model), 'references'),
+      q = model.references;
+
+  // photo
+  function getDefaultPhotoSrc() {
+    var res = d.gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc();
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    d.photo_sha = null;
+    d.photo = null;
+    setPhotoSrc();
+  }
+
+  function showPhoto() {
+    if (d.photo || d.photo_sha) {
+      page.previewFile(d.photo || {
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  // person
+  function splitName() {
+    [d.last_name, d.first_name, d.middle_name] = [];
+
+    if (d.name) {
+      let name_array = _.reject(d.name.split(' '), x => { return _.isEmpty(x); });
+      if (name_array.length == 1) {
+        d.first_name = name_array[0];
+      } else {
+        [d.last_name, d.first_name, d.middle_name] = name_array;
+        if (name_array.length == 4) {
+          d.middle_name += ' ' + (_.rest(name_array, 3)).join(' ');
+        }
+      }
+    }
+  }
+
+  function changePerson(query, value) {
+    query.searchValue(value);
+    splitName();
+
+    q.name_valid = !((q.crs_last_name == 'Y' && !d.last_name) || (q.crs_middle_name == 'Y' && !d.middle_name) || !d.first_name);
+  }
+
+  function loadPerson(row) {
+    d.person_id = row.person_id;
+    d.name = row.name;
+    splitName();
+
+    page.post(':load_person', d.person_id).then(function(result) {
+      _.extend(d, result);
+      _.each(q.langs, function(lang) {
+        lang.level_id = (_.findWhere(d.langs, { lang_id : lang.lang_id }) || {}).level_id;
+      });
+      d.candidate_jobs = parseJson(d.candidate_jobs, ['job_id', 'name']);
+
+      setPhotoSrc();
+    }, page.alert);
+  }
+
+  function setPerson(row) {
+    if (!row) return;
+    if (row.candidate_exists == 'Y' && d.person_id != row.person_id) {
+      if (fi.edit) {
+        page.confirm(t('person is already a candidate. go to edit form?')(), function() {
+          fi.edit({ person_id: row.person_id });
+        }, function() {
+          d.person_id = '';
+        });
+      } else {
+        page.alert(t('no access to go to edit form')());
+      }
+    } else if (row.attached == 'N') {
+      page.confirm(t('candidate is not attached to filial. attach to filial?')(), function() {
+        fi.attach_person(row.person_id).then(_.partial(loadPerson, row), page.alert);
+      });
+    } else {
+      loadPerson(row);
+    }
+  }
+
+  function deletePerson() {
+    d.person_id = '';
+    d.name = '';
+    splitName();
+  }
+
+  // cv
+  function removeCvFile() {
+    d.cv_sha = '';
+    d.cv_name = '';
+    d.cv_file = '';
+  }
+
+  function uploadCvFile($file) {
+    if (!$file) return;
+    d.cv_file = $file;
+    d.cv_name = d.cv_file.name;
+    d.cv_sha = '';
+    page.dropzone('cv_file').clear();
+  }
+
+  function downloadFile(sha) {
+    window.open(page.downloadFile(sha));
+  }
+
+  // source
+  function setSource(source, row) {
+    if (row) {
+      source.source_id = row.source_id;
+      source.source_name = row.name;
+    }
+  }
+
+  function selectSource(source) {
+    fi.select_source(null, _.partial(setSource, source), { where: ['kind', '=', ['H', 'B']] });
+  }
+
+  function addSource(source, value) {
+    fi.add_source(null, _.partial(setSource, source), { name: value });
+  }
+
+
+  // edu stages
+  function addEduStage(item){
+    if (_.contains(d.edu_stages, item.edu_stage_id)) {
+      d.edu_stages = _.without(d.edu_stages, item.edu_stage_id);
+    } else {
+      !d.edu_stages ? d.edu_stages = [] : null;
+      d.edu_stages.push(item.edu_stage_id);
+    }
+  }
+
+  function existEduStage(item){
+    if (_.contains(d.edu_stages, item.edu_stage_id)) return 'btn-success';
+    else return 'btn-default';
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      let data = _.pick(d, 'person_id','source_id', 'note', 'person_type_id', 'wage_expectation', 'first_name', 'last_name', 'middle_name',
+                           'gender', 'birthday', 'region_id', 'address', 'legal_address', 'main_phone', 'extra_phone', 'email', 'edu_stages', 'langs');
+
+      data.photo_sha = d.photo || d.photo_sha;
+      data.cv_sha = d.cv_file || d.cv_sha;
+      data.candidate_jobs = _.pluck(d.candidate_jobs, 'job_id');
+
+      _.each(q.langs, function(lang) {
+        if (lang.level_id) data.langs.push(lang);
+      });
+
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  function parseJson(obj, keys) {
+    return _.chain(obj).map(x => x = JSON.parse(x)).mapRows(keys).value();
+  }
+
+  function validatePhone() {
+    if (d.main_phone) {
+      if (d.main_phone == q.main_phone_origin) q.phone_is_unique = true;
+      else {
+        bHttp.unblockOnce();
+          page.post(':phone_is_unique', { main_phone: d.main_phone }).then(function(result) {
+            q.phone_is_unique = result == "Y";
+          }, page.alert);
+      }
+    } else q.phone_is_unique = true;
+  }
+
+  if(d.person_id) q.main_phone_origin = d.main_phone;
+
+  d.langs = parseJson(d.langs, ['lang_id', 'level_id']);
+  d.candidate_jobs = parseJson(d.candidate_jobs, ['job_id', 'name']);
+
+  q.tDownloadFile = t('download file')();
+  q.tDeleteFile = t('delete file')();
+
+  q.candidate_undefined = _.isUndefined(d.person_id);
+  q.name_valid = true;
+  q.regions = _.chain(q.regions)
+               .map(x => x = JSON.parse(x))
+               .mapRows(['region_id', 'name', 'parent_id'])
+               .each(x => x.parent_id = x.parent_id || '')
+               .value();
+  q.langs = parseJson(q.langs, ['lang_id', 'name']);
+  q.edu_stages = parseJson(q.edu_stages, ['edu_stage_id', 'name']);
+  q.lang_levels = parseJson(q.lang_levels, ['level_id', 'name']);
+  _.each(q.langs, function(lang) {
+    lang.level_id = (_.findWhere(d.langs, { lang_id : lang.lang_id }) || {}).level_id;
+  });
+
+  setPhotoSrc();
+  validatePhone();
+
+  scope.d = d;
+  scope.q = q;
+
+  if (q.candidate_undefined){
+    $timeout(function() {
+      let person_input = page.$content.find('b-input[name="table_persons"]').scope()._$bInput;
+      person_input.onInputBlur = _.wrap(person_input.onInputBlur, function(onBlur) {
+        $timeout(function() {
+          splitName();
+        }, 400);
+        return onBlur();
+      });
+    });
+  }
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-5">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="image-input image-input-outline bgi-position-center mb-4">
+            <div class="image-input-wrapper w-auto h-auto">
+              <img class="mw-100 mh-100 cursor-pointer" ngf-src="d.photo || q.photo_src" ng-if="d.photo || q.photo_src" ng-click="showPhoto()">
+            </div>
+            <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" b-cropper="d.photo">
+            <i class="fa fa-pen icon-sm text-muted"></i>
+            </a>
+            <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto()" ng-if="d.photo || d.photo_sha">
+              <i class="fa fa-times icon-xs text-muted"></i>
+            </span>
+          </div>
+          <div class="form-group">
+            <label><t>gender</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="gender" value="M" ng-model="d.gender" ng-change="setPhotoSrc()"/><span><t>male</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="gender" value="F" ng-model="d.gender" ng-change="setPhotoSrc()"/><span><t>female</t></span>
+            </label>
+          </div>
+          <div class="form-group" ng-if="q.has_cv == 'Y'">
+            <label><t>cv</t></label><br/>
+            <b-dropzone name="cv_file" on-select="uploadCvFile($file)" ng-if="!(d.cv_file || d.cv_sha)"/>
+            <label>{{ d.cv_name }}&nbsp;</label>
+            <a href="" title="{{ q.tDownloadFile }}" ng-click="downloadFile(d.cv_sha)" ng-if="d.cv_sha"><i class="fa fa-arrow-alt-circle-down"></i></a>
+            <a href="" title="{{ q.tDeleteFile }}" ng-click="removeCvFile()" ng-if="d.cv_file || d.cv_sha"><i class="fa fa-times-circle"></i></a>
+          </div>
+          <div class="form-group mb-4">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-19">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>main info</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group" ng-if="q.candidate_undefined">
+                <label><t>name</t><r/></label>
+                <b-input name="table_persons"
+                         model="d.name | name"
+                         model-key="d.person_id | person_id"
+                         column="attached, candidate_exists"
+                         on-change="changePerson(query, value)"
+                         on-select="setPerson(row)"
+                         on-delete="deletePerson()"
+                         ng-model-options="{ debounce: 400 }"
+                         hide-on-focus
+                         required>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                  <div class="col-sm-8 text-primary" ng-if="row.person_id != d.person_id && row.candidate_exists == 'Y'"><t>candidate exists</t></div>
+                </b-input>
+              </div>
+              <div class="form-row">
+                <div class="col-sm">
+                  <label><t>last name</t><r ng-if="q.crs_last_name == 'Y'"/></label>
+                  <input type="text" class="form-control" ng-model="d.last_name" ng-if="!q.candidate_undefined" ng-required="q.crs_last_name == 'Y'" b-maxlength="250"/>
+                  <span class="form-view" ng-if="q.candidate_undefined">{{ d.last_name }}</span>
+                </div>
+                <div class="col-sm">
+                  <label><t>first name</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.first_name" ng-if="!q.candidate_undefined" b-maxlength="250" required/>
+                  <span class="form-view" ng-if="q.candidate_undefined">{{ d.first_name }}</span>
+                </div>
+                <div class="col-sm">
+                  <label><t>middle name</t><r ng-if="q.crs_middle_name == 'Y'"/></label>
+                  <input type="text" class="form-control" ng-model="d.middle_name" ng-if="!q.candidate_undefined" ng-required="q.crs_middle_name == 'Y'" b-maxlength="250"/>
+                  <span class="form-view" ng-if="q.candidate_undefined">{{ d.middle_name }}</span>
+                </div>
+              </div>
+              <span class="text-danger" ng-if="d.name && !q.name_valid && !d.last_name && q.crs_last_name == 'Y'">
+                <t>last name is required, please enter the last name after first_name</t>
+              </span>
+              <span class="text-danger" ng-if="d.name && !q.name_valid && (d.last_name && q.crs_last_name == 'Y' || q.crs_last_name == 'N') && (!d.middle_name && q.crs_middle_name == 'Y')">
+                <t>middle name is required, please enter the middle name after last name</t>
+              </span>
+              <div class="form-row mb-4 mt-4">
+                <div class="col-sm-12">
+                  <label><t>birthday</t><r ng-if="q.crs_birthday == 'Y'"/></label>
+                  <input type="text" class="form-control" ng-model="d.birthday" b-date-picker="DD.MM.YYYY" ng-required="q.crs_birthday == 'Y'"/>
+                </div>
+              </div>
+              <div class="form-group mb-4">
+                <label><t>person types</t></label>
+                <b-input name="person_types"
+                         model="d.person_type_name | name"
+                         model-key="d.person_type_id | person_type_id">
+                    {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group mb-4" ng-if="q.has_source == 'Y'">
+                <label><t>source</t></label>
+                <b-input name="sources"
+                         model="d.source_name | name"
+                         model-key="d.source_id | source_id"
+                         is-add="fi.add_source"
+                         is-view="fi.select_source"
+                         on-add="addSource(d, value)"
+                         on-view="selectSource(d)">
+                    {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group mb-4">
+                <label><t>wage expectation</t></label>
+                <input type="text" class="form-control" b-number scale="0" precision="9" ng-model="d.wage_expectation"/>
+              </div>
+              <div class="form-group mb-4">
+                <label><t>jobs</t></label>
+                <b-input multiple
+                         name="jobs"
+                         model="d.candidate_jobs"
+                         model-key="job_id"
+                         is-add="fi.add_job"
+                         is-view="fi.select_job"
+                         on-add="addJob(value)"
+                         on-view="selectJob()"
+                         label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>main phone</t><r ng-if="q.crs_phone_number == 'Y'"/></label>
+                <input type="text"
+                       class="form-control"
+                       ng-model="d.main_phone"
+                       ng-change="validatePhone()"
+                       ng-model-options="{ debounce: 500 }"
+                       ng-required="q.crs_phone_number == 'Y'"
+                       b-validate="{ s: q.phone_is_unique || d.main_phone.length == 0 }"
+                       b-telinput
+                       b-maxlength="100"/>
+                <span class="text-danger" ng-hide="d.main_phone.length == 0 || q.phone_is_unique"><t>main phone should be unique</t></span>
+              </div>
+              <div class="form-group">
+                <label><t>extra phone</t></label>
+                <input type="text" class="form-control" ng-model="d.extra_phone" b-maxlength="100"/>
+              </div>
+              <div class="form-group">
+                <label><t>email</t><r ng-if="q.crs_email == 'Y'"/></label>
+                <input type="text" class="form-control" ng-model="d.email" ng-required="q.crs_email == 'Y'" b-maxlength="320"/>
+              </div>
+              <div class="form-group" ng-if="q.crs_region == 'N' && q.has_region == 'Y'">
+                <label><t>region name</t></label>
+                <b-tree-select
+                  origin="q.regions"
+                  id-key="region_id"
+                  model="d.region_id"/>
+              </div>
+              <div class="form-group" ng-if="q.crs_region == 'Y' && q.has_region == 'Y'">
+                <label><t>region name</t><r/></label>
+                <b-tree-select
+                  origin="q.regions"
+                  id-key="region_id"
+                  model="d.region_id"
+                  required/>
+              </div>
+              <div class="form-group">
+                <label><t>address</t><r ng-if="q.crs_address == 'Y'"/></label>
+                <textarea class="form-control" rows="1" ng-model="d.address" ng-required="q.crs_address == 'Y'" b-maxlength="500"></textarea>
+              </div>
+              <div class="form-group">
+                <label><t>legal address</t><r ng-if="q.crs_legal_address == 'Y'"/></label>
+                <textarea class="form-control" rows="1" ng-model="d.legal_address" ng-required="q.crs_legal_address == 'Y'" b-maxlength="300"></textarea>
+              </div>
+              <div class="form-group" ng-if="q.edu_stages.length > 0">
+                <label><t>education types</t></label>
+                <div class="form-group">
+                  <div style="float:left; margin-right: 4px; margin-bottom: 4px;" ng-repeat="educ in q.edu_stages">
+                    <button type="button" class="btn" ng-click="addEduStage(educ)" ng-class="existEduStage(educ)">{{ educ.name }}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-header" ng-if="q.langs.length > 0 && q.lang_levels.length > 0">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>languages</t></h5>
+          </div>
+        </div>
+        <div class="card-body" ng-if="q.langs.length > 0 && q.lang_levels.length > 0">
+          <div class="row mb-4" ng-repeat="lang in q.langs">
+            <label class="col-sm-4 control-label" style="user-select: none;">{{ lang.name }}</label>
+            <div class="col-sm-20">
+              <div style="float:left; margin-right: 4px; margin-bottom: 4px;" ng-repeat="level in q.lang_levels">
+                <button type="button" class="btn" ng-click="lang.level_id = lang.level_id == level.level_id? '': level.level_id"
+                        ng-class="lang.level_id != level.level_id ? 'btn-default' : 'btn-success'">{{ level.name }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

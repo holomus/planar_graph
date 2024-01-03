@@ -1,0 +1,11 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another reason": "The code is already assigned to another sick note reason",
+ "coefficient": "Coefficient",
+ "coefficient must be between 0 and 1": "Coefficient must be between 0 and 1",
+ "name": "Name",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

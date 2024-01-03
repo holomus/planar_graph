@@ -1,0 +1,21 @@
+{
+ "clear preferences": "Reset",
+ "CSV": "CSV",
+ "date": "Period",
+ "division group name": "Department Group",
+ "divisions": "Departments",
+ "Excel": "EXCEL",
+ "filter settings": "Filter settings",
+ "generate": "Generate",
+ "Html": "HTML",
+ "parameters": "Filter",
+ "preferences": "Settings",
+ "report settings": "Report settings",
+ "save preferences": "Save",
+ "save preferences?": "Save?",
+ "setting division group": "Use department group",
+ "setting minute words": "Display (hh.min)",
+ "setting minutes": "Display minutes",
+ "view": "View",
+ "XML": "XML"
+}

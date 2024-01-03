@@ -1,0 +1,12 @@
+{
+ "copied to clipboard": "Скопировано в буфер обмена.",
+ "device ip": "IP-адрес",
+ "device MAC": "MAC-адрес устройства",
+ "device name": "Название устройства",
+ "location": "Локация",
+ "location should be only small latin letters and numbers": "Локация должна содержать только строчные латинские буквы и цифры.",
+ "login": "Логин",
+ "password": "Пароль",
+ "primary company": "Компания",
+ "save": "Сохранить"
+}

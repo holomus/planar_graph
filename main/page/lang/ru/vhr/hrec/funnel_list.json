@@ -1,0 +1,13 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{funnel_count} funnel(s)?": "Вы действительно хотите удалить <b>$1</b> набор(а/ов)?",
+ "delete $1{funnel_name}?": "Вы действительно хотите удалить <b>$1</b>?",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.funnel_id": "ИД",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

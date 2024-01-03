@@ -1,0 +1,268 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  let d = _.omit(model, 'references') || {},
+      q = model.references,
+      p = {
+        data: {},
+      };
+
+  // save
+  function save(training) {
+    let t_confirm_message = training == 'Y' ? t('save and go training?')() : t('save?')();
+    if (page.valid(scope.form)) {
+      page.confirm(t_confirm_message, function() {
+        let data = _.pick(d, 'document_id');
+            data.training = training;
+            data.staffs = _.chain(d.staffs)
+                           .each(x => x.subject_ids = _.pluck(x.subjects, 'subject_id'))
+                           .map(x => _.pick(x, ['staff_id', 'exam_id', 'subject_ids']))
+                           .value();
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function rowStatus(row) {
+    if (row.is_dismissed) return 'label-danger';
+    if (row.career_deleted || row.is_rotated) return 'label-info'; 
+
+    return row.attempt_no > 1 ? 'label-warning' : 'label-success';
+  }
+
+  function onSelectSubject(staff, row) {
+    if (!row) return;
+    staff.subjects.push(row);
+
+    staff.subject_names = _.pluck(staff.subjects, 'name').join(', ');
+  }
+
+  function onDeleteSubject(staff, row) {
+    if (!row) return;
+    staff.subjects.splice(_.findIndex(staff.subjects, row), 1);
+    
+    staff.subject_names = _.pluck(staff.subjects, 'name').join(', ');
+  }
+
+  function changeSubjectQuery(query, value) {
+    query.where({}).searchValue(value);
+  }
+
+  function changeExamQuery(query, value) {
+    query.where({}).searchValue(value);
+  }
+
+  // ------------------------------ charge details modal ------------------------------ //
+  let modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function openTrainingModal(row) {
+    p.data = row;
+    showModal();
+  }
+
+  let indicators = _.chain(d.indicators)
+                    .mapRows(['staff_id',
+                              'indicator_id'])
+                    .groupBy('staff_id')
+                    .value(),
+      subjects = _.chain(d.subjects)
+                  .mapRows(['staff_id',
+                            'subject_id',
+                            'name'])
+                  .groupBy('staff_id')
+                  .value();
+  d.staffs = _.chain(d.staffs)
+              .mapRows(['staff_id',
+                        'staff_number',
+                        'staff_name',
+                        'dismissal_date',
+                        'new_change_date',
+                        'robot_id',
+                        'robot_name',
+                        'from_rank_id',
+                        'from_rank_name',
+                        'to_rank_id',
+                        'to_rank_name',
+                        'division_name',
+                        'job_name',
+                        'attempt_no',
+                        'exam_id',
+                        'exam_name',
+                        'old_experience_id',
+                        'new_experience_id',
+                        'new_from_rank_id',
+                        'note'])
+              .each(x => {
+                x.subjects = subjects[x.staff_id] || [];
+                x.subject_names = _.pluck(x.subjects, 'name').join(', ');
+                x.has_subjects_indicator = _.any(indicators[x.staff_id] || [], indicator => indicator.indicator_id == q.training_subjects_indicator);
+                x.has_exam_indicator = _.any(indicators[x.staff_id] || [], indicator => indicator.indicator_id == q.exam_score_indicator);
+
+                let dismissal_date = moment(x.dismissal_date, 'DD.MM.YYYY'),
+                    new_change_date = moment(x.new_change_date, 'DD.MM.YYYY');
+
+                x.is_dismissed = dismissal_date < new_change_date;
+                x.career_deleted = !x.old_experience_id || !x.new_experience_id;
+                x.is_rotated = x.old_experience_id != x.new_experience_id || x.from_rank_id != x.new_from_rank_id;
+              })
+              .value();            
+
+  scope.q = q;
+  scope.d = d;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>save and go training</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>document date</t></label>
+                <span class="form-view">{{ d.document_date }}</span>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>document number</t></label>
+                <span class="form-view">{{ d.document_number }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+              <span class="form-view">{{ d.division_name }}</span>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>note</t></label>
+              <span class="form-view">{{ d.note }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="separator separator-solid my-4"></div>
+        <div class="form-row mb-2">
+          <div class="offset-sm-14 col-sm-10">
+            <b-pg-controller name="staffs">
+          </div>
+        </div>
+        <b-pg-grid name="staffs" 
+                  search="staff_name, robot_name, from_rank_name, to_rank_name" 
+                  searchable="staff_number, division_name, job_name"
+                  sort="staff_name" 
+                  local-data="d.staffs">
+          <b-pg-header name="ranks">
+            <div><t>old rank</t>&nbsp;<i class="fas fa-arrow-right"></i>&nbsp;<t>new rank</t></div>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="staff_name" size="4"/>
+            <b-pg-col name="attempt_status" size="3">
+              <span class="label label-pill label-inline mr-2" ng-class="rowStatus(row)">
+                <t ng-if="row.is_dismissed">staff dismissed</t>
+                <t ng-if="!row.is_dismissed && row.career_deleted">career deleted</t>
+                <t ng-if="!row.is_dismissed && !row.career_deleted && row.is_rotated">staff rotated</t>
+                <t ng-if="!row.is_dismissed && !row.career_deleted && !row.is_rotated" p1="{{ row.attempt_no }}">attempt no $1</t>
+              </span>
+            </b-pg-col>
+            <b-pg-col name="robot_name" size="3"/>
+            <b-pg-col name="ranks" size="4">
+              <div class="row ml-0">
+                <div class="badge badge-primary">{{ row.from_rank_name }}</div>
+                &nbsp;<i class="fas fa-arrow-right pt-1"></i>&nbsp;
+                <div class="badge badge-success">{{ row.to_rank_name }}</div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="exam" size="3">
+              <div ng-if="row.has_exam_indicator">
+                {{ row.exam_name }}
+              </div>
+            </b-pg-col>
+            <b-pg-col name="training_subjects" size="3">
+              <div ng-if="row.has_subjects_indicator">
+                <ol class="pl-4 mb-0">
+                  <li ng-repeat="subject in row.subjects">
+                    {{ subject.name }}
+                  </li>
+                </ol>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="note" size="3"/>
+            <b-pg-col name="actions" size="1">
+              <div class="text-left" ng-if="row.has_subjects_indicator || row.has_exam_indicator">
+                <button type="button" class="btn btn-default btn-icon" ng-click="openTrainingModal(row)">
+                  <i class="fa fa-eye"></i>
+                </button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+
+          <b-pg-extra-col name="staff_number" size="3"/>
+          <b-pg-extra-col name="division_name" size="3"/>
+          <b-pg-extra-col name="job_name" size="3"/>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>edit trainings</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <label><t>staff name</t></label>
+                  <span class="form-view">{{ p.data.staff_name }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-if="p.data.has_subjects_indicator">
+              <label><t>subjects</t></label>
+              <b-input name="subjects"
+                       model="p.data.subjects"
+                       model-key="subject_id"
+                       label="name"
+                       on-change="changeSubjectQuery(query, value)"
+                       on-select="onSelectSubject(p.data, row)"
+                       on-delete="onDeleteSubject(p.data, row)"
+                       multiple>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group" ng-if="p.data.has_exam_indicator">
+              <label><t>exam</t></label>
+              <b-input name="exams"
+                       model="p.data.exam_name | name"
+                       model-key="p.data.exam_id | exam_id"
+                       on-change="changeExamQuery(query, value)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,14 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{subject_count} subject(s)?": "Haqiqatan ham <b>$1</b> mavzu(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete subject $1{subject_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.state_name": "Holat",
+ "table.subject_id": "ID"
+}

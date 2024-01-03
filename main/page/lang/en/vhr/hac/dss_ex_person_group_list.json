@@ -1,0 +1,12 @@
+{
+ "close": "Close",
+ "delete $1": "Delete $1",
+ "delete $1{person_group_count} person group(s)?": "Delete $1 person group(s)?",
+ "delete person group $1{person_group_name}?": "Delete $1?",
+ "details": "Details",
+ "extra details": "Details",
+ "table.created_on": "Created on",
+ "table.modified_on": "Modified on",
+ "table.person_group_code": "Person Group Code",
+ "table.person_group_name": "Name"
+}

@@ -1,0 +1,19 @@
+{
+ "table.role_names": "Rollar",
+ "delete $1": "O'chirish $1",
+ "delete $1 job(s)?": "Siz haqiqatdan ham <b>$1</b> ta lavozimni o'chirmoqchimisiz?",
+ "delete job $1?": "Siz haqiqatdan ham <b>$1</b> lavozimini o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.division_names": "Bo'limlar",
+ "table.expense_coa_name": "Xarajat hisobi",
+ "table.expense_ref_set_names": "Xarajat tafsilotlari",
+ "table.job_group_name": "Lavozim guruhi",
+ "table.job_id": "ID",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom",
+ "table.state_name": "Holat"
+}

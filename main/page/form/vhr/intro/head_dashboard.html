@@ -1,0 +1,586 @@
+<script biruni>
+page.require("nicescrollbar",
+             "amcharts4",
+             "amcharts4-theme-animated");
+page.header(false);
+page.init(function(bUtil, t) {
+  page.query('table').param({ "date": moment().format("DD.MM.YYYY") });
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe' : '' }male.png`;
+  }
+
+  function parseTimeToWord(minutes) {
+    if (!minutes) return '';
+    minutes = parseInt(minutes);
+    if (minutes == 0) return '0';
+    let [hour, min] = [parseInt(minutes / 60), minutes % 60];
+    return (hour ? hour + ' ' + t('hh')() : '') + ' ' + (min ? min + ' ' + t('min')() : '');
+  }
+
+  var tg = page.grid('table');
+
+  let work_status_icon = { 'I': 'sign-in-alt', 'O': 'sign-out-alt', 'R': 'undo' },
+      work_status_color = { 'I': '#06D6A0', 'O': '#EF476F', 'R': '#118AB2' };
+  tg.asHtml('output_html', 'output_time', function(row) {
+    return row.output_time || '<span style="color:#bbb;">&mdash;</span>';
+  });
+  tg.asHtml('input_html', 'input_time', function(row) {
+    return row.input_time || '<span style="color:#bbb;">&mdash;</span>';
+  });
+  tg.asHtml('current_work_status_html', 'current_work_status,current_work_status_name', function(row) {
+    return `<i class="fas fa-${ work_status_icon[row.current_work_status] }"
+               style="color: ${ work_status_color[row.current_work_status] };"></i>&nbsp
+            <span style="color: ${ work_status_color[row.current_work_status] };">
+              ${ row.current_work_status_name }
+            </span>`;;
+  });
+  tg.asHtml('kind_html', 'kind,begin_time,late_time,gender,time_kind_name', function(row) {
+    let t_working_time_not_begin, t_intime, t_late, t_not_come, t_rest_day, t_not_timetable;
+    if (row.gender == 'M') {
+      t_working_time_not_begin = t("grid.working time not begin(M)")();
+      t_intime = t("grid.intime(M)")();
+      t_late = t("grid.late(M) $1");
+      t_not_come = t("grid.not come(M)")();
+      t_rest_day = t("grid.rest day(M)")();
+      t_holiday = t("grid.holiday(M)")();
+      t_additional_rest_day = t("grid.additional rest day(M)")();
+      t_non_working_day = t("grid.non working day(M)")();
+      t_not_licensed_day = t("grid.not licensed day(M)")();
+      t_not_timetable = t("grid.not timetable(M)")();
+    } else {
+      t_working_time_not_begin = t("grid.working time not begin(F)")();
+      t_intime = t("grid.intime(F)")();
+      t_late = t("grid.late(F) $1");
+      t_not_come = t("grid.not come(F)")();
+      t_rest_day = t("grid.rest day(F)")();
+      t_holiday = t("grid.holiday(F)")();
+      t_additional_rest_day = t("grid.additional rest day(F)")();
+      t_non_working_day = t("grid.non working day(F)")();
+      t_not_licensed_day = t("grid.not licensed day(F)")();
+      t_not_timetable = t("grid.not timetable(F)")();
+    }
+    let [color, name] = row.kind == 'WN' ? ['#778DA9', t_working_time_not_begin]:
+                        row.kind == 'LV' ? ['#118AB2', row.time_kind_name]:
+                        row.kind == 'L'  ? ['#FFD166', t_late(`<span style="white-space: nowrap;">${ parseTimeToWord(row.late_time) }</span>`)]:
+                        row.kind == 'I'  ? ['#06D6A0', t_intime]:
+                        row.kind == 'NC' ? ['#EF476F', t_not_come]:
+                        row.kind == 'R'  ? ['#A3C4F3', t_rest_day]:
+                        row.kind == 'H'  ? ['#C77DFF', t_holiday]:
+                        row.kind == 'A'  ? ['#C77DFF', t_additional_rest_day]:
+                        row.kind == 'NW' ? ['#B8F2E6', t_non_working_day]:
+                        row.kind == 'NL' ? ['#E26D5C', t_not_licensed_day]:
+                        row.kind == 'N'  ? ['#CED4DA', t_not_timetable]: '';
+    return `<span class="fa fa-circle"
+                  style="color: ${ color }">
+            </span>&nbsp
+            <span style="color: ${ color }; font-weight: 500;">${ name }</span>`;
+  });
+
+  tg.asHtml('employee', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }"
+                      class="rounded-circle"
+                      style="width: 40px;
+                             height: 40px;
+                             border: 1px solid rgba(230, 230, 240, 0.8);
+                             object-fit: cover;"/>
+              &emsp;<a href class="b-grid-cell" cn="name">${ row.name }</a>
+            </div>`;
+  });
+})
+page.ctrl(function(scope, model, fi, t, $timeout, bConfig) {
+  moment.locale(bConfig.langCode());
+  var d = model || {}, q = {};
+
+  d.employee_pie = {};
+  d.begin_date = d.end_date = moment().format("DD.MM.YYYY");
+  d.employee_filter = d.employee_filter ?? 'A';
+
+  function employeePieChart(data) {
+    if (employeePieChart.chart) employeePieChart.chart.dispose();
+    let isEmpty;
+
+    if (isEmpty = _.every(data, x => x.value == 0)) {
+      data = [{
+        title: "empty",
+        disabled: true,
+        value: 1000,
+        color: am4core.color("#dadada"),
+        opacity: 0.3,
+        strokeDasharray: "4,4",
+        tooltip: ""
+      }];
+    }
+
+    let elem = page.$content.find('.employee-pie-chart');
+
+    assert(elem.length, "employee pie chart element is not found");
+
+    let chart = am4core.create(elem[0], am4charts.PieChart);
+    // Set inner radius
+    chart.innerRadius = am4core.percent(50);
+    chart.data = data;
+    // Add and configure Series
+    let pieSeries = chart.series.push(new am4charts.PieSeries());
+
+    pieSeries.dataFields.value = "value";
+    pieSeries.dataFields.category = "title";
+
+    if (isEmpty) {
+      let slice = pieSeries.slices.template;
+
+      slice.propertyFields.fill = "color";
+      slice.propertyFields.fillOpacity = "opacity";
+      slice.propertyFields.stroke = "color";
+      slice.propertyFields.strokeDasharray = "strokeDasharray";
+      slice.propertyFields.tooltipText = "tooltip";
+      slice.clickable = false;
+
+      pieSeries.labels.template.propertyFields.disabled = "disabled";
+      pieSeries.ticks.template.propertyFields.disabled = "disabled"
+    } else {
+      pieSeries.alignLabels = false;
+      pieSeries.labels.template.padding(0,0,0,0);
+      pieSeries.labels.template.text = "{value}"
+
+      pieSeries.labels.template.adapter.add("text", function(text, target) {
+        if (target.dataItem.dataContext.value != 0) return text;
+        else return "";
+      });
+
+      pieSeries.slices.template.events.on("hit", function(ev) {
+        if (ev.target.isActive) page.query("table").filter("kind", "=", ev.target.dataItem.dataContext.kind).fetch();
+        else page.query("table").filterClear().fetch();
+
+        let series = ev.target.dataItem.component;
+        series.slices.each(function(item) {
+          if (item.isActive && item != ev.target) {
+            item.isActive = false;
+          }
+        });
+      });
+
+      pieSeries.slices.template.stroke = am4core.color("#fff");
+      pieSeries.slices.template.cornerRadius = 5;
+      pieSeries.slices.template.propertyFields.fill = "color";
+      pieSeries.slices.template.tooltipHTML = `<div class="text-center">{title} {value.percent.formatNumber('#.#')} %<br><span style="font-size:14px"><b>{value}</b></span></div>`;
+
+      pieSeries.slices.template.strokeWidth = 2;
+      pieSeries.slices.template.strokeOpacity = 1;
+
+      pieSeries.colors.step = 3;
+      // This creates initial animation
+      pieSeries.hiddenState.properties.opacity = 1;
+      pieSeries.hiddenState.properties.endAngle = -90;
+      pieSeries.hiddenState.properties.startAngle = -90;
+    }
+
+
+    let label = chart.seriesContainer.createChild(am4core.Label);
+
+    label.text = d.employee_pie.employee_cnt;
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.fill = "#A0B1BA";
+    label.dy = -10;
+    label.fontSize = 25
+    label.fontWeight = "bold";
+
+    label = chart.seriesContainer.createChild(am4core.Label);
+    label.text = t("staff")();
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.dy = 10;
+    label.fontSize =14
+
+    employeePieChart.chart = chart;
+  }
+
+  function reloadEmployeePie(result) {
+    d.employee_pie.intime_cnt = result.intime_cnt;
+    d.employee_pie.working_time_not_begin_cnt = result.working_time_not_begin_cnt;
+    d.employee_pie.leave_cnt = result.leave_cnt;
+    d.employee_pie.late_cnt = result.late_cnt;
+    d.employee_pie.not_come_cnt = result.not_come_cnt;
+    d.employee_pie.rest_day_cnt = result.rest_day_cnt;
+    d.employee_pie.holiday_cnt = result.holiday_cnt;
+    d.employee_pie.additional_rest_day_cnt = result.additional_rest_day_cnt;
+    d.employee_pie.non_working_cnt = result.non_working_cnt;
+    d.employee_pie.not_licensed_cnt = result.not_licensed_cnt;
+    d.employee_pie.not_timetable_cnt = result.not_timetable_cnt;
+
+    d.employee_pie.employee_cnt = +result.intime_cnt +
+                                  +result.working_time_not_begin_cnt +
+                                  +result.leave_cnt +
+                                  +result.late_cnt +
+                                  +result.not_come_cnt +
+                                  +result.rest_day_cnt +
+                                  +result.holiday_cnt +
+                                  +result.additional_rest_day_cnt +
+                                  +result.non_working_cnt +
+                                  +result.not_licensed_cnt +
+                                  +result.not_timetable_cnt;
+
+    var data = _.mapRows([
+                [t('working time not begin')(), d.employee_pie.working_time_not_begin_cnt, "#778DA9", "WN"],
+                [t('intime')(), d.employee_pie.intime_cnt, "#06D6A0", "I"],
+                [t('leave')(), d.employee_pie.leave_cnt, "#118AB2", "LV"],
+                [t('late')(), d.employee_pie.late_cnt, "#FFD166", "L"],
+                [t('not come')(), d.employee_pie.not_come_cnt, "#EF476F", "NC"],
+                [t('rest day')(), d.employee_pie.rest_day_cnt, "#A3C4F3", "R"],
+                [t('holiday')(), d.employee_pie.holiday_cnt, "#C77DFF", "H"],
+                [t('additional rest day')(), d.employee_pie.additional_rest_day_cnt, "#C77DFF", "A"],
+                [t('non working day')(), d.employee_pie.non_working_cnt, "#B8F2E6", "NW"],
+                [t('not licensed day')(), d.employee_pie.not_licensed_cnt, "#E26D5C", "NL"],
+                [t('not timetable')(), d.employee_pie.not_timetable_cnt, "#CED4DA", "N"]], ["title", "value", "color", "kind"]);
+    employeePieChart(data);
+  }
+
+  function dayStatsXYChart(data) {
+    if (dayStatsXYChart.chart) {
+      dayStatsXYChart.chart.data = data;
+      dayStatsXYChart.chart.invalidateData();
+
+      $timeout(function() {
+        _.each(q.xy_series, (v, k) => changeLineState(k));
+      });
+
+      return;
+    }
+
+    let elem = page.$content.find('.day-stats-xy-chart');
+
+    assert(elem.length, "day stats xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create category axis
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "timesheet_date";
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.maxLabelPosition = 0.95;
+    valueAxis.maxPrecision = 0;
+    valueAxis.min = 0;
+    valueAxis.max = 110;
+    valueAxis.strictMinMax = true;
+
+    valueAxis.adapter.add("getTooltipText", (text, target) => {
+      if (text > 100) return '';
+      else return text ? text + '%' : text;
+    });
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "timesheet_date";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.tooltipText = "{valueY}%, {" + value + "_cnt}/{total}";
+      series.fill = color;
+      series.fillOpacity = 0.3;
+      series.stroke = color;
+      series.legendSettings.valueText = "{valueY}%";
+      series.hidden = hidden;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+
+      q.xy_series[value].series = series;
+    }
+
+    _.each(q.xy_series, x => {
+      addLineSeries(x.name, x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    dayStatsXYChart.chart = chart;
+  }
+
+  function reloadDayStatsXyChart(result) {
+    dayStatsXYChart(_.mapRows(result, ["timesheet_date", "total", "intime_cnt", "intime", "leave_cnt", "leave", "late_cnt", "late", "not_come_cnt", "not_come"]));
+  }
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  function loadBirthdays() {
+    page.post(':load_birthdays').then(x => {
+      d.emp_birthdays = _.chain(x)
+                         .mapRows(["employee_id", "name", "filial_name", "birthday", "photo_sha", "gender"])
+                         .each(x => {
+                           let today_label = moment().format("D MMMM");
+                           let birthday_label = x.birthday.toMoment().format("D MMMM");
+                           x.is_today = birthday_label == today_label;
+                           x.birthday_name = x.is_today ? t('today')() : x.birthday_name = birthday_label;
+                           x.photo_sha = x.photo_sha ? page.loadImageSmall(x.photo_sha) : defaultPhoto(x.gender);
+                         }).value();
+    }, page.alert);
+  }
+
+  function viewStaff(row) {
+    fi.view_staff ? fi.view_staff({ filial_id: row.filial_id, staff_id: row.staff_id }) : null;
+  }
+
+  function changeFilter() {
+    q.is_one_day = d.begin_date == d.end_date;
+
+    $timeout(function() {
+      // am4core.options.queue = true;
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        let data = {
+          filial_id: _.pluck(d.filials, 'filial_id'),
+          fte_id: _.pluck(d.ftes, 'fte_id'),
+          employee_filter: d.employee_filter,
+        };
+
+        if (q.is_one_day) {
+          data.date = d.end_date;
+
+          page.post(':load_day_stats_piechart', data).then(reloadEmployeePie, page.alert);
+          page.grid("table").enable();
+          page.query("table").param(data).filterClear().fetch();
+        } else {
+          data.begin_date = d.begin_date;
+          data.end_date = d.end_date;
+
+          page.post(':load_day_stats_xychart', data).then(reloadDayStatsXyChart, page.alert);
+        }
+      });
+    });
+  }
+
+  function changeLineState(line_key) {
+    if (!q.xy_series[line_key].state) {
+      q.xy_series[line_key].series.hide();
+    } else q.xy_series[line_key].series.show();
+  }
+
+  q.xy_series = {};
+  _.chain([
+    [t("intime")(), "intime", "#06D6A0", true],
+    [t("leave")(), "leave", "#118AB2", true],
+    [t("late")(), "late", "#FFD166", false],
+    [t("not come")(), "not_come", "#EF476F", true]
+  ]).mapRows(['name', 'value', 'color', 'hidden']).each(x => {
+    x.state = !x.hidden;
+    q.xy_series[x.value] = x;
+  });
+
+  loadBirthdays();
+  changeFilter();
+
+  let style = '';
+
+  _.each(q.xy_series, x => {
+    style += `
+      .${ x.value }.switch input[type=checkbox]~span::before {
+          background: -webkit-linear-gradient(left, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+          background: linear-gradient(to right, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+          background-size: 200%;
+          background-position: 100%;
+      }
+      .${ x.value }.switch input[type=checkbox]:checked~span::after {
+        border-color: ${ x.color };
+      }
+      .${ x.value }.switch input[type=checkbox]:checked~span::before {
+        background-position: 0%;
+      }
+    `;
+  });
+
+  $timeout(function(){
+    let xy_checkboxes = page.$content.find(".xy_checkboxes");
+    xy_checkboxes.prepend('<style>' + style + '</style>');
+  });
+
+  d.ftes = [];
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form">
+  <div class="form-row mt-4">
+    <div class="col-sm-18">
+      <div class="card card-custom card-stretch gutter-b" ng-show="q.is_one_day">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>attendance info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="mb-4 col-sm-10" style="height: 100%; align-items: center;">
+              <div class="employee-pie-chart" style="min-height: 374px; height: 45vh;"></div>
+            </div>
+            <div class="mb-4 col-sm-14">
+              <div class="mb-2">
+                <b-grid-controller name="table"/>
+              </div>
+              <b-grid name="table" min-width="0" required="filial_id, staff_id" on-dblclick="viewStaff(row)"
+                      sort="name" search="name" searchable="staff_number, tin, iapa"
+                      extra-columns="staff_id, filial_name, staff_number, hiring_date, gender_name, birthday,
+                      tin, iapa, npin, main_phone, email, division_name, job_name, rank_name, schedule_name, total_distance, fte_name">
+                <b-row>
+                  <b-col name="name" size=11 as-html="employee"/>
+                  <b-col name="input_time" as-html="input_html" size=4 align="center"/>
+                  <b-col name="output_time" as-html="output_html" size=4 align="center"/>
+                  <b-col name="kind_name" as-html="kind_html" size=5/>
+                </b-row>
+
+                <b-extra-columns>
+                  <b-col name="current_work_status_name" as-html="current_work_status_html"/>
+                </b-extra-columns>
+
+                <b-filter name="staff_id" directive="equal" extra/>
+                <b-filter name="filial_id" decorate-with="filial_name"/>
+                <b-filter name="name"/>
+                <b-filter name="kind" decorate-with="kind_name"/>
+                <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+                <b-filter name="schedule_id" decorate-with="schedule_name"/>
+                <b-filter name="job_id" decorate-with="job_name" extra/>
+                <b-filter name="rank_id" decorate-with="rank_name" extra/>
+                <b-filter name="tin" directive="equal" extra/>
+                <b-filter name="iapa" directive="equal" extra/>
+                <b-filter name="staff_number" extra/>
+                <b-filter name="hiring_date" extra/>
+                <b-filter name="email" extra/>
+                <b-filter name="gender" decorate-with="gender_name" extra/>
+                <b-filter name="fte_id" decorate-with="fte_name" extra/>
+                <b-filter name="birthday" extra/>
+                <b-filter name="main_phone" extra/>
+                <b-filter name="total_distance" extra/>
+                <b-filter name="current_work_status" decorate-with="current_work_status_name" extra/>
+              </b-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom card-stretch gutter-b" ng-show="!q.is_one_day">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>attendance info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="day-stats-xy-chart" style="min-height: 60vh;"></div>
+          <div class="xy_checkboxes row ml-sm-25">
+            <div class="col-sm" ng-repeat="item in q.xy_series">
+              <label class="{{ item.value }} switch">
+                <input type="checkbox" ng-model="q.xy_series[item.value].state" ng-change="changeLineState(item.value)" ng-disabled="!q.xy_series[item.value].series"/>
+                <span>{{ item.name }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>filter</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>date</t></label><br/>
+            <b-date-range-picker begin="d.begin_date" end="d.end_date" on-change="onChangeDate(start, end)"></b-date-range-picker>
+          </div>
+          <div class="form-group">
+            <label><t>filials</t></label>
+            <div class="filials">
+              <b-input
+                multiple
+                name="filials"
+                model="d.filials"
+                model-key="filial_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>ftes</t></label>
+            <div class="ftes">
+              <b-input
+                multiple
+                name="ftes"
+                model="d.ftes"
+                model-key="fte_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>employee filter</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="employee_filter" ng-value="'A'" ng-model="d.employee_filter"/><span><t>all</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="employee_filter" ng-value="'M'" ng-model="d.employee_filter"/><span><t>managers</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="employee_filter" ng-value="'S'" ng-model="d.employee_filter"/><span><t>subordinates</t></span>
+            </label>
+          </div>
+          <button type="button" class="btn btn-block btn-primary" ng-click="changeFilter()"><t>reload</t></button>
+        </div>
+      </div>
+      <div class="card card-custom gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>birthdays</t></h3>
+          </div>
+        </div>
+        <div class="card-body pt-0 pb-0">
+          <div class="text-center mt-8 mb-12" ng-show="d.emp_birthdays.length == 0">
+            <span class="fa fa-gift fs-1"></span><br/>
+            <t>birthdays will be visible here</t>
+          </div>
+          <table class="table table-borderless">
+            <tbody>
+              <tr class="d-flex justify-content-between" ng-repeat="employee in d.emp_birthdays" style="display: flex;">
+                <td>
+                  <div style="display: flex; text-align: center;">
+                    <div>
+                      <img ng-src="{{ employee.photo_sha }}" class="rounded-circle" style="width: 40px; height: 40px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;">
+                    </div>
+                    <div style="display: inline-block; text-align: left; padding-left: 10px; padding-top: 3px; text-overflow: ellipsis; overflow: hidden;">
+                      <span style="display: block; font-size: 12px; font-weight: 500;">
+                        {{ employee.name }}
+                      </span>
+                      <span style="display: block; font-size: 10px; color: #a0a0a0; text-transform: capitalize;">
+                        {{ employee.filial_name }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td class="b-right" style="display: grid;">
+                  <span ng-class="{ 'text-success': employee.is_today }" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin: auto 0;">
+                    {{ employee.birthday_name }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

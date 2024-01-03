@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{labor_function_count} labor function(s)?": "Удалить трудовые функции в количестве <b>$1</b>?",
+ "delete labor function $1{labor_function_name}?": "Удалить трудовую функцию <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код профессиональной деятельности",
+ "table.description": "Описание",
+ "table.labor_function_id": "ИД",
+ "table.name": "Название"
+}

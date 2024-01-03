@@ -1,0 +1,180 @@
+<script biruni>
+page.init(function() {
+  if (page.isInit()) {
+    page.query('table').filter('this_month_working', '=', 'Y');
+  }
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  page.grid('table').asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+});
+page.ctrl(function(scope, t, fi, $timeout) {
+  let p = {};
+
+  // page emit
+  function pageEmit() {
+    page.emit('dismissal_change');
+  }
+
+  // modal
+  var modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  // dismissal
+  function addDismissal(row) {
+    p.data = angular.copy(row);
+    p.data.dismissal_date = p.previous_date;
+    p.is_edit = false;
+
+    showModal();
+  }
+
+  function editDismissal(row) {
+    p.data = angular.copy(row);
+    p.is_edit = true;
+
+    page.post(':get_dismissal_data', p.data).then(function(result) {
+      _.extend(p.data, result);
+
+      showModal();
+    }, page.alert);
+  }
+
+  function saveDismissal() {
+    if (page.valid(scope.modal)) {
+      fi.save_dismissal(p.data).then(function(result) {
+        pageEmit();
+        page.query('table').fetch();
+        hideModal();
+      }, page.alert);
+    }
+  }
+
+  function deleteDismissal(row) {
+    page.confirm(t('delete dismissal from $1{dismissal_date} for $2{employee_name}?')(row.dismissal_date, row.name), function() {
+      fi.delete_dismissal(_.pick(row, 'filial_id', 'staff_id', 'journal_id')).then(function() {
+        pageEmit();
+        page.query('table').fetch();
+      }, page.alert);
+    });
+  }
+
+  p.previous_date = moment().subtract(1, 'days').format('DD.MM.YYYY');
+
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="filial_id, staff_id, staff_number, name, journal_id, dismissal_date"
+            sort="name, -hiring_date" search="name, staff_number" searchable="employee_id, staff_id"
+            extra-columns="employee_id, staff_id, dismissal_reason_name, dismissal_note, gender_name">
+      <b-row>
+        <b-col name="staff_number" size=3/>
+        <b-col name="name" as-html="person_html" size=5/>
+        <b-col name="filial_name" size=3/>
+        <b-col name="division_name" size=3/>
+        <b-col name="job_name" size=3/>
+        <b-col name="schedule_name" size=3/>
+        <b-col name="hiring_date" size=2/>
+        <b-col name="dismissal_date" size=2/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="addDismissal(row)" ng-if="!row.journal_id"><t>add dismissal</t></button>
+        <button type="button" class="btn btn-default" ng-click="editDismissal(row)" ng-if="row.journal_id"><t>edit dismissal</t></button>
+        <button type="button" class="btn btn-default" ng-click="deleteDismissal(row)" ng-if="row.journal_id"><t>delete dismissal</t></button>
+      </b-action>
+
+      <b-filter name="employee_id" directive="equal" extra/>
+      <b-filter name="staff_id" directive="equal" extra/>
+      <b-filter name="this_month_working" decorate-with="this_month_working_name"/>
+      <b-filter name="staff_number"/>
+      <b-filter name="name"/>
+      <b-filter name="filial_id" decorate-with="filial_name"/>
+      <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="hiring_date"/>
+      <b-filter name="dismissal_date"/>
+      <b-filter name="gender" decorate-with="gender_name"/>
+      <b-filter name="dismissal_reason_id" decorate-with="dismissal_reason_name" extra/>
+    </b-grid>
+  </form>
+
+  <!-- MODAL -->
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <t ng-if="!p.is_edit">add dismissal</t>
+              <t ng-if="p.is_edit">edit dismissal</t>
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>name</t></label>
+              <span class="form-view">{{ p.data.name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>staff number</t></label>
+              <span class="form-view">{{ p.data.staff_number }}</span>
+            </div>
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-12">
+                  <label><t>dismissal date</t><r/></label>
+                  <input type="text" class="form-control" ng-model="p.data.dismissal_date" max-date="p.previous_date" b-date-picker required/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>dismissal reason name</t></label>
+              <b-input name="reasons"
+                       model="p.data.dismissal_reason_name | name"
+                       model-key="p.data.dismissal_reason_id | dismissal_reason_id">
+                  {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" ng-model=p.data.note rows=2></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveDismissal()">
+              <t ng-if="!p.is_edit">add</t>
+              <t ng-if="p.is_edit">edit</t>
+            </button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

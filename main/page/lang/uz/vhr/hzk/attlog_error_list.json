@@ -1,0 +1,12 @@
+{
+ "eval": "Tuzatish",
+ "eval $1": "Tuzatish $1",
+ "eval $1 error(s)?": "<b>$1</b> xatolik(lar)ni tuzatmoqchimisiz?",
+ "eval error $1?": "<b>$1</b> xatolikni tuzatmoqchimisiz?",
+ "table.command": "Buyruq",
+ "table.device_id": "Qurilma ID",
+ "table.device_name": "Qurilma",
+ "table.error": "Xatolik",
+ "table.error_id": "Xatolik ID",
+ "table.status_name": "Holat"
+}

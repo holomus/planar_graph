@@ -1,0 +1,59 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam) {
+  var d = _.isUndefined(model.source_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  q.kinds = _.mapMatrix(d.kinds, ['kind', 'name']);
+
+  function save() {
+    if (page.valid(scope.form)) {
+      var data = _.omit(d, 'kinds');
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group">
+            <label><t>source kind</t></label><br/>
+            <label class="radio" ng-repeat="item in q.kinds">
+              <input type="radio" name="kind" value="{{ item.kind }}" ng-model="d.kind"/>
+              <span>{{ item.name }}</span>
+            </label>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>order no</t></label>
+              <input type="text" class="form-control" b-number scale="0" precision="6" ng-model="d.order_no" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

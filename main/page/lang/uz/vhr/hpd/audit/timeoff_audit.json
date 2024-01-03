@@ -1,0 +1,14 @@
+{
+ "details": "Tafsilotlar",
+ "table_audit.begin_date": "Boshlanish sanasi",
+ "table_audit.end_date": "Tugash sanasi",
+ "table_audit.journal_id": "Hujjat ID",
+ "table_audit.staff_name": "Xodim",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Hodisa sanasi",
+ "table_audit.t_event_name": "Hodisa",
+ "table_audit.t_filial_name": "Tashkilot",
+ "table_audit.t_source_project_name": "Loyiha",
+ "table_audit.t_timestamp": "Hodisa sanasi va vaqti",
+ "table_audit.t_user_name": "Foydalanuvchi"
+}

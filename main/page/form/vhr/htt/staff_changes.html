@@ -1,0 +1,656 @@
+<script biruni>
+page.init(function(param) {
+  page.query('personal_changes_unchecked').param({ employee_id: param.employee_id });
+  page.query('personal_changes_checked').param({ employee_id: param.employee_id });
+  page.query('monthly_limits').param({ employee_id: param.employee_id });
+
+  var statusClass = { N: 'warning', A:'success', D:'danger', C:'primary' };
+
+  function prepareGrid(grid) {
+    grid.asHtml('status_html', 'status, status_name', row => {
+      return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+    });
+  };
+  prepareGrid(page.grid('personal_changes_unchecked'));
+  prepareGrid(page.grid('personal_changes_checked'));
+});
+page.ctrl(function(scope, model, t, fi, $timeout, bUtil) {
+  var d = _.omit(model, 'references'),
+      q = model.references
+      p = {};
+
+  var modal = page.$content.find("form[name=modal]>.modal");
+  var uncheckedGrid = page.query('personal_changes_unchecked');
+  var checkedGrid = page.query('personal_changes_checked');
+  var timesheet_keys = ['timesheet_date', 'day_kind', 'begin_time', 'end_time', 'break_enabled', 'break_begin_time', 'break_end_time', 'plan_time'];
+
+  function fetchQuery() {
+    q.notFinished = {};
+    q.Finished = {};
+
+    uncheckedGrid.param({ employee_id: d.employee_id });
+    uncheckedGrid.fetch();
+
+    checkedGrid.param({ employee_id: d.employee_id });
+    checkedGrid.fetch();
+  }
+
+  function hasAccessDirect(row) {
+    return q.access_all_employee == 'Y' || row.access_level == q.ual_direct_employee;
+  }
+
+  function hasAccess(row) {
+    return hasAccessDirect(row) || row.access_level == q.ual_personal;
+  }
+
+  function hasView(row) {
+    return fi[(q.personal_mode == 'Y' ? 'view_personal' : 'view')] && hasAccess(row);
+  }
+
+  function view(row) {
+    return fi[(q.personal_mode == 'Y' ? 'view_personal' : 'view')]({ change_id: row.change_id });
+  }
+
+  function hasEdit(row) {
+    return fi.edit && row.status == 'N' && (q.access_all_employee == 'Y' || row.access_level == q.ual_personal);
+  }
+
+  function doAction(doFunc, doTrans, change_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ change_id: change_id }).then(fetchQuery, page.alert);
+    });
+  }
+
+  function onDblClick(row) {
+    hasEdit(row) ? editModal(row) : null;
+  }
+
+  function saveChange(edit) {
+    if (page.valid(scope.modal) && !(q.note_is_required == 'Y' && (!p.data.note || !q.note_valid))) {
+      let data = angular.copy(_.pick(p.data, ['change_dates',
+                                               'change_kind',
+                                               'employee_id',
+                                               'staff_id',
+                                               'change_id',
+                                               'note']));
+      data.change_dates = _.each(data.change_dates, function (x, i) {
+        x.plan_time = bUtil.timeToMinutes(x.plan_time);
+      });
+      if (p.data.change_kind == 'S') {
+          var swap_date = data.change_dates[0].change_date;
+          data.change_dates[0].swapped_date = data.change_dates[0].change_date;
+          data.change_dates[0].change_date = data.change_dates[1].change_date;
+          data.change_dates[1].swapped_date = data.change_dates[1].change_date;
+          data.change_dates[1].change_date = swap_date;
+      }
+      page.post(_.isUndefined(edit) ? ':add':':edit', data).then((result) => {
+        hideModal();
+        fetchQuery();
+      }, page.alert);
+    }
+  }
+
+  function changeKind(change_kind) {
+    if (change_kind == p.data.change_kind) {
+      return;
+    } else if (change_kind == q.change_kind_swap) {
+      p.data.change_dates = [{}, {}];
+    } else {
+      p.data.change_dates = [{}];
+    }
+  }
+
+  function addChangeDate(index) {
+    var i = index + 1;
+    p.data.change_dates.splice(i, 0, {});
+  }
+
+  function removeChangeDate(index) {
+    p.data.change_dates.splice(index, 1);
+  }
+
+
+  function addChange() {
+    p.data = {
+      change_dates: [{}, {}],
+      change_kind: q.change_kind_swap,
+      staff_id: d.staff_id,
+      employee_id: d.employee_id,
+    };
+    showModal();
+  };
+
+  function calcDay(day) {
+    let end_time = bUtil.timeToMinutes(day.end_time);
+    let begin_time =  bUtil.timeToMinutes(day.begin_time);
+    let break_begin_time = bUtil.timeToMinutes(day.break_begin_time);
+    let break_end_time = bUtil.timeToMinutes(day.break_end_time);
+    let break_time = 0;
+    let full_time = 0;
+
+    if (day.break_enabled == 'Y') {
+      if (break_end_time > break_begin_time) {
+        break_time = (break_end_time - break_begin_time) / 60;
+      } else {
+        break_time = (break_end_time - break_begin_time + 1440) / 60;
+      }
+    }
+
+    if (end_time > begin_time) {
+      full_time = (end_time - begin_time) / 60;
+    } else {
+      full_time = (end_time - begin_time + 1440) / 60;
+    }
+
+    day.plan_time = bUtil.minutesToTime((full_time - break_time) * 60);
+  }
+
+  function showModal() {
+    $timeout(function() {
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function loadTimesheet(index) {
+    let change_date = p.data.change_dates[index].change_date;
+    if (d.staff_id && change_date) {
+      page.post(':load_timesheet', {
+        staff_id: d.staff_id,
+        timesheet_date: change_date
+      }).then(function(result) {
+        let x = _.pick(result, timesheet_keys);
+        x.plan_time = bUtil.minutesToTime(~~(x.plan_time / 60));
+        p.data.change_dates[index] = x;
+        p.data.change_dates[index].change_date = change_date;
+      }, page.alert);
+    } else {
+      p.data.change_dates[index] = {};
+    }
+  }
+
+  function prepActionOne(doFunc, doTrans, is_modal, action) {
+    return is_modal ? function(row) {
+      p.title = doTrans(row.change_kind_name, row.change_date);
+      p.data = { change_id: row.change_id };
+      p.action = function() {
+        doFunc(p.data).then(page.reload, page.alert);
+      };
+      p.action_title = doFunc.title;
+      $timeout(() => modal.modal('show'));
+    } : function(row) {
+      doAction(doFunc, doTrans(row.change_kind_name, row.change_date), row.change_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key, is_modal) {
+    return is_modal ? function(row) {
+        p.title = doTrans(q.notFinished[key].size);
+        p.data = { change_id: _.pluck(q.notFinished[key].rows, 'change_id') };
+        p.action = function() {
+          doFunc(p.data).then(page.reload, page.alert);
+        };
+        p.action_title = doFunc.title;
+    } : function() {
+        doAction(doFunc, doTrans(q.notFinished[key].size), _.pluck(q.notFinished[key].rows, 'change_id'));
+    }
+  }
+
+  function prepFinishedActionMany(doFunc, doTrans, key, is_modal) {
+    return is_modal ? function(row) {
+        p.title = doTrans(q.Finished[key].size);
+        p.data = { change_id: _.pluck(q.Finished[key].rows, 'change_id') };
+        p.action = function() {
+          doFunc(p.data).then(page.reload, page.alert);
+        };
+        p.action_title = doFunc.title;
+    } : function() {
+        doAction(doFunc, doTrans(q.Finished[key].size), _.pluck(q.Finished[key].rows, 'change_id'));
+    }
+  }
+
+  function editModal(row) {
+    p.data = angular.copy(row);
+    p.data.employee_id = d.employee_id;
+    p.data.edit = true;
+
+    page.post(':load_change', _.pick(p.data, ['change_id', 'change_kind'])).then((result) => {
+      result = _.mapRows(result, ['change_date', 'day_kind', 'begin_time', 'end_time', 'break_enabled', 'break_begin_time', 'break_end_time', 'plan_time', 'full_time']);
+      p.data.change_dates = result;
+      p.data.change_dates = _.sortBy(p.data.change_dates, 'change_date');
+      p.data.change_dates = _.each(p.data.change_dates, x => {
+        x.plan_time = bUtil.minutesToTime(~~(x.plan_time/60));
+      });
+    });
+    showModal();
+  }
+
+  function prepChecked(key, checked, filterFunc, finishedGrid) {
+    if (finishedGrid) {
+      q.Finished[key] = {};
+      q.Finished[key].rows = _.filter(checked.rows(), filterFunc);
+      q.Finished[key].size = q.Finished[key].rows.length;
+      q.Finished[key].has = q.Finished[key].size > 0;
+    } else {
+      q.notFinished[key] = {};
+      q.notFinished[key].rows = _.filter(checked.rows(), filterFunc);
+      q.notFinished[key].size = q.notFinished[key].rows.length;
+      q.notFinished[key].has = q.notFinished[key].size > 0;
+    }
+  }
+
+  // -------------------- modal trash --------------------- //
+  var modalTrash = page.$content.find('form[name=modalTrash]>.modal');
+
+  function showTrashModal() {
+    $timeout(function() {
+      modalTrash.modal('show');
+    });
+  }
+
+  function complete(change_id) {
+    fi.complete({ change_id: change_id }).then(page.reload, page.alert); 
+  }
+
+  function completeOne(row) {
+    page.confirm(t('complete change $1{change_kind_name} on $2{change_date}?')(row.change_kind_name, row.change_date), function() {
+      if (row.need_weight == 'Y') {
+        p.title = t('days without weight were determined on change $1{change_kind_name} on $2{change_date}')(row.change_kind_name, row.change_date);
+        p.data = {};
+        p.data.change_id = row.change_id;
+        p.data.solutions = [
+          t('you can add weights to days without weights in change view form')(),
+          t('if you do not add weights to change day these days are not considered working days')(),
+          t('or just confirm')()
+        ];
+
+        showTrashModal();
+      } else {
+        complete(row.change_id);
+      }
+    });
+  }
+
+  function completeMany() {
+    page.confirm(t('complete $1{change_count} changes?')(q.notFinished.to_complete.size), function() {
+      q.need_weights = _.filter(q.notFinished.to_complete.rows, x => x.need_weight == 'Y');
+      
+      if (q.need_weights.length > 0) {
+        p.title = t('there are $1{need_weight_count} change(s) have change days whithout weights')(q.need_weights.length);
+        p.data = {};
+        p.data.change_id = _.pluck(q.notFinished.to_complete.rows, 'change_id');
+        p.data.solutions = [
+          t('find changes that has the day without weight by filter on need_weight_name column')(),
+          t('add weights for the days which need weight on change_view form')(),
+          t('if you do not add weights to change day these days are not considered working days')(),
+          t('or just confirm')()
+        ];
+
+        showTrashModal();
+      } else {
+        complete(_.pluck(q.notFinished.to_complete.rows, 'change_id'))
+      }
+    });
+  }
+
+  function onCheck(checked, finishedGrid) {
+    prepChecked('to_delete', checked, x => x.status == 'N' && hasAccess(x), finishedGrid);
+    prepChecked('to_approve', checked, x => x.status == 'N' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_deny', checked, x => x.status == 'N' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_complete', checked, x => x.status == 'A' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_cancel', checked, x => x.status == 'A' && hasAccessDirect(x), finishedGrid);
+    prepChecked('to_reset', checked, x => x.status != 'N' && hasAccessDirect(x), finishedGrid);
+  }
+
+  function changeNote(note) {
+    if (q.note_is_required == 'Y') {
+      q.note_valid = note.length > q.note_limit;
+    }
+  }
+
+  q.note_valid = true;
+  q.notFinished = {};
+  q.notFinished.to_delete = {};
+  q.notFinished.to_approve = {};
+  q.notFinished.to_deny = {};
+  q.notFinished.to_complete = {};
+  q.notFinished.to_cancel = {};
+  q.plan_load_full_block = q.plan_load ? q.plan_load != q.plan_load_full : null;
+
+  q.Finished = {};
+  q.Finished.to_reset = {};
+
+  q.personal_mode = model.personal_mode;
+
+  p.data = {};
+
+  scope.approveOne = prepActionOne(fi.approve, t('approve request $1 on $2?'), false, t('approve'));
+  scope.approveMany = prepActionMany(fi.approve, t('approve $1 requests?'), 'to_approve');
+  scope.denyOne = prepActionOne(fi.deny, t('deny request $1 on $2?'));
+  scope.denyMany = prepActionMany(fi.deny, t('deny $1 requests?'), 'to_deny');
+  scope.deleteOne = prepActionOne(fi.delete, t('delete request $1 on $2?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1 requests?'), 'to_delete');
+  scope.cancelOne = prepActionOne(fi.cancel, t('cancel request $1 on $2?'));
+  scope.cancelMany = prepActionMany(fi.cancel, t('cancel $1 requests?'), 'to_cancel');
+  scope.resetOne = prepActionOne(fi.reset, t('reset request $1 on $2?'));
+  scope.resetMany = prepActionMany(fi.reset, t('reset $1 requests?'), 'to_reset');
+
+  scope.resetManyFinished = prepFinishedActionMany(fi.reset, t('reset $1 requests?'), 'to_reset');
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+})
+</script>
+<div class="b-content">
+  <div class="card card-custom gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>unchecked changes</t></h3>
+      </div>
+      <div class="card-toolbar">
+        <button type="button" class="btn btn-outline-success" ng-click="addChange()"><t>add</t></button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-primary" ng-click="approveMany()" ng-if="fi.approve" ng-show="q.notFinished.to_approve.has"><t p1="q.notFinished.to_approve.size">approve $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="denyMany()" ng-if="fi.deny" ng-show="q.notFinished.to_deny.has"><t p1="q.notFinished.to_deny.size">deny $1</t></button>
+          <button type="button" class="btn btn-primary" ng-click="completeMany()" ng-if="fi.complete" ng-show="q.notFinished.to_complete.has"><t p1="q.notFinished.to_complete.size">complete $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="cancelMany()" ng-if="fi.cancel" ng-show="q.notFinished.to_cancel.has"><t p1="q.notFinished.to_cancel.size">cancel $1</t></button>
+          <button type="button" class="btn btn-primary" ng-click="resetMany()" ng-if="fi.reset" ng-show="q.notFinished.to_reset.has"><t p1="q.notFinished.to_reset.size">reset $1</t></button>
+          <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.notFinished.to_delete.has"><t p1="q.notFinished.to_delete.size">delete $1</t></button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-grid-controller name="personal_changes_unchecked"/>
+        </div>
+      </div>
+      <b-grid name="personal_changes_unchecked" required="change_id, change_kind, change_kind_name, change_date, status, access_level, staff_id, note, need_weight" on-dblclick="onDblclick(row)" sort="-change_date"
+                    on-check="onCheck(checked, false)" search="change_kind_name, note, manager_note" searcheable="change_id, change_kind_name"
+                    extra-columns="change_id, approved_by_name, created_by_name, need_weight_name, created_on, modified_by_name, modified_on">
+              <b-row>
+                <b-col name="change_date" size=3/>
+                <b-col name="change_kind_name" size=3/>
+                <b-col name="change_dates" size=6/>
+                <b-col name="note" size=4/>
+                <b-col name="manager_note" size=4/>
+                <b-col name="status_name" as-html="status_html" size=3/>
+              </b-row>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+                <button type="button" class="btn btn-default" ng-click="editModal(row)" ng-if="hasEdit(row)"><t>edit</t></button>
+                <button type="button" class="btn btn-default" ng-click="approveOne(row)" ng-if="fi.approve && row.status == 'N' && hasAccessDirect(row)">{{ fi.approve.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="denyOne(row)" ng-if="fi.deny && row.status == 'N' && hasAccessDirect(row)">{{ fi.deny.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="completeOne(row)" ng-if="fi.complete && row.status == 'A' && hasAccessDirect(row)">{{ fi.complete.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="cancelOne(row)" ng-if="fi.cancel && row.status == 'A' && hasAccessDirect(row)">{{ fi.cancel.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N' && hasAccessDirect(row)">{{ fi.reset.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N' && hasAccess(row)">{{ fi.delete.title }}</button>
+              </b-action>
+
+              <b-filter name="change_id" directive="equal" extra/>
+              <b-filter name="change_date"/>
+              <b-filter name="status" decorate-with="status_name"/>
+              <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+              <b-filter name="need_weight" decorate-with="need_weight_name" extra/>
+              <b-filter name="created_by" decorate-with="created_by_name" extra/>
+              <b-filter name="created_on" extra/>
+              <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+              <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+  <div class="card card-custom gutter-b">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>checked changes</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-primary" ng-click="resetManyFinished()" ng-if="fi.reset" ng-show="q.Finished.to_reset.has"><t p1="q.Finished.to_reset.size">reset $1</t></button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-grid-controller name="personal_changes_checked"/>
+        </div>
+      </div>
+      <b-grid name="personal_changes_checked" required="change_id, change_kind, change_kind_name, change_date, status, access_level, staff_id, need_weight" on-dblclick="onDblclick(row)" sort="-change_date"
+              on-check="onCheck(checked, true)" search="change_kind_name, note, manager_note" searcheable="change_id, change_kind_name"
+              extra-columns="change_id, approved_by_name, completed_by_name, need_weight_name, created_by_name, created_on, modified_by_name, modified_on">
+        <b-row>
+          <b-col name="change_date" size=3/>
+          <b-col name="change_kind_name" size=3/>
+          <b-col name="change_dates" size=6/>
+          <b-col name="note" size=4/>
+          <b-col name="manager_note" size=4/>
+          <b-col name="status_name" as-html="status_html" size=3/>
+        </b-row>
+
+        <b-action>
+          <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row)"><t>view</t></button>
+          <button type="button" class="btn btn-default" ng-click="resetOne(row)" ng-if="fi.reset && row.status != 'N' && hasAccessDirect(row)">{{ fi.reset.title }}</button>
+        </b-action>
+
+        <b-filter name="change_id" directive="equal" extra/>
+        <b-filter name="change_date"/>
+        <b-filter name="change_kind" decorate-with="change_kind_name"/>
+        <b-filter name="status" decorate-with="status_name"/>
+        <b-filter name="approved_by" decorate-with="approved_by_name" extra/>
+        <b-filter name="completed_by" decorate-with="completed_by_name" extra/>
+        <b-filter name="need_weight" decorate-with="need_weight_name" extra/>
+        <b-filter name="created_by" decorate-with="created_by_name" extra/>
+        <b-filter name="created_on" extra/>
+        <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+        <b-filter name="modified_on" extra/>
+      </b-grid>
+    </div>
+  </div>
+  <div class="card card-custom gutter-b" ng-if="q.change_with_monthly_limit == 'Y'">
+    <div class="card-header">
+      <div class="card-title">
+        <h3 class="card-label"><t>monthly limits</t></h3>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="offset-sm-14 col-sm-10 form-group">
+          <label><t>monthly limit</t></label>
+          <span class="form-view">{{ q.change_monthly_limit }}</span>
+        </div>
+      </div>
+      <b-grid name="monthly_limits" sort="-change_month" search="change_month" limit="1000">
+        <b-row>
+          <b-col name="change_month_name" size="4"/>
+          <b-col name="total_count" size="4"/>
+        </b-row>
+      </b-grid>
+    </div>
+  </div>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" role="dialog">
+      <div class="modal-dialog" style="min-width: 30vw;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-show="!p.data.edit"><t>add change</t></h5>
+            <h5 class="modal-title" ng-show="!!p.data.edit"><t>edit change</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="container-fluid">
+              <div class="form-group">
+                <label><t>change kind</t></label><br/>
+                <label class="radio">
+                  <input type="radio" name="change_kind" value="S" ng-model="p.data.change_kind" ng-click="changeKind('S')"/>
+                  <span><t>change_kind:swap</t></span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="change_kind" value="C" ng-model="p.data.change_kind" ng-click="changeKind('C')"/>
+                  <span><t>change_kind:change</t></span>
+                </label>
+              </div>
+              <div ng-if="p.data.change_kind == 'S'">
+                <div class="card card-custom gutter-b">
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-sm-11" ng-repeat-start="item in p.data.change_dates">
+                        <div class="form-group">
+                          <input type="text" class="form-control" placeholder="{{ q.tSelectDate }}" b-date-picker="DD.MM.YYYY"
+                                 ng-model="item.change_date" ng-blur="loadTimesheet($index)" ng-disabled="!p.data.staff_id" required/>
+                        </div>
+                        <div class="form-row">
+                          <div class="col">
+                            <label ng-class="item.day_kind == 'W' ? 'text-primary' : 'text-danger'">
+                              <t ng-if="item.day_kind == 'W'">working</t>
+                              <t ng-if="item.day_kind == 'R'">rest</t>
+                              <t ng-if="item.day_kind == 'H'">holiday</t>
+                              <t ng-if="item.day_kind == 'A'">additional rest day</t>
+                              <t ng-if="item.day_kind == 'N'">non working</t>
+                            </label><br/>
+                            <label ng-if="item.day_kind == 'W' || item.day_kind == 'N'">{{ item.begin_time + ' - ' + item.end_time }}</label><br ng-if="item.day_kind == 'W' || item.day_kind == 'N'"/>
+                          </div>
+                          <div class="col">
+                            <label class="text-primary" ng-if="item.break_enabled == 'Y'"><t>break time</t></label><br ng-if="item.break_enabled == 'Y'"/>
+                            <label ng-if="item.break_enabled == 'Y'">{{ item.break_begin_time + ' - ' + item.break_end_time }}</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-sm-2" ng-repeat-end>
+                        <div class="form-group text-center" ng-if="$first">
+                          <i class="fa fa-exchange-alt mt-4"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div ng-if="p.data.change_kind == 'C'">
+                <div ng-repeat="item in p.data.change_dates">
+                  <div class="card card-custom card-stretch gutter-b">
+                    <div class="card-header d-block px-6 py-4">
+                      <div class="row">
+                        <div class="col-sm-10">
+                          <label>&nbsp;</label>
+                          <input type="text" class="form-control" placeholder="{{ q.tSelectDate }}" b-date-picker="DD.MM.YYYY" ng-model="item.change_date"
+                                 ng-blur="loadTimesheet($index)" ng-disabled="!p.data.staff_id" required/>
+                        </div>
+                        <div class="col-sm-10">
+                          <label><t>day kind</t></label><br/>
+                            <label class="radio">
+                              <input type="radio" name="{{ 'day_kind' + $index }}" value="W" ng-model="item.day_kind"/><span><t>working</t></span>
+                            </label>
+                            <label class="radio">
+                              <input type="radio" name="{{ 'day_kind' + $index }}" value="R" ng-model="item.day_kind"/><span><t>rest</t></span>
+                            </label>
+                        </div>
+                        <div class="col-sm-4 align-middle mt-4">
+                          <div class="float-s-right">
+                            <div class="btn-group text-center">
+                              <button type="button"
+                                      class="btn btn-default btn-icon btn-hover-text-danger"
+                                      ng-if="p.data.change_dates.length > 1"
+                                      ng-click="removeChangeDate($index)">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                              <button type="button" class="btn btn-default btn-icon" ng-click="addChangeDate($index)">
+                                <i class="fa fa-plus"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-body" ng-if="item.day_kind == 'W'">
+                      <div class="form-group row">
+                        <div class="col-sm-7">
+                          <label><t>plan time</t></label>
+                          <input type="text" class="form-control" ng-model="item.plan_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                        </div>
+                        <div class="offset-sm-3 col-sm-7">
+                          <label><t>begin time</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.begin_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                        </div>
+                        <div class="col-sm-7">
+                          <label><t>end time</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.end_time" b-date-picker="HH:mm" ng-disabled="item.day_kind == 'R'" ng-required="item.day_kind == 'W'"/>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-sm-10">
+                          <label>&nbsp;</label>
+                          <label class="checkbox">
+                            <input type="checkbox" ng-model="item.break_enabled" ng-true-value="'Y'" ng-false-value="'N'" ng-change="calcDay(item)" ng-disabled="item.day_kind == 'R'"/>
+                            <span><t>break enable</t></span>
+                          </label>
+                        </div>
+                        <div class="col-sm-7" ng-show="item.break_enabled == 'Y'">
+                          <label><t>break begin</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.break_begin_time" b-date-picker="HH:mm"
+                                ng-disabled="item.day_kind == 'R' || item.break_enabled == 'N'" ng-required="item.day_kind == 'W' && item.break_enabled == 'Y'"/>
+                        </div>
+                        <div class="col-sm-7" ng-show="item.break_enabled == 'Y'">
+                          <label><t>break end</t><r/></label>
+                          <input type="text" class="form-control" ng-change="calcDay(item)" ng-model="item.break_end_time" b-date-picker="HH:mm"
+                                ng-disabled="item.day_kind == 'R' || item.break_enabled == 'N'" ng-required="item.day_kind == 'W' && item.break_enabled == 'Y'"/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group row" ng-if="p.data.created_on">
+                <div class="col">
+                  <label><t>created on</t></label>
+                  <span class="form-view">{{ p.data.created_on }}</span>
+                </div>
+                <div class="col">
+                  <label><t>created by</t></label>
+                  <span class="form-view">{{ p.data.created_by_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>note</t><r ng-if="q.note_is_required == 'Y'"/></label>
+                <textarea class="form-control" rows="4" ng-change="changeNote(p.data.note)" ng-model="p.data.note" b-maxlength="300" ng-required="q.note_is_required == 'Y'"></textarea>
+                <small ng-if="q.note_is_required == 'Y' && !q.note_valid" class="form-text text-danger mt-0"><t p1="q.note_limit">letters must be minimum: $1</t></small>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveChange()" ng-if="!p.data.edit"><t>add</t></button>
+            <button type="button" class="btn btn-primary" ng-click="saveChange(true)" ng-if="p.data.edit"><t>edit</t></button>
+            <button type="button" class="btn btn-default" ng-click="hideModal()"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modalTrash">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="row">
+              <div class="col-sm-2 mt-auto mb-auto"><i class="fas fa-exclamation-triangle fa-2x text-warning"></i></div>
+              <div class="col-sm-22 h4 mt-2">{{ p.title }}</div>
+            </div>
+          </div>
+          <div ></div>
+          <div class="modal-body">
+            <ul ng-repeat="message in p.data.solutions">
+              <li>{{ message }}</li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="complete(p.data.change_id)"><t>confirm</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>reject</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,17 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{question_type_count} question_type(s)?": "Haqiqatan ham <b>$1</b> savol turi(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete question type $1{name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "question group name": "Savollar guruhi",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.pcode": "Tizim kodi",
+ "table.question_type_id": "ID",
+ "table.state_name": "Holat"
+}

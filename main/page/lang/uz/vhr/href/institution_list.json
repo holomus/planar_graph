@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{institution_count} institution(s)?": "Haqiqatan ham <b>$1</b> taʼlim muassasa(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete institution $1{institution_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.institution_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

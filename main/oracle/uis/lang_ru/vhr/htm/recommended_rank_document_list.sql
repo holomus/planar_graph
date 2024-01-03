@@ -1,0 +1,44 @@
+prompt PATH TRANSLATE /vhr/htm/recommended_rank_document_list
+begin
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$add','Создать');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$delete','Удалить');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$edit','Изменить');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$edit_statuses','Изменение статуса повышения');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$edit_trainings','Назначить обучение');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$list_status_approved','Завершенные');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$list_status_new','Новые');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$list_status_set_training','К назначению обучения');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$list_status_training','К обучению');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$list_status_waiting','В ожидании');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$return_to_set_training','Вернуть К назначению обучения');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$return_to_training','Вернуть К обучению');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$return_to_waiting','Вернуть в ожидание');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$run','Отчет');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$to_approved','Подтвердить');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$to_new','Вернуть в новые');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$to_set_training','К назначению обучения');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$to_training','К обучению');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$to_waiting','Отправить');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$view','Просмотр');
+uis.lang_ru('#a:/vhr/htm/recommended_rank_document_list$view_journal','Просмотреть документ');
+uis.lang_ru('#f:/vhr/htm/recommended_rank_document_list','Повышение разрядов');
+uis.lang_ru('ui-vhr549:change date','Дата изменения');
+uis.lang_ru('ui-vhr549:division name','Подразделение');
+uis.lang_ru('ui-vhr549:division name: $1{division_name}','Подразделение: $1');
+uis.lang_ru('ui-vhr549:document date: $1{document_date}','Дата: $1');
+uis.lang_ru('ui-vhr549:document number: $1{document_number}','Номер: $1');
+uis.lang_ru('ui-vhr549:document status: $1{document_status}','Состояние: $1');
+uis.lang_ru('ui-vhr549:from rank','Предыдущий разряд');
+uis.lang_ru('ui-vhr549:increment status','Статус повышения');
+uis.lang_ru('ui-vhr549:job name','Должность');
+uis.lang_ru('ui-vhr549:new wage','Новый оклад');
+uis.lang_ru('ui-vhr549:note','Примечание');
+uis.lang_ru('ui-vhr549:note: $1{note}','Описание: $1');
+uis.lang_ru('ui-vhr549:old wage','Предыдущий оклад');
+uis.lang_ru('ui-vhr549:order_no','№');
+uis.lang_ru('ui-vhr549:staff name','Сотрудник');
+uis.lang_ru('ui-vhr549:to rank','Новый разряд');
+uis.lang_ru('ui-vhr549:total:','Итого:');
+commit;
+end;
+/

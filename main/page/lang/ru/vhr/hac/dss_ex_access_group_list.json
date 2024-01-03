@@ -1,0 +1,13 @@
+{
+ "close": "Закрыть",
+ "delete $1": "Удалить $1",
+ "delete $1{access_group_count} access group(s)?": "Удалить <b>$1</b> группу(ы) доступа?",
+ "delete access group $1{access_group_name}?": "Удалить группу доступа <b>$1</b>?",
+ "details": "Детали",
+ "extra details": "Детали",
+ "table.access_group_code": "Код",
+ "table.access_group_name": "Название",
+ "table.created_on": "Дата создания",
+ "table.modified_on": "Дата изменения",
+ "table.person_count": "Кол-во сотрудников"
+}

@@ -1,0 +1,14 @@
+{
+ "delete $1{plan_type_count} ?": "Удалить показатели эффективности в количестве <b>$1</b>?",
+ "table.calc_kind_name": "Способ подсчета результатов",
+ "table.extra_amount_enabled_name": "Рассчитать сумму с помощью бонусов и штрафов от плана",
+ "table.group_name": "Группа показателей",
+ "table.order_no": "Порядковый номер",
+ "table.plan_type_id": "ИД",
+ "delete $1": "Удалить $1",
+ "delete plan type $1(plan_type_name)?": "Удалить показатель эффективности <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

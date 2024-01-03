@@ -1,0 +1,13 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another document type": "The code is already assigned to another document type",
+ "is required": "Document at Hiring",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "no": "No",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status",
+ "yes": "Yes"
+}

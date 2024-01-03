@@ -1,0 +1,76 @@
+<script biruni>
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function closeIfDialog() {
+    if (page.isDialog()) page.close();
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ wage_id: row.wage_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ wage_id: row.wage_id });
+  }
+
+  function deleteAction(message, wage_id) {
+    page.confirm(message, function() {
+      fi.delete({ wage_id: wage_id }).then(page.reload, page.alert);
+    })
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete wage?')(), row.wage_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{wage_count} wages?')(q.checked.size), _.pluck(q.checked.rows(), 'wage_id'));
+  }
+
+  function onChecked(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row): fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button name="button" class="btn btn-success" ng-if="fi.add" ng-click="add()" b-hotkey="add">{{ fi.add.title }}</button>
+    <button name="button" class="btn btn-danger" ng-if="fi.delete" ng-show="q.checked.has" ng-click="deleteMany()"><t p1="q.checked.size">delete $1</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <b-grid name="table" required="wage_id" on-check="onChecked(checked)" on-dblclick="onDblclick(row)"
+          sort="job_name" search="job_name" searchable="wage_id" extra-columns="wage_id">
+    <b-row>
+      <b-col name="job_name" size=8/>
+      <b-col name="rank_name" size=7/>
+      <b-col name="wage_begin" size=4 format="amount"/>
+      <b-col name="wage_end" size=4 format="amount"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-if="fi.view" ng-click="view(row)">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-if="fi.edit" ng-click="edit(row)">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-if="fi.delete" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="wage_id" directive="equal" extra/>
+    <b-filter name="job_name"/>
+    <b-filter name="rank_name"/>
+  </b-grid>
+</div>

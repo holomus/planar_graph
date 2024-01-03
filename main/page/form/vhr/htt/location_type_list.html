@@ -1,0 +1,102 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0">
+            <div class="alert-text">${ row.state_name }</div></div>`
+  });
+  page.grid('table').asHtml('color_html', 'color', row => {
+    return `<div style="display:flex; align-items:center; flex-direction:row;">
+              <div style="background-color: ${ row.color }; width:20px; height:20px; border-radius:3px;"></div>
+              &nbsp;<span>${ row.color }</span>
+            </div>`
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ location_type_id: row.location_type_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ location_type_id: row.location_type_id });
+  }
+
+  function deleteAction(confirmText, location_type_id) {
+    page.confirm(confirmText, function() {
+      fi.delete({ location_type_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete location type $1{location_type_name}?')(row.name), row.location_type_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{location_type_count} location type(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'location_type_id'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-sm btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="location_type_id, name, color" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name, color" searchable="location_type_id, code"
+          extra-columns="code, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="name" size=20/>
+      <b-col name="color" size=3 as-html="color_html"/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="location_type_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="color"/>
+    <b-filter name="state_name" decorate-with="state_name"/>
+    <b-filter name="code" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

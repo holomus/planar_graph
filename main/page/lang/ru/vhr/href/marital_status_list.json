@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{marital_status_count} marital status(es)?": "Удалить состояния в браке в количестве <b>$1</b>?",
+ "delete $1{marital_status_name}?": "Удалить состояние в браке <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.marital_status_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

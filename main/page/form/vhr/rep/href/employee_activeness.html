@@ -1,0 +1,62 @@
+<script biruni>
+page.init(function() {
+  let pg = page.grid('table');
+
+  _.each(['today_active_', 'yesterday_active_', 'last_3_days_avg_active_', 'last_7_days_avg_active_', 'last_15_days_avg_active_', 'last_month_avg_active_'], col_name => {
+    pg.asHtml(col_name + 'html', col_name + 'count, ' + col_name + 'perc', row => {
+      return row[col_name + 'perc'] ? row[col_name + 'perc'] + '% (' + row[col_name + 'count'] + ')' : '';
+    });
+  })
+});
+page.ctrl(function(scope, fi) {
+  function view(row) {
+    fi.view({ company_id: row.company_id });
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : null;
+  }
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="company_id" sort="last_3_days_avg_active_perc, name" search="code, name" searchable="company_id" on-dblclick="onDblclick(row)" extra-columns="company_id, code, email,
+          today_active_count, yesterday_active_count, last_3_days_avg_active_count, last_7_days_avg_active_count, last_15_days_avg_active_count, last_month_avg_active_count">
+    <b-row>
+      <b-col name="rownum" align="right" size=1/>
+      <b-col name="name" size=5/>
+      <b-col name="phone" size=2/>
+      <b-col name="employee_count" size=2/>
+      <b-col name="last_30_days_max_active_count" size=2/>
+      <b-col name="today_active_perc" as-html="today_active_html" size=2/>
+      <b-col name="yesterday_active_perc" as-html="yesterday_active_html" size=2/>
+      <b-col name="last_3_days_avg_active_perc" as-html="last_3_days_avg_active_html" size=2/>
+      <b-col name="last_7_days_avg_active_perc" as-html="last_7_days_avg_active_html" size=2/>
+      <b-col name="last_15_days_avg_active_perc" as-html="last_15_days_avg_active_html" size=2/>
+      <b-col name="last_month_avg_active_perc" as-html="last_month_avg_active_html" size=2/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+    </b-action>
+
+    <b-filter name="company_id" directive="equal" extra/>
+    <b-filter name="code"/>
+    <b-filter name="name"/>
+    <b-filter name="employee_count"/>
+    <b-filter name="last_30_days_max_active_count"/>
+    <b-filter name="today_active_perc"/>
+    <b-filter name="yesterday_active_perc"/>
+    <b-filter name="last_3_days_avg_active_perc"/>
+    <b-filter name="last_7_days_avg_active_perc"/>
+    <b-filter name="last_15_days_avg_active_perc"/>
+    <b-filter name="last_month_avg_active_perc"/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,310 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('status', '=', 'O');
+
+  page.grid('table').asHtml('status_html', 'status, status_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.status == 'O' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, $timeout, fi, t) {
+  var q = model,
+      p = {};
+
+  function deleteAction(message, vacancy_id) {
+    page.confirm(message, function() {
+      fi.delete({ vacancy_id: vacancy_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete vacancy $1{vacancy_id}, opened date: $2{opened_date}?')(row.vacancy_id, row.opened_date), row.vacancy_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{vacancy_count} vacancy(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'vacancy_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ vacancy_id: row.vacancy_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ vacancy_id: row.vacancy_id });
+  }
+
+  function publishHeadHunter() {
+    page.confirm(t('publish this vacancy to Head Hunter?')(), () => {
+      fi.publish_head_hunter({
+        vacancy_id: q.publish_row.vacancy_id,
+        billing_type: p.setting.billing_type,
+        vacancy_type: p.setting.vacancy_type
+      }).then(() => {
+        notify(t('vacancy published successfully')());
+        $timeout(function() {
+          modal.modal('hide');
+        });
+        page.grid('table').fetch();
+      }, page.alert);
+    })
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  // modal publish Head Hunter
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal(row) {
+    if (!row.region_id) {
+      page.alert(t('for publish vacancy region must be selected')());
+    } else if (row.description_in_html.length < 150) {
+      page.alert(t('for publish vacancy decription must be write')());
+    } else {
+      q.publish_row = row;
+      p.setting = {
+        billing_type: 'standard',
+        vacancy_type: 'open'
+      };
+
+      $timeout(function() {
+        modal.modal('show');
+      });
+    }
+  }
+
+  // modal Publish OLX
+  var olxModal = page.$content.find('form[name=olxModal]>.modal');
+
+  function showOlxModal(row) {
+    if (!row.region_id) {
+      page.alert(t('for publish vacancy region must be selected')());
+    } else if (row.description_in_html.length < 80 && row.description_in_html.length < 9000) {
+      page.alert(t('for publish vacancy description must be more than 80 letters and less than 9000 letters')());
+    } else if (row.name.length < 16) {
+      page.alert(t('for publish to Olx name must be more than 16 letters')());
+    } else if (!row.wage_from) {
+      page.alert(t('for publish to Olx wage must be indicated')());
+    } else {
+      q.publish_row = row;
+      p.data = { advertiser_type: 'private' };
+
+      $timeout(function() {
+        olxModal.modal('show');
+      });
+    }
+  }
+
+  function setOlxCategory(item, row) {
+    if (!row) return;
+    item.category_code = row.category_code;
+    item.category_name = row.name;
+
+    page.post(':get_attributes', { category_code: item.category_code}).then(res => {
+      item.attributes = res.attributes;
+      _.each(item.attributes, x => {
+        x.values = _.mapRows(x.values, ['code', 'label']);
+        x.value_code = x.values[0].code;
+      });
+    }, page.alert);
+  }
+
+  function publishOlx() {
+    page.confirm(t('save and publish in olx?')(), function() {
+      let data = {};
+      data.vacancy_id = q.publish_row.vacancy_id;
+      data.category_code = p.data.category_code;
+      data.advertiser_type = p.data.advertiser_type;
+      data.attributes = [];
+
+      _.each(p.data.attributes, x => {
+        data.attributes.push({ attribute_code: x.attribute_code, value_code: x.value_code })
+      });
+
+      fi.publish_olx(data).then(page.reload, page.alert);
+    });
+  }
+
+  q.billing_types = _.mapMatrix(q.billing_types, ['key', 'name']);
+  q.vacancy_types = _.mapMatrix(q.vacancy_types, ['key', 'name']);
+  q.olx_advertiser_types = _.mapMatrix(q.olx_advertiser_types, ['key', 'name']);
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="vacancy_id, name, wage_from, wage_to, opened_date, region_id, description_in_html, published_head_hunter, published_olx"
+            on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="-opened_date, -created_on" search="division_name, job_name, funnel_name" searchable="vacancy_id"
+            extra-columns="vacancy_id, closed_date, deadline, urgent_name, schedule_name, application_number, wage_from, wage_to, region_name, exam_name,
+            published_head_hunter_name, published_olx_name, description, created_on, created_by_name, modified_on, modified_by_name">
+      <b-row>
+        <b-col name="name" size=4/>
+        <b-col name="opened_date" size=3/>
+        <b-col name="division_name" size=3/>
+        <b-col name="job_name" size=3/>
+        <b-col name="funnel_name" size=4/>
+        <b-col name="quantity" size=2/>
+        <b-col name="scope_name" size=4/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="status_name" as-html="status_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showModal(row)" ng-if="fi.publish_head_hunter && row.published_head_hunter == 'N'">{{ fi.publish_head_hunter.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="showOlxModal(row)" ng-if="fi.publish_olx && row.published_olx == 'N'">{{ fi.publish_olx.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="vacancy_id" directive="equal" extra/>
+      <b-filter name="opened_date"/>
+      <b-filter name="division_id" decorate-with="division_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+      <b-filter name="funnel_id" decorate-with="funnel_name"/>
+      <b-filter name="schedule_id" decorate-with="schedule_name"/>
+      <b-filter name="quantity"/>
+      <b-filter name="scope" decorate-with="scope_name"/>
+      <b-filter name="closed_date" extra/>
+      <b-filter name="deadline" extra/>
+      <b-filter name="exam_id" decorate-with="exam_name" extra/>
+      <b-filter name="application_id" decorate-with="application_number" extra/>
+      <b-filter name="region_id" decorate-with="region_name" extra/>
+      <b-filter name="urgent" decorate-with="urgent_name" extra/>
+      <b-filter name="wage_from" extra/>
+      <b-filter name="wage_to" extra/>
+      <b-filter name="published_head_hunter" decorate-with="published_head_hunter_name" extra/>
+      <b-filter name="published_olx" decorate-with="published_olx_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>settings</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group mb-4">
+              <label><t>billing type</t></label>
+              <div class="form-row mb-4">
+                <div class="col-sm-12" ng-repeat="billing in q.billing_types">
+                  <label class="radio">
+                    <input type="radio" name="billing_type" value="{{ billing.key }}" ng-model="p.setting.billing_type"/>
+                    <span>{{ billing.name }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>vacancy type</t></label>
+              <div class="form-row mb-4">
+                <div class="col-sm-12" ng-repeat="vacancy in q.vacancy_types">
+                  <label class="radio">
+                    <input type="radio" name="vacancy_type" value="{{ vacancy.key }}" ng-model="p.setting.vacancy_type"/>
+                    <span>{{ vacancy.name }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="publishHeadHunter()"><t>publish</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="olxModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>settings</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>advertising type</t></label>
+              <div class="form-row">
+                <div class="col-sm" ng-repeat="item in q.olx_advertiser_types">
+                  <label class="radio">
+                    <input type="radio" name="{{ item.name }}" value="{{ item.key }}" ng-model="p.data.advertiser_type"/>
+                    <span>{{ item.name }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group mb-4">
+              <label><t>category</t></label>
+              <b-input name="olx_category"
+                       model="p.data.category_name | name"
+                       model-key="p.data.category_code | category_code"
+                       on-select="setOlxCategory(p.data, row)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label ng-if="p.data.category_code"><t>attributes</t></label><br><br>
+              <div class="form-group mb-4" ng-repeat="item in p.data.attributes">
+                <label>{{ item.label }}<r ng-if="item.is_require == 'Y'"></label>
+                <div class="form-row">
+                  <div class="col-sm" ng-repeat="value in item.values">
+                    <label class="radio">
+                      <input type="radio" name="{{ item.code }}" value="{{ value.code }}" ng-model="item.value_code"/>
+                      <span ng-if="value.code == '1'"><t>yes</t></span>
+                      <span ng-if="value.code == '0'"><t>no</t></span>
+                      <span ng-if="!(value.code == '1' || value.code == '0')">{{ value.label }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="publishOlx()"><t>publish</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

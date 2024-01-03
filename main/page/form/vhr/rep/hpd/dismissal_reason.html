@@ -1,0 +1,135 @@
+<script biruni>
+page.ctrl(function(scope, model, t) {
+  var d = model.data,
+      q = {},
+      frame = page.$content.find('.report-frame')[0];
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V'? 'btn-primary' : 'btn-default';
+  }
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+        var data = {
+          begin_date: d.begin_date,
+          end_date: d.end_date,
+          division_ids: d.division_ids,
+          job_ids: _.pluck(d.jobs, 'job_id'),
+          employee_kind: d.employee_kind,
+          reason_type: d.reason_type,
+          rt: rt
+        };
+
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        if (frame.src) {
+          var uri = frame.contentDocument.location.href;
+          uri = uri.replace('rt=html','rt=' + rt);
+          window.open(uri);
+        } else {
+          window.open(page.url('run', data));
+        }
+      }
+    }
+  }
+
+  d.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.employee_kinds = _.mapRows(model.employee_kinds, ['name', 'kind']);
+  d.reason_types = _.mapRows(model.reason_types, ['name', 'type']);
+  d.division_ids = [];
+  q.date_ranges = [
+                    { name: t('last 12 months'), begin_date: moment().subtract(12, 'month'), end_date: moment() },
+                    { name: t('this year'), begin_date: moment().startOf('year'), end_date: moment().endOf('year') },
+                    { name: t('last year'), begin_date: moment().subtract(1, 'year').startOf('year'), end_date: moment().subtract(1, 'year').endOf('year') }
+                  ];
+
+  setFormMode('P');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+  </div>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group">
+              <label><t>date</t></label><br/>
+              <b-date-range-picker begin="d.begin_date" end="d.end_date" custom="q.date_ranges"/>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"
+                row-limit="2000"
+                option-check-childs/>
+            </div>
+            <div class="form-group">
+              <label><t>jobs</t></label>
+              <div class="jobs">
+                <b-input
+                  multiple
+                  name="jobs"
+                  model="d.jobs"
+                  model-key="job_id"
+                  label="name">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>employee kind</t></label><br/>
+              <label class="radio" ng-repeat="item in d.employee_kinds">
+                <input type="radio" name="employee_kind" value="{{ item.kind }}" ng-model="d.employee_kind"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>dismissal reason kind</t></label><br/>
+              <label class="radio" ng-repeat="item in d.reason_types">
+                <input type="radio" name="reason_type" value="{{ item.type }}" ng-model="d.reason_type"/><span>{{ item.name }}</span>
+              </label>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P'" class="report-frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

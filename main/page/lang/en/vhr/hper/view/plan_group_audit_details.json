@@ -1,0 +1,5 @@
+{
+ "pg.plan_group.before": "Previous Value",
+ "pg.plan_group.current": "Current Value",
+ "pg.plan_group.field_name": "Field"
+}

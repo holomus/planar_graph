@@ -1,0 +1,10 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another vacancy group": "Kod allaqachon boshqa tur uchun ishlatilgan",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi kerak",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

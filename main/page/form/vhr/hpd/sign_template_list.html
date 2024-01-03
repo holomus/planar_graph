@@ -1,0 +1,97 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  var stateClass = { A: 'success', P: 'danger'};
+  page.grid('table').asHtml('state_html', 'state,state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ stateClass[row.state] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {},
+      tDeleteOne = t('delete template $1?'),
+      tDeleteMany = t('delete $1 template(s)?');
+
+  function deleteAction(message, template_id) {
+    page.confirm(message, function() {
+      fi.delete({ template_id: template_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(tDeleteOne(row.process_name), row.template_id);
+  }
+
+  function deleteMany() {
+    deleteAction(tDeleteMany(q.checked.size), _.pluck(q.checked.rows(), 'template_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ template_id: row.template_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="template_id, process_name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="process_name" search="note, process_name" searchable="template_id"
+          extra-columns="template_id, created_by_name, modified_by_name, created_on, modified_on">
+    <b-row>
+      <b-col name="process_name" size=6/>
+      <b-col name="journal_type_name" size=7/>
+      <b-col name="sign_kind_name" size=4/>
+      <b-col name="note" size=3/>
+      <b-col name="state_name" as-html="state_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="template_id" directive="equal" extra/>
+    <b-filter name="sign_kind" decorate-with="sign_kind_name"/>
+    <b-filter name="note"/>
+    <b-filter name="journal_type_id" decorate-with="journal_type_name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

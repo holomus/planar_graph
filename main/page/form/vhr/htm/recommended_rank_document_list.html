@@ -1,0 +1,276 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var pg = page.grid('table');
+  var statusStyle = { 
+    N: 'color: #212121;  background-color: #e5eaee;', 
+    S: 'color: #fff; background-color: #8950fc;', 
+    T: 'color: #fff; background-color: #5055fc;',  
+    W: 'color: #212121; background-color: #ffa800;', 
+    A: 'color: #fff; background-color: #1bc5bd;' 
+  };
+
+  pg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge" style="${ statusStyle[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t) {
+  var q = model || {};
+
+  function doAction(doFunc, doTrans, document_id) {
+    page.confirm(doTrans, function() {
+      doFunc({ document_id: document_id }).then(() => {
+        page.query(':table').fetch();
+        q.all_checked = {};
+        q.to_new = {};
+        q.to_set_training = {};
+        q.to_training = {};
+        q.to_waiting = {};
+        q.return_to_waiting = {};
+        q.return_to_training = {};
+        q.return_to_set_training = {};
+        q.to_approved = {};
+        q.to_delete = {};
+      }, page.alert);
+    });
+  }
+
+  function prepActionOne(doFunc, doTrans) {
+    return function(row) {
+      doAction(doFunc, doTrans(row.document_number, row.document_date), row.document_id);
+    }
+  }
+
+  function prepActionMany(doFunc, doTrans, key) {
+    return function() {
+      doAction(doFunc, doTrans(q[key].size), _.pluck(q[key].rows, 'document_id'));
+    }
+  }
+
+  function prepChecked(key, checked, filterFunc) {
+    q[key] = {},
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    prepChecked('all_checked',        checked, x => true);
+    prepChecked('to_set_training',        checked, x => x.status == q.status_new);
+    prepChecked('to_training',            checked, x => x.status == q.status_set_training);
+    prepChecked('to_waiting',             checked, x => x.status == q.status_training);
+    prepChecked('to_approved',            checked, x => x.status == q.status_waiting);
+    prepChecked('return_to_waiting',      checked, x => x.status == q.status_approved);
+    prepChecked('return_to_training',     checked, x => x.status == q.status_waiting);
+    prepChecked('return_to_set_training', checked, x => x.status == q.status_training);
+    prepChecked('to_new',                 checked, x => x.status == q.status_set_training);
+    prepChecked('to_delete',              checked, x => x.status == q.status_new);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ document_id: row.document_id }, closeIfDialog);
+  }
+
+  function editTrainings(row) {
+    fi.edit_trainings({ document_id: row.document_id });
+  }
+
+  function editStatuses(row) {
+    fi.edit_statuses({ document_id: row.document_id });
+  }
+
+  function viewJournal(row) {
+    fi.view_journal({ journal_id: row.journal_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) :
+      fi.view ? view(row) :
+      (fi.view_journal && row.status == q.status_approved) ? viewJournal(row) :
+      (fi.edit && row.status == q.status_new) ? edit(row) :
+      (fi.edit_trainings && row.status == q.status_set_training) ? editTrainings(row) :
+      (fi.edit_statuses && row.status == q.status_waiting) ? editStatuses(row) : null;
+  }
+
+  function runReport(row, rt) {
+    window.open(page.url('run', {
+      document_id: row.document_id,
+      rt: rt
+    }));
+  }
+
+  function view(row) {
+    fi.view({ document_id: row.document_id });
+  }
+
+  function statusRowCondition(row_status, status) {
+    return ;
+  }
+
+  q.actions = _.filter([
+    {
+      has_access: fi.to_set_training,
+      titleOne: fi.to_set_training?.title,
+      titleMany: t('to set training $1'),
+      key: 'to_set_training',
+      rowCondition: (status) => status == q.status_new,
+      executeOne: prepActionOne(fi.to_set_training, t('set recommended rank document $1{document_number} on $2{document_date} status into set training?')),
+      executeMany: prepActionMany(fi.to_set_training, t('set $1{document_count} recommended rank documents status into set training?'), 'to_set_training'),
+    },
+    {
+      has_access: fi.to_training,
+      titleOne: fi.to_training?.title,
+      titleMany: t('to training $1'),
+      key: 'to_training',
+      rowCondition: (status) => status == q.status_set_training,
+      executeOne: prepActionOne(fi.to_training, t('set recommended rank document $1{document_number} on $2{document_date} status into training?')),
+      executeMany: prepActionMany(fi.to_training, t('set $1{document_count} recommended rank documents status into training?'), 'to_training'),
+    },
+    {
+      has_access: fi.to_waiting,
+      titleOne: fi.to_waiting?.title,
+      titleMany: t('to waiting $1'),
+      key: 'to_waiting',
+      rowCondition: (status) => status == q.status_training,
+      executeOne: prepActionOne(fi.to_waiting, t('set recommended rank document $1{document_number} on $2{document_date} status into waiting?')),
+      executeMany: prepActionMany(fi.to_waiting, t('set $1{document_count} recommended rank documents status into waiting?'), 'to_waiting'),
+    },
+    {
+      has_access: fi.to_approved,
+      titleOne: fi.to_approved?.title,
+      titleMany: t('to approved $1'),
+      key: 'to_approved',
+      rowCondition: (status) => status == q.status_waiting,
+      executeOne: prepActionOne(fi.to_approved, t('set recommended rank document $1{document_number} on $2{document_date} status into approved?')),
+      executeMany: prepActionMany(fi.to_approved, t('set $1{document_count} recommended rank documents status into approved?'), 'to_approved'),
+    },
+    {
+      has_access: fi.return_to_waiting,
+      titleOne: fi.return_to_waiting?.title,
+      titleMany: t('return to waiting $1'),
+      key: 'return_to_waiting',
+      rowCondition: (status) => status == q.status_approved,
+      executeOne: prepActionOne(fi.return_to_waiting, t('return recommended rank document $1{document_number} on $2{document_date} status into waiting?')),
+      executeMany: prepActionMany(fi.return_to_waiting, t('return $1{document_count} recommended rank documents status into waiting?'), 'return_to_waiting'),
+    },
+    {
+      has_access: fi.return_to_training,
+      titleOne: fi.return_to_training?.title,
+      titleMany: t('return to training $1'),
+      key: 'return_to_training',
+      rowCondition: (status) => status == q.status_waiting,
+      executeOne: prepActionOne(fi.return_to_training, t('return recommended rank document $1{document_number} on $2{document_date} status into training?')),
+      executeMany: prepActionMany(fi.return_to_training, t('return $1{document_count} recommended rank documents status into training?'), 'return_to_training'),
+    },
+    {
+      has_access: fi.return_to_set_training,
+      titleOne: fi.return_to_set_training?.title,
+      titleMany: t('return to set training $1'),
+      key: 'return_to_set_training',
+      rowCondition: (status) => status == q.status_training,
+      executeOne: prepActionOne(fi.return_to_set_training, t('return recommended rank document $1{document_number} on $2{document_date} status into set training?')),
+      executeMany: prepActionMany(fi.return_to_set_training, t('return $1{document_count} recommended rank documents status into set training?'), 'return_to_set_training'),
+    },
+    {
+      has_access: fi.to_new,
+      titleOne: fi.to_new?.title,
+      titleMany: t('to new $1'),
+      key: 'to_new',
+      rowCondition: (status) => status == q.status_set_training,
+      executeOne: prepActionOne(fi.to_new, t('set recommended rank document $1{document_number} on $2{document_date} status into new?')),
+      executeMany: prepActionMany(fi.to_new, t('set $1{document_count} recommended rank documents status into new?'), 'to_new'),
+    },
+  ], x => x.has_access);
+
+  scope.q = q;
+  scope.deleteOne = prepActionOne(fi.delete, t('delete recommended rank document $1{document_number} on $2{document_date}?'));
+  scope.deleteMany = prepActionMany(fi.delete, t('delete $1{document_count} recommended rank documents?'), 'to_delete');
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <div class="btn-group" ng-if="q.actions.length > 0" ng-show="q.all_checked.has">
+      <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+      <div class="dropdown-menu">
+        <a href class="dropdown-item" 
+           ng-repeat="action in q.actions" 
+           ng-if="action.has_access"
+           ng-show="q[action.key].has"
+           ng-click="action.executeMany()">
+          {{ action.titleMany(q[action.key].size) }}
+        </a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has">
+      <t p1="q.to_delete.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="document_id, document_number, document_date, status, journal_id" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-document_date, -created_on" search="document_number" searchable="document_date, division_name, journal_number"
+          extra-columns="document_id, note, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="document_date" size=3/>
+      <b-col name="document_number" size=4/>
+      <b-col name="division_name" size=4/>
+      <b-col name="employee_names" size=5/>
+      <b-col name="journal_number" size=4/>
+      <b-col name="status_name" size=3 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="viewJournal(row)" ng-if="fi.view_journal && row.status == q.status_approved">{{ fi.view_journal.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.status == q.status_new">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="editTrainings(row)" ng-if="fi.edit_trainings && row.status == q.status_set_training">{{ fi.edit_trainings.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="editStatuses(row)" ng-if="fi.edit_statuses && row.status == q.status_waiting">{{ fi.edit_statuses.title }}</button>
+      <div class="btn-group" ng-if="q.actions.length > 0">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change status</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" 
+             ng-repeat="action in q.actions" 
+             ng-if="action.has_access"
+             ng-show="action.rowCondition(row.status)"
+             ng-click="action.executeOne(row)">
+            {{ action.titleOne }}
+          </a>
+        </div>
+      </div>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == q.status_new">{{ fi.delete.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="runReport(row, 'html')" ng-if="fi.run">
+        <a href="" ng-click="runReport(row, 'xlsx')"><span class="far fa-file-excel" style="font-size: 14px;"></span></a>
+        <t>report</t>
+      </button>
+    </b-action>
+
+    <b-filter name="document_id" directive="equal" extra/>
+    <b-filter name="document_number"/>
+    <b-filter name="document_date"/>
+    <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+    <b-filter name="employee_ids" decorate-with="employee_names"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

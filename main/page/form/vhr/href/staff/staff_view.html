@@ -1,0 +1,418 @@
+<script biruni>
+page.ctrl(function(scope, model, fi) {
+  var d = _.omit(model, 'references'),
+      q = model.references;
+
+  // change sections
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (_.contains(q.enabledGrids, section)) return;
+    if (section) {
+      page.subpage(section).run(fi[section].uri, { filial_id: d.filial_id, person_id: d.employee_id }, { is_view: true });
+    }
+    q.enabledGrids.push(section);
+  }
+
+  function showPhoto(photo) {
+    if (d.photo_sha) {
+      page.previewFile({
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  function viewEmployee() {
+    fi.view_employee({ employee_id: d.employee_id });
+  }
+
+  switch (d.status) {
+    case q.ss_working: q.status_class = 'alert-light-success'; break;
+    case q.ss_dismissed: q.status_class = 'alert-light-danger'; break;
+    case q.ss_unknown: q.status_class = 'alert-light-warning'; break;
+  }
+
+  q.activeSection = 'staff_info';
+  q.enabledGrids = ['staff_info'];
+
+  if (!d.photo_sha) {
+    q.photo_src = 'page/resource/vhr/no_photo_' + (d.gender == q.pg_female ? 'fe' : '') + 'male.png';
+  } else {
+    q.photo_src = page.loadImageLarge(d.photo_sha);
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="viewEmployee()" ng-if="fi.view_employee"><t>view employee</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="symbol h-200px w-200px w-xxl-250px">
+              <img class="w-100 h-100 mw-100 cursor-pointer" ngf-src="q.photo_src" ng-click="showPhoto()"/>
+            </div>
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.name }}</span>
+              <span class="text-muted">&nbsp;({{ d.staff_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex alert-light-danger" ng-show="d.state == 'P'">
+              <div class="alert-text">{{ d.state_name }}</div>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.status_class" ng-show="d.state == 'A'">
+              <div class="alert-text">{{ d.status_name }}</div>
+            </div>
+            <br/>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.key_person == 'Y' ? 'alert-primary' : 'alert-secondary'">
+              <div class="alert-text" ng-if="d.key_person == 'Y'"><t>key person</t></div>
+              <div class="alert-text" ng-if="d.key_person != 'Y'"><t>not key person</t></div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'staff_info' }" ng-click="changeSection('staff_info')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-user-edit"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>staff info</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_settings">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_settings' }" ng-click="changeSection('person_settings')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-cogs"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_settings.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_identification">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_identification' }" ng-click="changeSection('person_identification')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-fingerprint"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_identification.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_bank_account">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_bank_account' }" ng-click="changeSection('person_bank_account')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-briefcase"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_bank_account.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_education">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_education' }" ng-click="changeSection('person_education')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-user-graduate"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_education.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.staff_calendar">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'staff_calendar' }" ng-click="changeSection('staff_calendar')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-calendar"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.staff_calendar.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.staff_location">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'staff_location' }" ng-click="changeSection('staff_location')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-map-marker"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.staff_location.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.staff_subordinate">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'staff_subordinate' }" ng-if="!q.employee_undefined" ng-click="changeSection('staff_subordinate')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-user-friends"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.staff_subordinate.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_references">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_references' }" ng-click="changeSection('person_references')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-clipboard"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_references.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_family">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_family' }" ng-click="changeSection('person_family')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-users"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_family.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_work">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_work' }" ng-click="changeSection('person_work')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-briefcase"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_work.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_document">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_document' }" ng-click="changeSection('person_document')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-folder-open"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_document.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_files">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_files' }" ng-click="changeSection('person_files')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-file-alt"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_files.title }}</span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.person_trainings">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'person_trainings' }" ng-click="changeSection('person_trainings')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-chalkboard-teacher"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm">{{ fi.person_trainings.title }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'staff_info'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>main info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-6 mb-4">
+              <label><t>first name</t></label>
+              <span class="form-view">{{ d.first_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>last name</t></label>
+              <span class="form-view">{{ d.last_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>middle name</t></label>
+              <span class="form-view">{{ d.middle_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>birthday</t></label>
+              <span class="form-view">{{ d.birthday }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-6 mb-4">
+              <label><t>gender</t></label>
+              <span class="form-view">{{ d.gender_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>tin</t></label>
+              <span class="form-view">{{ d.tin }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>iapa</t></label>
+              <span class="form-view">{{ d.iapa }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>npin</t></label>
+              <span class="form-view">{{ d.npin }}</span>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="col-sm-12">
+              <label><t>manager</t></label>
+              <span class="form-view">{{ d.manager_name }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>staff info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-6 mb-4">
+              <label><t>staff number</t></label>
+              <span class="form-view">{{ d.staff_number }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>hiring date</t></label>
+              <span class="form-view">{{ d.hiring_date }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>dismissal date</t></label>
+              <span class="form-view">{{ d.dismissal_date }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>staff kind</t></label>
+              <span class="form-view">{{ d.staff_kind_name }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>robot</t></label>
+              <span class="form-view">{{ d.robot_name }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>division</t></label>
+              <span class="form-view">{{ d.division_name }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>job</t></label>
+              <span class="form-view">{{ d.job_name }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>rank</t></label>
+              <span class="form-view">{{ d.rank_name }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>schedule</t></label>
+              <span class="form-view">{{ d.schedule_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>fte name</t></label>
+              <span class="form-view">{{ d.fte_name }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>fte</t></label>
+              <span class="form-view">{{ d.fte }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>contacts and address</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-6 mb-4">
+              <label><t>main phone</t></label>
+              <span class="form-view">{{ d.main_phone }}</span>
+            </div>
+            <div class="col-sm-6 mb-4">
+              <label><t>email</t></label>
+              <span class="form-view">{{ d.email }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>region</t></label>
+              <span class="form-view">{{ d.region_name }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>address</t></label>
+              <span class="form-view">{{ d.address }}</span>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>legal address</t></label>
+              <span class="form-view">{{ d.legal_address }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>extra</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>code</t></label>
+              <span class="form-view">{{ d.code }}</span>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>access all employees</t></label>
+              <span class="form-view">{{ d.access_all_employees_name }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_settings" ng-show="q.activeSection == 'person_settings'">
+      <b-subpage name="person_settings"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_identification" ng-show="q.activeSection == 'person_identification'">
+      <b-subpage name="person_identification"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_bank_account" ng-show="q.activeSection == 'person_bank_account'">
+      <b-subpage name="person_bank_account"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_education" ng-show="q.activeSection == 'person_education'">
+      <b-subpage name="person_education"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.staff_calendar" ng-show="q.activeSection == 'staff_calendar'">
+      <b-subpage name="staff_calendar"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.staff_location" ng-show="q.activeSection == 'staff_location'">
+      <b-subpage name="staff_location"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="!q.staff_undefined && fi.staff_subordinate" ng-show="q.activeSection == 'staff_subordinate'">
+      <b-subpage name="staff_subordinate"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_references" ng-show="q.activeSection == 'person_references'">
+      <b-subpage name="person_references"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_family" ng-show="q.activeSection == 'person_family'">
+      <b-subpage name="person_family"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_work" ng-show="q.activeSection == 'person_work'">
+      <b-subpage name="person_work"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_document" ng-show="q.activeSection == 'person_document'">
+      <b-subpage name="person_document"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_files" ng-show="q.activeSection == 'person_files'">
+      <b-subpage name="person_files"/>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.person_trainings" ng-show="q.activeSection == 'person_trainings'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <b-subpage name="person_trainings"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

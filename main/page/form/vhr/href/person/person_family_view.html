@@ -1,0 +1,87 @@
+<script biruni>
+page.ctrl(function(scope, param) {
+  var d = _.pick(param, 'person_id'),
+      q = {};
+
+  function changeTab(tab) {
+    if (_.contains(q.enabledGrids, tab)) return;
+    if (tab == 'marital_statuses') {
+      page.post(':get_person_marital_statuses', { person_id: d.person_id }).then(function(result) {
+        d.person_marital_statuses = _.mapRows(result, ['marital_status_name', 'start_date']);
+      }, page.alert);
+    } else if (tab == 'family_members') {
+      page.post(':get_person_family_members', { person_id: d.person_id }).then(function(result) {
+        d.person_family_members = _.mapRows(result, ['name','relation_degree_name', 'birthday', 'workplace', 'is_dependent_name', 'is_private_name']);
+      }, page.alert);
+    }
+
+    q.enabledGrids.push(tab);
+  }
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  q.enabledGrids = [];
+
+  changeTab('marital_statuses');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header card-header-tabs-line">
+    <div class="card-toolbar align-items-end">
+      <ul class="nav nav-tabs nav-tabs-line">
+        <li class="nav-item">
+          <a data-target="{{ pageId('marital_statuses', '#') }}" class="nav-link active" data-toggle="tab" role="tab">
+            <span class="nav-icon"><i class="fas fa-ring"></i></span>
+            <span><t>marital statuses</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a data-target="{{ pageId('family_members', '#') }}" class="nav-link" data-toggle="tab" role="tab" ng-click="changeTab('family_members')">
+            <span class="nav-icon"><i class="fas fa-users"></i></span>
+            <span><t>family members</t></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="tab-content">
+      <div class="tab-pane active" id="{{ pageId('marital_statuses') }}" role="tabpanel">
+        <div class="row mb-2">
+          <div class="offset-sm-12 col-sm-12">
+            <b-pg-controller name="person_marital_statuses"/>
+          </div>
+        </div>
+        <b-pg-grid name="person_marital_statuses" local-data="d.person_marital_statuses" min-height="'auto'" search="marital_status_name" searchable="start_date" sort="marital_status_name, start_date">
+          <b-pg-row>
+            <b-pg-col name="marital_status_name" size="20"/>
+            <b-pg-col name="start_date" size="4"/>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div class="tab-pane" id="{{ pageId('family_members') }}" role="tabpanel">
+        <div class="row mb-2">
+          <div class="offset-sm-12 col-sm-12">
+            <b-pg-controller name="person_family_members"/>
+          </div>
+        </div>
+        <b-pg-grid name="person_family_members" local-data="d.person_family_members" min-height="'auto'" search="name, relation_degree_name" searchable="birthday, workplace" sort="name, relation_degree_name, birthday">
+          <b-pg-row>
+            <b-pg-col name="name" size="9"/>
+            <b-pg-col name="relation_degree_name" size="5"/>
+            <b-pg-col name="birthday" size="4"/>
+            <b-pg-col name="workplace" size="6">
+          </b-pg-row>
+
+          <b-pg-extra-col name="is_dependent_name"/>
+          <b-pg-extra-col name="is_private_name"/>
+        </b-pg-grid>
+      </div>
+    </div>
+  </div>
+</div>

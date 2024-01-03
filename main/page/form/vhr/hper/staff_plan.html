@@ -1,0 +1,564 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, $filter, AppSession){
+  var d = model.data, q = model.references, p = {}, MAX_VALUE = 1000000000;
+
+  d.plan_date = d.plan_date.toMoment('MM.YYYY').format('MMMM YYYY');
+  q.t_fact_percent_placeholder = t('fact percent placeholder')();
+  q.t_fact_amount_placeholder = t('fact amount placehodler')();
+  q.t_fact_note_placeholder = t('fact note')();
+  q.tDeletePart = t('delete plan part?')();
+  q.t_no_data = t('no data')();
+
+  function defaultPhoto(gender) {
+    var res = gender == 'F' ? 'fe': '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function setDefaultPhoto() {
+    q.photo_src = d.photo_sha ? page.loadImageLarge(d.photo_sha) : defaultPhoto(d.gender);
+  }
+
+  setDefaultPhoto();
+
+  function showImage() {
+    if (d.photo_sha) {
+      page.previewFile({
+        sha: d.photo_sha,
+        name: d.staff_name,
+        type: 'image'
+      });
+    }
+  }
+
+  //modal
+  var modal = page.$content.find("form[ name = 'modal' ]>.modal");
+
+  function showModal() {
+    $timeout(function(){
+      page.untouch(scope.modal);
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function parseValue(val) {
+    return parseFloat(parseFloat(val || 0).toFixed(2));
+  }
+
+  function nvl(a, b) {
+    return parseFloat(a ? a : b);
+  }
+
+  function nullif(a, b) {
+    return a == b ? null : a;
+  }
+
+  function onFactPercentChange(item) {
+    let data = _.find(q.plan_types, { plan_type: item.plan_type });
+    data.fact_amount = parseValue(data.fact_percent / 100 * data.plan_amount);
+  }
+
+  function onFactValueChange(item, row) {
+    row.plan_value = parseFloat(row.plan_value);
+    if(row.fact_value != nvl(row.fact_value, 0)) row.fact_value = nvl(row.fact_value, 0);
+    row.fact_percent = parseValue(row.fact_value / row.plan_value * 100);
+    row.fact_amount = null;
+
+    let fact_value = row.fact_value * 100;
+
+    for (let i = 0; i < row.rules.length; i++) {
+      let rule = row.rules[i];
+      if (fact_value > nvl(rule.from_percent, 0) * row.plan_value && fact_value <= nvl(rule.to_percent, MAX_VALUE) * row.plan_value) {
+        row.fact_amount = rule.fact_amount != "" ? rule.fact_amount : null;
+        break;
+      }
+    }
+
+    if (d[calcTypeKey(item)] == 'W') row.fact_amount = nvl(row.fact_amount, row.fact_percent);
+    else row.fact_amount = nvl(row.fact_amount, row.plan_amount)
+
+    let data = _.find(q.plan_types, {plan_type: item.plan_type});
+    if (d[calcTypeKey(item)] == 'W') {
+      data.c_fact_percent = _.reduce(d.plans[item.plan_type], (memo, x) => memo = memo + parseValue(x.fact_amount / 100 * x.plan_amount), 0);
+      data.fact_percent = data.c_fact_percent;
+      onFactPercentChange(item);
+    } else {
+      data.fact_amount = _.reduce(d.plans[item.plan_type], (memo, x) => memo = memo + parseValue(x.fact_amount * x.fact_value), 0);
+      data.c_fact_percent = parseValue(data.fact_amount / parseFloat(data.plan_amount) * 100);
+      data.fact_percent = data.c_fact_percent;
+    }
+  }
+
+  function getData() {
+    let data = { staff_plan_id: d.staff_plan_id };
+
+    if (d.status == 'D' || d.status == 'N') {
+      let plans = _.chain(d.plans['M']).union(d.plans['E']).filter(x => x.calc_kind != 'T').value();
+      data.plan_type_id = _.pluck(plans, 'plan_type_id');
+      data.fact_value = _.pluck(plans, 'fact_value');
+      data.fact_note = _.pluck(plans, 'fact_note');
+    }
+
+    return data;
+  }
+
+  function save() {
+    fi.save(_.extend(getData(), { set_new_status: d.set_new_status })).then(page.close, page.alert);
+  }
+
+  function openSave() {
+    if (page.valid(scope.form)) {
+      scope.modal_content = 'save_vhr150.html';
+      scope.modal_size = '';
+      d.set_new_status = 'Y';
+      showModal();
+    }
+  }
+
+  function setWaiting() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('set waiting?')(), function() {
+        fi.set_waiting(getData()).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function setNew() {
+    page.confirm(t('set new?')(), function() {
+      fi.set_new({staff_plan_id: d.staff_plan_id}).then(page.close, page.alert);
+    });
+  }
+
+  function setCompleted() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('complete?')(), function() {
+        let data = {
+          staff_plan_id: d.staff_plan_id,
+          main_fact_percent: _.find(q.plan_types, { plan_type: 'M' }).fact_percent,
+          extra_fact_percent: _.find(q.plan_types, { plan_type: 'E' }).fact_percent
+        };
+        fi.set_completed(data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function calcTypeKey(item) {
+    return item.plan_type == 'M' ? 'main_calc_type' : 'extra_calc_type';
+  }
+
+  function openTask(row) {
+    scope.modal_content = 'task_vhr150.html';
+    scope.modal_size = 'modal-lg';
+    p.data = row;
+    page.post(':load_tasks', { staff_plan_id: d.staff_plan_id, plan_type_id: row.plan_type_id }).then(result => {
+      p.data.tasks = _.mapRows(result, ['task_id', 'title', 'begin_time', 'end_time', 'grade']);
+      p.data.fact_value = _.reduce(p.data.tasks, (memo, x) => memo = memo + nvl(x.grade), 0);
+      showModal();
+    }, page.alert);
+  }
+
+  function saveTask() {
+    if (page.valid(scope.modal)) {
+      let data = {
+        staff_plan_id: d.staff_plan_id,
+        plan_type_id: p.data.plan_type_id,
+        task_ids: _.pluck(p.data.tasks, 'task_id'),
+        fact_note: p.data.fact_note
+      };
+      page.post(':save_task', data).then(page.reload, page.alert);
+    }
+  }
+
+  function sumFactValue() {
+    p.data.total_fact_value = 0;
+
+    _.each(p.data.parts, x => {
+      p.data.total_fact_value = p.data.total_fact_value + nvl(x.amount, 0);
+    })
+  }
+
+  function openParts(item, row) {
+    let data = { staff_plan_id: d.staff_plan_id, plan_type_id: row.plan_type_id };
+    page.post(':load_plan_parts', data).then(function(result) {
+      scope.modal_content = 'parts_vhr135.html';
+      scope.modal_size = 'modal-lg';
+      p.data = row;
+      p.item = item;
+      p.data.parts = _.mapRows(result.parts, ['part_id','part_date','amount','note','created_on','created_by_name','modified_on','modified_by_name']);
+      _.each(p.data.parts, x => x.show_type = 'view');
+
+      if (d.status != 'D' && d.status != 'N' || !fi.save_plan_part && !fi.delete_plan_part || q.access_level != q.ual_direct) {
+        page.pgGrid("parts").customColSize("note", 16);
+      }
+
+      sumFactValue();
+      showModal();
+    }, page.alert);
+  }
+
+  function changeShowType(row, obj) {
+    if (row.show_type == 'view') {
+      row.old_amount = row.amount;
+      row.old_note = row.note;
+      row.show_type ='edit';
+    } else if (row.part_id) {
+      row.amount = row.old_amount;
+      row.note = row.old_note;
+      row.show_type ='view'
+    } else {
+      obj.parts = _.without(obj.parts, row);
+      sumFactValue();
+    }
+  }
+
+  function savePart(item, obj) {
+    if (page.valid(scope.modal)) {
+      let data = _.pick(item, 'part_id', 'part_date', 'amount', 'note');
+
+      data.staff_plan_id = d.staff_plan_id;
+      data.plan_type_id = obj.plan_type_id;
+
+      fi.save_plan_part(data).then(function(result) {
+        item.show_type = 'view';
+        item.part_id = result.part_id;
+        obj.fact_value = result.fact_value;
+
+        onFactValueChange(p.item, obj);
+      }, page.alert);
+    }
+  }
+
+  function addPlanPart(obj) {
+    page.untouch(scope.modal);
+    obj.push({ created_by_name: AppSession.si.user.name, show_type: 'edit', amount: '' , note: '' });
+  }
+
+  function deletePart(item, obj) {
+    fi.delete_plan_part({ part_id: item.part_id }).then(function() {
+      obj.fact_value = obj.fact_value - item.amount;
+      obj.parts = _.without(obj.parts, item);
+      sumFactValue();
+      onFactValueChange(p.item, p.data);
+    }, page.alert);
+  }
+
+  var rules = _.chain(model.rules)
+               .mapRows(['plan_type_id', 'from_percent', 'to_percent', 'fact_amount'])
+               .groupBy('plan_type_id')
+               .value();
+
+  q.plan_types = [
+    {
+      plan_type: 'M',
+      name: t('plan_type:main')(),
+      plan_amount: d.main_plan_amount,
+      fact_amount: d.main_fact_amount,
+      fact_percent: d.main_fact_percent,
+      c_fact_percent: d.c_main_fact_percent
+    },
+    {
+      plan_type: 'E',
+      name: t('plan_type:extra')(),
+      plan_amount: d.extra_plan_amount,
+      fact_amount: d.extra_fact_amount,
+      fact_percent: d.extra_fact_percent,
+      c_fact_percent: d.c_extra_fact_percent
+    }
+  ];
+  d.plans = _.chain(model.plans)
+             .mapRows(['plan_type_id', 'name', 'group_name', 'plan_type', 'plan_value', 'plan_amount',
+                       'fact_value', 'fact_percent', 'fact_amount', 'calc_kind', 'calc_kind_name', 'note', 'fact_note'])
+             .each(x => x.rules = rules[x.plan_type_id] || [])
+             .groupBy('plan_type')
+             .value();
+
+  _.each(q.plan_types, function(x) {
+    if (!d.plans[x.plan_type]) {
+      d.plans[x.plan_type] = [];
+      x.exists = false;
+    } else {
+      x.exists = true;
+    };
+  });
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+  scope.formatNumber = $filter('bNumber');
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-if="fi.save && (d.status == 'D' || d.status == 'N') && q.access_level == q.ual_direct" ng-click="openSave()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-if="fi.set_waiting && (d.status == 'D' || d.status == 'N') && q.access_level == q.ual_direct" ng-click="setWaiting()"><t>send</t></button>
+  <button type="button" class="btn btn-primary" ng-if="fi.set_new && d.status == 'W' && q.access_level == q.ual_direct" ng-click="setNew()"><t>return</t></button>
+  <button type="button" class="btn btn-primary" ng-if="fi.set_completed && d.status == 'W' && (q.access_level == q.ual_direct || q.access_level == q.ual_undirect)" ng-click="setCompleted()"><t>complete</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  <style type="text/css">
+    .ui-vhr150 .border-bottom-dashed {
+      border-bottom-style: dashed !important;
+    }
+    .ui-vhr150 b-pg-grid .sg .sg-row, b-pg-grid .sg .sg-row {
+      min-width: auto;
+    }
+  </style>
+</div>
+<div class="b-content ui-vhr150">
+  <form name="form">
+    <div class="form-row">
+      <div class="col-sm-5">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="form-group">
+                <div class="image-input image-input-outline">
+                  <div class="image-input-wrapper w-auto h-auto" ng-class="!d.photo_sha && !q.photo_src && 'min-w-150px'">
+                    <img class="mw-100 mh-100 cursor-pointer" ng-click="showImage()" ngf-src="q.photo_src" ng-if="d.photo_sha || q.photo_src">
+                  </div>
+                </div>
+              </div>
+              <h5>{{ d.staff_name }}</h5>
+            </div>
+            <div class="form-group">
+              <label><t>plan date</t></label><br/>
+              <div class="form-view" style="text-transform: capitalize;">{{ d.plan_date }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>staff</t></label>
+              <div class="form-view">{{ d.staff_name }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <div class="form-view">{{ d.division_name }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>job</t></label>
+              <div class="form-view">{{ d.job_name }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>rank</t></label>
+              <div class="form-view">{{ d.rank_name }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>employment type</t></label>
+              <div class="form-view">{{ d.employment_type_name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-19">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group" ng-repeat="item in q.plan_types">
+              <h5 class="text-primary">{{ item.name }}</h5>
+              <div class="form-group" ng-if="item.exists">
+                <label><t>calc type</t></label>:&nbsp;<span><t ng-show="d[calcTypeKey(item)] == 'W'">calc_type:weight</t><t ng-show="d[calcTypeKey(item)] == 'U'">calc_type:unit</t></span>
+              </div>
+              <b-pg-grid ng-if="item.exists" label-name="plans" name="{{ 'plans_' + $index }}" local-data="d.plans[item.plan_type]" use-default-setting min-height="'auto'">
+                <b-pg-header name="plan_value"><div class="text-right"><t>plan value</t></div></b-pg-header>
+                <b-pg-header name="plan_amount">
+                  <div class="text-right">
+                    <t ng-show="d[calcTypeKey(item)] == 'W'">plan weight percent</t><t ng-show="d[calcTypeKey(item)] == 'U'">plan amount</t><r/>
+                  </div>
+                </b-pg-header>
+                <b-pg-header name="fact_value"><div class="text-right"><t>fact value</t></div></b-pg-header>
+                <b-pg-header name="fact_percent"><div class="text-right"><t>fact percent</t></div></b-pg-header>
+                <b-pg-row>
+                  <b-pg-col name="name" size=7>
+                    {{ row.name }}<br/><br/>
+                    <div class="font-italic text-muted">{{ row.calc_kind_name }}</div><br/>
+                    <div class="text-right" ng-repeat="rule in row.rules">
+                      <label class="font-italic text-muted"><t p1="rule.from_percent || '_'" p2="rule.to_percent || '_'" p3="formatNumber(rule.fact_amount) || (d[calcTypeKey(item)] == 'W' ? q.t_fact_percent_placeholder : q.t_fact_amount_placeholder)">fact (%) from: $1 to: $2 fact amount: $3</t></label><br/><br ng-show="$last"/>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="group_name" size=5>
+                    {{ row.name }}<br/><br/>
+                    <div ng-if="d.status == 'W' || d.status == 'C'">{{ row.fact_note }}</div>
+                    <textarea class="form-control" rows="1" ng-model="row.fact_note" b-maxlength="300" ng-if="d.status == 'D' || d.status == 'N'"
+                              ng-readonly="row.calc_kind == 'T' || q.access_level != q.ual_direct" placeholder="{{ q.t_fact_note_placeholder }}"></textarea>
+                  </b-pg-col>
+                  <b-pg-col name="plan_value" size=3><div class="text-right">{{ row.plan_value | bNumber }}</div></b-pg-col>
+                  <b-pg-col name="plan_amount" size=3><div class="text-right">{{ row.plan_amount | bNumber }}</div></b-pg-col>
+                  <b-pg-col name="fact_value" size=3>
+                    <div ng-if="row.calc_kind != 'T'">
+                      <div class="input-group">
+                        <input class="form-control" ng-model="row.fact_value" ng-change="onFactValueChange(item, row)" b-number precision="14"
+                               scale="6" ng-readonly="d.status != 'D' && d.status != 'N' || q.access_level != q.ual_direct || row.calc_kind == 'E'" />
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-icon btn-default" ng-click="openParts(item, row)"><i class="fa fa-eye"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div ng-if="row.calc_kind == 'T'">
+                      <div class="input-group" ng-if="(d.status == 'D' || d.status == 'N') && q.access_level == q.ual_direct">
+                        <input class="form-control" ng-model="row.fact_value" b-number readonly/>
+                        <div class="input-group-append">
+                          <button type="button" class="btn btn-default" ng-click="openTask(row)"><span class="fa fa-calculator"></span></button>
+                        </div>
+                      </div>
+                      <div ng-if="d.status != 'D' && d.status != 'N' || q.access_level != q.ual_direct">{{ row.fact_value | bNumber }}</div>
+                    </div>
+                  </b-pg-col>
+                  <b-pg-col name="fact_percent" size=3><div class="text-right">{{ row.fact_percent | bNumber }}</div></b-pg-col>
+                </b-pg-row>
+              </b-pg-grid>
+              <label class="font-italic text-muted" ng-if="!item.exists"><t>not exists</t></label>
+              <div ng-if="item.exists">
+                <div class="pt-2 text-right font-weight-bold"><t>c_fact_percent</t>&emsp;{{ item.c_fact_percent | bNumber }}%</div>
+                <div class="pt-2 text-right font-weight-bold" ng-hide="fi.set_completed && d.status == 'W' && (q.access_level == q.ual_direct || q.access_level == q.ual_undirect)">
+                  <t>fact_percent</t>&emsp;{{ item.fact_percent | bNumber }}%
+                </div>
+                <div class="form-row" ng-show="fi.set_completed && d.status == 'W'" ng-if="q.access_level == q.ual_direct || q.access_level == q.ual_undirect">
+                  <label class="col-sm-21 text-right font-weight-bold"><t>fact_percent</t></label>
+                  <div class="col-sm-3">
+                    <input class="form-control" ng-model="item.fact_percent" ng-change="onFactPercentChange(item)" b-number precision="14" scale="6" required/>
+                  </div>
+                </div>
+                <div class="pt-2 text-right font-weight-bold"><t>plan_amount</t>&emsp;{{ item.plan_amount | bNumber }}</div>
+                <div class="pt-2 text-right font-weight-bold"><t>fact_amount</t>&emsp;{{ item.fact_amount | bNumber }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <!-- MODAL -->
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="true" role="dialog">
+      <div class="modal-dialog" ng-class="modal_size">
+        <div class="modal-content">
+          <div ng-include="modal_content"></div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- SAVE MODAL -->
+  <script type="text/ng-template" id="save_vhr150.html">
+    <div class="modal-header">
+      <h5 class="modal-title"><t>save?</t></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body" ng-if="d.status == 'D'">
+      <label class="checkbox">
+        <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.set_new_status"/>
+        <span><t>set new status</t></span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="save()"><t>yes</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>no</t></button>
+    </div>
+  </script>
+  <!-- TASK MODAL -->
+  <script type="text/ng-template" id="task_vhr150.html">
+    <div class="modal-header">
+      <h5 class="modal-title"><t p1="p.data.name">calculation of plan type $1</t></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <h5><t>tasks</t></h5>
+      <div class="form-group sg">
+        <div class="sg-header">
+          <div class="sg-row">
+            <div class="sg-sub-row">
+              <div class="sg-cell col-sm-12"><t>task title</t></div>
+              <div class="sg-cell col-sm-4"><t>task begin time</t></div>
+              <div class="sg-cell col-sm-4"><t>task end time</t></div>
+              <div class="sg-cell col-sm-4"><t>task grade</t></div>
+            </div>
+          </div>
+        </div>
+        <div class="sg-content">
+          <div class="sg-row" ng-repeat="item in p.data.tasks">
+            <div class="sg-sub-row">
+              <div class="sg-cell col-sm-12">{{ item.title }}</div>
+              <div class="sg-cell col-sm-4">{{ item.begin_time }}</div>
+              <div class="sg-cell col-sm-4">{{ item.end_time }}</div>
+              <div class="sg-cell col-sm-4">{{ item.grade }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group row">
+        <div class="col-sm-12">
+          <label><h5><t>plan value</t></h5></label><br/>
+          <label>{{ p.data.plan_value | bNumber }}</label>
+        </div>
+        <div class="col-sm-12">
+          <label><h5><t>fact value</t></h5></label><br/>
+          <label>{{ p.data.fact_value | bNumber }}</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><t>fact note</t></label>
+        <textarea class="form-control" rows="2" ng-model="p.data.fact_note" b-maxlength="300" placeholder="{{ q.t_fact_note_placeholder }}"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" ng-click="saveTask()"><t>save</t></button>
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+   <!-- PARTS MODAL -->
+  <script type="text/ng-template" id="parts_vhr135.html">
+    <div class="modal-header">
+      <h5 class="modal-title"><t p1="p.data.name">plan parts of plan type $1</t></h5>
+      <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <b-pg-controller name="parts"/>
+      <b-pg-grid name="parts" local-data="p.data.parts" min-width="300" search="part_date, part_amount" currrent-limit="1000">
+        <b-pg-header name="part_date"><t>part date</t></b-pg-header>
+        <b-pg-header name="part_amount"><t>part amount</t></b-pg-header>
+        <b-pg-header name="note"><t>part note</t></b-pg-header>
+        <b-pg-header name="actions"><t>part actions</t></b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="part_date" size="4">
+            <div class="form-view" ng-if="row.show_type=='view' || row.part_id">{{ row.part_date }}</div>
+            <input type="text" class="form-control" ng-if="row.show_type=='edit' && !row.part_id" ng-model="row.part_date" b-date-picker="DD.MM.YYYY HH:mm"/>
+          </b-pg-col>
+          <b-pg-col name="part_amount" size="4">
+            <div class="form-view text-right" ng-if="row.show_type=='view'">{{ row.amount | bNumber }}</div>
+            <input type="text" class="form-control" ng-if="row.show_type=='edit'" ng-change="sumFactValue()" ng-model="row.amount" b-number precision="14" scale="6" required />
+          </b-pg-col>
+          <b-pg-col name="note" size="12">
+            <div class="form-view" ng-if="row.show_type=='view'">{{ row.note }}</div>
+            <textarea class="form-control" ng-if="row.show_type=='edit'" b-maxlength="300" ng-model="row.note"></textarea>
+          </b-pg-col>
+          <b-pg-col name="actions" size="4" access="(d.status == 'D' || d.status == 'N') && (fi.save_plan_part || fi.delete_plan_part) && q.access_level == q.ual_direct">
+            <div class="text-center" ng-if="row.show_type == 'view'">
+              <button type="button" class="btn btn-icon btn-default p-2" ng-if="fi.save_plan_part" ng-click="changeShowType(row)"><i class="fa fa-pen"></i></button>
+              <button type="button"
+                      class="btn btn-icon btn-default btn-hover-danger p-2"
+                      ng-if="fi.delete_plan_part"
+                      b-toggle
+                      data-title="{{ q.tDeletePart }}"
+                      on-click-yes="deletePart(row, p.data)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+            <div class="text-center" ng-if="fi.save_plan_part && row.show_type == 'edit' && p.data.calc_kind != 'E'">
+              <button type="button" class="btn btn-icon btn-default p-2" ng-click="savePart(row, p.data)"><i class="fa fa-check"></i></button>
+              <button type="button" class="btn btn-icon btn-default btn-hover-danger p-2" ng-click="changeShowType(row, p.data)"><i class="fa fa-times"></i></button>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+        <b-free-col size=7>
+          <b><t>total</t></b>
+        </b-free-col>
+        <b-free-col size=4>
+          <div class="text-right">{{ p.data.total_fact_value | bNumber }}</div>
+        </b-free-col>
+      </b-pg-grid>
+      <div class="form-group mb-0 mt-4" ng-if="fi.save_plan_part && (d.status == 'D' || d.status == 'N') && q.access_level == q.ual_direct && p.data.calc_kind != 'E'">
+        <button type="button" class="btn btn-default" ng-click="addPlanPart(p.data.parts)"><i class="fa fa-plus">&nbsp;</i><t>add</t></button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+    </div>
+  </script>
+</div>

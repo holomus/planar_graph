@@ -1,0 +1,11 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another reason": "Код уже закреплен за другой причиной ухода на больничный",
+ "coefficient": "Коэффициент",
+ "coefficient must be between 0 and 1": "Коэффициент должен быть в диапазоне от 0 до 1",
+ "name": "Название",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

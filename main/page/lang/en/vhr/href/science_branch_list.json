@@ -1,0 +1,10 @@
+{
+ "delete $1{science_branch_count} science branch(s)?": "Do you really want to delete <b>$1</b> science branch(es)?",
+ "delete science branch $1{science_branch_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.name": "Name",
+ "table.science_branch_id": "ID",
+ "table.state_name": "Status",
+ "delete $1": "Delete $1"
+}

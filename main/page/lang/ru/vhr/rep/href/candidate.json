@@ -1,0 +1,19 @@
+{
+ "both": "Все",
+ "CSV": "CSV",
+ "date": "Дата введения",
+ "edu stages": "Виды образования",
+ "Excel": "EXCEL",
+ "female": "Женский",
+ "gender": "Пол",
+ "generate": "Составить отчет",
+ "Html": "HTML",
+ "jobs": "Должности",
+ "languages": "Языки",
+ "male": "Мужской",
+ "parameters": "Фильтр",
+ "person types": "Тип физического лица",
+ "sources": "Источник занятости",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

@@ -1,0 +1,16 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{device_count} device(s)?": "Удалить устройства в количестве <b>$1</b>?",
+ "delete device $1{device_name}?": "Удалить устройство <b>$1</b>?",
+ "get devices": "Загрузить",
+ "get devices from HCP": "Загрузить",
+ "table.created_on": "Дата создания",
+ "table.device_code": "Код",
+ "table.device_ip": "IP-адрес",
+ "table.device_name": "Название",
+ "table.device_port": "Порт",
+ "table.modified_on": "Дата изменения",
+ "table.serial_number": "Серийный номер",
+ "table.status_name": "Статус",
+ "table.treaty_type": ""
+}

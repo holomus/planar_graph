@@ -1,0 +1,15 @@
+{
+ "add photo": "Add photo",
+ "attach employee": "Attach to organization",
+ "attach employee $1{person name}?": "Attach $1 to organization ?",
+ "close": "Close",
+ "delete": "Delete",
+ "edit image": "Edit photo",
+ "edit photo": "Edit photo",
+ "email": "Email",
+ "location": "Location",
+ "more": "Extra",
+ "pasport_series and number": "Passport",
+ "phone number": "Phone",
+ "save photo": "Save"
+}

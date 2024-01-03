@@ -1,0 +1,14 @@
+{
+ "division": "Подразделение",
+ "pg.division.before": "Старое значение",
+ "pg.division.current": "Новое значение",
+ "pg.division.field_name": "Поле",
+ "pg.plan_type.before": "Старое значение",
+ "pg.plan_type.current": "Новое значение",
+ "pg.plan_type.field_name": "Поле",
+ "pg.task_type.before": "Старое значение",
+ "pg.task_type.current": "Новое значение",
+ "pg.task_type.field_name": "Поле",
+ "plan type": "Показатели эффективности",
+ "task type": "Тип задачи"
+}

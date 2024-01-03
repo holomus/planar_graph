@@ -1,0 +1,12 @@
+{
+ "table.company_id": "Kompaniya ID",
+ "table.day_inactive": "Faol bo'lmaganlik (kun)",
+ "table.device_count": "Qurilmalar soni",
+ "table.email": "E-mail",
+ "table.hour_inactive": "Faol bo'lmaganlik (soat)",
+ "table.name": "Nom",
+ "table.phone": "Telefon raqami",
+ "table.three_day_inactive": "Faol bo'lmaganlik (3 kun)",
+ "table.three_hour_inactive": "Faol bo'lmaganlik (3 soat)",
+ "table.twelve_hour_inactive": "Faol bo'lmaganlik (12 soat)"
+}

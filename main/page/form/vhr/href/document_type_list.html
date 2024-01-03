@@ -1,0 +1,121 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  q.to_set_required = {};
+  q.to_set_not_required = {};
+
+  function action(action, message, doc_type_id) {
+    page.confirm(message, () => action({ doc_type_id }).then(page.reload, page.alert));
+  }
+
+  function setRequiredOne(row) {
+    action(fi.set_required, t('set document type $1{document_type_name} as required?')(row.name), row.doc_type_id);
+  }
+
+  function setRequiredMany() {
+    action(fi.set_required, t('set $1{document_type_count} document type(s) as required?')(q.to_set_required.size), _.pluck(q.to_set_required.rows, 'doc_type_id'));
+  }
+
+  function setNotRequiredOne(row) {
+    action(fi.set_not_required, t('set document type $1{document_type_name} as not required?')(row.name), row.doc_type_id);
+  }
+
+  function setNotRequiredMany() {
+    action(fi.set_not_required, t('set $1{document_type_count} document type(s) as not required?')(q.to_set_not_required.size), _.pluck(q.to_set_not_required.rows, 'doc_type_id'));
+  }
+
+  function deleteOne(row) {
+    action(fi.delete, t('delete document type $1{document_type_name}?')(row.name), row.doc_type_id);
+  }
+
+  function deleteMany() {
+    action(fi.delete, t('delete $1{document_type_count} document type(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'doc_type_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ doc_type_id: row.doc_type_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ doc_type_id: row.doc_type_id });
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('to_set_required', checked, x => x.is_required == 'N');
+    prepareChecked('to_set_not_required', checked, x => x.is_required == 'Y');
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-default" ng-click="setRequiredMany()" ng-if="fi.set_required" ng-show="q.to_set_required.has"><t p1="q.to_set_required.size">set required $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="setNotRequiredMany()" ng-if="fi.set_not_required" ng-show="q.to_set_not_required.has"><t p1="q.to_set_not_required.size">set not required $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="doc_type_id, name, is_required" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name, state" searchable="doc_type_id" extra-columns="doc_type_id, is_required_name">
+    <b-row>
+      <b-col name="code" size=3/>
+      <b-col name="name" size=20/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="setRequiredOne(row)" ng-if="fi.set_required && row.is_required == 'N'">{{ fi.set_required.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="setNotRequiredOne(row)" ng-if="fi.set_not_required && row.is_required == 'Y'">{{ fi.set_not_required.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="doc_type_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="is_required" decorate-with="is_required_name" extra/>
+    <b-filter name="code"/>
+    <b-filter name="state" decorate-with="state_name"/>
+  </b-grid>
+</form></div>

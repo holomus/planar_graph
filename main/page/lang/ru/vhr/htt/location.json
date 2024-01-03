@@ -1,0 +1,23 @@
+{
+ "polygon points": "Координаты полигона",
+ "accuracy": "Погрешность координат (в метрах)",
+ "accuracy $1 m": "Погрешность координат: $1 м",
+ "active": "Активный",
+ "add polygon vertices": "Добавить полигон для анализа",
+ "address": "Адрес",
+ "bssids": "BSSID",
+ "code": "Код",
+ "if you have several bssids, you must seperate with ; (semicolon)": "При наличии нескольких BSSID,  для их разделения воспользуйтесь знаком \";\"",
+ "invalid polygon input": "Неверные координаты полигона",
+ "latlng": "Геолокация",
+ "location type": "Тип локации",
+ "name": "Название",
+ "no": "Нет",
+ "passive": "Неактивный",
+ "prohibited": "Ограничение отметок",
+ "region name": "Регион",
+ "save": "Сохранить",
+ "state": "Статус",
+ "timezone name": "Временная зона",
+ "yes": "Да"
+}

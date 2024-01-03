@@ -1,0 +1,91 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, bHttp) {
+  var d = _.isUndefined(model.indicator_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  function validateIdentifier() {
+    if (d.identifier) {
+      // temporary regular expression, must find alphanumeric for all language
+      let pattern = /^[a-zA-Zа-яА-ЯЁё_][a-zA-Zа-яА-ЯЁё0-9_]*$/g;
+      q.identifier_is_valid = pattern.test(d.identifier);
+
+      if (q.identifier_is_valid) {
+        if (d.identifier.toLowerCase() == q.identifier_origin) {
+          q.identifier_is_unique = true;
+        } else {
+          bHttp.unblockOnce();
+          page.post(':identifier_is_unique', { identifier: d.identifier }).then(function(result) {
+            q.identifier_is_unique = result == "Y";
+          }, page.alert);
+        }
+      }
+    } else {
+      q.identifier_is_valid = true;
+      q.identifier_is_unique = true;
+    }
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  if(d.indicator_id) {
+    q.identifier_origin = d.identifier.toLowerCase();
+  };
+
+  validateIdentifier();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group">
+            <label><t>short name</t></label>
+            <input type="text" class="form-control" ng-model="d.short_name" b-maxlength="50"/>
+          </div>
+          <div class="form-group">
+            <label><t>identifier</t><r/></label>
+            <input type="text" class="form-control" ng-change="validateIdentifier()" ng-model="d.identifier" ng-model-options="{ debounce: 500 }"
+                   b-validate="{ s: (q.identifier_is_valid && q.identifier_is_unique) || d.identifier.length == 0 }" b-maxlength="50" required/>
+            <span class="text-danger" ng-hide="d.identifier.length == 0 || q.identifier_is_valid"><t>identifier is not valid</t></span>
+            <span class="text-danger" ng-hide="d.identifier.length == 0 || q.identifier_is_unique"><t>identifier should be unique</t></span>
+          </div>
+          <div class="form-group">
+            <label><t>indicator group</t></label>
+            <b-input name="indicator_groups"
+                     model="d.indicator_group_name | name"
+                     model-key="d.indicator_group_id | indicator_group_id"
+                     readonly="!!d.indicator_id">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

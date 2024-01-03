@@ -1,0 +1,666 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, xparam, bBig, $timeout) {
+  var d = _.isUndefined(model.data.payment_id) ? _.extend(model.data, xparam) : model.data,
+      q = model.references,
+      Big = bBig(q.round_value + q.rmt_floor);
+
+  function nIsNull(num) {
+    return _.isUndefined(num) || _.isNull(num) || _.isNaN(num) || num == '';
+  }
+
+  function parseToFloat(num) {
+    if (nIsNull(num)) return 0;
+    return parseFloat(num);
+  }
+
+  // employee item
+  function addEmployeeItem(item) {
+    item.paid = 'N';
+    d.employees.push(item);
+  }
+
+  function setEmployeeItem(item, row) {
+    if (!row) return;
+    item.employee_id = row.employee_id;
+    item.employee_name = row.name;
+    item.wage = '';
+
+    setEmployeeBankAccount(item, {});
+
+    if (item.employee_id) {
+      page.post(':load_employee', {
+        booked_date: d.booked_date,
+        payment_date: d.payment_date,
+        days_limit: d.days_limit,
+        currency_id: d.currency_id,
+        employee_id: item.employee_id
+      }).then(function (result) {
+        _.extend(item, result);
+        item.advance_amount = parseToFloat(result.advance_amount);
+      }, page.alert);
+    }
+  }
+
+  function removeEmployeeItem() {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(d.employees, row);
+      d.employees.splice(index, 1);
+    });
+    q.checked = {};
+  }
+
+  // currency
+  function changeCurrency(query, value) {
+    query.param({ payment_date: d.payment_date });
+    query.searchValue(value);
+  }
+
+  function setCurrency(row) {
+    if (!row) return;
+    d.currency_id = row.currency_id;
+    d.currency_name = row.name;
+  }
+
+  function addCurrency(value) {
+    fi.add_currency(null, setCurrency, { name: value });
+  }
+
+  function selectCurrency() {
+    fi.select_currency(null, setCurrency);
+  }
+
+  // cashbox
+  function setCashbox(result) {
+    if (!result) return;
+    d.cashbox_id = result.cashbox_id;
+    d.cashbox_name = result.name;
+  }
+
+  function addCashbox(value) {
+    fi.add_cashbox(null, setCashbox, { name: value });
+  }
+
+  function selectCashbox() {
+    fi.select_cashbox(null, setCashbox);
+  }
+
+  // bank account
+  function changeBankAccountQuery(query, value) {
+    query.where(['person_id', '=', d.filial_id]);
+    query.searchValue(value);
+  }
+
+  function addBankAccount() {
+    fi.add_bank_account({ person_id: d.filial_id });
+  }
+
+  function setBankAccount(result) {
+    if (result) {
+      d.bank_account_id = result.bank_account_id;
+      d.bank_account_name = result.name;
+
+      if (result.currency_id) {
+        d.currency_id = result.currency_id;
+        d.currency_name = result.currency_name;
+      }
+    }
+  }
+
+  // staff
+  function whereStaff() {
+    let where = ['or', [
+                  ['dismissal_date', '=', [null]],
+                  ['dismissal_date', '>', d.booked_date]]
+                ],
+        employee_ids = _.chain(d.employees)
+                        .pluck('employee_id')
+                        .compact()
+                        .unique()
+                        .value();
+
+    if (d.days_limit) {
+      where = ['and', [
+                ['hiring_date', '<=',  moment(d.booked_date, 'DD.MM.YYYY').subtract(d.days_limit, 'days').format('DD.MM.YYYY')],
+                where
+              ]];
+    } else {
+      where = ['and', [
+                ['hiring_date', '<=', d.booked_date],
+                where
+              ]];
+    }
+
+    if (!_.isEmpty(employee_ids)) {
+      where = ['and' , [['employee_id', '<>', employee_ids], where]];
+    }
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+
+    return where;
+  }
+
+  function selectStaffs() {
+    fi.select_staffs({ date: d.booked_date }, function(result) {
+      let employee_ids = _.chain(result)
+                          .pluck('employee_id')
+                          .unique()
+                          .value();
+
+      if (!_.isEmpty(employee_ids)) {
+        page.post(':load_employees', {
+          booked_date: d.booked_date,
+          payment_date: d.payment_date,
+          days_limit: d.days_limit,
+          limit_kind: d.limit_kind,
+          currency_id: d.currency_id,
+          employee_ids: employee_ids
+        }).then(function (result) {
+          _.each(result, function(item) {
+            item.paid = 'N';
+            item.advance_amount = parseToFloat(item.advance_amount);
+          });
+          d.employees.push(...result);
+        }, page.alert);
+      }
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  function changeStaffQuery(query, value) {
+    query.param(_.pick(d, 'booked_date', 'days_limit' , 'limit_kind'));
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  // employee bank account
+  function changeEmployeeBankAccountQuery(item, query, value) {
+    query.where(['person_id', '=', item.employee_id]);
+    query.searchValue(value);
+  }
+
+  function setEmployeeBankAccount(item, row) {
+    if (!row) return;
+    item.bank_account_id = row.bank_account_id;
+    item.bank_account_name = row.name;
+  }
+
+  function addEmployeeBankAccount(employee_id) {
+    fi.add_employee_bank_account({ employee_id });
+  }
+
+  function applyPayAmount(item) {
+    _.chain(d.employees).filter(x => !x.pay_amount).each(employee => employee.pay_amount = item.pay_amount);
+  }
+
+  function checkPaidDate(item) {
+    if (parseToFloat(moment(item.paid_date, `DD.MM.YYYY`).format("YYYYMMDD")) < parseToFloat(moment(d.booked_date, `DD.MM.YYYY`).format("YYYYMMDD"))) {
+      item.paid_date =  item.last_paid_date;
+    } else {
+      item.last_paid_date =  item.paid_date;
+    }
+  }
+
+  function applyPaidDate(item) {
+    _.chain(d.employees).filter(x => !x.paid_date).each(employee => employee.paid_date = item.paid_date);
+  }
+
+  // division
+  function onChangeDivision() {
+    if (!q.division_inited && !!d.payment_id) {
+      q.division_inited = true;
+      return;
+    }
+    if (!_.isEmpty(d.employees)) {
+      page.confirm(t('all employees will be removed. continue?')(), function() {
+        d.employees = [];
+        q.old_division_id = d.division_id;
+      }, function() {
+        d.division_id = q.old_division_id;
+      });
+    } else {
+      q.old_division_id = d.division_id;
+    }
+  }
+
+  // date
+  function onDateChange() {
+    let payment_date = moment(d.payment_date, `DD.MM.YYYY`).format("YYYYMMDD"),
+        booked_date = moment(d.booked_date, `DD.MM.YYYY`).format("YYYYMMDD");
+    if (payment_date < booked_date) {
+      d.payment_date = d.booked_date;
+    }
+
+    if (!_.isEmpty(d.employees)) {
+      page.confirm(t('all employees will be removed. continue?')(), function() {
+        d.employees = [];
+        q.old_booked_date = d.booked_date;
+        q.old_payment_date = d.payment_date;
+      }, function() {
+        d.booked_date = q.old_booked_date;
+        d.payment_date = q.old_payment_date;
+      });
+    } else {
+      q.old_booked_date = d.booked_date;
+      q.old_payment_date = d.payment_date;
+    }
+  }
+
+  // calculate
+  function calculate() {
+    _.each(d.employees, employee => {
+      if (employee.pay_amount) {
+        employee.pay_amount = Big(employee.pay_amount).round().toString();
+      }
+    })
+  }
+
+  // save
+  function save(action) {
+    if (page.valid(scope.form)) {
+      if (action.status != q.ps_draft) {
+        if (d.employees.length == 0) {
+          page.alert(t('there must be at least one employee')());
+          return;
+        }
+      }
+      page.confirm(action.transConfirm(), function() {
+        let data = _.chain(d)
+                    .pick('payment_id',
+                          'payment_number',
+                          'payment_date',
+                          'booked_date',
+                          'currency_id',
+                          'payment_type',
+                          'cashbox_id',
+                          'days_limit',
+                          'limit_kind',
+                          'division_id',
+                          'bank_account_id',
+                          'note',
+                          'round_value')
+                    .value();
+        data.employees = _.chain(d.employees)
+                          .values()
+                          .flatten()
+                          .map(x => x = _.pick(x, 'employee_id',
+                                                  'pay_amount',
+                                                  'bank_account_id',
+                                                  'paid_date',
+                                                  'paid',
+                                                  'note'))
+                          .value();
+        if (data.payment_type == q.pt_cashbox) {
+          data.bank_account_id = null;
+        } else {
+          data.cashbox_id = null;
+        }
+        data.status = action.status;
+        action.grant(data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function refreshAllPaid() {
+    let checked_size = _.chain(q.pageItems)
+                        .filter(x => x.paid == 'Y')
+                        .pluck('paid')
+                        .value()
+                        .length;
+
+    q.allPaid = 'N';
+    q.checkboxAll.indeterminate = false;
+    q.checkboxAll.checked = false;
+    if (checked_size < q.pageItems.length && checked_size > 0) {
+      q.checkboxAll.indeterminate = true;
+    }
+    else if (checked_size == q.pageItems.length && q.pageItems.length > 0) {
+      q.allPaid = 'Y';
+      q.checkboxAll.checked = true;
+    }
+  }
+
+  function toggleAllPaid() {
+    let checked_size = _.chain(q.pageItems)
+                        .filter(x => x.paid == 'Y')
+                        .pluck('paid')
+                        .value()
+                        .length;
+
+    _.each(q.pageItems, function(item) {
+      item.paid = q.checkboxAll.checked && checked_size == 0 ? 'Y' : 'N';
+    });
+    q.checkboxAll.checked = checked_size == 0;
+  }
+
+  function fillAmountByPercentage() {
+    if(d.percentage_amount) {
+      _.each(d.employees, x => {
+        x.pay_amount = x.wage * d.percentage_amount / 100;
+      });
+    }
+  }
+
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.round_values = _.mapRows(q.round_values, ['round_value','name']);
+  q.old_division_id = d.division_id;
+  q.old_booked_date = d.booked_date;
+  q.old_payment_date = d.payment_date;
+  q.documentReady = false;
+  q.pageItems = page.pgGrid('employees').g.pageItems;
+  q.advance_limit_kinds = _.object(q.advance_limit_kinds);
+  q.payment_types = _.mapRows(q.payment_types, ['kind', 'name']);
+  q.payment_type = d.payment_type;
+  q.tConfirmApplyPaidDate = t('apply date to empty dates?');
+  q.tConfirmApplyPayAmount = t('apply pay amount to empty fields?');
+  q.actions = _.chain([
+                  [ fi.draft, t('save?'), t('save')(), q.ps_draft ],
+                  [ fi.complete, t('complete?'), t('complete')(), q.ps_complete ]
+                ])
+                .mapRows(['grant', 'transConfirm', 'name', 'status'])
+                .reject(x => !x.grant)
+                .value();
+
+  d.round_value = q.round_value;
+
+  if (d.payment_id) {
+    d.employees =  _.chain(d.employees)
+                    .mapRows(['employee_id',
+                              'staff_id',
+                              'employee_name',
+                              'iapa',
+                              'npin',
+                              'tin',
+                              'bank_account_id',
+                              'bank_account_name',
+                              'pay_amount',
+                              'advance_amount',
+                              'paid_date',
+                              'paid',
+                              'note',
+                              'wage'])
+                    .each(function (x) {
+                      x.pay_amount = parseToFloat(x.pay_amount);
+                      x.advance_amount = parseToFloat(x.advance_amount);
+                      x.last_paid_date = x.paid_date;
+                    })
+                    .value();
+  } else {
+    d.employees = [];
+  }
+
+  $timeout(function() {
+    q.documentReady = true;
+    q.checkboxAll = {};
+    refreshAllPaid();
+  });
+
+  var intervalId = setInterval(function() {
+    let elem = page.$content.find('input.ui-vhr231[type=checkbox]')[0]
+    if (elem) {
+      _.mapObject(q.checkboxAll, function(val, key) {
+        elem[key] = val;
+      });
+      q.checkboxAll = elem;
+      clearInterval(intervalId);
+    }
+  }, 500);
+
+  scope.d = d;
+  scope.q = q;
+
+  d.advance_payment_by_percentage = 'N';
+
+  scope.$watchCollection("page.pgGrid('employees').g.pageItems", function() {
+    q.pageItems = page.pgGrid('employees').g.pageItems;
+    if(q.documentReady) refreshAllPaid();
+  });
+  scope.$watch('d.round_value', function() {
+    if (d.round_value) Big.roundModel(d.round_value + q.rmt_floor);
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary mr-1" ng-click="save(action)" ng-if="action.grant" ng-repeat="action in q.actions">{{ action.name }}</button>
+  <button type="button" class="btn btn-default ml-0" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-8 mb-4">
+              <label><t>booked date</t><r/></label>
+              <input type="text" class="form-control"  b-date-picker="DD.MM.YYYY" ng-change="onDateChange()" ng-model="d.booked_date" required/>
+            </div>
+            <div class="col-sm-8 mb-4">
+              <label><t>payment date</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-change="onDateChange()" min-date="d.booked_date" ng-model="d.payment_date" required/>
+            </div>
+            <div class="col-sm-8 mb-4">
+              <label><t>payment number</t></label>
+              <input type="text" class="form-control" ng-model="d.payment_number" b-maxlength="50"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>division name</t></label>
+            <b-tree-select origin="q.divisions" id-key="division_id" model="d.division_id" on-change="onChangeDivision()"/>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>limit kind</t></label><br/>
+              <label class="switch">
+                <input type="checkbox"
+                       ng-true-value="'T'"
+                       ng-false-value="'C'"
+                       ng-model="d.limit_kind"/>
+                <span>
+                  <span ng-if="d.limit_kind == q.lk_turnout">
+                    {{ q.advance_limit_kinds[q.lk_turnout] }}
+                  </span>
+                  <span ng-if="d.limit_kind == q.lk_calendar">
+                    {{ q.advance_limit_kinds[q.lk_calendar] }}
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>days limit</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.days_limit" b-number precision="3" scale="0" required/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>calculation type</t></label><br/>
+              <label class="radio">
+                <input type="radio" value="N" ng-model="d.advance_payment_by_percentage"/><span><t>advance payment by selected amount</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" value="Y" ng-model="d.advance_payment_by_percentage"/><span><t>advance payment by percentage</t></span>
+              </label>
+            </div>
+            <div class="col-sm mb-4" ng-if="d.advance_payment_by_percentage == 'Y'">
+              <label><t>percentage amount(%)</t></label>
+              <div class="form-row">
+                <div class="col-8">
+                  <input type="text" class="form-control" b-number precision="3" scale="0" ng-model="d.percentage_amount"/>
+                </div>
+                <div class="col-6">
+                  <button type="button" class="btn btn-default" ng-disabled="!d.percentage_amount" ng-click="fillAmountByPercentage()"><t>calc</t></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea rows=2 class="form-control" ng-model="d.note"></textarea>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>currency name</t></label>
+            <b-input name="currencies"
+                     model="d.currency_name | name"
+                     model-key="d.currency_id | currency_id"
+                     on-change="changeCurrency(query, value)"
+                     is-add="fi.add_currency"
+                     is-view="fi.select_currency"
+                     on-add="addCurrency(value)"
+                     on-view="selectCurrency()">
+                {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>payment type</t></label><br/>
+            <label class="radio" ng-repeat="payment_type in q.payment_types">
+              <input type="radio" name="payment_type" value="{{ payment_type.kind }}" ng-model="d.payment_type"/>
+              <span>{{ payment_type.name }}</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <div ng-if="d.payment_type == q.pt_cashbox">
+              <label><t>cashbox</t><r/></label>
+              <b-input name="cashboxes"
+                       model="d.cashbox_name | name"
+                       model-key="d.cashbox_id | cashbox_id"
+                       is-add="fi.add_cashbox"
+                       on-add="addCashbox(value)"
+                       is-view="fi.select_cashbox"
+                       on-view="selectCashbox()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div ng-if="d.payment_type != q.pt_cashbox">
+              <label><t>bank account</t><r/></label>
+              <b-input name="bank_accounts"
+                       model="d.bank_account_name | name"
+                       model-key="d.bank_account_id | bank_account_id"
+                       column="currency_id, currency_name"
+                       on-change="changeBankAccountQuery(query, value)"
+                       on-select="setBankAccount(row)"
+                       is-add="fi.add_bank_account"
+                       on-add="addBankAccount()"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>round value</t></label><br/>
+            <div class="form-row">
+              <div class="col-18">
+                <ui-select ng-model="d.round_value">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.round_value as item in q.round_values | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+              <div class="col-6" ng-show="d.round_value">
+                <button type="button" class="btn btn-default" ng-click="calculate()"><t>calc</t></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="separator separator-solid my-2"></div>
+        <div class="row">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="addEmployeeItem({})"><t>add</t></button>
+            <button type="button" class="btn btn-success" ng-if="fi.select_staffs" ng-click="selectStaffs()"><t>select</t></button>
+            <button type="button" class="btn btn-danger" ng-click="removeEmployeeItem()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="employees"/>
+          </div>
+        </div>
+        <b-pg-grid name="employees" on-check="onCheck(checked)" search="employee_name" searchable="iapa, npin, tin" local-data="d.employees"
+                   iterator="item" current-limit="1000">
+          <b-pg-header name="paid">
+            <label class="checkbox">
+              <input type="checkbox" class="ui-vhr231" ng-click="toggleAllPaid()" ng-hide="d.employees.length == 0"/>
+              <span ng-hide="d.employees.length == 0"></span>
+              <span><t>paid</t></span>
+            </label>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1">
+              <div class="text-right">{{ item.rownum }}</div>
+            </b-pg-col>
+            <b-pg-col name="employee_name" size="4">
+              <b-input name="staffs"
+                       model="item.employee_name | name"
+                       model-key="item.employee_id | employee_id"
+                       column="staff_id, staff_number"
+                       on-change="changeStaffQuery(query, value)"
+                       on-select="setEmployeeItem(item, row)"
+                       on-delete="setEmployeeItem(item, {})"
+                       required-key>
+                <header>
+                  <div class="col-sm"><t>staff number</t></div>
+                  <div class="col-sm"><t>name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm">{{ row.staff_number}}</div>
+                  <div class="col-sm">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="advance_amount" format="amount" size="2"/>
+            <b-pg-col name="pay_amount" size="3">
+              <div class="input-group">
+                <input type="text" class="form-control" ng-model="item.pay_amount" b-number precision="14" scale="6"/>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyPayAmount() }}" on-click-yes="applyPayAmount(item)">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="note" size="4">
+              <input type="text" class="form-control" ng-model="item.note"/>
+            </b-pg-col>
+            <b-pg-col name="bank_account_name" size="4">
+              <b-input name="bank_accounts"
+                       model="item.bank_account_name | name"
+                       model-key="item.bank_account_id | bank_account_id"
+                       column="is_main"
+                       on-change="changeEmployeeBankAccountQuery(item, query, value)"
+                       is-add="fi.add_employee_bank_account"
+                       on-add="addEmployeeBankAccount(item.employee_id)"
+                       readonly="d.payment_type == 'C' || !item.employee_id">
+                  <div class="col-sm align-middle">{{ row.name }}</div>
+                  <div class="col-sm alert alert-custom alert-light-info text-center py-1 px-3 m-0" ng-if="row.is_main == 'Y'"><span class="alert-text"><t>main</t></span></div>
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="paid_date" size="3">
+              <div class="input-group">
+                <input type="text" class="form-control" ng-model="item.paid_date" b-date-picker="DD.MM.YYYY" min-date="d.payment_date" ng-required="item.paid == 'Y'"/>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyPaidDate() }}" on-click-yes="applyPaidDate(item)">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="paid" size="2">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="item.paid" ng-true-value="'Y'" ng-false-value="'N'" ng-change="refreshAllPaid()"/><span></span>
+              </label>
+            </b-pg-col>
+          </b-pg-row>
+          <b-pg-extra-col name="iapa"/>
+          <b-pg-extra-col name="npin"/>
+          <b-pg-extra-col name="tin"/>
+        </b-pg-grid>
+      </div>
+    </div>
+  </div>
+</form></div>

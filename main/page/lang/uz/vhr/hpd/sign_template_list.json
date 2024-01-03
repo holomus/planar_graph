@@ -1,0 +1,16 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1 template(s)?": "$1 shablon(lar) oʻchirilsinmi?",
+ "delete template $1?": "$1 shabloni oʻchirilsinmi?",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.journal_type_name": "Hujjat turi",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.note": "Izoh",
+ "table.process_name": "Jarayon",
+ "table.sign_kind_name": "Imzolanish",
+ "table.state_name": "Holat",
+ "table.template_id": "ID"
+}

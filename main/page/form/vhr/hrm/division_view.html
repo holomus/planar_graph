@@ -1,0 +1,231 @@
+<script biruni>
+page.init(function() {
+  page.grid('table_audit').asHtml('state_html', 'state,state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  page.grid('table_audit').disable();
+});
+page.ctrl(function(scope, model, fi) {
+  var d = model, q = {};
+
+  function edit() {
+    fi.edit({ division_id: d.division_id });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+
+    if (!_.contains(q.enabledGrids, tableName) && q.activeSection != 'main') {
+      if(section == 'robots') {
+        page.subpage(section).run(fi[section].uri, { division_id: d.division_id }, { allow_action: false });
+      } else {
+        page.query(tableName).param({ division_id: d.division_id });
+        page.grid(tableName).fetch();
+        page.grid(tableName).enable();
+        q.enabledGrids.push(tableName);
+      }
+
+      q.enabledGrids.push(tableName);
+    }
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ division_id: row.division_id, context_id: row.t_context_id });
+  }
+
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="text-center">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.name }}</span>
+              <span class="text-muted">&nbsp;({{ d.division_id }})</span>
+            </div>
+            <div class="text-muted b-offcanvas-hide font-size-h6">{{ d.code }}</div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.state=='A' ? 'alert-light-success' : 'alert-light-danger'">
+              <div class="alert-text">
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </div>
+            </div>
+          </div>
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-if="fi.robots" ng-class="{ 'active': q.activeSection == 'robots' }" ng-click="changeSection('robots')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-sitemap"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>robots</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')" ng-if="fi.audit">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-user-clock"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>main</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>code</t></label>
+                <span class="form-view">{{ d.code }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>name</t></label>
+                <span class="form-view">{{ d.name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>division group name</t></label>
+                <span class="form-view">{{ d.division_group_name }}</span>
+              </div>
+              <div class="form-group" ng-if="d.allow_use_subfilial == 'Y'">
+                <label><t>subfilial name</t></label>
+                <span class="form-view">{{ d.subfilial_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>manager name</t></label>
+                <span class="form-view">{{ d.manager_name }}</span>
+              </div>
+              <div class="form-row mb-4">
+                <div class="col-sm mb-4 mb-sm-0">
+                  <div class="form-group">
+                    <label><t>opened date</t></label>
+                    <span class="form-view">{{ d.opened_date }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label><t>schedule name</t></label>
+                    <span class="form-view">{{ d.schedule_name }}</span>
+                  </div>
+                </div>
+                <div class="col-sm">
+                  <div class="form-group">
+                    <label><t>closed date</t></label>
+                    <span class="form-view">{{ d.closed_date }}</span>
+                  </div>
+                  <div class="form-group" ng-if="d.advanced_org_structure == 'Y'">
+                    <label><t>division kind</t></label>
+                    <span class="form-view">{{ d.division_kind }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.robots" ng-show="q.activeSection == 'robots'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>robots</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <b-subpage name="robots"/>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>audit</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="table_audit"/>
+            </div>
+          </div>
+          <b-grid name="table_audit" required="t_context_id, division_id" on-dblclick="auditDetails(row)"
+                  sort="-t_timestamp" search="t_user_name, t_event_name"
+                  extra-columns="t_audit_id, t_user_id, t_source_project_name, t_date, parent_name, opened_date, closed_date">
+            <b-row>
+              <b-col name="t_timestamp" size=3/>
+              <b-col name="t_user_name" size=3/>
+              <b-col name="t_event_name" size=3/>
+              <b-col name="code" size=3/>
+              <b-col name="name" size=5/>
+              <b-col name="division_group_name" size=4/>
+              <b-col name="state_name" as-html="state_html" size=3/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+            </b-action>
+
+            <b-filter name="t_date"/>
+            <b-filter name="t_user_id" decorate-with="t_user_name"/>
+            <b-filter name="t_event" decorate-with="t_event_name"/>
+            <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+            <b-filter name="division_group_id" decorate-with="division_group_name"/>
+            <b-filter name="state" decorate-with="state_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

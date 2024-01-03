@@ -1,0 +1,317 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  page.grid('table').asHtml('late_html', 'count_late, count_late_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_late == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_late_name }</div></div>`;
+  });
+  page.grid('table').asHtml('early_html', 'count_early, count_early_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_early == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_early_name }</div></div>`;
+  });
+  page.grid('table').asHtml('lack_html', 'count_lack, count_lack_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_lack == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_lack_name }</div></div>`;
+  });
+  page.grid('table').asHtml('free_html', 'count_free, count_free_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.count_free == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.count_free_name }</div></div>`;
+  });
+  page.grid('table').asHtml('take_holidays_html', 'take_holidays, take_holidays_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.take_holidays == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.take_holidays_name }</div></div>`;
+  });
+  page.grid('table').asHtml('take_nonworking_html', 'take_nonworking, take_nonworking_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.take_nonworking == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.take_nonworking_name }</div></div>`;
+  });
+  page.grid('table').asHtml('take_additional_rest_days_html', 'take_additional_rest_days, take_additional_rest_days_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.take_additional_rest_days == 'Y' ? 'success' : 'danger' } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.take_additional_rest_days_name }</div></div>`;
+  });
+
+});
+page.ctrl(function(scope, fi, t, model, xparam, $timeout) {
+  var d = {},
+      q = model.references,
+      p = {};
+
+  function closeIfDialog(result) {
+    if (page.is_dialog) {
+      if (result) {
+        page.close(result);
+      }
+    }
+  }
+
+  function deleteAction(message, schedule_id) {
+    page.confirm(message, function() {
+      fi.delete({ schedule_id: schedule_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete schedule $1{schedule_name}?')(row.name), row.schedule_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{schedule_count} schedule(s)?')(q.checked.size), _.pluck(q.checked.rows, 'schedule_id'));
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows);
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) selectOne(result);
+  }
+
+  function add(schedule_kind, row) {
+    let data = {
+      schedule_kind: schedule_kind
+    };
+    if (row) data.template_id = row.template_id;
+    fi.add(data, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ schedule_id: row.schedule_id }, closeIfDialog);
+  }
+
+  function grandHas(schedule_kind) {
+    return schedule_kind == q.sk_custom ? fi.custom :
+           schedule_kind == q.sk_flexible ? fi.flexible :
+           schedule_kind == q.sk_hourly ? fi.hourly : false;
+  }
+
+  function onCheck(checked) {
+    q.checked = {};
+    q.checked.rows = _.filter(checked.rows(), x => !x.pcode && grandHas(x.schedule_kind));
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+  }
+
+  function hasEdit(row) {
+    return fi.edit && !row.pcode && grandHas(row.schedule_kind);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : hasEdit(row) ? edit(row) : null;
+  }
+
+  // schedule template
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function openModal() {
+    p.preview_tab = false;
+
+    page.untouch(scope.modal);
+
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function openPreview(row) {
+    if (!row) return;
+
+    p.data = angular.copy(row);
+    p.preview_tab = true;
+  }
+
+  function closePreview() {
+    p.preview_tab = false;
+  }
+
+  q.actions = _.filter([
+    {
+      has_access: fi.flexible && fi.add,
+      title: fi.flexible?.title,
+      execute: _.partial(add, q.sk_flexible)
+    },
+    {
+      has_access: fi.hourly && fi.add,
+      title: fi.hourly?.title,
+      execute: _.partial(add, q.sk_hourly)
+    },
+    {
+      has_access: fi.custom && fi.add,
+      title: fi.custom?.title,
+      execute: _.partial(add, q.sk_custom)
+    }
+  ], x => x.has_access);
+
+  q.multiple_select = xparam.multiple_select;
+
+  d.templates = _.mapRows(model.templates, ['template_id',
+                                            'name',
+                                            'description',
+                                            'schedule_kind_name',
+                                            'has_shift',
+                                            'count_late',
+                                            'count_early',
+                                            'count_lack',
+                                            'use_marks']);
+
+  p.preview_tab = false;
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content">
+  <form name="form">
+    <style>
+      .hide-button {
+        display: none;
+      }
+
+      .show-button:hover .hide-button {
+        display: block;
+      }
+    </style>
+    <div class="b-toolbar row">
+      <div class="col-sm-14">
+        <div class="btn-group" ng-if="q.actions.length > 0">
+          <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><t>add</t></button>
+          <div class="dropdown-menu">
+            <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.has_access" ng-click="action.execute()">{{ action.title }}</a>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.checked.has">
+          <t p1="q.checked.size">select $1</t>
+        </button>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+          <t p1="q.checked.size">delete $1</t>
+        </button>
+        <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+      </div>
+      <div class="col-sm-10 b-right">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table" required="schedule_id, name, pcode, schedule_kind" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name" search="name, code" searchable="schedule_id, barcode"
+            extra-columns="schedule_id, shift_time, input_acceptance_time, output_acceptance_time, track_duration_time, calendar_name, barcode, created_by_name, created_on, modified_by_name, modified_on">
+      <b-row>
+        <b-col name="name" size=20/>
+        <b-col name="code" size=3/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="schedule_kind_name"/>
+        <b-col name="count_late_name" as-html="late_html"/>
+        <b-col name="count_early_name" as-html="early_html"/>
+        <b-col name="count_lack_name" as-html="lack_html"/>
+        <b-col name="count_free_name" as-html="free_html"/>
+        <b-col name="take_holidays_name" as-html="take_holidays_html"/>
+        <b-col name="take_nonworking_name" as-html="take_nonworking_html"/>
+        <b-col name="take_additional_rest_days_name" as-html="take_additional_rest_days_html"/>
+        <b-col name="state_name" as-html="state_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog() && grandHas(row.schedule_kind)"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="hasEdit(row)">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && grandHas(row.schedule_kind) && !row.pcode">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="schedule_id" directive="equal" extra/>
+      <b-filter name="name"/>
+      <b-filter name="schedule_kind" decorate-with="schedule_kind_name"/>
+      <b-filter name="state" decorate-with="state_name"/>
+      <b-filter name="calendar_id" decorate-with="calendar_name" extra/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 ng-if="p.preview_tab">{{ p.data.name }}</h2>
+            <h2 ng-if="!p.preview_tab"><t>schedule templates</t></h2>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body" ng-if="!p.preview_tab">
+            <div class="sg grid">
+              <div class="sg-content">
+                <div class="sg-row show-button" ng-repeat="row in d.templates" style="height: 40px">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-sm-17">{{ row.name }}</div>
+                    <div class="sg-cell col-sm-3">
+                      <div class="text-center">
+                        <button class="hide-button btn btn-group btn-default" ng-click="openPreview(row)"><t>preview</t></button>
+                      </div>
+                    </div>
+                    <div class="sg-cell col-sm-4">
+                      <div class="text-center">
+                        <button class="hide-button btn btn-group btn-primary" ng-click="add(row)"><t>use template</t></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-body" ng-if="p.preview_tab">
+            <div class="row ml-6 mb-4">
+                <h5 class="mr-2"><b><t>schedule kind:</t></b></h5>
+                <div class="badge badge-success">{{ p.data.schedule_kind_name }}</div>
+            </div>
+            <div class="row ml-2">
+              <div class="col-sm-6">
+                <h5><b><t>opportunities:</t></b></h5>
+              </div>
+            </div>
+            <div class="row ml-2 mr-4 mb-4">
+              <div class="col-sm-10 offset-sm-1">
+                <span class="text-center font-weight-bolder">
+                  <i class="fas fa-moon" ng-class="p.data.has_shift == 'Y' ? 'text-info' : 'text-muted'" style="font-size: 16px;"></i>
+                  <t ng-if="p.data.has_shift == 'Y'">has shift</t>
+                  <t ng-if="p.data.has_shift == 'N'">no shift</t>
+                </span><br>
+                <span class="text-center font-weight-bolder">
+                  <i class="fas fa-tasks" ng-class="p.data.use_marks == 'Y' ? 'text-success' : 'text-muted'" style="font-size: 16px;"></i>
+                  <t ng-if="p.data.use_marks == 'Y'">marks used</t>
+                  <t ng-if="p.data.use_marks == 'N'">marks not used</t>
+                </span><br>
+                <span class="text-center font-weight-bolder">
+                  <i class="fas fa-check-circle" ng-class="p.data.count_late == 'Y' ? 'text-success' : 'text-muted'" style="font-size: 16px;"></i>
+                  <t ng-if="p.data.count_late == 'Y'">can calculate late inputs</t>
+                  <t ng-if="p.data.count_late == 'N'">not calculate late inputs</t>
+                </span><br>
+                <span class="text-center font-weight-bolder">
+                  <i class="fas fa-check-circle" ng-class="p.data.count_early == 'Y' ? 'text-success' : 'text-muted'" style="font-size: 16px;"></i>
+                  <t ng-if="p.data.count_early == 'Y'">can calculate early outputs</t>
+                  <t ng-if="p.data.count_early == 'N'">not calculate early outputs</t>
+                </span><br>
+                <span class="text-center font-weight-bolder">
+                  <i class="fas fa-check-circle" ng-class="p.data.count_lack == 'Y' ? 'text-success' : 'text-muted'" style="font-size: 16px;"></i>
+                  <t ng-if="p.data.count_lack == 'Y'">can calculate lack times</t>
+                  <t ng-if="p.data.count_lack == 'N'">not calculate lack times</t>
+                </span><br>
+              </div>
+            </div>
+            <div class="row ml-3 mr-4" ng-if="p.data.description">
+              <div class="col-sm-8 mb-2">
+                <h5><b><t>about this template:</t></b></h5>
+              </div>
+              <div ng-bind-html="p.data.description"></div>
+            </div>
+          </div>
+          <div class="modal-footer" ng-if="p.preview_tab">
+            <button type="button" class="btn btn-group btn-primary" ng-click="add(p.data)"><t>use template</t></button>
+            <button type="button" class="btn btn-group btn-default" ng-click="closePreview()"><t>back to templates</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

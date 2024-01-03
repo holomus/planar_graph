@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{relation_degree_count} relation degree(s)?": "Do you really want to delete <b>$1</b> relation degree(s)?",
+ "delete $1{relation_degree_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.name": "Name",
+ "table.relation_degree_id": "ID",
+ "table.state_name": "Status"
+}

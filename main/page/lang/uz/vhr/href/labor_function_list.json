@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{labor_function_count} labor function(s)?": "Haqiqatan ham <b>$1</b> mehnat funksiya(lar)ini oʻchirib tashlamoqchimisiz?",
+ "delete labor function $1{labor_function_name}?": "Haqiqatan ham <b>$1</b> ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.description": "Tavsif",
+ "table.labor_function_id": "ID",
+ "table.name": "Nomi"
+}

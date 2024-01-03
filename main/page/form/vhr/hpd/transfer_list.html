@@ -1,0 +1,118 @@
+<script biruni>
+page.init(function() {
+  var postedClass = {
+    Y: 'primary',
+    N: 'secondary'
+  };
+
+  page.grid('table').asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${postedClass[row.posted]}">${row.posted_name}</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t) {
+  var q = model;
+
+  function hasEdit(row) {
+    return row.journal_type_id != q.transfer_jt_id ? fi.multiple_edit : fi.edit;
+  }
+
+  function edit(row) {
+    if (row.journal_type_id != q.transfer_jt_id) 
+      fi.multiple_edit({ journal_id: row.journal_id });
+    else 
+      fi.edit({ journal_id: row.journal_id });
+  }
+
+  function view(row) {
+    fi.view({ journal_id: row.journal_id });
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : hasEdit(row) ? edit(row) : null;
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add({ journal_type_id: q.transfer_jt_id });
+  }
+
+  function addMultiple() {
+    fi.multiple_add({ journal_type_id: q.transfer_multiple_jt_id });
+  }
+
+  var actions = [ 
+    { grant: fi.add, fn: add },
+    { grant: fi.multiple_add, fn: addMultiple }
+  ];
+
+  q.actions = {};
+  q.actions = _.filter(actions, x => x.grant);
+  if (q.actions.length > 0) {
+    q.firstFn = q.actions[0].fn;
+    q.first = q.actions[0].grant;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.actions.length > 0">
+      <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><t>add</t></button>
+      <div class="dropdown-menu" style="max-height: calc(100vh - 130px); overflow-y: auto;">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.grant" ng-click="action.fn()">{{ action.grant.title }}</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="journal_id" on-dblclick="onDblclick(row)" sort="-journal_date"
+          search="journal_number, employee_names" extra-columns="journal_id, page_id, journal_name, transfer_reason, transfer_base, from_division_name, to_division_name, 
+          from_job_name, to_job_name, from_org_unit_name, to_org_unit_name, from_rank_name, to_rank_name, from_schedule_name, to_schedule_name, created_by_name, modified_by_name, created_on, modified_on">
+    <b-row>
+      <b-col name="journal_date" size=3/>
+      <b-col name="journal_number" size=3/>
+      <b-col name="employee_name" size=4/>
+      <b-col name="transfer_begin" size=3/>
+      <b-col name="transfer_end" size=3/>
+      <b-col name="from_robot_name" size=3/>
+      <b-col name="to_robot_name" size=4/>
+      <b-col name="posted_name" as-html="posted_html" size=1/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view"><t>view</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="hasEdit(row)"><t>edit</t></button>
+    </b-action>
+
+    <b-filter name="journal_id" directive="equal" extra/>
+    <b-filter name="journal_date"/>
+    <b-filter name="journal_number"/>
+    <b-filter name="employee_id" decorate-with="employee_name"/>
+    <b-filter name="transfer_begin"/>
+    <b-filter name="transfer_end"/>
+    <b-filter name="from_robot_id" decorate-with="from_robot_name"/>
+    <b-filter name="to_robot_id" decorate-with="to_robot_name"/>
+    <b-filter name="posted" decorate-with="posted_name" extra/>
+    <b-filter name="from_division_id" decorate-with="from_division_name" extra/>
+    <b-filter name="to_division_id" decorate-with="to_division_name" extra/>
+    <b-filter name="from_job_id" decorate-with="from_job_name" extra/>
+    <b-filter name="to_job_id" decorate-with="to_job_name" extra/>
+    <b-filter name="from_org_unit_id" decorate-with="from_org_unit_name" extra/>
+    <b-filter name="to_org_unit_id" decorate-with="to_org_unit_name" extra/>
+    <b-filter name="from_rank_id" decorate-with="from_rank_name" extra/>
+    <b-filter name="to_rank_id" decorate-with="to_rank_name" extra/>
+    <b-filter name="from_schedule_id" decorate-with="from_schedule_name" extra/>
+    <b-filter name="to_schedule_id" decorate-with="to_schedule_name" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

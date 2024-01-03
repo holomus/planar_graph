@@ -1,0 +1,23 @@
+{
+ "address": "Адрес",
+ "application date": "Дата заявки",
+ "application number": "Номер",
+ "birthday": "Дата рождения",
+ "email": "E-mail",
+ "employment type": "Вид занятости",
+ "first name": "Имя",
+ "gender": "Пол",
+ "hiring date": "Дата приема",
+ "iapa": "ИНПС",
+ "last name": "Фамилия",
+ "legal address": "Адрес по прописке",
+ "middle name": "Отчество",
+ "note": "Примечание",
+ "npin": "ПИНФЛ",
+ "passport series and number": "Серия и номер паспорта",
+ "person info": "Информация о кандидате",
+ "phone": "Номер телефона",
+ "region name": "Регион",
+ "robot": "Позиция",
+ "save": "Сохранить"
+}

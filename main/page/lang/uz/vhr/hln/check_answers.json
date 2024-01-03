@@ -1,0 +1,10 @@
+{
+ "correct": "Ha",
+ "finish": "Yakunlash",
+ "not correct": "Yo'q",
+ "pg.answers.correct": "To'gri",
+ "pg.answers.name": "Nomi",
+ "pg.answers.order_no": "Tartib raqami",
+ "pg.answers.writing_answer": "Yozma javob",
+ "pg.answers.writing_hint": "Yordam"
+}

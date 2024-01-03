@@ -1,0 +1,12 @@
+{
+ "active": "Активный",
+ "identifier": "Идентификатор",
+ "identifier is not valid": "Недействительный идентификатор",
+ "identifier should be unique": "Идентификатор должен быть уникальным",
+ "indicator group": "Группа показателей",
+ "name": "Название",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "short name": "Краткое название",
+ "state": "Статус"
+}

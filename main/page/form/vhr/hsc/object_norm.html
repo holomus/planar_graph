@@ -1,0 +1,295 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t) {
+  var d = model,
+      q = {};
+
+  function str2(val) {
+    return val < 10 ? '0' + val: val;
+  }
+
+  function timeToSeconds(time) {
+    if (time === undefined || time === null) return null;
+    time = String(time);
+    [hours, minutes, seconds] = time.split(':');
+    return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+  }
+
+  function secondsToTime(seconds) {
+    seconds = parseInt(seconds);
+    if (isNaN(seconds)) return null;
+    hours = parseInt(seconds / 3600);
+    return [str2(hours), str2(parseInt((seconds - hours * 3600) / 60)), str2(seconds % 60)].join(':');
+  }
+
+  // area
+  function setArea(row) {
+    if (!row) return;
+    d.area_id = row.area_id;
+    d.area_name = row.name;
+  }
+
+  function selectArea() {
+    fi.select_area(null, setArea, { where: ['state', '=', 'A'] });
+  }
+
+  // process
+  function setProcess(row) {
+    if (!row) return;
+    d.process_id = row.process_id;
+    d.process_name = row.name;
+
+    setAction({});
+  }
+
+  function selectProcess() {
+    fi.select_process(null, setProcess, { where: ['state', '=', 'A'] });
+  }
+
+  // action
+  function changeActionQuery(query, value) {
+    query.param({ process_id: d.process_id }).searchValue(value);
+  }
+
+  function setAction(row) {
+    if (!row) return;
+    d.action_id = row.action_id;
+    d.action_name = row.name;
+  }
+
+  function selectAction() {
+    fi.select_action({ process_id: d.process_id }, setAction, { where: ['state', '=', 'A'] });
+  }
+
+  // driver
+  function setDriver(row) {
+    if (!row) return;
+    d.driver_id = row.driver_id;
+    d.driver_name = row.name;
+
+    if (d.driver_id == d.driver_constant_id) {
+      d.action_period = 'W';
+      onChangeActionPeriod();
+    }
+  }
+
+  function selectDriver() {
+    fi.select_driver(null, setDriver, { where: ['state', '=', 'A'] });
+  }
+
+  // job
+  function setJob(row) {
+    if (!row) return;
+    d.job_id = row.job_id;
+    d.job_name = row.name;
+  }
+
+  function selectJob() {
+    fi.select_job(null, setJob, { where: ['state', '=', 'A'] });
+  }
+
+  // period kind
+  function onChangeActionPeriod() {
+    let day_count = d.action_period == 'W' ? 7 : 31,
+        action_frequency = {};
+
+    _.chain(day_count).range().each(function(index) {
+      action_frequency[index + 1] = '';
+    });
+
+    d.action_frequency = action_frequency;
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      if (d.driver_id == d.driver_constant_id) {
+        let day_count = _.filter(d.action_frequency, function(value, key) {
+          return value;
+        }).length;
+
+        if (day_count == 0) {
+          page.alert(t('at least one day frequency must be specified')());
+          return;
+        }
+      }
+
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'norm_id',
+                             'object_id',
+                             'process_id',
+                             'action_id',
+                             'driver_id',
+                             'area_id',
+                             'job_id',
+                             'action_period');
+        
+        data.object_ids = _.pluck(d.objects, 'division_id');
+        data.time_value = timeToSeconds(d.time_value);
+        
+        if (d.driver_id == d.driver_constant_id) {
+          data.actions = [];
+          _.chain(d.action_frequency).each(function(value, key) {
+            if (value) {
+              data.actions.push(_.object(['day_no', 'frequency'], [key, value]));
+            }
+          });
+        }
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  q.is_add_form = _.once(() => { return !d.object_id; })();
+  q.week_day = {
+    1: t('mon')(),
+    2: t('tue')(),
+    3: t('wed')(),
+    4: t('thu')(),
+    5: t('fri')(),
+    6: t('sat')(),
+    7: t('sun')()
+  };
+  if (d.driver_id == d.driver_constant_id) {
+    onChangeActionPeriod();
+
+    if (!q.is_add_form) {
+      _.each(d.actions, function(action) {
+        d.action_frequency[action[0]] = action[1];
+      })
+    }
+  }
+
+  d.time_value = secondsToTime(d.time_value);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save">
+    <t>save</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group" ng-if="q.is_add_form">
+              <label><t>objects</t><r/></label>
+              <b-input multiple
+                name="division_objects"
+                model="d.objects"
+                model-key="division_id"
+                label="name">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group" ng-if="!q.is_add_form">
+              <label><t>object</t></label>
+              <span class="form-view">{{ d.object_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>area</t><r/></label>
+              <b-input
+                name="areas"
+                model="d.area_name | name"
+                model-key="d.area_id | area_id"
+                on-view="selectArea()"
+                is-view="fi.select_area"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>process</t><r/></label>
+              <b-input
+                name="processes"
+                model="d.process_name | name"
+                model-key="d.process_id | process_id"
+                on-select="setProcess(row)"
+                on-delete="setProcess({})"
+                on-view="selectProcess()"
+                is-view="fi.select_process"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>action</t><r/></label>
+              <b-input
+                name="actions"
+                model="d.action_name | name"
+                model-key="d.action_id | action_id"
+                on-change="changeActionQuery(query, value)"
+                on-view="selectAction()"
+                is-view="fi.select_action"
+                readonly="!d.process_id"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>driver</t><r/></label>
+              <b-input
+                name="drivers"
+                model="d.driver_name | name"
+                model-key="d.driver_id | driver_id"
+                on-select="setDriver(row)"
+                on-delete="setDriver({})"
+                on-view="selectDriver()"
+                is-view="fi.select_driver"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>job</t><r/></label>
+              <b-input
+                name="jobs"
+                model="d.job_name | name"
+                model-key="d.job_id | job_id"
+                on-view="selectJob()"
+                is-view="fi.select_job"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>time value</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.time_value" b-date-picker="HH:mm:ss" required/>
+            </div>
+          </div>
+          <div class="col-sm-12" ng-show="d.driver_id == d.driver_constant_id">
+            <div class="form-group">
+              <label><t>action period</t></label><br/>
+              <label class="radio">
+                <input type="radio" name="action_period" value="W" ng-model="d.action_period" ng-change="onChangeActionPeriod()"/>
+                <span><t>week</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="action_period" value="M" ng-model="d.action_period" ng-change="onChangeActionPeriod()"/>
+                <span><t>month</t></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label><t>day frequency</t></label><br/>
+              <div class="row">
+                <div class="form-group col-sm-6" ng-repeat="(key, value) in d.action_frequency">
+                  <div class="input-group">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" ng-class="{ 'bg-warning border-warning text-white': value }">{{ d.action_period == 'W' ? q.week_day[key] : key }}</span>
+                    </div>
+                    <input type="text" class="form-control" ng-model="d.action_frequency[key]" b-number/>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

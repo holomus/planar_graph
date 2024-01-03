@@ -1,0 +1,13 @@
+select p.Staff_Id, p.Staff_Number, q.Name
+  from Href_Staffs p
+  join Migr_Keys_Store_Two St
+    on St.Company_Id = p.Company_Id
+   and St.Filial_Id = p.Filial_Id
+   and St.Key_Name = 'staff_id'
+   and St.New_Id = p.Staff_Id
+  join Old_Vx_Org_Persons q
+    on q.Company_Id = &Old_Company_Id
+   and q.Person_Id = St.Old_Id
+   and q.State = 'P'
+ where p.Company_Id = &New_Company_Id
+   and p.Status <> 'T';

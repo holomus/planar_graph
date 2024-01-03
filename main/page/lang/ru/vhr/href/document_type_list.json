@@ -1,0 +1,17 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{document_type_count} document type(s)?": "Удалить типы документов в количестве <b>$1</b>?",
+ "delete document type $1{document_type_name}?": "Удалить тип документа <b>$1</b>?",
+ "select": "Выбрать",
+ "set $1{document_type_count} document type(s) as not required?": "Вы действительно хотите убрать <b>$1</b> тип(ы) документа из документов при приеме?",
+ "set $1{document_type_count} document type(s) as required?": "Вы действительно хотите установить <b>$1</b> тип(ы) документа как документ при приеме?",
+ "set document type $1{document_type_name} as not required?": "Вы действительно хотите убрать <b>$1</b>  из документов при приеме?",
+ "set document type $1{document_type_name} as required?": "Вы действительно хотите установить <b>$1</b> как документ при приеме?",
+ "set not required $1": "Убрать из документов при приеме $1",
+ "set required $1": "Установить как документ при приеме $1",
+ "table.code": "Код",
+ "table.doc_type_id": "ИД",
+ "table.is_required_name": "Документ при приеме",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,15 @@
+{
+ "active": "Faol",
+ "coefficient must be between 0 and 1": "Koeffitsient 0 va 1 oralig'ida bo'lishi kerak",
+ "color": "Rang",
+ "digital code": "Raqamli kod",
+ "letter code": "Harfli kod",
+ "name": "Nom",
+ "parent time kind": "Yuqoridagi vaqt turi",
+ "passive": "Faol emas",
+ "plan load": "Reja yuklanishi",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "state": "Holat",
+ "timesheet coef": "Koeffisient"
+}

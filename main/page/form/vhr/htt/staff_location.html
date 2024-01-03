@@ -1,0 +1,147 @@
+<script biruni>
+page.init(function(param) {
+  var t = page.query('locations');
+  t.param({ person_id: param.person_id, filial_id: param.filial_id });
+
+  page.isInit() && t.filter('state', '=', 'A');
+
+  var stateClass = { A: 'success', P: 'danger' };
+  var pg = page.grid('locations');
+
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ stateClass[row.state] } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.asHtml('attach_type_html', 'attach_type, attach_type_name', row => {
+    if (!row.attach_type) return;
+    return `<div class="alert alert-custom alert-light-${ row.attach_type == 'M' ? 'success' : 'primary' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.attach_type_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t, param, xparam) {
+  var d = _.pick(param, 'person_id'),
+      q = _.pick(xparam, 'is_view'),
+      query_locations = page.query('locations');
+
+  function fetchQuery() {
+    var mode = q.attachMode ? 'attach' : 'detach';
+
+    q.to_checked = {};
+    query_locations.param({ mode: mode, person_id: d.person_id, filial_id: param.filial_id });
+    query_locations.fetch();
+  }
+
+  function doAction(doFunc, message, location_id) {
+    page.confirm(message, function() {
+      doFunc({
+        person_id: d.person_id,
+        location_id: location_id
+      }).then(function() {
+        page.emit('location_change');
+        fetchQuery();
+      }, page.alert);
+    });
+  }
+
+  function attachOne(row) {
+    doAction(fi.attach, t('attach location $1{location_name}?')(row.name), row.location_id);
+  }
+
+  function attachMany(row) {
+    doAction(fi.attach, t('attach $1{location_count} location(s)?')(q.to_checked.size), _.pluck(q.to_checked.rows, 'location_id'));
+  }
+
+  function detachOne(row) {
+    doAction(fi.detach, t('detach location $1{location_name}?')(row.name), row.location_id);
+  }
+
+  function detachMany() {
+    doAction(fi.detach, t('detach $1{location_count} location(s)?')(q.to_checked.size), _.pluck(q.to_checked.rows, 'location_id'));
+  }
+
+  function onCheck(checked) {
+    q.to_checked.rows = _.filter(checked.rows(), x => x.attach_type != 'A');
+    q.to_checked.size = q.to_checked.rows.length;
+    q.to_checked.has = q.to_checked.size > 0;
+  }
+
+  function onDblclickLocation(row) {
+    q.attachMode ? ((fi.detach && row.attach_type == 'M') && !q.is_view ? detachOne(row) : null) : (fi.attach && !q.is_view ? attachOne(row) : null);
+  }
+
+  function setMode(mode) {
+    if (q.attachMode = mode == 'attach') {
+      q.attachClass = 'btn-success';
+      q.detachClass = 'btn-default';
+    } else {
+      q.attachClass = 'btn-default';
+      q.detachClass = 'btn-success';
+    }
+    q.to_checked = {};
+    query_locations.param({ mode: mode, person_id: d.person_id, filial_id: param.filial_id });
+    query_locations.fetch();
+  }
+
+  setMode('attach');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content card card-custom gutter-b">
+  <div class="card-body">
+    <div class="form-group">
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a href class="nav-link" role="tab" ng-class="{ 'active': q.attachMode }" ng-click="setMode('attach')">
+            <span><t>attached locations</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" role="tab" ng-class="{ 'active': !q.attachMode }" ng-click="setMode('detach')">
+            <span><t>detached locations</t></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="form-group row">
+      <div class="col-sm-12" ng-hide="q.is_view">
+        <button type="button" class="btn btn-danger mb-2 mb-md-0" ng-click="detachMany()" ng-if="fi.detach && !q.is_view" ng-show="q.attachMode && q.to_checked.has">
+          <t p1="q.to_checked.size">detach $1</t>
+        </button>
+        <button type="button" class="btn btn-primary mb-2 mb-md-0" ng-click="attachMany()" ng-if="fi.attach && !q.is_view" ng-show="!q.attachMode && q.to_checked.has">
+          <t p1="q.to_checked.size">attach $1</t>
+        </button>
+      </div>
+      <div class="col-sm-12" ng-class="{ 'offset-sm-12': q.is_view }">
+        <b-grid-controller name="locations"/>
+      </div>
+    </div>
+    <b-grid name="locations" required="location_id, name, attach_type" on-check="onCheck(checked)" on-dblclick="onDblclickLocation(row)"
+            sort="name" search="name, region_name, location_type_name" searchable="location_id" extra-columns="timezone_code, prohibited_name, code, accuracy, attached_by_name, attached_on, has_polygon_name">
+      <b-row>
+        <b-col name="name" size="5"/>
+        <b-col name="region_name" size="4"/>
+        <b-col name="location_type_name" size="5"/>
+        <b-col name="address" size="5"/>
+        <b-col name="attach_type_name" as-html="attach_type_html" size="4"/>
+      </b-row>
+
+      <b-extra-columns>
+        <b-col name="state_name" as-html="state_html"/>
+      </b-extra-columns>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="fi.attach && !q.is_view && !q.attachMode">{{ fi.attach.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="fi.detach && !q.is_view && q.attachMode && row.attach_type == 'M'">{{ fi.detach.title }}</button>
+      </b-action>
+
+      <b-filter name="location_id" directive="equal" extra />
+      <b-filter name="name"/>
+      <b-filter name="attach_type" decorate-with="attach_type_name"/>
+      <b-filter name="state" decorate-with="state_name"/>
+      <b-filter name="prohibited" decorate-with="prohibited_name" extra/>
+      <b-filter name="attached_by" decorate-with="attached_by_name" extra/>
+      <b-filter name="attached_on" extra/>
+      <b-filter name="has_polygon" decorate-with="has_polygon_name" extra/>
+    </b-grid>
+  </div>
+</div>

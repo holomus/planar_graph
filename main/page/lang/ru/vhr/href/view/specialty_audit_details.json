@@ -1,0 +1,5 @@
+{
+ "pg.specialty.before": "Старое значение",
+ "pg.specialty.current": "Новое значение",
+ "pg.specialty.field_name": "Поле"
+}

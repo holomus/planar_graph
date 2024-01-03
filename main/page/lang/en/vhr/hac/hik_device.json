@@ -1,0 +1,17 @@
+{
+ "ignore tracks from this device": "Ignore tracks from device",
+ "no": "No",
+ "yes": "Yes",
+ "copied to clipboard": "Copied to clipboard.",
+ "device ip": "IP-address",
+ "device MAC": "Device MAC address",
+ "device name": "Name",
+ "event type": "Event type",
+ "isup password": "ISUP Password",
+ "location": "Location",
+ "location should be only latin small letters and numbers": "The location must contain only lowercase Latin letters or numbers.",
+ "login": "Login",
+ "password": "Password",
+ "primary company": "Company",
+ "save": "Save"
+}

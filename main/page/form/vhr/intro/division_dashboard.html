@@ -1,0 +1,565 @@
+<script biruni>
+page.require("amcharts4", "amcharts4-theme-animated");
+page.header(false);
+page.init(function(t) {
+  page.query('table').param({ period: moment().format("DD.MM.YYYY") });
+
+  let pg = page.grid('table'),
+      statusColor = { N: '#2A9D8F', U: '#E76F51', T: '#DDBEA9', R: '#C2C5AA', B: '#A8DADC' };
+
+ pg.asHtml('status_html', 'status, status_name', row => {
+    return `<span class="fa fa-circle"
+                  style="color: ${ statusColor[row.status] }">
+            </span>&nbsp
+            <span style="color: ${ statusColor[row.status] }; font-weight: 500;">${ row.status_name }</span>`;
+  });
+  pg.asHtml('opened_html', 'opened_time', function(row) {
+    return row.opened_time || '<span style="color:#bbb;">&mdash;</span>';
+  });
+  pg.asHtml('closed_html', 'closed_time', function(row) {
+    return  row.closed_time || '<span style="color:#bbb;">&mdash;</span>';
+  });
+
+  let t_late = t('grid.late')(),
+      t_early = t('grid.early')(),
+      t_lack = t('grid.lack')(),
+      t_not_opened = t('grid.not opened')(),
+      t_not_closed = t('grid.not closed')();
+  pg.asHtml('factors_html', 'factors, is_late, is_early, is_lack, is_not_opened, is_not_closed', row => {
+    let data = '';
+    if (row.is_not_opened == 'Y') data += `<span class="badge m-1" style="color: #FFFFFF; background-color: #264653;">${ t_not_opened }</span>`;
+    if (row.is_late == 'Y') data += `<span class="badge m-1" style="color: #FFFFFF; background-color: #A44A3F;">${ t_late }</span>`;
+    if (row.is_lack == 'Y') data += `<span class="badge m-1" style="color: #FFFFFF; background-color: #3A6EA5;">${ t_lack }</span>`;
+    if (row.is_early == 'Y') data += `<span class="badge m-1" style="color: #000000; background-color: #F4A261;">${ t_early }</span>`;
+    if (row.is_not_closed == 'Y') data += `<span class="badge m-1" style="color: #FFFFFF; background-color: #5E548E;">${ t_not_closed }</span>`;
+
+    return data;
+  });
+});
+page.ctrl(function(scope, model, t, $timeout) {
+  var d = model,
+      q = {},
+      hybrid_chart,
+      xy_chart;
+
+  // chart
+  function pieChart(chart) {
+    let isEmpty;
+
+    if (isEmpty = _.every(d.pie_data, x => x.value == 0)) {
+      d.pie_data = [{
+        title: "empty",
+        disabled: true,
+        value: 1000,
+        color: am4core.color("#dadada"),
+        opacity: 0.3,
+        strokeDasharray: "4,4",
+        tooltip: ""
+      }];
+    }
+
+    // Set inner radius
+    chart.innerRadius = am4core.percent(50);
+    chart.data = d.pie_data;
+    // Add and configure Series
+    let pieSeries = chart.series.push(new am4charts.PieSeries());
+
+    pieSeries.dataFields.value = "value";
+    pieSeries.dataFields.category = "title";
+
+    if (isEmpty) {
+      let slice = pieSeries.slices.template;
+
+      slice.propertyFields.fill = "color";
+      slice.propertyFields.fillOpacity = "opacity";
+      slice.propertyFields.stroke = "color";
+      slice.propertyFields.strokeDasharray = "strokeDasharray";
+      slice.propertyFields.tooltipText = "tooltip";
+      slice.clickable = false;
+
+      pieSeries.labels.template.propertyFields.disabled = "disabled";
+      pieSeries.ticks.template.propertyFields.disabled = "disabled";
+    } else {
+      pieSeries.alignLabels = false;
+      pieSeries.labels.template.padding(0, 0, 0, 0);
+      pieSeries.labels.template.text = "{title}: {value}";
+
+      pieSeries.labels.template.adapter.add("text", function(text, target) {
+        if (target.dataItem.dataContext.value != 0) return text;
+        else return "";
+      });
+
+      pieSeries.slices.template.events.on("hit", function(ev) {
+        page.query("table").filter("status", "=", ev.target.isActive ? ev.target.dataItem.dataContext.kind : []).fetch();
+
+        let series = ev.target.dataItem.component;
+        series.slices.each(function(item) {
+          if (item.isActive && item != ev.target) {
+            item.isActive = false;
+          }
+        });
+      });
+
+      pieSeries.slices.template.stroke = am4core.color("#fff");
+      pieSeries.slices.template.cornerRadius = 5;
+      pieSeries.slices.template.propertyFields.fill = "color";
+      pieSeries.slices.template.tooltipHTML = `<div class="text-center">{title}: {value.percent.formatNumber('#.#')}%`;
+
+      pieSeries.slices.template.strokeWidth = 2;
+      pieSeries.slices.template.strokeOpacity = 1;
+
+      pieSeries.colors.step = 3;
+      // This creates initial animation
+      pieSeries.hiddenState.properties.opacity = 1;
+      pieSeries.hiddenState.properties.endAngle = -90;
+      pieSeries.hiddenState.properties.startAngle = -90;
+    }
+
+    let label = chart.seriesContainer.createChild(am4core.Label);
+
+    label.text = d.division_cnt;
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.fill = "#A0B1BA";
+    label.dy = -10;
+    label.fontSize = 25
+    label.fontWeight = "bold";
+
+    label = chart.seriesContainer.createChild(am4core.Label);
+    label.text = t("divisions")();
+    label.horizontalCenter = "middle";
+    label.verticalCenter = "middle";
+    label.dy = 10;
+    label.fontSize = 14;
+  }
+
+  function barChart(chart) {
+    chart.data = d.bar_data;
+
+    // Create axes
+    let categoryAxis = chart.yAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "title";
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.inversed = true;
+    categoryAxis.renderer.minGridDistance = 10;
+
+    let valueAxis = chart.xAxes.push(new am4charts.ValueAxis());
+
+    if (_.every(chart.data, x => x.value == 0)) {
+      valueAxis.min = 0;
+      valueAxis.max = 100;
+      valueAxis.strictMinMax = true;
+    }
+
+    // Create series
+    let columnSeries = chart.series.push(new am4charts.ColumnSeries());
+    columnSeries.dataFields.valueX = "value";
+    columnSeries.dataFields.categoryY = "title";
+
+    columnSeries.columns.template.strokeWidth = 0;
+    columnSeries.columns.template.tooltipText = "{title}: [bold]{value}[/]";
+    columnSeries.columns.template.propertyFields.fill = "color";
+
+    columnSeries.columns.template.events.on("hit", function(ev) {
+      let seriesColumn = ev.target;
+      seriesColumn.isActive = !seriesColumn.isActive;
+
+      let series = ev.target.dataItem.component;
+      series.columns.each(function(item) {
+        if (item.isActive && item != ev.target) {
+          item.isActive = false;
+        }
+        page.query("table").filter(item.dataItem.dataContext.column, "=", []);
+      });
+
+      if (ev.target.isActive) page.query("table").filter(ev.target.dataItem.dataContext.column, "=", "Y");
+      page.query("table").fetch();
+    });
+
+    // Add a drop shadow filter on columns
+    var shadow = columnSeries.columns.template.filters.push(new am4core.DropShadowFilter);
+    shadow.opacity = 0.1;
+
+    // Create a hover state
+    var hoverState = columnSeries.columns.template.states.create("hover");
+
+    // Slightly shift the shadow and make it more prominent on hover
+    var hoverShadow = hoverState.filters.push(new am4core.DropShadowFilter);
+    hoverShadow.dx = 5;
+    hoverShadow.dy = 5;
+    hoverShadow.opacity = 0.3;
+
+    // Create a active state
+    var activeState = columnSeries.columns.template.states.create("active");
+
+    // Slightly shift the shadow and make it more prominent on active
+    var activeShadow = activeState.filters.push(new am4core.DropShadowFilter);
+    activeShadow.dx = 7;
+    activeShadow.dy = 7;
+    activeShadow.opacity = 0.3;
+  }
+
+  function hybridChart() {
+    if (hybrid_chart) {
+      hybrid_chart.disposeChildren();
+      hybrid_chart.dispose();
+    }
+
+    let elem = page.$content.find('.division-hybrid-chart');
+
+    assert(elem.length, "division hybrid chart element is not found");
+
+    // continer
+    let chart = am4core.create(elem[0], am4core.Container);
+    chart.width = am4core.percent(100);
+    chart.height = am4core.percent(100);
+    chart.layout = "vertical";
+
+    // pie chart
+    pieChart(chart.createChild(am4charts.PieChart));
+    // bar chart
+    if (d.bar_data.length > 0) {
+      barChart(chart.createChild(am4charts.XYChart));
+    }
+
+    hybrid_chart = chart;
+  }
+
+  function xyChart() {
+    if (xy_chart) {
+      xy_chart.data = d.xy_data;
+      xy_chart.invalidateData();
+
+      $timeout(function() {
+        _.each(q.xy_series, (v, k) => changeLineState(k));
+      });
+
+      return;
+    }
+
+    let elem = page.$content.find('.division-xy-chart');
+
+    assert(elem.length, "day stats xy chart element is not found");
+    // Create chart instance
+    var chart = am4core.create(elem[0], am4charts.XYChart);
+    chart.data = d.xy_data;
+
+    // Create category axis
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "period";
+
+    // Create value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.renderer.maxLabelPosition = 0.95;
+    valueAxis.maxPrecision = 0;
+    valueAxis.min = 0;
+    valueAxis.max = 110;
+    valueAxis.strictMinMax = true;
+
+    valueAxis.adapter.add("getTooltipText", (text, target) => {
+      if (text > 100) return '';
+      else return text ? text + '%' : text;
+    });
+
+    function addLineSeries(name, value, color, hidden) {
+      let series = chart.series.push(new am4charts.LineSeries());
+      series.dataFields.valueY = value;
+      series.dataFields.categoryX = "period";
+      series.name = name;
+      series.strokeWidth = 2;
+      series.tensionX = 0.85;
+      series.tooltipText = "{valueY}%, {" + value + "_cnt}/{total}";
+      series.fill = color;
+      series.fillOpacity = 0.3;
+      series.stroke = color;
+      series.legendSettings.valueText = "{valueY}%";
+      series.hidden = hidden;
+
+      let bullet = series.bullets.push(new am4charts.CircleBullet());
+      bullet.circle.fill = am4core.color("#fff");
+      bullet.circle.radius = '3px';
+
+      let durationState = bullet.states.create("hover");
+      durationState.properties.scale = 2;
+
+      q.xy_series[value].series = series;
+    }
+
+    _.each(q.xy_series, x => {
+      addLineSeries(x.name, x.value, x.color, x.hidden);
+    });
+
+    // Add chart cursor
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.behavior = "zoomY";
+
+    xy_chart = chart;
+  }
+
+  // reload hybrid
+  function reloadHybrid(result) {
+    d.division_cnt = +result.normal_cnt +
+                     +result.unnormal_cnt +
+                     +result.no_timesheet_cnt +
+                     +result.rest_day_cnt +
+                     +result.not_begin_cnt;
+
+    d.pie_data = _.mapRows([
+      [t('normal')(), result.normal_cnt, 'N', '#2A9D8F'],
+      [t('unnormal')(), result.unnormal_cnt, 'U', '#E76F51'],
+      [t('no timesheet')(), result.no_timesheet_cnt, 'T', '#DDBEA9'],
+      [t('rest day')(), result.rest_day_cnt, 'R', '#C2C5AA'],
+      [t('not begin')(), result.not_begin_cnt, 'B', '#A8DADC']
+    ], ['title', 'value', 'kind', 'color']),
+    d.bar_data = _.chain([
+        [t('not opened')(), result.not_opened_cnt, 'is_not_opened', '#264653'],
+        [t('late')(), result.late_cnt, 'is_late', '#A44A3F'],
+        [t('lack')(), result.lack_cnt, 'is_lack', '#3A6EA5'],
+        [t('early')(), result.early_cnt, 'is_early', '#F4A261'],
+        [t('not closed')(), result.not_closed_cnt, 'is_not_closed', '#5E548E']
+      ]).mapRows(['title', 'value', 'column', 'color']).filter(x => x.value > 0).value();
+
+    hybridChart();
+  }
+
+  // reload xy
+  function reloadXy(data) {
+    d.xy_data = _.mapRows(data.data, ['period', 'total', 'normal_cnt', 'normal', 'unnormal_cnt', 'unnormal', 'late_cnt', 'late', 'early_cnt', 'early',
+                                      'lack_cnt', 'lack', 'not_opened_cnt', 'not_opened', 'not_closed_cnt', 'not_closed']);
+    xyChart();
+  }
+
+  // change filter
+  function changeFilter() {
+    q.is_period = d.period_begin != d.period_end;
+
+    let data = {
+      division_group_ids : _.pluck(d.division_groups, 'division_group_id'),
+      schedule_ids : _.pluck(d.schedules, 'schedule_id')
+    };
+
+    $timeout(function() {
+      am4core.ready(function() {
+        am4core.useTheme(am4themes_animated);
+        if (!q.is_period) {
+          data.period = d.period_begin;
+
+          page.post(':load_hybrid_chart_stats', data).then(reloadHybrid, page.alert);
+          page.query('table').param(data).filterClear().fetch();
+          page.query('table').fetch();
+        } else {
+          data.period_begin = d.period_begin;
+          data.period_end = d.period_end;
+
+          page.post(':load_xy_chart_stats', data).then(reloadXy, page.alert);
+        }
+      });
+    });
+  }
+
+  // report
+  function report(row) {
+    window.open(page.url('run', {
+      begin_date: d.period_begin,
+      end_date: d.period_end,
+      division_ids: [row.division_id],
+      rt: 'html'
+    }));
+  }
+
+  function changeLineState(line_key) {
+    if (!q.xy_series[line_key].state) {
+      q.xy_series[line_key].series.hide();
+    } else q.xy_series[line_key].series.show();
+  }
+
+  d.division_groups = [];
+  d.schedules = [];
+
+  q.xy_series = {};
+  _.chain([
+    [t("unnormal")(), "unnormal", "#E76F51", false],
+    [t("normal")(), "normal", "#2A9D8F", true],
+    [t("not opened")(), "not_opened", "#264653", true],
+    [t("late")(), "late", "#A44A3F", true],
+    [t("lack")(), "lack", "#3A6EA5", true],
+    [t("early")(), "early", "#F4A261", true],
+    [t("not closed")(), "not_closed", "#5E548E", true]
+  ]).mapRows(['name', 'value', 'color', 'hidden']).each(x => {
+    x.state = !x.hidden;
+    q.xy_series[x.value] = x;
+  });
+
+  changeFilter();
+
+  let style = '';
+
+  _.each(q.xy_series, x => {
+    style += `
+      .${ x.value }.switch input[type=checkbox]~span::before {
+          background: -webkit-linear-gradient(left, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+          background: linear-gradient(to right, ${ x.color } 0%, ${ x.color } 50%, #cdcfdf 51%, #cdcfdf 100%);
+          background-size: 200%;
+          background-position: 100%;
+      }
+      .${ x.value }.switch input[type=checkbox]:checked~span::after {
+        border-color: ${ x.color };
+      }
+      .${ x.value }.switch input[type=checkbox]:checked~span::before {
+        background-position: 0%;
+      }
+    `;
+  });
+
+  $timeout(function(){
+    let xy_checkboxes = page.$content.find(".xy_checkboxes");
+    xy_checkboxes.prepend('<style>' + style + '</style>');
+  });
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content"><form name="form">
+  <div class="form-row mt-4">
+    <div class="col-sm-18">
+      <div class="card card-custom card-stretch gutter-b" ng-show="!q.is_period">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>attendance info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="mb-4 col-sm-10" style="height: 100%; align-items: center;">
+              <div class="division-hybrid-chart" style="min-height: 374px;" ng-style="{ 'height': d.bar_data.length > 0 ? '80vh' : '45vh' }"></div>
+            </div>
+            <div class="mb-4 col-sm-14">
+              <div class="mb-2">
+                <b-grid-controller name="table"/>
+              </div>
+              <b-grid name="table" min-width="0" required="division_id" sort="name" search="name" searchable="opened_time, closed_time, intime"
+                      extra-columns="intime, fact_time, division_group_name, schedule_name">
+                <b-row>
+                  <b-col name="name" size=11  on-click="report(row)"/>
+                  <b-col name="opened_time" as-html="opened_html" align="center" size=4/>
+                  <b-col name="closed_time" as-html="closed_html" align="center" size=4/>
+                  <b-col name="status_name" as-html="status_html" size=5/>
+                </b-row>
+
+                <b-extra-columns>
+                  <b-col name="factors" as-html="factors_html"/>
+                </b-extra-columns>
+
+                <b-filter name="division_id" directive="equal" extra/>
+                <b-filter name="name"/>
+                <b-filter name="status" decorate-with="status_name"/>
+                <b-filter name="is_late" decorate-with="is_late_name"/>
+                <b-filter name="is_early" decorate-with="is_early_name"/>
+                <b-filter name="is_lack" decorate-with="is_lack_name"/>
+                <b-filter name="is_not_opened" decorate-with="is_not_opened_name"/>
+                <b-filter name="is_not_closed" decorate-with="is_not_closed_name"/>
+                <b-filter name="division_group_id" decorate-with="division_group_name" extra/>
+                <b-filter name="schedule_id" decorate-with="schedule_name" extra/>
+              </b-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-custom card-stretch gutter-b" ng-show="q.is_period">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>attendance info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="division-xy-chart" style="min-height: 60vh;"></div>
+          <div class="xy_checkboxes row ml-6">
+            <div class="col-sm-6 border-right">
+              <div class="form-group">
+                <label class="normal switch">
+                  <input type="checkbox" ng-model="q.xy_series.normal.state" ng-change="changeLineState('normal')" ng-disabled="!q.xy_series.normal.series"/>
+                  <span><t>normal</t></span>
+                </label><br/>
+                <label class="unnormal switch">
+                  <input type="checkbox" ng-model="q.xy_series.unnormal.state" ng-change="changeLineState('unnormal')" ng-disabled="!q.xy_series.unnormal.series"/>
+                  <span><t>unnormal</t></span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-18">
+              <div class="form-group">
+                <div class="row">
+                  <div class="col-sm">
+                    <label class="not_opened switch">
+                      <input type="checkbox" ng-model="q.xy_series.not_opened.state" ng-change="changeLineState('not_opened')" ng-disabled="!q.xy_series.not_opened.series"/>
+                      <span><t>not opened</t></span>
+                    </label><br/>
+                    <label class="late switch">
+                      <input type="checkbox" ng-model="q.xy_series.late.state" ng-change="changeLineState('late')" ng-disabled="!q.xy_series.late.series"/>
+                      <span><t>late</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm">
+                    <label class="lack switch">
+                      <input type="checkbox" ng-model="q.xy_series.lack.state" ng-change="changeLineState('lack')" ng-disabled="!q.xy_series.lack.series"/>
+                      <span><t>lack</t></span>
+                    </label><br/>
+                    <label class="early switch">
+                      <input type="checkbox" ng-model="q.xy_series.early.state" ng-change="changeLineState('early')" ng-disabled="!q.xy_series.early.series"/>
+                      <span><t>early</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm">
+                    <label class="not_closed switch">
+                      <input type="checkbox" ng-model="q.xy_series.not_closed.state" ng-change="changeLineState('not_closed')" ng-disabled="!q.xy_series.not_closed.series"/>
+                      <span><t>not closed</t></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>filter</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>date</t></label><br/>
+            <b-date-range-picker begin="d.period_begin" end="d.period_end" half-month></b-date-range-picker>
+          </div>
+          <div class="form-group">
+            <label><t>division groups</t></label>
+            <b-input
+              multiple
+              name="division_groups"
+              model="d.division_groups"
+              model-key="division_group_id"
+              label="name">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>schedules</t></label>
+            <b-input
+              multiple
+              name="schedules"
+              model="d.schedules"
+              model-key="schedule_id"
+              label="name">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <button type="button" class="btn btn-block btn-primary" ng-click="changeFilter()"><t>reload</t></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

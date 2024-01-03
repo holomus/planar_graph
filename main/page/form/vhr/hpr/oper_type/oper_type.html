@@ -1,0 +1,498 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, xparam, $timeout) {
+  var d = _.isUndefined(model.data.oper_type_id) ? _.extend(model.data, xparam): model.data,
+      q = model.references,
+      p = {};
+
+  q.indicators = _.mapRows(q.indicators, ['indicator_id', 'name', 'identifier']);
+  q.estimation_types = _.mapMatrix(q.estimation_types, ['estimation_type', 'name']);
+  q.accounting_types = _.mapMatrix(q.accounting_types, ['accounting_type', 'name']);
+  q.oper_group_ids = xparam.oper_group_ids;
+
+  //------------------------ MAIN TAB BEGIN ------------------------
+  function changeOperGroupQuery(query, value) {
+    let where = ['operation_kind', '=', d.operation_kind];
+    if (!_.isEmpty(q.oper_group_ids)) where = ['and', [where, ['oper_group_id', '=', q.oper_group_ids]]];
+    query.where(where);
+    query.searchValue(value);
+  }
+
+  function setOperGroup(row) {
+    if (!row) return;
+    d.oper_group_id = row.oper_group_id;
+    d.oper_group_name = row.name;
+    d.estimation_type = row.estimation_type;
+    d.estimation_formula = row.estimation_formula;
+  }
+
+  // modal
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function addIndicator() {
+    fi.add_indicator(null, function(row) {
+      if (!row) return;
+      q.indicators.unshift(row);
+    });
+  }
+
+  function editIndicator(item) {
+    fi.edit_indicator({ indicator_id: item.indicator_id }, function(row) {
+      if (!row) return;
+      let index = _.findIndex(q.indicators, item);
+      q.indicators[index] = row;
+    });
+  }
+
+  function putIndicator(identifier) {
+    let formulaElem = modal.find("#formula");
+    let selectionStart = formulaElem.prop('selectionStart');
+    let selectionEnd = formulaElem.prop('selectionEnd');
+
+    let formula = formulaElem.val();
+    let textBefore = formula.substring(0, selectionStart);
+    let textAfter = formula.substring(selectionEnd, formula.length);
+
+    p.data.estimation_formula = textBefore + identifier + textAfter;
+
+    formulaElem.val(p.data.estimation_formula);
+    formulaElem.prop('selectionEnd', selectionStart + identifier.length);
+    formulaElem.focus();
+  }
+
+  function editFormula() {
+    p.errors = [];
+    p.formula_valid = true;
+    p.data = {
+      estimation_formula: d.estimation_formula || ''
+    };
+    showModal();
+  }
+
+  function validateFormula(formula, callback) {
+    if (page.valid(scope.modal)) {
+      q.formula_messages = [];
+      p.formula_valid = true;
+      page.post(':formula_validate', { formula: formula }).then((result) => {
+        if (result.errors.length == 0) {
+          if (callback) {
+            callback();
+          } else {
+            q.formula_messages = [t('formula is valid')()];
+          }
+        } else {
+          q.formula_messages = result.errors;
+          p.formula_valid = false;
+        }
+      }, page.alert);
+    }
+  }
+
+  function saveFormula(formula) {
+    validateFormula(formula, function() {
+      d.estimation_formula = formula;
+      hideModal();
+    });
+  }
+  //------------------------ MAIN TAB END -----------------------
+
+  //-------------------- ACCOUNTING TAB BEGIN--------------------
+  function setCoa(row) {
+    if (!row) return;
+    d.corr_coa_id = row.coa_id;
+    d.corr_coa_name = row.gen_name;
+
+    if (d.corr_coa_id) {
+      page.post(':coa_info', { coa_id: row.coa_id }).then(function(result) {
+        d.corr_ref_types = result.ref_types;
+      }, page.alert);
+    } else {
+      d.corr_ref_types = [];
+    }
+  }
+
+  function addCoa(value) {
+    fi.add_coa(null, setCoa, {name: value});
+  }
+
+  function selectCoa(row) {
+    fi.select_coa(null, setCoa);
+  }
+
+  function setOrigin(ref_type, origin) {
+    ref_type.ref_origin_id = origin.ref_origin_id;
+    ref_type.ref_type_name = origin.name;
+    ref_type.ref_id = '';
+    ref_type.ref_name = '';
+  }
+
+  function changeRefQuery(ref_type, query) {
+    query.param({ ref_origin_id: ref_type.ref_origin_id }).searchValue(ref_type.ref_name);
+  }
+
+  function setRefType(ref_type, origin, row) {
+    if (row) {
+      if (ref_type.ref_name_procedure) {
+        ref_type.ref_id = row;
+        page.post(':ref_name', {
+          ref_type: ref_type.ref_type,
+          ref_id: ref_type.ref_id
+        }).then(function(result) {
+          if (result) {
+            ref_type.ref_name = result;
+          }
+        });
+      } else {
+        ref_type.ref_id = row[origin.field_id];
+        ref_type.ref_name = row[origin.field_name];
+      }
+    }
+  }
+
+  function selectRefType(ref_type, origin) {
+    page.openDialog(origin.form, null, _.partial(setRefType, ref_type, origin, _));
+  }
+
+  function removeRef(index) {
+    d.corr_ref_types.splice(index, 1);
+  }
+  //-------------------- ACCOUNTING TAB END --------------------
+
+  function getData() {
+    let ref_types = _.filter(d.corr_ref_types, x => x.ref_id);
+    return _.chain(d)
+            .pick('oper_type_id',
+                  'oper_group_id',
+                  'operation_kind',
+                  'name',
+                  'short_name',
+                  'accounting_type',
+                  'estimation_type',
+                  'estimation_formula',
+                  'income_tax_exists',
+                  'income_tax_rate',
+                  'pension_payment_exists',
+                  'pension_payment_rate',
+                  'social_payment_exists',
+                  'social_payment_rate',
+                  'corr_coa_id',
+                  'state',
+                  'code',
+                  'note')
+            .extend({
+              ref_type: _.pluck(ref_types, ['ref_type']),
+              ref_id: _.pluck(ref_types, ['ref_id'])
+            })
+            .value();
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', getData()).then(page.close, page.alert);
+    }
+  }
+
+  function pageId(name) {
+    return name + page.id();
+  }
+
+  if (_.isUndefined(d.oper_type_id)) {
+    d.corr_ref_types = {};
+    d.corr_ref_types.origins = [];
+  }
+
+  d.estimation_type = xparam.estimation_type || d.estimation_type;
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom card-stretch gutter-b">
+      <div class="card-body">
+        <div class="form-group row">
+          <div class="col-sm-12">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="col-sm-12">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="card-toolbar align-items-end mb-4">
+          <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link active" data-target="{{ pageId('#main') }}" data-toggle="tab" role="tab">
+                <span><t>main</t></span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="{{ pageId('#accounting') }}" data-toggle="tab" role="tab">
+                <span><t>accounting</t></span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-target="{{ pageId('#note') }}" data-toggle="tab" role="tab">
+                <span><t>note</t></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div class="tab-content" style="flex-grow: 1;">
+          <div class="tab-pane active" id="{{ pageId('main') }}" role="tabpanel">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>operation group</t></label>
+                  <b-input name="oper_groups"
+                           model="d.oper_group_name | name"
+                           model-key="d.oper_group_id | oper_group_id"
+                           column="estimation_type, estimation_formula"
+                           on-change="changeOperGroupQuery(query, value)"
+                           on-select="setOperGroup(row)">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+              </div>
+              <div class="col-sm-12" ng-hide="d.estimation_type == 'C'">
+                <div class="form-group">
+                  <label><t>estimation type</t></label><br/>
+                  <div ng-repeat="item in q.estimation_types">
+                    <label class="radio">
+                    <input type="radio" name="estimation_type" value="{{ item.estimation_type }}" ng-model="d.estimation_type"/><span>{{ item.name }}</span>
+                    </label>
+                    <br ng-if="!$last"/>
+                  </div>
+                </div>
+                <div class="form-group" ng-if="d.estimation_type == 'F'">
+                  <label><t>estimation formula</t></label>
+                  <textarea class="form-control" rows="2" ng-model="d.estimation_formula" disabled required></textarea><br/>
+                  <a href ng-click="editFormula()"><span class="fas fa-pen"></span>&nbsp;<t>edit formula</t></a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane" id="{{ pageId('accounting') }}">
+            <div class="row">
+              <div class="col-sm-12" ng-if="d.operation_kind == 'A'">
+                <div class="row">
+                  <div class="col-sm-8">
+                    <div class="form-group">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="d.income_tax_exists" ng-change="d.pension_payment_exists = 'N'" ng-true-value="'Y'" ng-false-value="'N'"/><span><t>income tax exists</t></span>
+                      </label>
+                      <div class="input-group" ng-if="d.income_tax_exists=='Y'">
+                        <input class="form-control" ng-model="d.income_tax_rate" b-number precision="3" scale="2"/>
+                        <div class="input-group-append">
+                        </div>
+                      </div>
+                      <span class="form-text text-muted mt-0" ng-if="d.income_tax_exists=='Y'">
+                        <t>income tax rate (%)</t>
+                      </span>
+                    </div>
+                    <div class="form-group">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="d.pension_payment_exists" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="d.income_tax_exists == 'N'"/><span><t>pension payment exists</t></span>
+                      </label>
+                      <div class="input-group" ng-if="d.pension_payment_exists=='Y'">
+                        <input class="form-control" ng-model="d.pension_payment_rate" b-number precision="3" scale="2"/>
+                        <div class="input-group-append">
+                        </div>
+                      </div>
+                      <span class="form-text text-muted mt-0" ng-if="d.pension_payment_exists=='Y'">
+                        <t>pension payment rate (%)</t>
+                      </span>
+                    </div>
+                    <div class="form-group">
+                      <label class="checkbox">
+                        <input type="checkbox" ng-model="d.social_payment_exists" ng-true-value="'Y'" ng-false-value="'N'"/><span><t>social payment exists</t></span>
+                      </label>
+                      <div class="input-group" ng-if="d.social_payment_exists=='Y'">
+                        <input class="form-control" ng-model="d.social_payment_rate" b-number precision="3" scale="2"/>
+                        <div class="input-group-append">
+                        </div>
+                      </div>
+                      <span class="form-text text-muted mt-0" ng-if="d.social_payment_exists=='Y'">
+                        <t>social payment rate (%)</t>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>accounting type</t></label><br/>
+                  <div ng-repeat="item in q.accounting_types">
+                    <label class="radio">
+                      <input type="radio" name="accounting_type" value="{{ item.accounting_type }}" ng-model="d.accounting_type" ng-change="setCoa({})"/><span>{{ item.name }}</span>
+                    </label>
+                    <br ng-if="!$last"/>
+                  </div>
+                </div>
+                <div ng-if="d.accounting_type == 'O'">
+                  <div class="form-group">
+                    <label><t>corr coa name</t><r/></label>
+                    <b-input name="coas"
+                             model="d.corr_coa_name | gen_name"
+                             model-key="d.corr_coa_id | coa_id"
+                             on-select="setCoa(row)"
+                             on-delete="setCoa({})"
+                             is-add="fi.add_coa"
+                             on-add="addCoa(value)"
+                             is-view="fi.select_coa"
+                             on-view="selectCoa(row)"
+                             required>
+                      {{ row.gen_name }}
+                    </b-input>
+                  </div>
+                  <div class="form-group row" ng-repeat="ref_type in d.corr_ref_types">
+                    <div class="col-sm" ng-if="ref_type.exist_in_coa == 'Y'">
+                      <label ng-if="ref_type.origins.length == 1">{{ ref_type.ref_type_name }}</label>
+                      <label ng-if="ref_type.origins.length > 1">
+                        <span data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ ref_type.ref_type_name }}&nbsp;<i class="fa fa-angle-down" style="color: black;"></i>
+                        </span>
+                        <div class="dropdown-menu">
+                          <span class="dropdown-item" style="cursor: pointer;" ng-repeat="origin in ref_type.origins" ng-click="setOrigin(ref_type, origin)">{{ origin.name }}</span>
+                        </div>
+                      </label>
+                      <div ng-repeat="origin in ref_type.origins">
+                        <div ng-if="ref_type.ref_origin_id == origin.ref_origin_id">
+                          <div ng-if="origin.kind == q.origin_kind_query">
+                            <b-input name="origins"
+                                     model="ref_type.ref_name | name"
+                                     model-key="ref_type.ref_id | ref_id"
+                                     on-change="changeRefQuery(ref_type, query)"
+                                     on-view="selectRefType(ref_type, origin)"
+                                     is-view="origin.form">
+                              {{ row.name }}
+                            </b-input>
+                          </div>
+                          <div ng-if="origin.kind == q.origin_kind_text">
+                            <b-input name="origins"
+                                     model="ref_type.ref_id | ref_id"
+                                     on-change="changeRefQuery(ref_type, query)">
+                              {{ row.name }}
+                            </b-input>
+                          </div>
+                          <input class="form-control" ng-model="ref_type.ref_id" b-number ng-if="origin.kind == q.origin_kind_number"/>
+                          <input class="form-control" ng-model="ref_type.ref_id" b-date-picker ng-if="origin.kind == q.origin_kind_date"/>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm" ng-if="ref_type.exist_in_coa == 'N'">
+                      <label>{{ ref_type.ref_type_name }}</label>
+                      <div class="input-group">
+                        <input class="form-control" ng-model="ref_type.ref_name" readonly/>
+                        <div class="input-group-append" ng-if="!q.readonly">
+                          <button type="button" class="btn btn-default" ng-click="removeRef($index)"><i class="fa fa-times"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane" id="{{ pageId('note') }}">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>short name</t></label>
+                  <input type="text" class="form-control" ng-model="d.short_name" b-maxlength="50"/>
+                </div>
+                <div class="form-group">
+                  <label><t>note</t></label>
+                  <textarea class="form-control" rows="4" ng-model="d.note" b-maxlength="300"></textarea>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label><t>code</t></label>
+                  <input type="text" class="form-control" ng-model="d.code" b-maxlength="50"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>estimation formula editing</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <textarea id="formula" class="form-control" rows="4" ng-model="p.data.estimation_formula" required></textarea>
+            </div>
+            <div class="form-group text-right">
+              <button type="button" class="btn btn-default" ng-click="validateFormula(p.data.estimation_formula)"><t>validate</t></button>
+            </div>
+            <h5 class="font-weight-bolder"><t>indicators</t></h5>
+            <div class="separator separator-solid my-4"></div>
+            <div class="form-row mb-2">
+              <div class="col-sm mb-2 mb-sm-0">
+                <button type="button" class="btn btn-default" ng-click="addIndicator()" ng-if="fi.add_indicator"><t>add indicator</t></button>
+              </div>
+              <div class="col-sm-12">
+                <b-pg-controller name="indicators"/>
+              </div>
+            </div>
+            <b-pg-grid name="indicators" local-data="q.indicators" iterator="item" current-limit="1000" min-width="0" sort="name">
+              <b-pg-row>
+                <b-pg-col name="name" size="14">
+                  <div class="mx-n2 my-n3 px-2 py-3" ng-dblclick="putIndicator(item.identifier)">{{ item.name }}</div>
+                </b-pg-col>
+                <b-pg-col name="identifier" size="6">
+                  <div class="mx-n2 my-n3 px-2 py-3" ng-dblclick="putIndicator(item.identifier)">{{ item.identifier }}</div>
+                </b-pg-col>
+                <b-pg-col name="actions" size="4">
+                  <div class="text-center">
+                    <button type="button" class="btn btn-default btn-icon btn-hover-text-success" ng-click="putIndicator(item.identifier)" title="{{ q.tIndicatorPut }}"><i class="fa fa-file-import"></i></button>
+                    <button type="button" class="btn btn-default btn-icon btn-hover-text-primary" ng-click="editIndicator(item)" ng-if="fi.edit_indicator" title="{{ q.tIndicatorEdit }}"><i class="fa fa-pen"></i></button>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+            <div ng-show="q.formula_messages.length > 0">
+              <div class="separator separator-solid my-4"></div>
+              <div class="alert alert-custom py-2 mt-2 mb-0" ng-class="p.formula_valid ? 'alert-light-warning' : 'alert-light-danger'" ng-repeat="message in q.formula_messages track by $index">
+                <div class="alert-text">{{ message }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveFormula(p.data.estimation_formula)"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

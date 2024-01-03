@@ -1,0 +1,1098 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout, bRequire, bConfig) {
+  let d = _.omit(model, 'references'),
+      q = model.references,
+      p = {
+        matched_photos: [],
+      };
+
+  q.t_reset_to_default = t('reset to default')();
+  q.t_to_default = t('to default')();
+
+  function toggleEmployeeState() {
+    if (!fi.toggle_employee_state) return;
+    fi.toggle_employee_state({ employee_id: d.employee_id }).then(function(result) {
+      d.employee_state = result.state;
+    }, page.alert);
+  }
+
+  function toggleUserState() {
+    if (!fi.toggle_user_state) return;
+    fi.toggle_user_state({ employee_id: d.employee_id }).then(function(result) {
+      d.user_state = result.state;
+      if (_.contains(q.enabledGrids, 'person_settings'))
+        page.subpage('person_settings').broadcast('state_change', { state: d.user_state });
+    }, page.alert);
+  }
+
+  function deleteEmployee() {
+    if (!fi.delete_employee) return;
+    page.confirm(q.t_delete_confirm, function() {
+      fi.delete_employee({ employee_id: d.employee_id }).then(page.close, page.alert);
+    });
+  }
+
+  function loadLocation() {
+    page.post(':load_location', { employee_id: d.employee_id }).then(function(result) {
+      _.extend(d, result);
+    }, page.alert);
+  }
+
+  function loadUser() {
+    page.post(':load_user', { employee_id: d.employee_id }).then(function(result) {
+      _.extend(d, result);
+    }, page.alert);
+  }
+
+  function loadPerson() {
+    page.post(':load_person', { employee_id: d.employee_id }).then(function(result) {
+      _.extend(d, result);
+      setPhotoSrc();
+    }, page.alert);
+  }
+
+  function loadStaff() {
+    page.post(':load_staff', { employee_id: d.employee_id }).then(function(result) {
+      _.extend(d, result);
+      fixTabs();
+      setStatusClass();
+    }, page.alert);
+  }
+
+  // broadcast
+  function broadcastStaffCalendar() {
+    if (_.contains(q.enabledGrids, 'staff_calendar'))
+      page.subpage('staff_calendar').broadcast('journal_post');
+  }
+
+  // change sections
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (_.contains(q.enabledGrids, section)) return;
+    if (section) {
+      page.subpage(section).run(fi[section].uri, { person_id: d.employee_id, employee_id: d.employee_id }, { only_edu_stages: true, staff_id: d.staff_id, name: d.name });
+      q.enabledGrids.push(section);
+
+      if (section == 'employee_work') {
+        page.subpage(section).on('journal_post' ,function() {
+          loadStaff();
+          loadUser();
+          broadcastStaffCalendar();
+        });
+      }
+      if (section == 'employee_main') {
+        page.subpage(section).on('person_change' ,function() {
+          loadPerson();
+        });
+      }
+      if (section == 'person_settings') {
+        page.subpage(section).on('user_change' ,function() {
+          loadUser();
+        });
+      }
+      if (section == 'staff_location') {
+        page.subpage(section).on('location_change' ,function() {
+          loadLocation();
+        });
+      }
+    }
+  }
+
+  // photo
+  function savePhoto(photo_sha) {
+    let data = _.pick(d, 'employee_id', 'photo_as_face_rec');
+    data.photo_sha = photo_sha;
+
+    fi.save_photo(data).then(function(result) {
+      d.photo_sha = result.photo_sha;
+      setPhotoSrc();
+      if (d.photo_as_face_rec == 'Y' && _.contains(q.enabledGrids, 'person_identification')) {
+        let data = result;
+        data.name = d.photo_name;
+        page.subpage('person_identification').broadcast('photo_upload', data);
+      }
+      hidePhotoModal();
+      hideMatchedModal();
+    }, page.alert);
+  }
+
+  function getDefaultPhotoSrc() {
+    var res = d.gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc();
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    savePhoto(null);
+  }
+
+  function showPhoto() {
+    if (!d.photo_sha) return;
+    page.previewFile({
+      sha: d.photo_sha,
+      name: d.name,
+      type: 'image'
+    });
+  }
+
+  // photo modal
+  let photoModal = page.$content.find('form[name=photoModal]>.modal');
+
+  function showPhotoModal() {
+    $timeout(() => photoModal.modal('show'));
+  }
+
+  function cancelPhotoEdit() {
+    $timeout(() => p.photo = null);
+  }
+  
+  function hidePhotoModal() {
+    $timeout(() => photoModal.modal('hide'));
+    photoModal.on('hidden.bs.modal', cancelPhotoEdit);
+  }
+
+  function uploadPhoto($file) {
+    photoModal.modal('hide');
+    page.faceCropper($file, croppedPhoto => {
+      p.photo = croppedPhoto;
+      showPhotoModal();
+    }, false, p.photo_as_face_rec == 'Y');
+    page.dropzone('crop_main_photo').clear();
+  }
+
+  function saveCrop() {
+    if (!p.photo) hidePhotoModal();
+    d.photo_as_face_rec = p.photo_as_face_rec;
+    d.photo_name = p.photo.name;
+    if (q.duplicate_prevention == 'N' || d.photo_as_face_rec == 'Y') calculatePhotoVector(p.photo);
+    else savePhoto(p.photo);
+  }
+
+  // matched photos
+  let matched_photos = page.$content.find("form[name='matched_photos']>.modal");
+
+  function showMatchedModal() {
+    $timeout(function() {
+      matched_photos.modal('show');
+    });
+  }
+
+  function hideMatchedModal() {
+    matched_photos.modal('hide');
+  }
+
+  function calculatePhotoVector(photo_sha) {
+    if (q.duplicate_prevention == 'N' || d.photo_as_face_rec == 'N' || !photo_sha) { 
+      savePhoto(photo_sha);
+      return;
+    }
+    page.post(':upload_images', {
+      photo_shas: [photo_sha],
+    }).then(function(response) {
+      page.post(':calculate_photo_vector', {
+        person_id: d.employee_id,
+        photo_shas: response.photo_shas,
+      }).then(function(response) {
+        p.matched_photos = _.chain(response.matched_photos || [])
+                            .mapRows(['person_id', 'person_name', 'matched_sha', 'match_score', 'match_percent'])
+                            .sortBy(x => +x.match_score)
+                            .value();
+        p.error = response.error;
+        if (!_.isEmpty(p.matched_photos) || !!p.error && !_.isEmpty(p.error)) {
+          p.cropped_photo_sha = photo_sha;
+          showMatchedModal();
+          hidePhotoModal();
+        } else savePhoto(photo_sha);
+      }).catch(page.alert);
+    }).catch(page.alert);
+  }
+
+  function downloadPhoto() {
+    if (!d.photo_sha) return;
+    window.open(page.downloadFile(d.photo_sha));
+  }
+
+  // dismissal modal
+  let dismissalModal = page.$content.find('form[name=dismissalModal]>.modal');
+
+  function showDismissalModal() {
+    if (!fi.dismiss_employee) return;
+    $timeout(function() {
+      p.dismissal = _.pick(d, 'division_name', 'job_name', 'hiring_date');
+      p.dismissal.dismissal_date = moment().format('DD.MM.YYYY');
+
+      dismissalModal.modal('show');
+    });
+  }
+
+  function blockTracking() {
+    fi.block_employee_tracking({ employee_id: d.employee_id });
+    d.blocked_tracking = 'Y';
+  }
+
+  function unblockTracking() {
+    fi.unblock_employee_tracking({ employee_id: d.employee_id });
+    d.blocked_tracking = 'N';
+  }
+
+  function editModal() {
+    p.dismissal.is_view = false;
+  }
+
+  function hideDismissalModal() {
+    $timeout(function () {
+      dismissalModal.modal('hide');
+    });
+  }
+
+  function dismissEmployee() {
+    if (!page.valid(scope.dismissalModal)) return;
+    let data = _.pick(p.dismissal, 'dismissal_date', 'dismissal_reason_id', 'note');
+    _.extend(data, _.pick(d, 'employee_id', 'staff_id'));
+
+    fi.dismiss_employee(data).then(function(result) {
+      d.dismissal_date = result.dismissal_date;
+      d.status = result.status;
+      d.status_name = result.status_name;
+      setStatusClass();
+
+      if (_.contains(q.enabledGrids, 'employee_work'))
+        page.subpage('employee_work').broadcast('dismiss_employee');
+
+      broadcastStaffCalendar();
+
+      hideDismissalModal();
+    }, page.alert);
+  }
+
+  function getInfluences() {
+    page.post(':get_influences', { employee_id: d.employee_id, dismissal_reason_id: p.dismissal.dismissal_reason_id }).then(result => {
+      if (result.has_influence == 'Y') {
+        p.dismissal.division_names = result.division_names;
+        p.dismissal.locations_count = result.locations_count;
+        p.dismissal.blacklisted = result.blacklisted;
+        p.dismissal.remove_access = result.remove_access;
+        p.dismissal.only_access = !result.division_names && !result.locations_count && result.blacklisted == 'N' && result.remove_access == 'Y';
+        p.dismissal.is_view = true;
+      } else dismissEmployee();
+    }, page.alert)
+  }
+
+  // dismissal reason
+  function setDismissalReason(dismissal, row) {
+    if (row) {
+      dismissal.dismissal_reason_id = row.dismissal_reason_id;
+      dismissal.dismissal_reason_name = row.name;
+      dismissal.dismissal_reason_type = row.reason_type;
+    }
+  }
+
+  function selectDismissalReason(dismissal) {
+    fi.select_dismissal_reason(null, _.partial(setDismissalReason, dismissal));
+  }
+
+  function addDismissalReason(dismissal, value) {
+    fi.add_dismissal_reason(null, _.partial(setDismissalReason, dismissal), { name: value });
+  }
+
+  function setStatusClass() {
+    switch (d.status) {
+      case q.ss_working: q.status_class = 'label-success'; break;
+      case q.ss_dismissed: q.status_class = 'label-danger'; break;
+      case q.ss_unknown: q.status_class = 'label-default'; break;
+    }
+  }
+
+  function canDeleteEmployee() {
+    return !d.staff_id && fi.delete_employee;
+  }
+
+  function canDismissEmployee() {
+    return !!d.hiring_date && !d.dismissal_date && fi.dismiss_employee;
+  }
+
+  // Tabs & Configuration
+  let tabConfigModal = page.$content.find('form[name=tabConfigModal]>.modal');
+
+  function tabConfigOpen() {
+    let tabs = _.filter(q.all_tabs, x => x.filterFunc());
+    // Sorting as its configured in settings or default
+    _.each(tabs, x => x.order = parseInt(q.tab_config?.[x.name]));
+    _.each(tabs, (x, i) => { if (!x.order || typeof x.order != 'number') x.order = i + 100; });
+    tabs.sort((a, b) => a.order - b.order);
+    p.data = { tabs };
+    $timeout(() => tabConfigModal.modal('show'));
+  }
+
+  function tabConfigSave(config, is_confirm = false) {
+    function save() {
+      let data = {};
+      _.each(config, (x, i) => data[x.name] = i + 1);
+      page.post(':save_tab_config', data).then(() => {
+        q.tab_config = data;
+        fixTabs();
+        p.data = {};
+        $timeout(() => tabConfigModal.modal('hide'));
+      }, page.alert);
+    };
+    if (is_confirm) page.confirm(q.t_reset_to_default, save);
+    else save();
+  }
+
+  function moreTabActive() {
+    return _.contains(q.more_tab_names, q.activeSection);
+  }
+
+  function fixTabs() {
+    let tabs = _.filter(q.all_tabs, x => x.filterFunc());
+    // Sorting as its configured in settings or default
+    _.each(tabs, x => x.order = parseInt(q.tab_config?.[x.name]));
+    _.each(tabs, (x, i) => { if (!x.order || typeof x.order != 'number') x.order = i + 100; });
+    tabs.sort((a, b) => a.order - b.order);
+    q.header_tabs = [];
+    q.more_tabs = [];
+    q.more_tab_names = [];
+    // first 5 tabs
+    for (let i = 0; i < tabs.length && i < 5; i++) {
+      q.header_tabs.push(tabs[i]);
+    }
+    // more tabs
+    for (let i = 5; i < tabs.length; i++) {
+      q.more_tab_names.push(tabs[i].name);
+      q.more_tabs.push(tabs[i]);
+    }
+  }
+
+  function reportSettings(form) {
+    page.openDialog(form, { open_setting: 'Y' });
+  }
+
+  // report
+  function report(rep, rt) {
+    if (!d.staff_id) return;
+    var data = {
+      staff_ids: [d.staff_id],
+      rt: rt
+    };
+
+    var auths = bConfig.auths();
+    _.each(auths, function(val, key) {
+      data['-' + key] = val;
+    });
+
+    window.open('b' + rep.uri + '?' + $.param(_.defaults({}, data, auths), true));
+  }
+
+  function passportInfo() {
+    var is_runed = _.contains(q.enabledGrids, 'person_document');
+
+    changeSection('person_document');
+
+    if (is_runed) {
+      page.subpage('person_document').broadcast('passport_info', { document_id: d.passport_id });
+    } else {
+      page.subpage('person_document').on('ready' ,function() {
+        page.subpage('person_document').broadcast('passport_info', { document_id: d.passport_id });
+      });
+    }
+  }
+
+  setStatusClass();
+
+  setPhotoSrc();
+
+  q.reports = _.mapRows(model.reports, ['uri', 'name', 'form']);
+  q.all_tabs = _.mapRows([
+                ['employee_main', () => fi.employee_main, 'far fa-address-card'],
+                ['staff_calendar', () => fi.staff_calendar, 'far fa-calendar-alt'],
+                ['employee_work', () => fi.employee_work, 'fas fa-briefcase'],
+                ['person_doc_history', () => fi.person_doc_history, 'fas fa-file-invoice'],
+                ['staff_location', () => fi.staff_location, 'fas fa-map-marker-alt'],
+                ['staff_requests', () => fi.staff_requests && d.staff_id, 'fas fa-mobile-alt'],
+                ['person_subordinate', () => fi.person_subordinate, 'fas fa-user-friends'],
+                ['employee_salary', () => fi.employee_salary && d.staff_id, 'fas fa-file-invoice-dollar'],
+                ['staff_performance', () => fi.staff_performance, 'fas fa-chart-line'],
+                ['person_education', () => fi.person_education, 'fas fa-user-graduate'],
+                ['person_overtime', () => fi.person_overtime && d.staff_id, 'fas fa-business-time'],
+                ['staff_changes', () => fi.staff_changes && d.staff_id, 'fas fa-calendar'],
+                ['person_bank_account', () => fi.person_bank_account, 'fas fa-money-check'],
+                ['person_document', () => fi.person_document, 'fas fa-book'],
+                ['person_family', () => fi.person_family, 'fas fa-users'],
+                ['person_reference', () => fi.person_reference, 'fas fa-clipboard'],
+                ['person_work', () => fi.person_work, 'fas fa-briefcase'],
+                ['person_inventories', () => fi.person_inventories, 'fas fa-cart-arrow-down'],
+                ['person_files', () => fi.person_files, 'far fa-folder-open'],
+                ['person_trainings', () => fi.person_trainings, 'fas fa-chalkboard-teacher'],
+                ['person_identification', () => fi.person_identification, 'fas fa-fingerprint'],
+                ['person_settings', () => fi.person_settings, 'fas fa-user-cog']
+              ], ['name', 'filterFunc', 'icon']);
+  q.enabledGrids = [];
+  q.t_delete_confirm = t('are you sure you want to delete $1{employee_name}?')(d.name);
+  q.t_user_active_state  = t('active user')();
+  q.t_user_passive_state = t('passive user')();
+  q.t_user_edit_image = t('edit image')();
+  q.t_key_person = t('key person')();
+
+  p.no_photo = 'page/resource/vhr/no_image.png';
+  p.photo_as_face_rec = d.photo_as_face_rec;
+
+  fixTabs();
+  $timeout(() => changeSection(q.header_tabs[0].name));
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content vhr324">
+  <style>
+    .vhr324 .card.card-custom {
+      background-color: #ffffff !important;
+    }
+
+    .vhr324 .img-container {
+      /* Never limit the container height here */
+      max-width: 100%;
+    }
+
+    .vhr324 .img-container img {
+      /* This is important */
+      width: 100%;
+    }
+    .vhr324 .card.card-custom {
+      background-color: #ffffff !important;
+    }
+    .vhr324 .card b-pg-grid .tbl-container {
+      box-shadow: none !important;
+      border: 1px solid #ecf0f3;
+      border-radius: 3px;
+    }
+    .vhr324 b-pg-grid .tbl .tbl-header .tbl-header-cell,
+    .vhr324 b-grid .tbl .tbl-header .tbl-header-cell {
+      border-bottom: none !important;
+    }
+    .vhr324 b-pg-grid .tbl .tbl-row.tbl-no-data-row,
+    .vhr324 b-grid .tbl .tbl-row.tbl-no-data-row {
+      border-top: 1px solid #eaeaea !important;
+    }
+  </style>
+  <div class="form-row">
+    <div class="col-sm-5">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="d-flex bd-highlight">
+            <div class="mr-auto bd-highlight">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" ng-click="page.close()"><i class="fas fa-arrow-left"></i></i></a>
+            </div>
+            <div class="bd-highlight dropdown dropdown-inline" ng-if="fi.save_photo || fi.toggle_employee_state || fi.toggle_user_state || canDeleteEmployee() || canDismissEmployee() || q.reports.length > 0">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-md dropdown-menu-right" style="cursor: pointer;">
+                <!--begin::Navigation-->
+                <ul class="navi navi-hover py-5">
+                  <li class="navi-item" ng-if="fi.save_photo">
+                    <a class="navi-link" ng-click="showPhotoModal()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-camera"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t ng-if="!d.photo_sha">add photo</t>
+                        <t ng-if="d.photo_sha">edit photo</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.employee_state == 'A' && fi.toggle_employee_state">
+                    <a class="navi-link text-hover-danger" ng-click="toggleEmployeeState()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="far fa-chart-bar"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>deactivate employee</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.employee_state != 'A' && fi.toggle_employee_state">
+                    <a class="navi-link text-hover-success" ng-click="toggleEmployeeState()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="far fa-chart-bar"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>activate employee</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.user_state == 'A' && fi.toggle_user_state">
+                    <a class="navi-link text-hover-danger" ng-click="toggleUserState()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="far fa-times-circle"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>deactivate user</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.user_state != 'A' && fi.toggle_user_state">
+                    <a class="navi-link text-hover-success" ng-click="toggleUserState()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-check-circle"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>activate user</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.blocked_tracking == 'N' && fi.block_employee_tracking">
+                    <a class="navi-link text-hover-danger" ng-click="blockTracking()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-lock"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>block tracking</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="d.blocked_tracking == 'Y' && fi.unblock_employee_tracking">
+                    <a class="navi-link text-hover-success" ng-click="unblockTracking()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-unlock"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>unblock tracking</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="false">
+                    <a class="navi-link">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-cog"></i>
+                      </span>
+                      <span class="navi-text ml-2">
+                        <t>settings</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-repeat="r in q.reports" ng-click="report(r, 'html')">
+                    <a class="navi-link">
+                      <span class="navi-icon d-flex justify-content-center"><i class="far fa-file"></i></span>
+                      <span class="navi-text ml-2" ng-click="report(r, 'html')">{{ r.name }}</span>
+                      <button type="button" class="btn btn-icon btn-default" ng-click="$event.stopPropagation();reportSettings(r.form)"><i class="fas fa-cog"></i></button>
+                    </a>
+                  </li>
+                  <li class="navi-separator my-3" ng-if="(fi.unblock_employee_tracking || fi.block_employee_tracking || fi.save_photo || fi.toggle_employee_state || fi.toggle_user_state  || q.reports.length > 0) && (canDeleteEmployee() || canDismissEmployee())"></li>
+                  <li class="navi-item" ng-if="canDismissEmployee()">
+                    <a class="navi-link" ng-click="showDismissalModal()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="fas fa-walking text-danger"></i>
+                      </span>
+                      <span class="navi-text text-danger ml-2">
+                        <t>terminate employee</t>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="navi-item" ng-if="canDeleteEmployee()">
+                    <a class="navi-link" ng-click="deleteEmployee()">
+                      <span class="navi-icon d-flex justify-content-center">
+                        <i class="far fa-trash-alt text-danger"></i>
+                      </span>
+                      <span class="navi-text text-danger ml-2">
+                        <t>delete employee</t>
+                      </span>
+                    </a>
+                  </li>
+                </ul>
+                <!--end::Navigation-->
+              </div>
+            </div>
+          </div>
+
+          <div class="mx-auto d-block dropdown w-xxl-225px h-xxl-225px w-xl-200px h-xl-200px w-lg-150px h-lg-150px w-md-100px h-md-100px w-sm-75px h-sm-75px text-center" title="{{ q.t_user_edit_image }}">
+            <div class="image-input image-input-outline" style="border-radius: 50%;">
+              <div class="image-input-wrapper h-200px w-200px w-xxl-225px h-xxl-225px w-xl-200px h-xl-200px w-lg-150px h-lg-150px w-md-100px h-md-100px w-sm-75px h-sm-75px" style="border-radius: inherit !important;">
+                <img class="cursor-pointer mw-100 mh-100" style="border-radius: inherit !important; width: 225px; height: 225px; object-fit: cover;" ngf-src="q.photo_src" ng-click="fi.save_photo ? showPhotoModal() : null">
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-center mt-2">
+            <h5 class="text-center font-weight-bolder">{{ d.name }}
+              <i class="fas fa-check-circle text-success" style="font-size: 16px;" title="{{ q.t_user_active_state }}" ng-if="d.user_state == 'A'"></i>
+              <i class="far fa-check-circle text-muted" style="font-size: 16px;" title="{{ q.t_user_passive_state }}" ng-if="d.user_state != 'A'"></i>
+              <i class="fas fa-star text-primary" style="font-size: 16px;" title="{{ q.t_key_person }}" ng-if="d.key_person == 'Y'"></i>
+            </h5>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-center mb-3" ng-show="d.division_name">
+            <h7 class="text-center text-muted">
+              {{ d.job_name + (d.rank_name ? ' (' + d.rank_name + ')' : '') }}, {{ d.division_name }}</h7>
+          </div>
+          <div class="d-flex align-items-center justify-content-center mb-3">
+            <span class="label label-pill label-inline mr-2" ng-class="q.status_class">{{ d.status_name }}</span>
+            <span class="label label-pill label-inline " ng-if="d.employee_state == 'P'"><t>deactivated employee</t></span>
+          </div>
+          <div class="d-flex align-items-center justify-content-center mb-3">
+            <span class="label label-pill label-inline label-danger" ng-if="d.blocked_tracking == 'Y'"><t>bloked to tracking</t></span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-passport"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>pasport_series and number</t></span>
+              <span class="mb-1 font-size-lg" ng-class="{ 'cursor-pointer text-hover-primary' : fi.person_document }" ng-click="fi.person_document ? passportInfo() : null">{{ d.passport_series + ' ' + d.passport_number }}</span>
+              <span class="mb-1 font-size-sm" ng-show="!d.passport_series">&mdash;</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3" ng-show="d.main_phone">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-phone-alt"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>phone number</t></span>
+              <span class="mb-1 font-size-lg">{{ d.main_phone }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3" ng-show="d.division_id != d.org_unit_id && d.org_unit_id">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-sitemap"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>org unit name</t></span>
+              <span class="mb-1 font-size-lg">{{ d.org_unit_name }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3" ng-show="d.email">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="far fa-envelope"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>email</t></span>
+              <span class="mb-1 font-size-lg" style="word-break: break-all">{{ d.email }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-users"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>reports to</t></span>
+              <span class="mb-1 font-size-lg">{{ d.manager_name }}</span>
+              <span class="mb-1 font-size-sm" ng-show="!d.manager_name">&mdash;</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="far fa-calendar-check"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>schedule</t></span>
+              <span class="mb-1 font-size-lg">{{ d.schedule_name }}</span>
+              <span class="mb-1 font-size-sm" ng-show="!d.schedule_name">&mdash;</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-map-marker-alt"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>location</t></span>
+              <span ng-if="d.location_count <= 3 && d.blocked_tracking == 'N'" class="mb-1 font-size-lg">{{ d.location_names }}</span>
+              <span ng-if="d.location_count > 3 && d.blocked_tracking == 'N'" class="mb-1 font-size-lg" ng-class="{ 'cursor-pointer text-hover-primary' : fi.staff_location }" ng-click="fi.staff_location ? changeSection('staff_location') : null">{{ d.location_names }} ...</span>
+              <span class="mb-1 font-size-sm" ng-show="!d.location_names || d.blocked_tracking == 'Y'">&mdash;</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center mb-3">
+            <div class="symbol symbol-30 symbol-light-primary mr-5">
+              <span class="symbol-label">
+                <i class="fas fa-wallet"></i>
+              </span>
+            </div>
+            <div class="d-flex flex-column font-weight-bold">
+              <span class="text-muted"><t>wage</t></span>
+              <span class="mb-1 font-size-lg" ng-show="d.wage && d.wage != '-1'">{{ d.wage | bNumber }}</span>
+              <span class="mb-1 font-size-lg" ng-show="d.wage == '-1'"><t>no access to wage</t></span>
+              <span class="mb-1 font-size-sm" ng-show="!d.wage">&mdash;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-19">
+      <div class="card card-custom gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <ul class="nav nav-tabs nav-tabs-space-lg nav-tabs-line nav-tabs-bold nav-tabs-line-3x" role="tablist">
+              <li class="nav-item mr-4" ng-if="tab.filterFunc()" ng-repeat="tab in q.header_tabs">
+                <a class="nav-link ml-0" ng-class="{ 'active': q.activeSection == tab.name }" ng-click="changeSection(tab.name)">
+                  <span class="nav-icon d-flex justify-content-center">
+                    <span class="svg-icon">
+                      <i class="{{ tab.icon }}"></i>
+                    </span>
+                  </span>
+                  <span class="nav-text font-weight-bold ml-2">{{ fi[tab.name].title }}</span>
+                </a>
+              </li>
+              <li class="nav-item dropdown" ng-if="q.more_tabs.length > 0">
+                <a class="nav-link ml-0 dropdown-toggle" ng-class="{ 'active': moreTabActive() }" data-toggle="dropdown" role="button" aria-expanded="false">
+                  <span class="nav-icon d-flex justify-content-center">
+                    <span class="svg-icon">
+                      <i class="fas fa-bars"></i>
+                    </span>
+                  </span>
+                  <span class="nav-text font-weight-bold ml-2"><t>more</t></span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-md" style="max-height: calc(100vh - 210px); overflow-y: auto; cursor: pointer;">
+                  <ul class="navi navi-hover py-3">
+                    <li class="navi-item" ng-if="tab.filterFunc()" ng-repeat="tab in q.more_tabs">
+                      <a class="navi-link" ng-class="{ 'active': q.activeSection == tab.name }" ng-click="changeSection(tab.name)">
+                        <span class="navi-icon d-flex justify-content-center">
+                          <i class="{{ tab.icon }}"></i>
+                        </span>
+                        <span class="navi-text ml-2">{{ fi[tab.name].title }}</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="card-toolbar" ng-if="q.header_tabs.length + q.more_tabs.length > 1">
+            <div class="bd-highlight dropdown dropdown-inline">
+              <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-md dropdown-menu-right" style="cursor: pointer;">
+                <ul class="navi navi-hover py-3">
+                  <li class="navi-item">
+                    <a class="navi-link" ng-click="tabConfigOpen()">
+                      <span class="navi-icon d-flex justify-content-center"><i class="fas fa-cog"></i></span>
+                      <span class="navi-text ml-2"><t>congifure tab order</t></span>
+                    </a>
+                  </li>
+                  <li class="navi-item">
+                    <a class="navi-link" ng-click="tabConfigSave([], true)">
+                      <span class="navi-icon d-flex justify-content-center"><i class="fas fa-undo"></i></span>
+                      <span class="navi-text ml-2"><t>reset tab order</t></span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.employee_main" ng-show="q.activeSection == 'employee_main'">
+        <b-subpage name="employee_main"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.employee_salary && d.staff_id" ng-show="q.activeSection == 'employee_salary'">
+        <b-subpage name="employee_salary"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.staff_calendar" ng-show="q.activeSection == 'staff_calendar'">
+        <b-subpage name="staff_calendar"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.employee_work" ng-show="q.activeSection == 'employee_work'">
+        <b-subpage name="employee_work"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_doc_history" ng-show="q.activeSection == 'person_doc_history'">
+        <b-subpage name="person_doc_history"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.staff_location" ng-show="q.activeSection == 'staff_location'">
+        <b-subpage name="staff_location"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.staff_requests && d.staff_id" ng-show="q.activeSection == 'staff_requests'">
+        <b-subpage name="staff_requests"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_subordinate" ng-show="q.activeSection == 'person_subordinate'">
+        <b-subpage name="person_subordinate"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.staff_performance" ng-show="q.activeSection == 'staff_performance'">
+        <b-subpage name="staff_performance"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_education" ng-show="q.activeSection == 'person_education'">
+        <b-subpage name="person_education"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_overtime && d.staff_id" ng-show="q.activeSection == 'person_overtime'">
+        <b-subpage name="person_overtime"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.staff_changes && d.staff_id" ng-show="q.activeSection == 'staff_changes'">
+        <b-subpage name="staff_changes"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_bank_account" ng-show="q.activeSection == 'person_bank_account'">
+        <b-subpage name="person_bank_account"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_document" ng-show="q.activeSection == 'person_document'">
+        <b-subpage name="person_document"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_family" ng-show="q.activeSection == 'person_family'">
+        <b-subpage name="person_family"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_reference" ng-show="q.activeSection == 'person_reference'">
+        <b-subpage name="person_reference"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_work" ng-show="q.activeSection == 'person_work'">
+        <b-subpage name="person_work"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_inventories" ng-show="q.activeSection == 'person_inventories'">
+        <b-subpage name="person_inventories"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_files" ng-show="q.activeSection == 'person_files'">
+        <b-subpage name="person_files"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_trainings" ng-show="q.activeSection == 'person_trainings'">
+        <b-subpage name="person_trainings"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_identification" ng-show="q.activeSection == 'person_identification'">
+        <b-subpage name="person_identification"/>
+      </div>
+      <div class="flex-row-fluid" ng-if="fi.person_settings" ng-show="q.activeSection == 'person_settings'">
+        <b-subpage name="person_settings"/>
+      </div>
+    </div>
+  </div>
+
+  <form name="photoModal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-body">
+            <div class="img-container" ng-if="!d.photo_sha && !p.photo">
+              <img style="max-width: 100%;" ngf-src="p.no_photo"/>
+            </div>
+            <div class="img-container" ng-show="d.photo_sha && !p.photo">
+              <img class="crop_main_photo" ngf-src="q.photo_src"/>
+            </div>
+            <div class="img-container" ng-show="p.photo">
+              <img class="crop_main_photo" ngf-src="p.photo"/>
+            </div>
+            <div class="mt-4 mb-4">
+              <b-dropzone name="crop_main_photo" on-select="uploadPhoto($file)" accept="'.png,.jpg,.jpeg'"></b-dropzone>
+            </div>
+            <label class="checkbox">
+              <input type="checkbox" ng-model="p.photo_as_face_rec" ng-true-value="'Y'" ng-false-value="'N'"/>
+              <span><t>photo as face rec</t></span>
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-primary" ng-if="fi.save_photo" ng-disabled="!p.photo" ng-click="saveCrop()"><t>save photo</t></button>
+            <button type="button" class="btn btn-sm btn-danger" ng-if="fi.save_photo && d.photo_sha && !p.photo" ng-click="removePhoto()"><t>delete</t></button>
+            <button type="button" class="btn btn-sm btn-default" ng-if="fi.save_photo && p.photo" ng-click="cancelPhotoEdit()"><t>cancel</t></button>
+            <button type="button" class="btn btn-sm btn-default" ng-click="hidePhotoModal()"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  
+  <form name="dismissalModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>dismissal title</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <div class="form-row">
+                <div class="col-12">
+                  <label><t>dismissal date</t><r/></label>
+                  <input type="text" class="form-control" ng-if="!p.dismissal.is_view" ng-model="p.dismissal.dismissal_date" min-date="p.dismissal.hiring_date" b-date-picker required/>
+                  <span class="form-view" ng-if="p.dismissal.is_view">{{ p.dismissal.dismissal_date }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <span class="form-view">{{ p.dismissal.division_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>job</t></label>
+              <span class="form-view">{{ p.dismissal.job_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>reason</t></label>
+              <b-input name="dismissal_reasons"
+                       model="p.dismissal.dismissal_reason_name | name"
+                       model-key="p.dismissal.dismissal_reason_id | dismissal_reason_id"
+                       column="reason_type_name, reason_type"
+                       is-add="fi.add_dismissal_reason"
+                       is-view="fi.select_dismissal_reason"
+                       on-add="addDismissalReason(p.dismissal, value)"
+                       on-view="selectDismissalReason(p.dismissal)"
+                       on-select="setDismissalReason(p.dismissal, row)"
+                       on-delete="setDismissalReason(p.dismissal, {})"
+                       ng-if="!p.dismissal.is_view">
+                <header>
+                  <div class="col-sm-12"><t>reason name</t></div>
+                  <div class="col-sm-12"><t>reason type</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-12">
+                    <span class="badge" ng-class="{ 'badge-primary': row.reason_type == 'P', 'badge-danger': row.reason_type == 'N' }">
+                      {{ row.reason_type_name }}
+                    </span>
+                  </div>
+                </content>
+              </b-input>
+              <span class="form-view" ng-if="p.dismissal.is_view">{{ p.dismissal.dismissal_reason_name }}</span>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" ng-if="!p.dismissal.is_view" rows=2 ng-model="p.dismissal.note"></textarea>
+              <span class="form-view" ng-if="p.dismissal.is_view">{{ p.dismissal.note }}</span>
+            </div>
+            <div ng-if="p.dismissal.is_view">
+              <div class="form-group">
+                <div class="row">
+                  <div class="col-sm-2"><i class="fas fa-exclamation-triangle fa-2x text-warning"></i></div>
+                  <div class="col-sm-20 mt-2" ng-if="!p.dismissal.only_access"><t>after dismissal we will do these actions</t></div>
+                  <div class="col-sm-20 mt-2" ng-if="p.dismissal.only_access"><t>after dismissal, user remove access to system</t></div>
+                </div>
+              </div><hr ng-if="!p.dismissal.only_access"/>
+              <div class="form-group" ng-if="!p.dismissal.only_access">
+                <ul>
+                  <li ng-if="p.dismissal.locations_count"><t>detach from attached locations</t><span class="badge badge-pill alert-danger">{{ p.dismissal.locations_count }}</span></li>
+                  <li ng-if="p.dismissal.division_names"><t p1="p.dismissal.division_names">$1 remains without manager</t></li>
+                  <li ng-if="p.dismissal.blacklisted == 'Y'"><t>person will be blacklisted</t></li>
+                  <li ng-if="p.dismissal.remove_access == 'Y'"><t>user will lost access to system</t></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-primary" ng-if="!p.dismissal.is_view" ng-click="getInfluences()"><t>dismiss employee</t></button>
+            <button type="button" class="btn btn-sm btn-default" ng-if="!p.dismissal.is_view" data-dismiss="modal"><t>close</t></button>
+            <button type="button" class="btn btn-sm btn-primary" ng-if="p.dismissal.is_view" ng-click="dismissEmployee()"><t>yes</t></button>
+            <button type="button" class="btn btn-sm btn-default" ng-if="p.dismissal.is_view" ng-click="editModal()"><t>no</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  
+  <form name="tabConfigModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-body">
+            <div class="mb-3"><t>first 5 tabs will be shown in the header</t></div>
+            <div ui-tree="uiTreeOption">
+              <ul ui-tree-nodes class="navi navi-hover" ng-model="p.data.tabs">
+                <li ui-tree-node ui-tree-handle class="navi-item bg-white border-0 font-weight-normal" ng-style="{ 'margin-bottom': ($last ? '0' : '1em') }" ng-repeat="tab in p.data.tabs">
+                  <a class="navi-link" ng-style="{ 'background-color': ($index < 5 ? 'rgba(105, 147, 255, .1);' : 'rgba(236, 240, 243, .6)') }">
+                    <span class="navi-icon d-flex justify-content-center"><i class="{{ tab.icon }}"></i></span>
+                    <span class="navi-text ml-2">{{ fi[tab.name].title }}</span>
+                    <span class="b-right text-muted" ng-if="$index == 0"><t>first open tab</t></span>
+                    <span class="b-right text-muted" ng-if="$index > 0 && $index < 5"><t>visible tabs on header</t></span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-primary" ng-click="tabConfigSave(p.data.tabs)"><t>save</t></button>
+            <button type="button" class="btn btn-default" b-toggle data-container="body" data-title="{{ q.t_reset_to_default }}" on-click-yes="tabConfigSave([])">
+              <i b-toggle="tooltip" class="fas fa-undo"></i>
+              <span>{{ q.t_to_default }}</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="matched_photos">
+    <div class="modal fade" tabindex="-1" aria-hidden="true" data-backdrop="false" role="dialog">
+      <div class="modal-dialog" ng-if="!!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">
+              <h4 class="mb-0 d-flex align-items-center">
+                <i class="fa fa-exclamation-circle text-warning my-n4 mr-4 opacity-50 h1 font-weight-bolder"></i>
+                <div>{{ p.error.code }} —  <span class="font-weight-bolder breakable" ng-bind-html="p.error.title"></span></div>
+              </h4>
+            </div>
+            <button type="button" class="close p-4 m-n4" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="error-message mb-5" style="font-weight: 400; line-height: 140%;">
+              <h5 style="color: rgba(12, 42, 62, 0.8);" ng-bind-html="p.error.message"></h5>
+            </div>
+            <div style="color: rgba(12, 42, 62, 0.8); font-weight: 400; line-height: 140%;" id="recoms" ng-if="p.error.solutions.length > 0">
+              <footer class="blockquote-footer h5 text-primary user-select-none">Solutions</footer>
+              <hr class="mt-0 border-primary" style="border-top-style: dashed;"/>
+              <div class="error-solutions">
+                <ul>
+                  <li class="mb-4" ng-repeat="solution in p.error.solutions" ng-bind-html="solution"></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="savePhoto(p.cropped_photo_sha)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-dialog modal-lg" style="max-width: 50vw;" ng-if="!p.error">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>matching photo found</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <b-pg-grid name="matched_photos" 
+                       local-data="p.matched_photos" 
+                       iterator="item"
+                       min-width="500"
+                       limit="1000">
+              <b-pg-row>
+                <b-pg-col name="person_name" size="8"/>
+                <b-pg-col name="photo" size="8">
+                  <img class="img" style="max-width:100%; max-height:100%;" width="auto" height="auto" src="{{ page.loadImageMedium(item.matched_sha) }}"/>
+                </b-pg-col>
+                <b-pg-col name="match_score" size="4"/>
+                <b-pg-col name="match_percent" size="4"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="savePhoto(p.cropped_photo_sha)"><t>save anyway</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

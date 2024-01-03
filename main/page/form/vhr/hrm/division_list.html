@@ -1,0 +1,162 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+  t.param({ parent_id: param.parent_id });
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  page.isInit() && t.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state,state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t, param, model, xparam) {
+  var q = { checked: {} };
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog, { parent_id: param.parent_id });
+  }
+
+  function childDivision(row) {
+    fi.child_division({ parent_id: row.division_id });
+  }
+
+  function edit(row) {
+    fi.edit({ division_id: row.division_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ division_id: row.division_id });
+  }
+
+  function deleteOne(row) {
+    page.confirm(t('delete division $1?')(row.name), function() {
+      fi.delete({ division_id: row.division_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows)
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function deleteMany() {
+    page.confirm(t('delete $1 division(s)?')(q.checked.size), function() {
+      fi.delete({ division_id:  _.pluck(q.checked.rows, 'division_id') }).then(page.reload, page.alert);
+    });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : row.access_action == 'N' ? childDivision(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  function audit() {
+    fi.audit({ table_name: model.table_name_division });
+  }
+
+  function onCheck(checked) {
+    q.checked.rows = _.filter(checked.rows(), x => x.access_action == 'Y');
+    q.checked.size = q.checked.rows.length;
+    q.checked.has = q.checked.size > 0;
+  }
+
+  function viewEmployee(row) {
+    fi.view_employee(null, null, { where: ['org_unit_id', '=', row.division_id] });
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  var sc = [ // success
+    { grant: fi.add, fn: add },
+    { grant: fi.import, fn: importData }
+  ];
+
+  q.sc = {};
+  q.sc.acc = _.filter(sc, x => x.grant);
+  q.sc.length = q.sc.acc.length;
+  if (q.sc.length > 0) {
+    q.sc.firstFn = q.sc.acc[0].fn;
+    q.sc.first = q.sc.acc[0].grant;
+  }
+
+  q.position_enable = model.position_enable;
+  q.multiple_select = xparam.multiple_select;
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="q.sc.firstFn()" ng-if="q.sc.first" b-hotkey="add">{{ q.sc.first.title }}</button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.sc.length > 1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.sc.length > 1">
+        <a href class="dropdown-item" ng-repeat="acc in q.sc.acc | limitTo: (1 - q.sc.length)" ng-click="acc.fn()" ng-if="acc.grant">{{ acc.grant.title }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-default px-4" ng-click="audit()" ng-if="fi.audit" b-toggle="tooltip" title="{{ fi.audit.title }}" data-placement="bottom">
+      <i class="fas fa-history p-0"></i>
+    </button>
+    <button type="button" class="btn btn-success" ng-click="selectMany()" ng-if="page.isDialog()" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="division_id,name,access_action" on-dblclick="onDblclick(row)" on-check="onCheck(checked)"
+          sort="name" search="code,name,division_group_name" searchable="division_id,created_by_name,modified_by_name"
+          extra-columns="division_id,schedule_name,opened_date,closed_date,is_department_name,subfilial_name,modified_on,modified_by_name">
+    <b-row>
+      <b-col name="code" size=2/>
+      <b-col name="name" size=5/>
+      <b-col name="manager_name" size=3/>
+      <b-col name="division_group_name" size=4/>
+      <b-col name="created_by_name" size=3/>
+      <b-col name="created_on" size=4/>
+      <b-col name="state_name" as-html="state_html" size=2/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view && row.access_action == 'Y'">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.access_action == 'Y'">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="childDivision(row)" ng-if="fi.child_division">{{ fi.child_division.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="viewEmployee(row)" ng-if="fi.view_employee && row.access_action == 'Y'">{{ fi.view_employee.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.access_action == 'Y'">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="division_id" directive="equal" extra/>
+    <b-filter name="code"/>
+    <b-filter name="name"/>
+    <b-filter name="division_group_id" decorate-with="division_group_name"/>
+    <b-filter name="created_by" decorate-with="created_by_name"/>
+    <b-filter name="created_on"/>
+    <b-filter name="state" decorate-with="state_name"/>
+    <b-filter name="schedule_id" decorate-with="schedule_name" extra/>
+    <b-filter name="manager_id" decorate-with="manager_name" extra/>
+    <b-filter name="subfilial_id" decorate-with="subfilial_name" extra/>
+    <b-filter name="opened_date" extra/>
+    <b-filter name="closed_date" extra/>
+    <b-filter name="is_department" decorate-with="is_department_name" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

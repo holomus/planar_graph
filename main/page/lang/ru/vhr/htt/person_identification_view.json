@@ -1,0 +1,14 @@
+{
+ "close": "Закрыть",
+ "fprint template": "Отпечатки пальцев",
+ "fprints": "Отпечатки пальцев",
+ "main photo": "Основное фото",
+ "regestered $1/10 fingers": "Зарегистрировано $1 из 10",
+ "person identification": "Идентификация",
+ "photo": "Фото для распознавания",
+ "pin": "ПИН",
+ "pin code": "ПИН код",
+ "qr code": "QR-код",
+ "rfid code": "Номер RFID карты",
+ "biophoto": "Фотография"
+}

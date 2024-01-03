@@ -1,0 +1,88 @@
+<script biruni>
+page.init(function(param, xparam, bUtil) {
+  var t = page.query('table').param(param);
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  if (page.isInit()) t.filter('state', '=', 'A');
+
+  var pg = page.grid('table');
+
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, fi, param, t) {
+  var q = { to_delete: {}, to_deactivate: {} };
+
+  function doAction(action, message, unique_key) {
+    page.confirm(message, function() {
+      action({ unique_key: unique_key }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete qr code $1{created_on}?')(row.created_on), row.unique_key);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{qr_codes_count} qr code(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'unique_key'));
+  }
+
+  function deactivateOne(row) {
+    doAction(fi.deactivate, t('deactivate qr code $1{created_on}?')(row.created_on), row.unique_key);
+  }
+
+  function deactivateMany() {
+    doAction(fi.deactivate, t('deactivate $1{qr_code_count} qr code(s)?')(q.to_deactivate.size), _.pluck(q.to_deactivate.rows, 'unique_key'));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.delete) prepareChecked('to_delete', checked, null);
+    if (fi.deactivate) prepareChecked('to_deactivate', checked, x => x.state == 'A');
+  }
+
+  function onDblclick(row) {
+    fi.deactivate ? deactivateOne(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="deactivateMany()" ng-if="fi.deactivate" ng-show="q.to_deactivate.has"><t p1="q.to_deactivate.size">deactivate $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="unique_key, created_on, state" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="created_on" search="location_name, created_on" searchable="state_name"
+          extra-columns="unique_key">
+    <b-row>
+      <b-col name="location_name" size=15/>
+      <b-col name="created_on" size=5/>
+      <b-col name="state_name" as-html="state_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="deactivateOne(row)" ng-if="fi.deactivate">{{ fi.deactivate.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="location_id" decorate-with="location_name"/>
+    <b-filter name="created_on"/>
+    <b-filter name="state" decorate-with="state_name"/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,9 @@
+{
+ "pg.person_documents.action": "Actions",
+ "pg.person_documents.doc_number": "Number",
+ "pg.person_documents.doc_series": "Series",
+ "pg.person_documents.doc_type_name": "Document Type",
+ "pg.person_documents.issued_by": "Issued by",
+ "files are not fully uploaded yet": "Files are not uploaded yet",
+ "pg.person_documents.file_names": "Document Name"
+}

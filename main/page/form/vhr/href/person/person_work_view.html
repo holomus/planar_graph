@@ -1,0 +1,119 @@
+<script biruni>
+page.ctrl(function(scope, param) {
+  var d = param, q = {};
+
+  function changeTab(tab) {
+    if (_.contains(q.enabledGrids, tab)) return;
+    if (tab == 'experiences') {
+      page.post(':get_person_experiences', _.pick(d, 'person_id')).then(function(result) {
+        d.person_experiences = _.mapRows(result, ['experience_type_name', 'is_working', 'is_working_name', 'start_date', 'num_year', 'num_month', 'num_day']);
+      }, page.alert);
+    } else if (tab == 'work_places') {
+      page.post(':get_person_work_places', _.pick(d, 'person_id')).then(function(result) {
+        d.person_work_places = _.mapRows(result, ['start_date', 'end_date', 'organization_name', 'job_title', 'organization_address']);
+      }, page.alert);
+    } else if (tab == 'awards') {
+      page.post(':get_person_awards', _.pick(d, 'person_id')).then(function(result) {
+        d.person_awards = _.mapRows(result, ['award_name', 'doc_title', 'doc_number', 'doc_date']);
+      }, page.alert);
+    }
+  }
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  q.enabledGrids = [];
+
+  changeTab('experiences');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-header card-header-tabs-line">
+    <div class="card-toolbar align-items-end">
+      <ul class="nav nav-tabs nav-tabs-line">
+        <li class="nav-item">
+          <a data-target="{{ pageId('experiences', '#') }}" class="nav-link active" data-toggle="tab" role="tab">
+            <span class="nav-icon"><i class="fas fa-dumbbell"></i></span>
+            <span><t>experiences</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a data-target="{{ pageId('work_places', '#') }}" class="nav-link" data-toggle="tab" role="tab" ng-click="changeTab('work_places')">
+            <span class="nav-icon"><i class="fas fa-building"></i></span>
+            <span><t>work places</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a data-target="{{ pageId('awards', '#') }}" class="nav-link" data-toggle="tab" role="tab" ng-click="changeTab('awards')">
+            <span class="nav-icon"><i class="fas fa-award"></i></span>
+            <span><t>awards</t></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="tab-content">
+      <div class="tab-pane active" id="{{ pageId('experiences') }}" role="tabpanel">
+        <div class="row mb-2">
+          <div class="offset-sm-12 col-sm-12">
+            <b-pg-controller name="person_experiences"/>
+          </div>
+        </div>
+        <b-pg-grid name="person_experiences" local-data="d.person_experiences" min-height="'auto'" search="experience_type_name"
+                   searchable="start_date, num_year, num_month, num_day" sort="-start_date, experience_type_name">
+          <b-pg-row>
+            <b-pg-col name="experience_type_name" size=18/>
+            <b-pg-col name="start_date" size=3/>
+            <b-pg-col name="is_working_name" size=3>
+              <div class="alert alert-custom alert-text text-center py-1 px-3 m-0" ng-class="row.is_working == 'Y' ? 'alert-light-success' : 'alert-light-danger'">
+                <span class="alert-text">{{ row.is_working_name }}</span>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+
+          <b-pg-extra-col name="num_year" format="amount"/>
+          <b-pg-extra-col name="num_month" format="amount"/>
+          <b-pg-extra-col name="num_day" format="amount"/>
+        </b-pg-grid>
+      </div>
+      <div class="tab-pane" id="{{ pageId('work_places') }}" role="tabpanel">
+        <div class="row mb-2">
+          <div class="offset-sm-12 col-sm-12">
+            <b-pg-controller name="person_work_places"/>
+          </div>
+        </div>
+        <b-pg-grid name="person_work_places" local-data="d.person_work_places" min-height="'auto'" search="organization_name, job_title"
+                   searchable="start_date, end_date" sort="-start_date, -end_date">
+          <b-pg-row>
+            <b-pg-col name="start_date" size=3/>
+            <b-pg-col name="end_date" size=3/>
+            <b-pg-col name="organization_name" size=6/>
+            <b-pg-col name="job_title" size=6/>
+            <b-pg-col name="organization_address" size=6/>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div class="tab-pane" id="{{ pageId('awards') }}" role="tabpanel">
+        <div class="row mb-2">
+          <div class="offset-sm-12 col-sm-12">
+            <b-pg-controller name="person_awards"/>
+          </div>
+        </div>
+        <b-pg-grid name="person_awards" local-data="d.person_awards" min-height="'auto'" search="award_name, doc_title, doc_number"
+                   searchable="doc_date">
+          <b-pg-row>
+            <b-pg-col name="award_name" size=8/>
+            <b-pg-col name="doc_title" size=8/>
+            <b-pg-col name="doc_number" size=5/>
+            <b-pg-col name="doc_date" size=3/>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </div>
+</div>

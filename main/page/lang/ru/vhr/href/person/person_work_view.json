@@ -1,0 +1,20 @@
+{
+ "awards": "Награды",
+ "experiences": "Стаж",
+ "pg.person_awards.award_name": "Награда",
+ "pg.person_awards.doc_date": "Дата",
+ "pg.person_awards.doc_number": "Номер документа",
+ "pg.person_awards.doc_title": "Название документа",
+ "pg.person_experiences.experience_type_name": "Вид стажа",
+ "pg.person_experiences.is_working_name": "Название работ",
+ "pg.person_experiences.num_day": "День",
+ "pg.person_experiences.num_month": "Месяц",
+ "pg.person_experiences.num_year": "Год",
+ "pg.person_experiences.start_date": "Действует с",
+ "pg.person_work_places.end_date": "Конец работы",
+ "pg.person_work_places.job_title": "Должность",
+ "pg.person_work_places.organization_address": "Адрес организации",
+ "pg.person_work_places.organization_name": "Организация",
+ "pg.person_work_places.start_date": "Начало работы",
+ "work places": "Места работы"
+}

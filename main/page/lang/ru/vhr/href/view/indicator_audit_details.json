@@ -1,0 +1,5 @@
+{
+ "pg.indicator.before": "Старое значение",
+ "pg.indicator.current": "Новое значение",
+ "pg.indicator.field_name": "Поле"
+}

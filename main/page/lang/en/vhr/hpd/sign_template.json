@@ -1,0 +1,22 @@
+{
+ "esign required": "",
+ "active": "Active",
+ "add employee": "Add",
+ "add group": "Add Group",
+ "add level": "Add Level",
+ "employee": "Employee",
+ "employee placeholder": "Add employee ...",
+ "group $1": "Group $1",
+ "journal type": "HR Document Type",
+ "level $1": "Level $1",
+ "note": "Note",
+ "parallel": "Parallel",
+ "passive": "Inactive",
+ "process": "Process",
+ "save": "Save",
+ "save?": "Save?",
+ "sequential": "Sequential",
+ "sign kind": "Signing",
+ "sign min count": "Signs Min. Qty",
+ "state": "Status"
+}

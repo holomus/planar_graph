@@ -1,0 +1,41 @@
+prompt PATH TRANSLATE /vhr/hper/audit/staff_plan_audit_details
+begin
+uis.lang_ru('#f:/vhr/hper/audit/staff_plan_audit_details','Детали истории изменений');
+uis.lang_ru('ui-vhr203:amount','Сумма');
+uis.lang_ru('ui-vhr203:begin date','Начало месяца');
+uis.lang_ru('ui-vhr203:c_extra fact percent','Дополнительный факт (%)');
+uis.lang_ru('ui-vhr203:c_main fact percent','Основной факт (%)');
+uis.lang_ru('ui-vhr203:calc kind name','Способ подсчета результатов');
+uis.lang_ru('ui-vhr203:division name','Подразделение');
+uis.lang_ru('ui-vhr203:employment type name','Вид занятости');
+uis.lang_ru('ui-vhr203:end date','Конец отчетного периода');
+uis.lang_ru('ui-vhr203:extra calc type name','Способ подсчета результатов');
+uis.lang_ru('ui-vhr203:extra fact amount','Дополнительный факт');
+uis.lang_ru('ui-vhr203:extra fact percent','Дополнительный факт (%)');
+uis.lang_ru('ui-vhr203:extra plan amount','Дополнительный план');
+uis.lang_ru('ui-vhr203:fact amount','Факт (сумма)');
+uis.lang_ru('ui-vhr203:fact note','Примечание');
+uis.lang_ru('ui-vhr203:fact percent','Факт (%)');
+uis.lang_ru('ui-vhr203:fact value','Факт');
+uis.lang_ru('ui-vhr203:from percent','От');
+uis.lang_ru('ui-vhr203:job name','Должность');
+uis.lang_ru('ui-vhr203:main calc type name','Способ подсчета результатов');
+uis.lang_ru('ui-vhr203:main fact amount','Факт (сумма)');
+uis.lang_ru('ui-vhr203:main fact percent','Факт (%)');
+uis.lang_ru('ui-vhr203:main plan amount','План (сумма)');
+uis.lang_ru('ui-vhr203:month begin date','Начало месяца');
+uis.lang_ru('ui-vhr203:month end date','Конец месяца');
+uis.lang_ru('ui-vhr203:note','Примечание');
+uis.lang_ru('ui-vhr203:part date','Дата');
+uis.lang_ru('ui-vhr203:plan amount','План (сумма)');
+uis.lang_ru('ui-vhr203:plan date','Месяц');
+uis.lang_ru('ui-vhr203:plan type','Тип показателей');
+uis.lang_ru('ui-vhr203:plan type name','Тип показателей');
+uis.lang_ru('ui-vhr203:plan value','План');
+uis.lang_ru('ui-vhr203:rank name','Разряд');
+uis.lang_ru('ui-vhr203:staff name','Сотрудник');
+uis.lang_ru('ui-vhr203:status name','Статус');
+uis.lang_ru('ui-vhr203:to percent','До');
+commit;
+end;
+/

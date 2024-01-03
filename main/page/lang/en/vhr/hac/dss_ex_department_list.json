@@ -1,0 +1,12 @@
+{
+ "close": "Close",
+ "delete $1": "Delete $1",
+ "delete $1{department_count} department(s)?": "Delete $1 organization(s)?",
+ "delete department $1{department_name}?": "Delete $1?",
+ "details": "Details",
+ "extra details": "Details",
+ "table.created_on": "Created on",
+ "table.department_code": "Organization Code",
+ "table.department_name": "Name",
+ "table.modified_on": "Modified on"
+}

@@ -1,0 +1,12 @@
+{
+ "table.device_count": "Device Qty",
+ "table.email": "Email",
+ "table.hour_inactive": "Hour",
+ "table.name": "Name",
+ "table.phone": "Phone",
+ "table.three_day_inactive": "3 days",
+ "table.three_hour_inactive": "3 hour",
+ "table.twelve_hour_inactive": "12 hour",
+ "table.company_id": "Company ID",
+ "table.day_inactive": "1 day"
+}

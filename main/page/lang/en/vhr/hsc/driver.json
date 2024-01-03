@@ -1,0 +1,9 @@
+{
+ "active": "Active",
+ "measure": "Unit",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

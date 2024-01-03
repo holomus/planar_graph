@@ -1,0 +1,11 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{plan_group_count} ?": "Haqiqatan ham <b>$1</b> guruh(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete plan group $1{plan_group_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.plan_group_id": "ID",
+ "table.plan_type_count": "Ko'rsatkichlar soni",
+ "table.state_name": "Holat"
+}

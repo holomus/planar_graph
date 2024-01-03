@@ -1,0 +1,84 @@
+<script biruni>
+page.ctrl(function(scope, fi, model) {
+  var d = model;
+  page.title(page.title() + ': ' + d.name);
+
+  function makeMap(name) {
+    d[name] = _.mapRows(d[name], ['field_name', 'before', 'current']);
+    d[name].has = d[name].length > 0;
+  }
+
+  function setActiveTab(active_tab) {
+    if (d.active_tab == active_tab) return;
+    d.active_tab = active_tab;
+  }
+
+  makeMap('plan_type');
+  makeMap('division');
+  makeMap('task_type');
+
+  d.active_tab = _.find(['plan_type', 'division', 'task_type'], x => d[x].has);
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-pg-controller name="plan_type"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': d.active_tab == 'plan_type' }" data-toggle="tab" ng-if="d.plan_type.has" ng-click="setActiveTab('plan_type')" role="tab" >
+            <span><t>plan type</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': d.active_tab == 'division' }" data-toggle="tab" ng-if="d.division.has" ng-click="setActiveTab('division')" role="tab">
+            <span><t>division</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': d.active_tab == 'task_type' }" data-toggle="tab" ng-if="d.task_type.has" ng-click="setActiveTab('task_type')" role="tab">
+            <span><t>task type</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4">
+        <div class="tab-pane" ng-class="{ 'active': d.active_tab == 'plan_type' }">
+          <b-pg-grid name="plan_type" local-data="d.plan_type" search="field_name, before, current">
+            <b-pg-row>
+              <b-pg-col name="field_name" size=4/>
+              <b-pg-col name="before" size=10/>
+              <b-pg-col name="current" size=10/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': d.active_tab == 'division' }">
+          <b-pg-grid name="division" local-data="d.division" search="field_name, before, current">
+            <b-pg-row>
+              <b-pg-col name="field_name" size=4/>
+              <b-pg-col name="before" size=10/>
+              <b-pg-col name="current" size=10/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': d.active_tab == 'task_type' }">
+          <b-pg-grid name="task_type" local-data="d.task_type" search="field_name, before, current">
+            <b-pg-row>
+              <b-pg-col name="field_name" size=4/>
+              <b-pg-col name="before" size=10/>
+              <b-pg-col name="current" size=10/>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

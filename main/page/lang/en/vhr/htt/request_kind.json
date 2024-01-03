@@ -1,0 +1,21 @@
+{
+ "carryover cap (days)": "Carryover cap (days)",
+ "carryover policy": "Carryover policy",
+ "Eg: 30": "Eg: 30",
+ "Eg: 5": "Eg: 5",
+ "expires after (days)": "Expires after (days)",
+ "active": "Active",
+ "allow unused time": "Consider unused time",
+ "annual day limit": "Annual Day Limit",
+ "annually limited": "Annual",
+ "day count type": "Provided",
+ "name": "Name",
+ "passive": "Inactive",
+ "request restriction days": "Day Limit",
+ "request with restriction days": "Request Day Limit",
+ "save": "Save",
+ "save?": "Save?",
+ "state": "Status",
+ "time kind": "Absence Type",
+ "user permitted": "Provided to all employees"
+}

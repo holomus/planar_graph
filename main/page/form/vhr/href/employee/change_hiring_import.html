@@ -1,0 +1,150 @@
+<script biruni>
+  page.ctrl(function (scope, fi, t) {
+    var d = {}, q = {};
+    var employee_keys = [
+      'staff_id',
+      'employee_name',
+      'hiring_date',
+      'division_id',
+      'division_name',
+      'job_id',
+      'job_name',
+      'schedule_id',
+      'schedule_name'
+    ];
+
+  function template() {
+    window.open(page.url('template'));
+  }
+
+  function importFile() {
+    if (d.template) {
+      page.confirm(t('do you want to import file?')(), function () {
+        let data = { template: d.template };
+        page.post(':import', data, 'excel').then(function(result) {
+          d.staffs = _.mapRows(result.items, employee_keys);
+          q.error_messages = result.errors;
+        }, page.alert);
+      });
+    }
+  }
+
+  function importData() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let data = { items: d.staffs };
+        page.post(':import_data', data).then(function() {
+          notify(t('import succeeded!')());
+          page.dropzone('file').clear();
+          q.error_messages = [];
+          d.staffs = [];
+          d.template = '';
+        }, page.alert);
+      });
+    }
+  }
+
+  function removeItem(row) {
+    d.staffs = _.without(d.staffs, row);
+  }
+
+  function itemsToDefault() {
+    d.staffs = [];
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="importData()" ng-if="d.staffs.length"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="d.template"><t>import</t></button>
+  <button type="button" class="btn btn-primary" ng-click="template()"><t>template</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12 mb-4">
+          <h5><t>file</t></h5>
+          <b-dropzone name="file" model="d.template" accept="'.xls, .xlsx'"></b-dropzone>
+        </div>
+        <div class="col-sm-12 mb-4">
+          <h5><t>errors</t></h5>
+          <div class="mb-2">
+            <b-pg-controller name="error_messages"/>
+          </div>
+          <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+            <b-pg-row>
+              <b-pg-col name="row_id" size=3/>
+              <b-pg-col name="error" size=21>
+                <div ng-repeat="item in row.items">
+                  {{ item }}<br/><hr ng-if="!$last"/>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+      <h5><t>data</t></h5>
+      <div class="row">
+        <div class="col-sm-12 offset-sm-12 mb-2">
+          <b-pg-controller name="staffs"/>
+        </div>
+      </div>
+      <b-pg-grid name="staffs" local-data="d.staffs" search="name, division, job, schedule" sort="rownum, name" current-limit="1000">
+        <b-pg-header name="actions">
+          <div class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-icon" b-toggle data-title="{{ q.tClear() }}" on-click-yes="itemsToDefault()" ng-if="d.staffs.length">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1"/>
+          <b-pg-col name="staff_id" size="2"/>
+          <b-pg-col name="employee_name" size="6"/>
+          <b-pg-col name="hiring_date" size="2">
+            <input type="text" class="form-control" ng-model="row.hiring_date" placeholder="{{ q.t_hiring_date }}" b-date-picker required/>
+          </b-pg-col>
+          <b-pg-col name="division" size="4">
+            <b-input name="division"
+                     model="row.division_name | name"
+                     model-key="row.division_id | division_id"
+                     is-view="fi.select_division"
+                     on-view="selectDivision()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </b-pg-col>
+          <b-pg-col name="job" size="4">
+            <b-input name="job"
+                     model="row.job_name | name"
+                     model-key="row.job_id | job_id"
+                     is-view="fi.select_job"
+                     on-view="selectJob()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </b-pg-col>
+          <b-pg-col name="schedule" size="4">
+            <b-input name="schedule"
+                     model="row.schedule_name | name"
+                     model-key="row.schedule_id | schedule_id"
+                     is-view="fi.select_schedule"
+                     on-view="selectSchedule()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </b-pg-col>
+          <b-pg-col name="actions" size="1">
+            <div class="text-center">
+              <button type="button" class="btn btn-default btn-hover-text-danger btn-icon" ng-click="removeItem(row)"><i class="fa fa-trash"></i></button>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

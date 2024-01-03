@@ -1,0 +1,41 @@
+prompt PATH TRANSLATE /vhr/hper/audit/staff_plan_audit_details
+begin
+uis.lang_en('#f:/vhr/hper/audit/staff_plan_audit_details','Audit Log Details');
+uis.lang_en('ui-vhr203:amount','Amount');
+uis.lang_en('ui-vhr203:begin date','Beginning of Month');
+uis.lang_en('ui-vhr203:c_extra fact percent','Extra Fact (%)');
+uis.lang_en('ui-vhr203:c_main fact percent','Main Fact (%)');
+uis.lang_en('ui-vhr203:calc kind name','Result Calculation Type');
+uis.lang_en('ui-vhr203:division name','Department');
+uis.lang_en('ui-vhr203:employment type name','Employment Type');
+uis.lang_en('ui-vhr203:end date','End Date');
+uis.lang_en('ui-vhr203:extra calc type name','Result Calculation Type');
+uis.lang_en('ui-vhr203:extra fact amount','Extra Fact');
+uis.lang_en('ui-vhr203:extra fact percent','Extra Fact (%)');
+uis.lang_en('ui-vhr203:extra plan amount','Extra Plan');
+uis.lang_en('ui-vhr203:fact amount','Fact (amount)');
+uis.lang_en('ui-vhr203:fact note','Note');
+uis.lang_en('ui-vhr203:fact percent','Fact (%)');
+uis.lang_en('ui-vhr203:fact value','Fact');
+uis.lang_en('ui-vhr203:from percent','From');
+uis.lang_en('ui-vhr203:job name','Job');
+uis.lang_en('ui-vhr203:main calc type name','Result Calculation Type');
+uis.lang_en('ui-vhr203:main fact amount','Fact (amount)');
+uis.lang_en('ui-vhr203:main fact percent','Fact (%)');
+uis.lang_en('ui-vhr203:main plan amount','Plan (amount)');
+uis.lang_en('ui-vhr203:month begin date','Beginning of Month');
+uis.lang_en('ui-vhr203:month end date','End of Month');
+uis.lang_en('ui-vhr203:note','Note');
+uis.lang_en('ui-vhr203:part date','Date');
+uis.lang_en('ui-vhr203:plan amount','Plan (amount)');
+uis.lang_en('ui-vhr203:plan date','Date');
+uis.lang_en('ui-vhr203:plan type','Month');
+uis.lang_en('ui-vhr203:plan type name','Measures Type');
+uis.lang_en('ui-vhr203:plan value','Measures Type');
+uis.lang_en('ui-vhr203:rank name','Rank');
+uis.lang_en('ui-vhr203:staff name','Employee');
+uis.lang_en('ui-vhr203:status name','Status');
+uis.lang_en('ui-vhr203:to percent','To');
+commit;
+end;
+/

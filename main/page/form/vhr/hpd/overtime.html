@@ -1,0 +1,993 @@
+<script biruni>
+  page.ctrl(function(scope, model, fi, t, $timeout, bStorage, bFrame, AppSession, bUtil) {
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      p = {},
+      all_staffs = [],
+      storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+
+  function refillOvertime(overtime) {
+    _.each(overtime.overtime_days, x => {
+      let free_time = bUtil.timeToMinutes(x.free_time);
+      let time = overtime.calc_lunchtime ? free_time : free_time - x.lunchtime;
+      time = overtime.calc_after_work ? time : time - bUtil.timeToMinutes(x.after_work_time);
+      time = overtime.calc_before_work ? time : time - bUtil.timeToMinutes(x.before_work_time);
+
+      x.overtime_hours = truncateTime(bUtil.minutesToTime(time), overtime.mode);
+    });
+    overtime.all_overtime_days = angular.copy(overtime.overtime_days);
+  }
+
+  function refillOvertimeAll() {
+    _.each(all_staffs, x => {
+      x.calc_lunchtime = q.calc_lunchtime;
+      x.calc_after_work = q.calc_after_work;
+      x.calc_before_work = q.calc_before_work;
+
+      refillOvertime(x);
+      x.overtime_total = _.chain(x.overtime_days).pluck('overtime_hours').reduce((acc, it) => { return acc + bUtil.timeToMinutes(it); }, 0).value();
+      x.overtime_total = parseTimeToWord(x.overtime_total);
+      d.overtime_staffs.splice(_.findIndex(d.overtime_staffs, x), 1, angular.copy(x));
+    });
+  }
+
+  function changeTruncateMode(mode, overtime) {
+    overtime.mode = mode;
+    refillOvertime(overtime);
+  }
+
+  function changeTruncateModeAll(mode) {
+    q.mode = mode;
+    _.each(all_staffs, x => {
+      changeTruncateMode(mode, x);
+
+      x.overtime_total = _.chain(x.overtime_days).pluck('overtime_hours').reduce((acc, it) => { return acc + bUtil.timeToMinutes(it); }, 0).value();
+      x.overtime_total = parseTimeToWord(x.overtime_total);
+      d.overtime_staffs.splice(_.findIndex(d.overtime_staffs, x), 1, angular.copy(x));
+    });
+  }
+
+  function truncateTime(time, mode) {
+    time = bUtil.timeToMinutes(time);
+    time = bUtil.minutesToTime(time - time % mode);
+    return time;
+  }
+
+  function parseTimeToWord(minutes) {
+    if (!minutes) return '';
+    minutes = parseInt(minutes);
+    if (minutes == 0) return '0';
+    let [hour, min] = [parseInt(minutes / 60), minutes % 60];
+    return (hour ? hour + ' ' + t('hh')() : '') + ' ' + (min ? min + ' ' + t('min')() : '');
+  }
+
+  // ------------------------------ overtime modal ------------------------------//
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function loadOvertimesByStaff(overtime) {
+    let data = _.pick(overtime, 'overtime_id', 'staff_id', 'month');
+
+    data.min_free_time = overtime.time_range_filter_on ? bUtil.timeToMinutes(overtime.min_free_time) : null;
+    data.max_free_time = overtime.time_range_filter_on ? bUtil.timeToMinutes(overtime.max_free_time) : null;
+    data.min_after_work_time = overtime.calc_after_work && overtime.after_work_filter_on ? bUtil.timeToMinutes(overtime.min_after_work_time) : null;
+    data.max_after_work_time = overtime.calc_after_work && overtime.after_work_filter_on ? bUtil.timeToMinutes(overtime.max_after_work_time) : null;
+    data.max_before_work_time = overtime.calc_before_work && overtime.before_work_filter_on ? bUtil.timeToMinutes(overtime.max_before_work_time) : null;
+    data.min_before_work_time = overtime.calc_before_work && overtime.before_work_filter_on ? bUtil.timeToMinutes(overtime.min_before_work_time) : null;
+
+    data.calc_lunchtime = overtime.calc_lunchtime ? 'Y' : 'N';
+    data.calc_before_work = overtime.calc_before_work ? 'Y' : 'N';
+    data.calc_after_work = overtime.calc_after_work ? 'Y' : 'N';
+
+    page.post(':get_overtimes', data).then((res => {
+      data.overtime_limit = bUtil.timeToMinutes(overtime.overtime_limit);
+      overtime.all_overtime_days = _.chain(res)
+                                    .mapRows(['overtime_date', 'day_kind', 'free_time', 'lunchtime', 'after_work_time', 'before_work_time'])
+                                    .each(x => {
+                                        x.day_kind_name = q.day_kind_name[x.day_kind];
+                                        x.overtime = overtime.calc_lunchtime ? x.free_time : x.free_time - x.lunchtime;
+                                        x.overtime = overtime.calc_after_work ? x.overtime : x.overtime - x.after_work_time;
+                                        x.overtime = overtime.calc_before_work ? x.overtime : x.overtime - x.before_work_time;
+
+                                        x.overtime_hours = bUtil.minutesToTime(_.min([overtime.limited_on ? data.overtime_limit : data.max_free_time, x.overtime]));
+
+                                        x.no_lunchtime = bUtil.minutesToTime(x.free_time - x.lunchtime);
+                                        x.free_time = bUtil.minutesToTime(x.free_time);
+                                        x.after_work_time = bUtil.minutesToTime(x.after_work_time);
+                                        x.before_work_time = bUtil.minutesToTime(x.before_work_time);
+                                      })
+                                    .value();
+
+      overtime.overtime_days = _.filter(overtime.all_overtime_days, (x) => { return _.indexOf(overtime.day_kinds, x.day_kind) != -1 });
+    }), page.alert);
+  };
+
+  function overtimeModal(row) {
+    if (row) {
+      let index = _.findIndex(d.overtime_staffs, row);
+      p.data    = _.extend(angular.copy(row), { index: index });
+      row.all_overtime_days = angular.copy(row.overtime_days);
+      q.addMode = false;
+    } else {
+      q.addMode = true;
+      p.data = {
+        month:         d.month,
+        min_free_time: q.min_free_time,
+        max_free_time: q.max_free_time,
+        max_before_work_time: q.max_before_work_time,
+        min_before_work_time: q.min_before_work_time,
+        max_after_work_time: q.max_after_work_time,
+        min_after_work_time: q.min_after_work_time,
+        overtime_days: [],
+        all_overtime_days: [],
+        calc_lunchtime: q.calc_lunchtime,
+        calc_before_work: q.calc_before_work,
+        calc_after_work: q.calc_after_work,
+        time_range_filter_on: q.time_range_filter_on,
+        limited_on: q.limited_on,
+        before_work_filter_on: q.before_work_filter_on,
+        after_work_filter_on: q.after_work_filter_on,
+        overtime_limit: q.overtime_limit,
+        mode: q.mode,
+        day_kinds: angular.copy(q.day_kinds)
+      };
+    }
+    page.untouch(scope.modal);
+    showModal();
+  }
+
+  function saveOvertime() {
+    if (page.valid(scope.modal)) {
+      let corrupted_day = _.find(p.data.overtime_days, function(day) {
+                            return !day.free_time || !day.overtime_hours || day.free_time < day.overtime_hours;
+                          });
+
+      if (!corrupted_day) {
+        p.data.overtime_dates = _.chain(p.data.overtime_days)
+                                 .pluck('overtime_date')
+                                 .reduce(function(acc, it) {
+                                         return acc + ', ' + it;
+                                        })
+                                 .value();
+
+        p.data.overtime_total = _.chain(p.data.overtime_days)
+                                 .pluck('overtime_hours')
+                                 .reduce(function(acc, it) {
+                                     return acc + bUtil.timeToMinutes(it);
+                                   }, 0)
+                                 .value();
+
+        p.data.overtime_total = parseTimeToWord(p.data.overtime_total);
+
+        if (q.addMode) {
+          d.overtime_staffs.push(p.data);
+          all_staffs.push(p.data);
+        } else {
+          all_staffs.splice(_.findIndex(all_staffs, p.data), 1, angular.copy(p.data));
+          d.overtime_staffs.splice(p.data.index, 1, angular.copy(p.data));
+        }
+
+        hideModal();
+      }
+      else {
+        page.alert(t('found overtime more than freetime, overtime_date=$1')(corrupted_day.overtime_date));
+      }
+    }
+  }
+
+  //-------------------------------- overtime  ------------------------------//
+  function onCheckDays(checked) {
+    q.checked = checked;
+  }
+
+  function addOvertimeDay(overtime) {
+    overtime.overtime_days.push({});
+    overtime.all_overtime_days = angular.copy(overtime.overtime_days);
+  }
+
+  function removeOvertimeStaffs(item) {
+    _.each(q.staff_checked.rows(), item => {
+      d.overtime_staffs.splice(_.findIndex(d.overtime_staffs, item), 1);
+      all_staffs.splice(_.findIndex(all_staffs, item), 1);
+    });
+  }
+
+  function removeOvertimeDays(overtime) {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(overtime.overtime_days, row);
+      overtime.overtime_days.splice(index, 1);
+    });
+    q.checked = {};
+    overtime.all_overtime_days = angular.copy(overtime.overtime_days);
+  }
+
+  function loadOvertimeDay(overtime, row) {
+    if (!row.overtime_date) return;
+    let data = _.pick(overtime, 'overtime_id', 'staff_id');
+
+    fixOvertimeDate(overtime, row);
+
+    data.overtime_date = row.overtime_date;
+
+    page.post(':get_overtime_day', data).then(res => {
+      row.no_lunchtime = bUtil.minutesToTime(res.free_time - res.lunchtime);
+      row.free_time = bUtil.minutesToTime(res.free_time);
+      row.before_work_time = bUtil.minutesToTime(res.before_work_time);
+      row.after_work_time = bUtil.minutesToTime(res.after_work_time);
+      row.overtime_hours = truncateTime(overtime.calc_lunchtime ? row.free_time : row.no_lunchtime, overtime.mode);
+      row.day_kind = res.day_kind;
+      row.day_kind_name = q.day_kind_name[row.day_kind];
+
+      overtime.all_overtime_days = angular.copy(overtime.overtime_days);
+    }, page.alert);
+  };
+
+  function fixOvertimeDate(overtime, row) {
+    let period_begin = moment(overtime.month, 'MM.YYYY').startOf('month').format('YYYYMMDD'),
+        period_end = moment(overtime.month, 'MM.YYYY').endOf('month').format('YYYYMMDD'),
+        date = moment(row.overtime_date,'DD.MM.YYYY').format('YYYYMMDD');
+    if (date < period_begin || date > period_end) {
+      row.overtime_date = moment(period_begin, 'YYYYMMDD').format('DD.MM.YYYY');
+    }
+  }
+
+  // ------------------------------ overtime -------------------------------------//
+  function selectStaff(overtime){
+    var data = {
+      month_begin: moment(d.month,'MM.YYYY').format('DD.MM.YYYY'),
+      month_end: moment(d.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+      min_free_time: bUtil.timeToMinutes(p.data.min_free_time) * 60,
+      max_free_time: bUtil.timeToMinutes(p.data.max_free_time) * 60
+    };
+
+    data.min_free_time = data.min_free_time > 0 && overtime.time_range_filter_on ? data.min_free_time : null;
+    data.max_free_time = data.max_free_time > 0 && overtime.time_range_filter_on ? data.max_free_time : null;
+
+    page.post(':load_blocked_staffs', data).then((result) => {
+      q.blocked_staffs = result.staff_ids;
+
+      fi.select_staff({ date: overtime.date }, _.partial(setStaff, overtime), { where: whereStaff(overtime) });
+    }, page.alert);
+  }
+
+  function setStaff(overtime, row) {
+    if (!row) return;
+    overtime.staff_id = row.staff_id;
+    overtime.name = row.name;
+    overtime.overtime_days = [];
+    overtime.all_overtime_days = [];
+  }
+
+  function whereStaff(overtime) {
+    let staff_ids = _.chain(_.isUndefined(overtime.index) ? d.overtime_staffs : _.reject(d.overtime_staffs, d.overtime_staffs[overtime.index]))
+                     .pluck('staff_id')
+                     .compact()
+                     .value(),
+    month_begin = moment(overtime.month,'MM.YYYY').format('DD.MM.YYYY'),
+    month_end = moment(overtime.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+    where = ['and', [
+                  ['hiring_date', '<=', month_end],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', month_begin]
+                  ]]]
+                ];
+
+    if (!_.isEmpty(q.blocked_staffs)) {
+      staff_ids.push(...q.blocked_staffs);
+    }
+
+    if (!_.isEmpty(staff_ids)) where = ['and', [['staff_id', '<>', staff_ids], where]];
+    if (d.division_id) where = ['and', [['division_id', '=', d.division_id], where]];
+
+    return where;
+  }
+
+  function changeStaffQuery(overtime, query, value) {
+    query.where(whereStaff(overtime)).searchValue(value);
+  }
+
+  function onCheckStaff(checked) {
+    q.staff_checked = checked;
+  }
+
+  // ------------------------------ select staffs -------------------------------------//
+  function setStaffs(rows) {
+    let data = {
+      staff_ids: _.pluck(rows, 'staff_id'),
+      month: d.month,
+      min_free_time: q.time_range_filter_on ? bUtil.timeToMinutes(q.min_free_time) : null,
+      max_free_time: q.time_range_filter_on ? bUtil.timeToMinutes(q.max_free_time) : null,
+      min_after_work_time: q.calc_after_work && q.after_work_filter_on ? bUtil.timeToMinutes(q.min_after_work_time) : null,
+      max_after_work_time: q.calc_after_work && q.after_work_filter_on ? bUtil.timeToMinutes(q.max_after_work_time) : null,
+      max_before_work_time: q.calc_before_work && q.before_work_filter_on ? bUtil.timeToMinutes(q.max_before_work_time) : null,
+      min_before_work_time: q.calc_before_work && q.before_work_filter_on ? bUtil.timeToMinutes(q.min_before_work_time) : null,
+      calc_lunchtime: q.calc_lunchtime ? 'Y' : 'N',
+      calc_before_work: q.calc_before_work ? 'Y' : 'N',
+      calc_after_work: q.calc_after_work ? 'Y' : 'N'
+    }
+
+    page.post(':get_overtimes_all', data).then((res => {
+      data.overtime_limit = bUtil.timeToMinutes(q.overtime_limit);
+      res = _.chain(res)
+             .mapRows(['staff_id', 'overtime_date', 'day_kind', 'free_time', 'lunchtime', 'after_work_time', 'before_work_time'])
+             .each(x => {
+                x.day_kind_name = q.day_kind_name[x.day_kind];
+                x.overtime = q.calc_lunchtime ? x.free_time : x.free_time - x.lunchtime;
+                x.overtime = q.calc_after_work ? x.overtime : x.overtime - x.after_work_time;
+                x.overtime = q.calc_before_work ? x.overtime : x.overtime - x.before_work_time;
+              })
+             .groupBy('staff_id')
+             .value();
+      let staff_ids = _.pluck(res, 'staff_id');
+
+      _.each(rows, x => {
+        x.all_overtime_days = _.chain(res[x.staff_id])
+                               .each(x => {
+                                   x.no_lunchtime = bUtil.minutesToTime(x.free_time - x.lunchtime);
+                                   x.free_time = bUtil.minutesToTime(x.free_time);
+                                   x.after_work_time = bUtil.minutesToTime(x.after_work_time);
+                                   x.before_work_time = bUtil.minutesToTime(x.before_work_time);
+                                   x.overtime = bUtil.minutesToTime(x.overtime);
+                                   x.overtime_hours = bUtil.minutesToTime(_.min([q.limited_on ? data.overtime_limit : data.max_free_time,
+                                                                                 bUtil.timeToMinutes(truncateTime(x.overtime, q.mode))]));
+                                 })
+                               .value();
+
+        x.overtime_days = _.filter(x.all_overtime_days, (x) => { return _.indexOf(q.day_kinds, x.day_kind) != -1 });
+
+        if (!_.isUndefined(x.overtime_days)) {
+          let corrupted_day = _.find(x.overtime_days, function(day) {
+            return !day.free_time || !day.overtime_hours || day.free_time < day.overtime_hours;
+          });
+
+          if (!corrupted_day) {
+            x.overtime_dates = _.chain(x.overtime_days).pluck('overtime_date').reduce((acc, it) => { return acc + ', ' + it; }).value();
+            x.overtime_total = _.chain(x.overtime_days).pluck('overtime_hours').reduce((acc, it) => { return acc + bUtil.timeToMinutes(it); }, 0).value();
+            x.overtime_total = parseTimeToWord(x.overtime_total);
+            x.month = d.month
+            x.min_free_time = q.min_free_time;
+            x.max_free_time = q.max_free_time;
+            x.max_before_work_time = q.max_before_work_time;
+            x.min_before_work_time = q.min_before_work_time;
+            x.max_after_work_time = q.max_after_work_time;
+            x.min_after_work_time = q.min_after_work_time;
+            x.calc_lunchtime = q.calc_lunchtime;
+            x.calc_before_work = q.calc_before_work;
+            x.calc_after_work = q.calc_after_work;
+            x.overtime_limit = q.overtime_limit;
+            x.time_range_filter_on = q.time_range_filter_on;
+            x.limited_on = q.limited_on;
+            x.before_work_filter_on = q.before_work_filter_on;
+            x.after_work_filter_on = q.after_work_filter_on;
+            x.limited = q.limited;
+            x.mode = q.mode;
+            x.day_kinds = q.day_kinds;
+          } else page.alert(t('found overtime more than freetime, overtime_date=$1')(corrupted_day.overtime_date));
+        }
+      });
+
+      all_staffs.push(..._.filter(rows, (x) => { return !_.isEmpty(x.all_overtime_days) }));
+      d.overtime_staffs = _.filter(all_staffs, (x) => { return !_.isEmpty(x.overtime_days) });
+    }), page.alert);
+  }
+
+  function selectStaffs() {
+    var data = {
+      month_begin: moment(d.month,'MM.YYYY').format('DD.MM.YYYY'),
+      month_end: moment(d.month,'MM.YYYY').endOf('month').format('DD.MM.YYYY'),
+      min_free_time: bUtil.timeToMinutes(q.min_free_time) * 60,
+      max_free_time: bUtil.timeToMinutes(q.max_free_time) * 60
+    };
+
+    data.min_free_time = data.min_free_time > 0 && q.time_range_filter_on ? data.min_free_time : null;
+    data.max_free_time = data.max_free_time > 0 && q.time_range_filter_on ? data.max_free_time : null;
+
+    page.post(':load_blocked_staffs', data).then((result) => {
+      q.blocked_staffs = result.staff_ids;
+
+      fi.select_staff(null, setStaffs, { where: whereStaff(d), multiple_select: true });
+    }, page.alert);
+  }
+
+  // -------------------------------------- save -------------------------------//
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        var data = _.pick(d, 'journal_id', 'journal_number', 'journal_name', 'journal_date', 'division_id');
+        data.posted = posted;
+
+        data.overtime_staffs = _.map(d.overtime_staffs, function(overtime) {
+          overtime = _.pick(overtime, 'overtime_id', 'month', 'overtime_days', 'staff_id');
+          overtime.overtime_days = _.chain(overtime.overtime_days)
+                                    .map(x => x = _.pick(x, 'overtime_date', 'overtime_hours'))
+                                    .each(x => { x.overtime_hours = bUtil.timeToMinutes(x.overtime_hours); })
+                                    .value()
+          return overtime;
+        });
+
+        page.post(':save', data).then(() => {
+          bStorage.json(storage_key, {
+            min_free_time: q.min_free_time,
+            max_free_time: q.max_free_time,
+            calc_lunchtime: q.calc_lunchtime,
+            calc_before_work: q.calc_before_work,
+            calc_after_work: q.calc_after_work,
+            max_before_work_time: q.max_before_work_time,
+            min_before_work_time: q.min_before_work_time,
+            max_after_work_time: q.max_after_work_time,
+            min_after_work_time: q.min_after_work_time,
+            before_work_filter_on: q.before_work_filter_on,
+            after_work_filter_on: q.after_work_filter_on,
+            limited_on: q.limited_on,
+            overtime_limit: q.overtime_limit,
+            limited: q.limited,
+            mode: q.mode,
+            day_kinds: q.day_kinds });
+
+          page.close()
+        }, page.alert);
+      });
+    }
+  }
+
+  function changeDayKind(kind, staff) {
+    if (staff) {
+      let index = _.indexOf(staff.day_kinds, kind);
+
+      if (index == -1) staff.day_kinds.push(kind)
+      else staff.day_kinds.splice(index, 1);
+
+      staff.overtime_days = _.filter(staff.all_overtime_days, (x) => { return _.indexOf(staff.day_kinds, x.day_kind) != -1 });
+    } else {
+      let index = _.indexOf(q.day_kinds, kind);
+
+      if (index == -1) q.day_kinds.push(kind)
+      else q.day_kinds.splice(index, 1);
+
+      _.each(all_staffs, x => {
+        x.day_kinds = q.day_kinds;
+        x.overtime_days = _.filter(x.all_overtime_days, (y) => { return _.indexOf(q.day_kinds, y.day_kind) != -1 });
+        x.overtime_dates = _.chain(x.overtime_days).pluck('overtime_date').reduce((acc, it) => { return acc + ', ' + it; }).value();
+        x.overtime_total = _.chain(x.overtime_days).pluck('overtime_hours').reduce((acc, it) => { return acc + bUtil.timeToMinutes(it); }, 0).value();
+        x.overtime_total = parseTimeToWord(x.overtime_total);
+      });
+      d.overtime_staffs = _.filter(all_staffs, (x) => { return !_.isEmpty(x.overtime_days); });
+    }
+  }
+
+  function dayKindClass(kind, staff) {
+    if (staff) return _.indexOf(staff.day_kinds, kind) != -1 ? 'btn-primary' : null;
+    else return _.indexOf(q.day_kinds, kind) != -1 ? 'btn-primary' : null;
+  }
+
+  function badgeClass(kind) {
+    switch (kind) {
+      case 'W': return 'badge-secondary'; break;
+      case 'R': return 'badge-danger'; break;
+      case 'H': return 'badge-success'; break;
+      case 'A': return 'badge-success'; break;
+      case 'N': return 'badge-warning'; break;
+      default: return ''; break;
+    }
+  }
+
+  function changeTimeFiter(item) {
+    q[item] = !q[item];
+  }
+
+  function changeModalTimeFiter(item) {
+    p.data[item] = !p.data[item];
+  }
+
+  q.checked = {};
+  q.day_kind_name = [];
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+
+  q.time_range_filter_on = _.isBoolean(bStorage.json(storage_key).time_range_filter_on) ? bStorage.json(storage_key).time_range_filter_on : true;
+  q.limited_on = _.isBoolean(bStorage.json(storage_key).limited_on) ? bStorage.json(storage_key).limited_on : false;
+  q.before_work_filter_on = _.isBoolean(bStorage.json(storage_key).before_work_filter_on) ? bStorage.json(storage_key).before_work_filter_on : false;
+  q.after_work_filter_on = _.isBoolean(bStorage.json(storage_key).after_work_filter_on) ? bStorage.json(storage_key).after_work_filter_on : false;
+  q.calc_lunchtime = _.isBoolean(bStorage.json(storage_key).calc_lunchtime) ? bStorage.json(storage_key).calc_lunchtime : false;
+  q.calc_after_work = _.isBoolean(bStorage.json(storage_key).calc_after_work) ? bStorage.json(storage_key).calc_after_work : true;
+  q.calc_before_work = _.isBoolean(bStorage.json(storage_key).calc_before_work) ? bStorage.json(storage_key).calc_before_work : true;
+  q.mode = bStorage.json(storage_key).mode || 1;
+  q.min_free_time = bStorage.json(storage_key).min_free_time || bUtil.minutesToTime(60);
+  q.max_free_time = bStorage.json(storage_key).max_free_time || bUtil.minutesToTime(120);
+  q.overtime_limit = bStorage.json(storage_key).overtime_limit || bUtil.minutesToTime(120);
+  q.max_before_work_time = bStorage.json(storage_key).max_before_work_time || bUtil.minutesToTime(60);
+  q.min_before_work_time = bStorage.json(storage_key).min_before_work_time || bUtil.minutesToTime(0);
+  q.max_after_work_time = bStorage.json(storage_key).max_after_work_time || bUtil.minutesToTime(60);
+  q.min_after_work_time = bStorage.json(storage_key).min_after_work_time || bUtil.minutesToTime(0);
+  q.all_day_kinds = _.mapMatrix(q.day_kinds, ['day_kind', 'day_kind_name']);
+  q.day_kinds = bStorage.json(storage_key).day_kinds ? bStorage.json(storage_key).day_kinds : _.pluck(q.all_day_kinds, 'day_kind');
+  _.each(q.all_day_kinds, x => { q.day_kind_name[x.day_kind] = x.day_kind_name; });
+
+  model.overtime_days = _.chain(model.overtime_days)
+                         .mapRows(['overtime_id', 'overtime_date', 'day_kind', 'free_time', 'lunchtime', 'after_work_time', 'before_work_time', 'overtime_hours'])
+                         .each(x => {
+                           x.day_kind_name = q.day_kind_name[x.day_kind];
+                           x.overtime_hours = bUtil.minutesToTime(x.overtime_hours);
+                           x.no_lunchtime = bUtil.minutesToTime(x.free_time - x.lunchtime);
+                           x.after_work_time = bUtil.minutesToTime(x.after_work_time);
+                           x.before_work_time = bUtil.minutesToTime(x.before_work_time);
+                           x.free_time = bUtil.minutesToTime(x.free_time);
+                         })
+                         .groupBy('overtime_id')
+                         .value();
+
+  d.overtime_staffs = _.chain(d.overtime_staffs)
+                       .mapRows(['overtime_id',
+                                 'staff_id',
+                                 'name',
+                                 'month',
+                                 'overtime_total',
+                                 'overtime_dates',
+                                 'min_free_time',
+                                 'max_free_time'])
+                       .each(x => {
+                          x.overtime_total = parseTimeToWord(x.overtime_total);
+                          x.overtime_days = model.overtime_days[x.overtime_id];
+                          x.all_overtime_days = angular.copy(x.overtime_days);
+                          x.min_free_time = q.min_free_time;
+                          x.max_free_time = q.max_free_time;
+                          x.mode = q.mode;
+                          x.overtime_limit = q.overtime_limit;
+                          x.calc_lunchtime = q.calc_lunchtime;
+                          x.calc_before_work = q.calc_before_work;
+                          x.calc_after_work = q.calc_after_work;
+                          x.time_range_filter_on = q.time_range_filter_on;
+                          x.limited_on = q.limited_on;
+                          x.before_work_filter_on = q.before_work_filter_on;
+                          x.after_work_filter_on = q.after_work_filter_on;
+                          x.max_before_work_time = q.max_before_work_time;
+                          x.min_before_work_time = q.min_before_work_time;
+                          x.max_after_work_time = q.max_after_work_time;
+                          x.min_after_work_time = q.min_after_work_time;
+                          x.day_kinds = q.day_kinds;
+                        })
+                       .value();
+  all_staffs = angular.copy(d.overtime_staffs);
+
+  d.month = !_.isEmpty(d.overtime_staffs) ? d.overtime_staffs[0].month : model.month;
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <style>
+    .width-auto {
+      width: auto
+    }
+    .danger-color {
+      color:#f64e60
+    }
+  </style>
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row mb-4">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>month</t><r/></label>
+                <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>division name</t></label>
+                <b-tree-select
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_id"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>round to:</t></label>
+              <button type="button" class="btn" ng-class="(q.mode == 1)  && 'btn-primary'" ng-click="changeTruncateModeAll(1)"><t>as is</t></button>
+              <button type="button" class="btn" ng-class="(q.mode == 5)  && 'btn-primary'" ng-click="changeTruncateModeAll(5)"><t>5m</t></button>
+              <button type="button" class="btn" ng-class="(q.mode == 10) && 'btn-primary'" ng-click="changeTruncateModeAll(10)"><t>10m</t></button>
+              <button type="button" class="btn" ng-class="(q.mode == 15) && 'btn-primary'" ng-click="changeTruncateModeAll(15)"><t>15m</t></button>
+              <button type="button" class="btn" ng-class="(q.mode == 30) && 'btn-primary'" ng-click="changeTruncateModeAll(30)"><t>30m</t></button>
+              <button type="button" class="btn" ng-class="(q.mode == 60) && 'btn-primary'" ng-click="changeTruncateModeAll(60)"><t>1h</t></button>
+            </div>
+            <div class="form-group mb-2">
+              <label><t>take only :</t></label>
+              <button type="button" ng-repeat="kind in q.all_day_kinds" class="btn mr-2" ng-class="dayKindClass(kind.day_kind)" ng-click="changeDayKind(kind.day_kind)">{{ kind.day_kind_name }}</button>
+            </div>
+          </div>
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>time range filter</t></label>
+                <div class="input-group">
+                  <span class="form-view" ng-if="!q.time_range_filter_on"><t>filter off</t></i></span>
+                  <input class="form-control"
+                         ng-if="q.time_range_filter_on"
+                         b-date-picker="HH:mm"
+                         max-date="q.max_free_time"
+                         ng-model="q.min_free_time">
+                  <input class="form-control"
+                         ng-if="q.time_range_filter_on"
+                         b-date-picker="HH:mm"
+                         min-date="q.min_free_time"
+                         ng-model="q.max_free_time">
+                  <div class="input-group-append">
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeTimeFiter('time_range_filter_on')" ng-if="!q.time_range_filter_on">
+                      <i class="fas fa-filter fa-2x"></i>
+                      <i class="fas fa-slash fa-stack-1x"></i>
+                      <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                    </span>
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="q.time_range_filter_on" ng-click="changeTimeFiter('time_range_filter_on')">
+                      <i class="fas fa-filter"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <label><t>limit overtime</t></label>
+                <div class="input-group">
+                  <input type="text" class="form-control" ng-if="q.limited_on" b-date-picker="HH:mm" ng-model="q.overtime_limit">
+                  <span class="form-view" ng-if="!q.limited_on"><t>filter off</t></i></span>
+                  <div class="input-group-append">
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeTimeFiter('limited_on')" ng-if="!q.limited_on">
+                      <i class="fas fa-filter fa-2x"></i>
+                      <i class="fas fa-slash fa-stack-1x"></i>
+                      <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                    </span>
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="q.limited_on" ng-click="changeTimeFiter('limited_on')">
+                      <i class="fas fa-filter"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>lunchtime as overtime</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-model="q.calc_lunchtime" ng-change="refillOvertimeAll()"/>
+                <span><t ng-if="!q.calc_lunchtime">ignore</t></span>
+                <span><t ng-if="q.calc_lunchtime">allow</t></span>
+              </label>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>before work as overtime</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-model="q.calc_before_work" ng-change="refillOvertimeAll()"/>
+                  <span><t ng-if="!q.calc_before_work">ignore</t></span>
+                  <span><t ng-if="q.calc_before_work">allow</t></span>
+                </label>
+              </div>
+              <div class="col-sm-12" ng-if="q.calc_before_work">
+                <label><t>time range filter for before work</t></label>
+                <div class="input-group">
+                  <span class="form-view" ng-if="!q.before_work_filter_on"><t>filter off</t></i></span>
+                  <input type="text" class="form-control" ng-if="q.before_work_filter_on" b-date-picker="HH:mm" max-date="q.max_before_work_time" ng-model="q.min_before_work_time">
+                  <input type="text" class="form-control" ng-if="q.before_work_filter_on" b-date-picker="HH:mm" min-date="q.min_before_work_time" ng-model="q.max_before_work_time">
+                  <div class="input-group-append">
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeTimeFiter('before_work_filter_on')" ng-if="!q.before_work_filter_on">
+                      <i class="fas fa-filter fa-2x"></i>
+                      <i class="fas fa-slash fa-stack-1x"></i>
+                      <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                    </span>
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="q.before_work_filter_on" ng-click="changeTimeFiter('before_work_filter_on')">
+                      <i class="fas fa-filter"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12">
+                <label><t>after work as overtime</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-model="q.calc_after_work" ng-change="refillOvertimeAll()"/>
+                  <span><t ng-if="!q.calc_after_work">ignore</t></span>
+                  <span><t ng-if="q.calc_after_work">allow</t></span>
+                </label>
+              </div>
+              <div class="col-sm-12" ng-if="q.calc_after_work">
+                <label><t>time range filter for after work</t></label>
+                <div class="input-group">
+                  <span class="form-view" ng-if="!q.after_work_filter_on"><t>filter off</t></i></span>
+                  <input type="text" class="form-control" ng-if="q.after_work_filter_on" b-date-picker="HH:mm" max-date="q.max_after_work_time" ng-model="q.min_after_work_time">
+                  <input type="text" class="form-control" ng-if="q.after_work_filter_on" b-date-picker="HH:mm" min-date="q.min_after_work_time" ng-model="q.max_after_work_time">
+                  <div class="input-group-append">
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeTimeFiter('after_work_filter_on')" ng-if="!q.after_work_filter_on">
+                      <i class="fas fa-filter fa-2x"></i>
+                      <i class="fas fa-slash fa-stack-1x"></i>
+                      <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                    </span>
+                    <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="q.after_work_filter_on" ng-click="changeTimeFiter('after_work_filter_on')">
+                      <i class="fas fa-filter"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="overtimeModal()"><t>add</t></button>
+            <button type="button" class="btn btn-success" ng-if="fi.select_staff" ng-click="selectStaffs()"><t>select</t></button>
+            <button type="button" class="btn btn-danger" ng-click="removeOvertimeStaffs()" ng-show="q.staff_checked.has">
+              <t p1="q.staff_checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="overtime"/>
+          </div>
+        </div>
+        <b-pg-grid name="overtime" local-data="d.overtime_staffs" search="staff_id, name, overtime_date, overtime_hours" on-check="onCheckStaff(checked)"
+                   iterator="item" current-limit="1000" searchable="page_id" sort="overtime_date">
+          <b-pg-row>
+            <b-pg-col name="name" size="6"/>
+            <b-pg-col name="overtime_dates" size="14"/>
+            <b-pg-col name="overtime_total" size="2"/>
+            <b-pg-col name="actions" size="1">
+              <div class="text-left">
+                <button type="button" class="btn btn-default btn-icon" ng-click="overtimeModal(item)"><i class="fa fa-edit"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xl" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>add overtime</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-sm-8">
+                <div class="form-group">
+                  <label><t>month</t><r/></label>
+                  <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="p.data.month" disabled required/>
+                </div>
+                <div class="form-group">
+                  <label><t>staff</t><r/></label>
+                  <b-input name="staffs"
+                           model="p.data.name | name"
+                           model-key="p.data.staff_id | staff_id"
+                           column="staff_number, staff_kind_name"
+                           search="staff_number, name"
+                           on-change="changeStaffQuery(p.data, query, value)"
+                           is-view="fi.select_staff"
+                           on-view="selectStaff(p.data)"
+                           on-delete="setStaff(p.data, {})"
+                           required-key>
+                    <header>
+                      <div class="col-sm-6"><t>staff number</t></div>
+                      <div class="col-sm-12"><t>staff name</t></div>
+                      <div class="col-sm-6"><t>staff kind name</t></div>
+                    </header>
+                    <content>
+                      <div class="col-sm-6">{{ row.staff_number }}</div>
+                      <div class="col-sm-12">{{ row.name }}</div>
+                      <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                    </content>
+                  </b-input>
+                </div>
+              </div>
+              <div class="col-sm-16">
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>time range filter</t></label>
+                    <div class="input-group">
+                      <span class="form-view" ng-if="!p.data.time_range_filter_on"><t>filter off</t></i></span>
+                      <input class="form-control"
+                             ng-if="p.data.time_range_filter_on"
+                             b-date-picker="HH:mm"
+                             max-date="p.data.max_free_time"
+                             ng-model="p.data.min_free_time">
+                      <input class="form-control"
+                             ng-if="p.data.time_range_filter_on"
+                             b-date-picker="HH:mm"
+                             min-date="p.data.min_free_time"
+                             ng-model="p.data.max_free_time">
+                      <div class="input-group-append">
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeModalTimeFiter('time_range_filter_on')" ng-if="!p.data.time_range_filter_on">
+                          <i class="fas fa-filter fa-2x"></i>
+                          <i class="fas fa-slash fa-stack-1x"></i>
+                          <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                        </span>
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="p.data.time_range_filter_on" ng-click="changeModalTimeFiter('time_range_filter_on')">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>limit overtime</t></label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" ng-if="p.data.limited_on" b-date-picker="HH:mm" ng-model="p.data.overtime_limit">
+                      <span class="form-view" ng-if="!p.data.limited_on"><t>filter off</t></i></span>
+                      <div class="input-group-append">
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeModalTimeFiter('limited_on')" ng-if="!p.data.limited_on">
+                          <i class="fas fa-filter fa-2x"></i>
+                          <i class="fas fa-slash fa-stack-1x"></i>
+                          <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                        </span>
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="p.data.limited_on" ng-click="changeModalTimeFiter('limited_on')">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><t>lunchtime as overtime</t></label><br/>
+                  <label class="switch">
+                    <input type="checkbox" ng-model="p.data.calc_lunchtime" ng-change="refillOvertime(p.data)"/>
+                    <span><t ng-if="!p.data.calc_lunchtime">ignore</t></span>
+                    <span><t ng-if="p.data.calc_lunchtime">allow</t></span>
+                  </label>
+                </div>
+                <div class="form-row mb-4">
+                  <div class="col-sm-12">
+                    <label><t>before work as overtime</t></label><br/>
+                    <label class="switch">
+                      <input type="checkbox" ng-model="p.data.calc_before_work" ng-change="refillOvertime(p.data)"/>
+                      <span><t ng-if="!p.data.calc_before_work">ignore</t></span>
+                      <span><t ng-if="p.data.calc_before_work">allow</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-12" ng-if="p.data.calc_before_work">
+                    <label><t>time range filter for before work</t></label>
+                    <div class="input-group">
+                      <span class="form-view" ng-if="!p.data.before_work_filter_on"><t>filter off</t></i></span>
+                      <input class="form-control"
+                             ng-if="p.data.before_work_filter_on"
+                             b-date-picker="HH:mm"
+                             max-date="p.data.max_before_work_time"
+                             ng-model="p.data.min_before_work_time">
+                      <input class="form-control"
+                             ng-if="p.data.before_work_filter_on"
+                             b-date-picker="HH:mm"
+                             min-date="p.data.min_before_work_time"
+                             ng-model="p.data.max_before_work_time">
+                      <div class="input-group-append">
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="!p.data.before_work_filter_on" ng-click="changeModalTimeFiter('before_work_filter_on')">
+                          <i class="fas fa-filter fa-2x"></i>
+                          <i class="fas fa-slash fa-stack-1x"></i>
+                          <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                        </span>
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="p.data.before_work_filter_on" ng-click="changeModalTimeFiter('before_work_filter_on')">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <label><t>after work as overtime</t></label><br/>
+                    <label class="switch">
+                      <input type="checkbox" ng-model="p.data.calc_after_work" ng-change="refillOvertime(p.data)"/>
+                      <span><t ng-if="!p.data.calc_after_work">ignore</t></span>
+                      <span><t ng-if="p.data.calc_after_work">allow</t></span>
+                    </label>
+                  </div>
+                  <div class="col-sm-12" ng-if="p.data.calc_after_work">
+                    <label><t>time range filter for after work</t></label>
+                    <div class="input-group">
+                      <span class="form-view" ng-if="!p.data.after_work_filter_on"><t>filter off</t></i></span>
+                      <input class="form-control"
+                             ng-if="p.data.after_work_filter_on"
+                             b-date-picker="HH:mm"
+                             max-date="p.data.max_after_work_time"
+                             ng-model="p.data.min_after_work_time">
+                      <input class="form-control"
+                             ng-if="p.data.after_work_filter_on"
+                             b-date-picker="HH:mm"
+                             min-date="p.data.min_after_work_time"
+                             ng-model="p.data.max_after_work_time">
+                      <div class="input-group-append">
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-click="changeModalTimeFiter('after_work_filter_on')" ng-if="!p.data.after_work_filter_on">
+                          <i class="fas fa-filter fa-2x"></i>
+                          <i class="fas fa-slash fa-stack-1x"></i>
+                          <i class="fas fa-slash fa-stack-2x danger-color"></i>
+                        </span>
+                        <span class="input-group-text fa-stack width-auto fa-2x" role="button" ng-if="p.data.after_work_filter_on" ng-click="changeModalTimeFiter('after_work_filter_on')">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-row mt-4">
+              <div class="col-sm-12 mb-2">
+                <button type="button" class="btn btn-default" ng-click="addOvertimeDay(p.data)" ng-disabled="!p.data.staff_id"><t>add</t></button>
+                <button type="button" class="btn btn-default" ng-click="loadOvertimesByStaff(p.data)" ng-disabled="!p.data.staff_id"><t>fill</t></button>
+                <button type="button" class="btn btn-danger" ng-click="removeOvertimeDays(p.data)" ng-show="q.checked.has">
+                  <t p1="q.checked.size">delete $1</t>
+                </button>
+              </div>
+            </div>
+            <div class="form-row mb-2">
+              <div class="col-sm-12 mb-2">
+                <label><t>round to:</t></label>
+                <button type="button" class="btn" ng-class="(p.data.mode == 1) &&  'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(1,  p.data)"><t>as is</t></button>
+                <button type="button" class="btn" ng-class="(p.data.mode == 5) &&  'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(5,  p.data)"><t>5m</t></button>
+                <button type="button" class="btn" ng-class="(p.data.mode == 10) && 'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(10, p.data)"><t>10m</t></button>
+                <button type="button" class="btn" ng-class="(p.data.mode == 15) && 'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(15, p.data)"><t>15m</t></button>
+                <button type="button" class="btn" ng-class="(p.data.mode == 30) && 'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(30, p.data)"><t>30m</t></button>
+                <button type="button" class="btn" ng-class="(p.data.mode == 60) && 'btn-primary'" ng-disabled="!p.data.staff_id" ng-click="changeTruncateMode(60, p.data)"><t>1h</t></button>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label><t>take only :</t></label>
+              <button type="button" ng-repeat="kind in q.all_day_kinds" class="btn mr-2" ng-class="dayKindClass(kind.day_kind, p.data)" ng-disabled="!p.data.staff_id" ng-click="changeDayKind(kind.day_kind, p.data)">{{ kind.day_kind_name }}</button>
+            </div>
+            <b-pg-grid name="overtimeModalGrid" local-data="p.data.overtime_days" on-check="onCheckDays(checked)"
+                       iterator="item" search="rownum, overtime_date, free_time" limit="35" current-limit="1000">
+              <b-pg-row>
+                <b-pg-col name="rownum" size="1"/>
+                <b-pg-col name="overtime_date" size="4">
+                  <input type="text" class="form-control" ng-model="item.overtime_date" b-date-picker ng-blur="loadOvertimeDay(p.data, item)" required/>
+                </b-pg-col>
+                <b-pg-col name="day_kind_name" size="3">
+                  <span class="badge" ng-class="badgeClass(item.day_kind)">{{ item.day_kind_name }}</span>
+                </b-pg-col>
+                <b-pg-col name="free_time" size="3"/>
+                <b-pg-col name="no_lunchtime" size="3"/>
+                <b-pg-col name="before_work_time" size="3"/>
+                <b-pg-col name="after_work_time" size="3"/>
+                <b-pg-col name="overtime_hours" size="3">
+                  <input type="text" class="form-control" b-date-picker="HH:mm" max-date="item.free_time" ng-model="item.overtime_hours" ng-disabled="!item.free_time" required/>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveOvertime()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

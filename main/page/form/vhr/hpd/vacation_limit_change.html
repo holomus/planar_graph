@@ -1,0 +1,227 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = _.omit(model, 'references', 'limit_changes'),
+      q = model.references;
+
+  // ------------------------------ staff ------------------------------//
+  function addItem() {
+    d.limit_changes.push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.limit_changes, item);
+      d.limit_changes.splice(index, 1);
+    });
+  }
+
+  function whereStaff() {
+    let staff_ids = _.chain(d.limit_changes).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', d.change_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', d.change_date]
+                  ]]]
+                ];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (d.division_id) {
+      where = ['and', [['division_id', '=', d.division_id], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function setStaff(item, data) {
+    if (!data) return;
+    item.staff_id = data.staff_id;
+    item.name = data.name;
+
+    page.post(':get_limit_day', { staff_id: item.staff_id, period: d.change_date }).then( result => {
+      _.extend(item, result);
+    });
+  }
+
+  function selectStaff(item) {
+    fi.select_staff({ date: d.change_date }, _.partial(setStaff, item), { where: whereStaff() });
+  }
+
+  function selectStaffs() {
+    fi.select_staff({ date: d.change_date }, function(result) {
+      let staff_ids = _.chain(result).pluck('staff_id').compact().value();
+
+      if (!_.isEmpty(staff_ids)) {
+        page.post(':get_limit_days', { staff_ids: staff_ids, period: d.change_date }).then( result => {
+          d.limit_changes.push(...result);
+        });
+      }
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  // ------------------------------ division ------------------------------//
+  function onChangeDivision() {
+    if (!q.division_inited) {
+      q.division_inited = true;
+      q.old_division_id = d.division_id;
+    } else if (!_.isEmpty(d.limit_changes)) {;
+      page.confirm(t('all items will be removed. continue?')(), function() {
+        d.limit_changes = [];
+        q.old_division_id = d.division_id;
+      }, function() {
+        d.division_id = q.old_division_id;
+      });
+    } else {
+      q.old_division_id = d.division_id;
+    }
+  }
+
+  function changeDate() {
+    if (!_.isEmpty(d.limit_changes)) {
+      page.confirm(t('all items will be removed. continue?')(), function() {
+        d.limit_changes = [];
+        q.old_date = d.change_date;
+      }, function() {
+        d.change_date = q.old_date;
+      });
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        var data = _.omit(d, 'limit_changes');
+        data.posted = posted;
+        data.limit_changes = _.chain(d.limit_changes)
+                              .map(x => x = _.pick(x, 'page_id', 'staff_id'))
+                              .value();
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  d.limit_changes = _.mapRows(model.limit_changes, ['page_id', 'staff_id', 'name', 'limit_days']);
+
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.old_date = d.change_date;
+  q.old_division_id = d.division_id;
+  q.division_inited = d.division_id ? false : true;
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>journal date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+              <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>division name</t></label>
+            <b-tree-select
+              origin="q.divisions"
+              id-key="division_id"
+              model="d.division_id"
+              on-change="onChangeDivision()"/>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>change date</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.change_date" ng-blur="changeDate()" b-date-picker required/>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>days limit</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.days_limit" b-number required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>journal name</t></label>
+            <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="col-sm mb-2">
+          <button type="button" class="btn btn-success" ng-click="selectStaffs()"><t>select</t></button>
+          <button type="button" class="btn btn-default" ng-click="addItem()"><t>add</t></button>
+          <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+            <t p1="q.checked.size">delete $1</t>
+          </button>
+        </div>
+        <div class="col-sm md-2">
+          <b-pg-controller name="staffs"/>
+        </div>
+      </div>
+      <b-pg-grid name="staffs" local-data="d.limit_changes" on-check="onCheck(checked)" iterator="item">
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1">
+            <div class="text-center">{{ item.rownum }}</div>
+          </b-pg-col>
+          <b-pg-col name="staffs" size="17">
+            <div class="form-group">
+              <b-input name="staffs"
+                       model="item.name | name"
+                       model-key="item.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date, staff_kind_name"
+                       search="staff_number, name"
+                       on-change="changeStaffQuery(query, value)"
+                       is-view="fi.select_staff"
+                       on-select="setStaff(item, row)"
+                       on-view="selectStaff(item)"
+                       required-key>
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                  <div class="col-sm-6"><t>staff kind name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number }}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                </content>
+              </b-input>
+            </div>
+          </b-pg-col>
+          <b-pg-col name="limit_days" size="5">
+            <span class="form-view">{{ item.limit_days }}</span>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

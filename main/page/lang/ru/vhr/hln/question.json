@@ -1,0 +1,13 @@
+{
+ "do you really want to delete the group from this question": "Вы действительно хотите удалить группу с этого вопроса?",
+ "active": "Активный",
+ "answer type": "Тип ответа",
+ "code": "Код",
+ "name is required": "Текст вопроса является обязательным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус",
+ "text question": "Текст вопроса",
+ "there must be at least 1 correct answer": "Должен быть хотя бы один правильный ответ",
+ "writing hint": "Подсказка"
+}

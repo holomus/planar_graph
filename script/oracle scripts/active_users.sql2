@@ -1,0 +1,21 @@
+select (select w.Code
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Code,
+       (select w.Name
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Name,
+       q.*
+  from (select *
+          from (select q.Company_Id,
+                       to_char(Trunc(q.Track_Date, 'MON'), 'dd.mm.yyyy') Mon,
+                       count(distinct q.Person_Id) Cnt
+                  from Htt_Tracks q
+                 where q.Track_Date >= to_date('01.01.2023')
+                   and q.Company_Id = 580
+                   and exists (select *
+                          from Md_Companies w
+                         where w.Company_Id = q.Company_Id
+                           and w.State = 'A')
+                 group by q.Company_Id, Trunc(q.Track_Date, 'MON')) q
+        Pivot(sum(Cnt)
+           for Mon in('01.01.2023', '01.02.2023'))) q

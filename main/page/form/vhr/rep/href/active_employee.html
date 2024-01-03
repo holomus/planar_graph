@@ -1,0 +1,94 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t) {
+  var d = model,
+      frame = page.$content.find('.report_frame')[0],
+      q = {};
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V'? 'btn-primary' : 'btn-default';
+  }
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+        var data = {
+          begin_date: moment(d.date, 'MM.YYYY').format('DD.MM.YYYY'),
+          company_id: _.pluck(d.company_ids, 'company_id'),
+          rt: rt
+        };
+
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        window.open(page.url('run', data));
+      }
+    }
+  }
+
+  setFormMode('P');
+  d.company_ids = [];
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+  </div>
+  <button type="button" class="btn btn-default" ng-if="page.isDialog()" ng-click="page.close()">{{ page.close.title }}</button>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>month</t><r/></label><br/>
+                  <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.date" required/>
+                </div>
+                <div class="form-group">
+                  <label><t>companies</t></label>
+                  <b-input name="companies"
+                           multiple
+                           model="d.company_ids"
+                           model-key="company_id"
+                           label="name"
+                           is-view="fi.select_company"
+                           on-view="selectCompany()">
+                      {{ row.name }}
+                    </content>
+                  </b-input>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P'" class="report_frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

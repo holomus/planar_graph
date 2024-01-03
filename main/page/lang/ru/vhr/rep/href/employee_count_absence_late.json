@@ -1,0 +1,16 @@
+{
+ "CSV": "CSV",
+ "date": "Период",
+ "divisions": "Подразделения",
+ "Excel": "EXCEL",
+ "generate": "Составить отчет",
+ "Html": "HTML",
+ "jobs": "Должности",
+ "parameters": "Фильтр",
+ "staff kind": "Вид занятости",
+ "staff name": "ФИО",
+ "staff number": "Табельный номер",
+ "staffs": "Сотрудники",
+ "view": "Просмотреть",
+ "XML": "XML"
+}

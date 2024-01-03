@@ -1,0 +1,11 @@
+{
+ "no": "Нет",
+ "pg.bank_account.bank_account_code": "Расчетный счет",
+ "pg.bank_account.bank_account_name": "Название",
+ "pg.bank_account.bank_code": "МФО",
+ "pg.bank_account.bank_name": "Банк",
+ "pg.bank_account.currency_name": "Валюта",
+ "pg.bank_account.is_main_name": "Основной",
+ "pg.bank_account.note": "Примечание",
+ "yes": "Да"
+}

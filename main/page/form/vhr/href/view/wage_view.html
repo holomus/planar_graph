@@ -1,0 +1,177 @@
+<script biruni>
+page.init(function() {
+  page.grid('table_audit').disable();
+});
+page.ctrl(function(scope, model, fi) {
+  var d = model, q = {};
+
+  function edit() {
+    fi.edit({ wage_id: d.wage_id });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+
+    if (!_.contains(q.enabledGrids, tableName) && q.activeSection != 'main') {
+      page.query(tableName).param({ wage_id: d.wage_id });
+      page.grid(tableName).fetch();
+      page.grid(tableName).enable();
+
+      q.enabledGrids.push(tableName);
+    }
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ wage_id: d.wage_id, context_id: row.t_context_id });
+  }
+
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="text-center">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.job_name }}</span>
+              <span class="font-weight-bolder font-size-h3">&nbsp;{{ d.rank_name }}</span>
+              <span class="text-muted">&nbsp;({{ d.wage_id }})</span>
+            </div>
+          </div>
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')" ng-if="fi.audit">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-user-clock"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>main</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>job name</t></label>
+                <span class="form-view">{{ d.job_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>rank name</t></label>
+                <span class="form-view">{{ d.rank_name }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>wage begin</t></label>
+                    <span class="form-view">{{ d.wage_begin | bNumber }}</span>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="form-group">
+                    <label><t>wage end</t></label>
+                    <span class="form-view">{{ d.wage_end | bNumber }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>audit</t></h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="table_audit"/>
+            </div>
+          </div>
+          <b-grid name="table_audit" required="t_context_id" on-dblclick="auditDetails(row)"
+                  sort="-t_timestamp" search="t_user_name, t_event_name" searchable="wage_begin, wage_end"
+                  extra-columns="t_audit_id, t_user_id, t_source_project_name, t_date, wage_id">
+            <b-row>
+              <b-col name="t_timestamp" size=3/>
+              <b-col name="t_user_name" size=3/>
+              <b-col name="t_event_name" size=3/>
+              <b-col name="job_name" size=5/>
+              <b-col name="rank_name" size=4/>
+              <b-col name="wage_begin" size=3 format="amount"/>
+              <b-col name="wage_end" size=3 format="amount"/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+            </b-action>
+
+            <b-filter name="t_date"/>
+            <b-filter name="t_user_id" decorate-with="t_user_name"/>
+            <b-filter name="t_event" decorate-with="t_event_name"/>
+            <b-filter name="wage_id" directive="equal" extra/>
+            <b-filter name="job_id" decorate-with="job_name"/>
+            <b-filter name="rank_id" decorate-with="rank_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

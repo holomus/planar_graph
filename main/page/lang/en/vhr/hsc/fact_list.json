@@ -1,0 +1,16 @@
+{
+ "add": "Create",
+ "delete $1": "Delete $1",
+ "delete $1{fact_count} fact(s)?": "Delete facts in quantity <b>$1</b>?",
+ "delete fact from $1{fact_date}?": "Remove fact for <b>$1</b>?",
+ "table.area_id": "Zone ID",
+ "table.area_name": "Zone",
+ "table.driver_id": "Driver ID",
+ "table.driver_name": "Driver",
+ "table.fact_date": "Date",
+ "table.fact_id": "ID",
+ "table.fact_type_name": "Type",
+ "table.fact_value": "Meaning",
+ "table.object_id": "Object ID",
+ "table.object_name": "Object"
+}

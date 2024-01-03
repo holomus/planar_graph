@@ -1,0 +1,13 @@
+{
+ "add group specialty": "Guruh yaratish",
+ "add specialty": "Yaratish",
+ "delete $1": "O'chirish $1",
+ "delete $1{specialty_count} specialty(ies)?": "Haqiqatan ham <b>$1</b> Ixtisoslik(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete specialty $1{specialty_name}?": "Haqiqatan ham <b>$1</b> ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.kind_name": "Turi",
+ "table.name": "Nomi",
+ "table.specialty_id": "ID",
+ "table.state_name": "Holat"
+}

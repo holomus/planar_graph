@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{fixed_term_base_count}  fixed term bases?": "Удалить основания в количестве <b>$1</b>?",
+ "delete fixed term base $1{fixed_term_base_name}?": "Удалить основание <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.fixed_term_base_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус",
+ "table.text": "Текст для приказа"
+}

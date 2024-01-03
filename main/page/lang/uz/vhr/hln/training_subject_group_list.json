@@ -1,0 +1,14 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{subject_group_count} subject group(s)?": "$1ta mavzular guruhi o'chirilsinmi?",
+ "delete subject group $1{subject_group_name}?": "$1 mavzular guruhi o'chirilsinmi?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nomi",
+ "table.state_name": "Holat",
+ "table.subject_group_id": ""
+}

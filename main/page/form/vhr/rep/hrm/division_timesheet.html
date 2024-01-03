@@ -1,0 +1,179 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param) {
+  var d = model,
+      s = model.settings,
+      q = {},
+      frame = page.$content.find('.report-frame')[0];
+
+  function run(rt, form) {
+    if (page.valid(scope.form)) {
+      var data = {
+        begin_date: d.begin_date,
+        end_date: d.end_date,
+        division_ids: d.division_ids,
+        rt: rt
+      };
+      if (form) {
+        frame.src = page.url('run', data);
+        setFormMode('V');
+      } else {
+        window.open(page.url('run', data));
+      }
+    }
+  }
+
+  function savePreferences() {
+    page.confirm(t('save preferences?')(), function() {
+      page.post(':save_preferences', s).then(page.isDialog() ? page.close : page.reload, page.alert);
+    });
+  }
+
+  function clearPreferences() {
+    page.prefClear(page.isDialog() ? page.close : page.reload);
+  }
+
+  function setFormMode(mode) {
+    q.formMode = mode;
+    q.classParam = mode == 'P'? 'btn-primary' : 'btn-default';
+    q.classView = mode == 'V'? 'btn-primary' : 'btn-default';
+    q.classSetting = mode == 'S' ? 'btn-primary' : 'btn-default';
+  }
+
+  function disableMinuteWords() {
+    if (s.minutes == 'N')
+      s.minute_words = 'N';
+  }
+
+  // division group
+  function setDivisionGroup(row) {
+    if (!row) return;
+    s.division_group_id = row.division_group_id;
+    s.division_group_name = row.name;
+  }
+
+  function selectDivisionGroup() {
+    fi.select_division_group(null, setDivisionGroup, { where: ['state', '=', 'A'] });
+  }
+
+  d.divisions = _.chain(model.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  d.division_ids = [];
+  setFormMode(param.open_setting == 'Y' ? 'S' : 'P');
+
+  scope.d = d;
+  scope.s = s;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.classParam" ng-click="setFormMode('P')"><t>parameters</t></button>
+    <button type="button" class="btn" ng-class="q.classView" ng-click="setFormMode('V')"><t>view</t></button>
+    <button type="button" class="btn" ng-class="q.classSetting" ng-click="setFormMode('S')"><t>preferences</t></button>
+  </div>
+  <button type="button" class="btn btn-default" ng-if="page.isDialog()" ng-click="page.close()">{{ page.close.title }}</button>
+  <button type="button" class="btn btn-icon btn-default" ng-click="run('html', true)" ng-show="q.formMode == 'V'">
+    <span class="fa fa-sync" aria-hidden="true"></span>
+  </button>
+  <div class="d-inline" ng-show="q.formMode == 'V'">
+    <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+    <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+  </div>
+  <div class="btn-group" ng-show="q.formMode =='S'">
+    <button type="button" class="btn btn-primary" ng-click="savePreferences()"><t>save preferences</t></button>
+    <button type="button" class="btn btn-default" ng-click="clearPreferences()"><t>clear preferences</t></button>
+  </div>
+</div>
+<div class="b-content">
+  <form ng-show="q.formMode == 'P'" name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>date</t></label><br/>
+                <b-date-range-picker begin="d.begin_date" end="d.end_date"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division</t></label>
+              <b-tree-select
+                multiple
+                origin="d.divisions"
+                id-key="division_id"
+                label-key="name"
+                parent-key="parent_id"
+                model="d.division_ids"
+                row-limit="2000"
+                option-check-childs/>
+            </div>
+            <div class="separator separator-solid my-3"></div>
+            <div class="form-group">
+              <button type="button" class="btn btn-primary" ng-click="run('html', true)"><t>generate</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('html', false)"><t>Html</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xlsx', false)"><t>Excel</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('csv', false)"><t>CSV</t></button>
+              <button type="button" class="btn btn-light text-primary" ng-click="run('xml', false)"><t>XML</t></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form ng-show="q.formMode == 'S'" name="settings">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.division_group" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>division group</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.manager" ng-true-value="'Y'" ng-false-value="'N'"/>
+                    <span><t>manager</t></span>
+                  </label>
+                </div>
+                <div class="form-group" ng-show="s.manager == 'Y'">
+                  <label><t>manager division group</t></label>
+                  <b-input name="division_groups"
+                           model="s.division_group_name | name"
+                           model-key="s.division_group_id | division_group_id"
+                           is-view="fi.select_division_group"
+                           on-view="selectDivisionGroup()">
+                    {{ row.name }}
+                  </b-input>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minutes" ng-true-value="'Y'" ng-false-value="'N'" ng-change="disableMinuteWords()"/>
+                    <span><t>setting minutes</t></span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-model="s.minute_words" ng-true-value="'Y'" ng-false-value="'N'" ng-disabled="s.minutes != 'Y'"/>
+                    <span><t>setting minute words</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <iframe ng-hide="q.formMode == 'P' || q.formMode == 'S'" class="report-frame" height="700px" width="100%" frameborder="0"></iframe>
+</div>

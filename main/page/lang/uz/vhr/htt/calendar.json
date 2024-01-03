@@ -1,0 +1,16 @@
+{
+ "add": "Qo'shish",
+ "calendar days": "Bayram va dam olish kunlari",
+ "code": "Kod",
+ "delete $1": "O'chirish $1",
+ "name": "Nom",
+ "pg.days.calendar_date": "Kun",
+ "pg.days.day_kind": "Kun turi",
+ "pg.days.name": "Nom",
+ "pg.days.swapped_date": "Almashuvchi kun",
+ "rest days": "Dam olish kunlari",
+ "save": "Saqlash",
+ "there are changes in dates, save changes?": "Ba'zi kunlarda o'zgarishlar mavjud, saqlansinmi?",
+ "there are new dates, save and go to edit?": "Yangi kunlar qo'shilgan, saqlagan holda tahrirlashga o'tilsinmi?",
+ "year": "Yil"
+}

@@ -1,0 +1,56 @@
+select p.Filial_Id,
+       (select w.Name
+          from Md_Persons w
+         where w.Person_Id = p.Employee_Id) Employee_Name,
+       p.Staff_Id,
+       p.Employee_Id,
+       Ks.Old_Id Old_Employee_Id,
+       Sk.Old_Id Old_Filial_Id,
+       q.Subcompany_Id,
+       (select e.Name
+          from Md_Filials e
+         where e.Filial_Id = p.Filial_Id) Filial_Name,
+       (select e.Name
+          from Old_Vx_Hr_Divisions e
+         where e.Division_Id = q.Subcompany_Id) Old_Filial_Name
+  from Href_Staffs p
+  join Migr_Keys_Store_One Ks
+    on Ks.Company_Id = 580
+   and Ks.Key_Name = 'person_id'
+   and Ks.New_Id = p.Employee_Id
+  join Migr_Keys_Store_One Sk
+    on Sk.Company_Id = 580
+   and Sk.Key_Name = 'filial_id'
+   and Sk.New_Id = p.Filial_Id
+  join Old_Vx_Hr_Employees q
+    on q.Company_Id = 480
+   and q.Employee_Id = Ks.Old_Id
+ where p.Company_Id = 580
+   and p.Dismissal_Date is null
+   and exists (select *
+          from Md_Filials w
+         where w.Filial_Id = p.Filial_Id
+           and w.State = 'A')
+   and Sk.Old_Id != q.Subcompany_Id
+   and p.Staff_Id not in (47157,
+                          77819,
+                          49434,
+                          49435,
+                          49587,
+                          49605,
+                          49606,
+                          78219,
+                          79670,
+                          80239,
+                          55447,
+                          80238,
+                          56553,
+                          56552,
+                          76507,
+                          57212,
+                          57746,
+                          73359,
+                          76069)
+   and p.Employee_Id not in (32953, 34749, 34756, 35572, 49712)
+   and p.Employee_Id not in (25559, 25108)
+ order by 1;

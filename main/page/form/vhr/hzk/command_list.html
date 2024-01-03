@@ -1,0 +1,30 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var stateClass = { N: 'secondary', S: 'warning', C: 'success' };
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<span class="badge badge-${ stateClass[row.state] }">${ row.state_name }</span>`;
+  });
+  
+  page.query('table').param(param);
+});
+</script>
+<div class="b-toolbar row">
+  <div class="offset-sm-14 col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" sort="device_name" search="device_name, command" extra-columns="device_id">
+    <b-row>
+      <b-col name="device_name" size=5/>
+      <b-col name="command" size=11/>
+      <b-col name="state_changed_on" size=5/>
+      <b-col name="state_name" as-html="state_html" size=3/>
+    </b-row>
+
+    <b-filter name="device_id" decorate-with="device_name"/>
+    <b-filter name="state_changed_on"/>
+    <b-filter name="state" decorate-with="state_name"/>
+  </b-grid>
+</form></div>

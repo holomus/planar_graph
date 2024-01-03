@@ -1,0 +1,13 @@
+{
+ "integrate": "Внести в статистику",
+ "integrate $1": "Внести в статистику $1",
+ "integrate $1{tracks_count} track(s)": "Внести в статистику <b>$1</b> отметки(ок)?",
+ "integrate track on $1{track_date} for $2{person_name}": "Внести в статистику отметку за $1 для сотрудника $2?",
+ "table.error_text": "Текст ошибки",
+ "table.mark_type_name": "Тип идентификации",
+ "table.person_name": "Физическое лицо",
+ "table.status_name": "Статус",
+ "table.track_datetime": "Дата и время",
+ "table.track_id": "ИД",
+ "table.track_type_name": "Тип отметки"
+}

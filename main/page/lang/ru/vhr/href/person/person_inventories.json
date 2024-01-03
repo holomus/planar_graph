@@ -1,0 +1,20 @@
+{
+ "add": "Добавить",
+ "add person inventory": "Добавить",
+ "close": "Закрыть",
+ "date assigned": "Дата получения",
+ "date returned": "Дата возврата",
+ "delete": "Удалить",
+ "delete person inventory $1{title}?": "Удалить инвентарь <b>$1</b>?",
+ "edit": "Изменить",
+ "edit person inventory": "Изменить",
+ "inventories": "Инвентарь",
+ "inventory type": "Типы инвентаря",
+ "note": "Примечание",
+ "pg.person_inventories.action": "Действия",
+ "pg.person_inventories.date_assigned": "Дата получения",
+ "pg.person_inventories.date_returned": "Дата возврата",
+ "pg.person_inventories.inventory_type_name": "Типы инвентаря",
+ "pg.person_inventories.note": "Примечание",
+ "save": "Сохранить"
+}

@@ -1,0 +1,8 @@
+{
+ "divisions": "Department",
+ "do you want to exclude no document types?": "Do you really want to clear exceptions?",
+ "job name": "Job",
+ "required document types": "Document Types at Hiring",
+ "save": "Save",
+ "you have not excluded any document types, do you want to leave?": "You have not excluded any type of documents, do you want to exit?"
+}

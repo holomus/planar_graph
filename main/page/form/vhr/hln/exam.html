@@ -1,0 +1,507 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, xparam, $timeout) {
+ var d = _.isUndefined(model.exam_id) ? _.extend(model, xparam) : model,
+     q = { checked: {}, sum_pattern_quantity: 0 , error_groups: [] },
+     modal = page.$content.find("form[name='modal']>.modal");
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  };
+
+  // patterns
+  function addPattern() {
+    let pattern ={ types: {}, has_writing_question: 'N' };
+    d.patterns.push(pattern);
+
+    _.each(d.question_groups, group => {
+      pattern.types[group.question_group_id] = {};
+      pattern.has_writing_question = 'N';
+    });
+  }
+
+  function changeTypeQuery(query, value, group, index) {
+    query.param({ question_group_id: group.question_group_id });
+    query.where((index != 0 && _.isEmpty(d.patterns[index - 1].types[group.question_group_id].question_type_id)) ? ['question_type_id', '=', [null]] : null);
+    query.searchValue(value);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function removePattern(pattern) {
+    let index = _.findIndex(d.patterns, pattern);
+    d.patterns.splice(index, 1);
+  }
+
+  function checkPattern() {
+    _.each(d.question_groups, group =>{
+      let old_type = {},
+          current_type = {};
+      _.each(d.patterns, pattern => {
+        old_type = current_type;
+        current_type = pattern.types[group.question_group_id].question_type_id;
+        if (!old_type && current_type) {
+          q.error_groups.push(t('pattern_no: $1')(pattern.order_no - 1) + '\n'+ t('group_name: $1')(group.question_group_name));
+        }
+      })
+    })
+  }
+
+  function quantityCounter() {
+    q.sum_pattern_quantity = 0;
+    _.each(d.patterns, pattern => {
+      q.sum_pattern_quantity += +pattern.quantity;
+    });
+  }
+
+  function checkGeneratingQuestions() {
+    _.each(d.patterns, (pattern, index) => {
+      pattern.order_no = index + 1;
+      pattern.question_types = [];
+
+      _.each(pattern.types, type => {
+        if (type.question_type_id) {
+          pattern.question_types.push( type.question_type_id )
+        }
+      });
+    });
+
+    var data = _.pick(d, 'patterns');
+
+    page.post(':check_generating_questions', data).then( result => {
+      q.pattern_gen_result = result;
+      _.each(q.pattern_gen_result, res => {
+        if (res.quantity) {
+          res.satisfy = ( +res.found_questions_count >= +res.quantity ) ? 'Y' : 'N';
+        }
+      });
+    showModal();
+    }, page.alert);
+  }
+
+  function resultStyle(item) {
+    return { 'background-color': item.satisfy == 'Y' ? '#d6ffe8' : ( item.satisfy == 'N' ? '#fce3e3': null )};
+  }
+
+  // manual questions
+  function whereQuestion() {
+    let question_ids = _.chain(d.questions).pluck('question_id').compact().value(),
+        where = ['state', '=', 'A'];
+
+    if (d.for_recruitment == 'Y') {
+      let filter = ['and', [['answers_count', '>', 0], ['answers_count', '<', 5]]];
+      filter = ['and', [['answer_type', '=', 'S'], filter]];
+      filter = ['and', [['has_file', '=', 'N'], filter]];
+      where = ['and', [where, filter]];
+    }
+
+    if (!_.isEmpty(question_ids)) {
+      where = ['and', [['question_id', '<>', question_ids], where]];
+    }
+
+    return where;
+  }
+
+  function selectQuestions() {
+    fi.select_question(null, function(result) {
+      let question_ids = _.chain(result).pluck('question_id').compact().unique().value();
+      if (_.isEmpty(question_ids)) return;
+
+      page.post(':load_manual_questions', { question_ids }).then(question => {
+          d.questions.push(... question);
+      }, page.alert);
+    }, { where: whereQuestion() });
+  }
+
+  function removeQuestions() {
+    _.each(q.checked.rows(), function(row) {
+      let index = _.findIndex(d.questions, row);
+      d.questions.splice(index, 1);
+    });
+    q.checked = {};
+  }
+
+  // change passing type
+  function changePassingType(type) {
+    d.passing_type = type;
+    d.passing_type_name = type == 'S' ? q.tScore : q.tPercentage;
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.form)) {
+      if (d.passing_type == 'S' && +d.question_count < +d.passing_score) {
+        page.alert(t('passing score $1{passing_score} cannot be more than exams question count $2{question_count}')(d.passing_score, d.question_count));
+      } else {
+        quantityCounter();
+        if (d.pick_kind == 'M') {
+          if (+d.questions.length < +d.question_count) {
+            page.alert(t('manual questions $1 {manual_question_count} less than question count $2 {question_count}')(d.questions.length, d.question_count));
+          } else saveData();
+        } else {
+          if (+q.sum_pattern_quantity == +d.question_count) saveData();
+          else {
+            page.alert(t('sum of quantities $1{sum_pattern_quantity} is not equal to question count $2 {question_count}')(q.sum_pattern_quantity, d.question_count));
+          }
+        }
+      }
+    }
+  };
+
+  function saveData() {
+    d.has_duration == 'N' ? d.duration = null : null;
+    if (d.pick_kind == 'A') d.randomize_questions = null;
+    else if (!d.randomize_questions) d.randomize_questions = 'N';
+
+    _.each(d.questions, question => {
+      question.order_no = _.findIndex(d.questions, question) + 1;
+    });
+
+    _.each(d.patterns, (pattern, index) => {
+      pattern.order_no = index + 1;
+      pattern.question_types = [];
+      _.each(pattern.types, (type, question_group_id) =>{
+        if (type.question_type_id) {
+          pattern.question_types.push({ question_group_id: question_group_id,
+                                        question_type_id: type.question_type_id })
+        }
+      });
+    });
+
+    d.pick_kind == 'M' ? d.patterns = [] : d.questions = [];
+    if (d.passing_type == 'S') d.passing_percentage = '';
+
+    var data = _.pick(d,'name',
+                        'exam_id',
+                        'pick_kind',
+                        'duration',
+                        'question_count',
+                        'passing_score',
+                        'passing_percentage',
+                        'randomize_questions',
+                        'randomize_options',
+                        'for_recruitment',
+                        'state',
+                        'questions',
+                        'patterns');
+
+    q.error_groups = [];
+    checkPattern();
+
+    var error_message = t('not recommended set of patterns, question generator has intersections in patterns')() +':' + q.error_groups.join(',');
+
+    page.confirm(!_.isEmpty(q.error_groups) ? error_message : t('save')(), function() {
+      page.post(':save', data).then(page.close, page.alert);
+    });
+  }
+
+  function changeForRecruitment() {
+    if (d.for_recruitment == 'Y') {
+      d.has_duration = 'N';
+      d.pick_kind = 'M';
+    }
+  }
+
+  q.tMinute = t('minute')();
+  q.tPercentage = t('percentage')();
+  q.tScore = t('score')();
+  q.rec_disabled = d.exam_id && d.for_recruitment == 'Y';
+
+  !d.exam_id ? d.questions = [] : null;
+  d.patterns = _.mapRows(d.patterns, ['pattern_id', 'quantity', 'has_writing_question', 'max_cnt_writing_question', 'order_no']);
+  d.types = _.mapRows(d.types, ['pattern_id', 'question_group_id', 'question_type_id', 'name']);
+  d.question_groups = _.mapRows(d.question_groups, ['question_group_id', 'question_group_name']);
+
+  _.each(d.patterns, pattern => {
+    pattern.types = {};
+    _.each(d.question_groups, group => {
+      pattern.types[group.question_group_id] = _.chain(d.types)
+                                                .filter({
+                                                  pattern_id: pattern.pattern_id,
+                                                  question_group_id: group.question_group_id
+                                                })
+                                                .first()
+                                                .value() || {};
+    });
+  });
+
+  changePassingType(!d.exam_id || !!d.passing_percentage ? 'P' : 'S');
+
+  page.$content.find('.scroll-table').hScroll();
+
+  // pg-grid setting functions
+  function ghostCol(colnumber) {
+     return d.question_groups.length >= colnumber;
+  }
+
+  $timeout(function() {
+    var pg = page.pgGrid("questions");
+    _.each(pg.g.fields, x => {
+      var index = x.name[x.name.length - 1];
+      if(x.name == 'group' + index && d.question_groups.length >= index) x.label = d.question_groups[index - 1].question_group_name;
+    })
+  });
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <style>
+    .h-parent-scrollable {
+      position: static !important;
+    }
+    .ui-vhr214.scroll-table {
+      position: static !important;
+    }
+  </style>
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>question count</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.question_count" b-number precision="4" scale="0" required/>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label>
+                    <t ng-show="d.passing_type == 'P'">passing percentage</t>
+                    <t ng-show="d.passing_type == 'S'">passing score</t>
+                    <r/>
+                  </label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" ng-model="d.passing_percentage" b-number precision="3" scale="0" ng-if="d.passing_type == 'P'" required/>
+                    <input type="text" class="form-control" ng-model="d.passing_score" b-number precision="4" scale="0" ng-if="d.passing_type == 'S'" required/>
+                    <div class="input-group-append">
+                      <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ d.passing_type_name }}</button>
+                      <div class="dropdown-menu">
+                        <a class="dropdown-item" ng-click="changePassingType('P')" ng-show="d.passing_type == 'S'">{{ q.tPercentage }}</a>
+                        <a class="dropdown-item" ng-click="changePassingType('S')" ng-show="d.passing_type == 'P'">{{ q.tScore }}</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.has_duration" ng-disabled="d.for_recruitment == 'Y'"/>
+                <span><t>has duration</t></span>
+              </label>
+            </div>
+            <div class="form-group row" ng-if="d.has_duration == 'Y'">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>duration</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.duration" placeholder="{{ q.tMinute }}" b-number precision="4" scale="0"/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>pick kind</t></label><br/>
+              <label class="radio">
+                <input type="radio" name="pick kind" value="M" ng-model="d.pick_kind"/><span><t>manual</t></span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="pick kind" value="A" ng-model="d.pick_kind" ng-disabled="d.for_recruitment == 'Y'"/><span><t>auto</t></span>
+              </label>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12 mt-2">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.randomize_options"/>
+                    <span><t>randomize options</t></span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-12 mt-2" ng-if="d.pick_kind == 'M'">
+                <div class="form-group">
+                  <label class="checkbox">
+                    <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.randomize_questions"/>
+                    <span><t>randomize questions</t></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+              <div class="col-sm-12">
+                <label>&nbsp;</label><br/>
+                <label class="checkbox">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.for_recruitment" ng-change="changeForRecruitment()" ng-disabled="q.rec_disabled"/>
+                  <span><t>for recruitment telegram bot</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="col-sm-24 p-0" ng-show="d.pick_kind == 'A'">
+          <button type="button" class="btn btn-warning" ng-click="checkGeneratingQuestions()" ng-if="d.patterns.length > 0"><t>check</t></button>
+          <div class="ui-vhr214 scroll-table mt-4" style="position: static !important;">
+            <table class="table table-striped table-hover" style="background-color: white" cellspacing = '0' cellpadding = '0'>
+              <colgroup>
+                <col width="10"/>
+                <col width="100" ng-repeat="group in d.question_groups"/>
+                <col width="75"/>
+                <col width="25"/>
+                <col width="10"/>
+                <col width="15"/>
+              </colgroup>
+              <thead class="text">
+                <tr>
+                  <td class="text-right"><t>№</t></td>
+                  <td class="text-center" ng-repeat="group in d.question_groups">{{ group.question_group_name }}</td>
+                  <td class="text-center"><t>quantity</t></td>
+                  <td class="text-center"><t>has writing question</t></td>
+                  <td class="text-center"><t>max count of writing question</t></td>
+                  <td></td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="( ptrn_ind, pattern ) in d.patterns">
+                  <td class="text-right">{{ ptrn_ind + 1 }}</td>
+                  <td ng-repeat="group in d.question_groups">
+                    <b-input name="question_types"
+                             model="pattern.types[group.question_group_id].name | name"
+                             model-key="pattern.types[group.question_group_id].question_type_id | question_type_id"
+                             on-change="changeTypeQuery(query, value, group, ptrn_ind)">
+                      {{ row.name }}
+                    </b-input>
+                  </td>
+                  <td>
+                    <input type="text" class="form-control" ng-model="pattern.quantity" ng-change="quantityCounter()" b-number scale="0" required/>
+                  </td>
+                  <td class="text-center">
+                    <label class="checkbox">
+                      <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="pattern.has_writing_question" ng-change="pattern.max_cnt_writing_question = null">
+                      <span></span>
+                    </label>
+                  </td>
+                  <td class="text-center">
+                    <input type="text" class="form-control" ng-model="pattern.max_cnt_writing_question" ng-disabled="pattern.has_writing_question == 'N'" b-number scale="0"/>
+                  </td>
+                  <td>
+                    <div class="text-center">
+                      <button type="button" class="btn btn-default btn-icon btn-hover-text-danger" ng-click="removePattern(pattern)">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <button type="button" class="btn btn-icon btn-default" ng-click="addPattern()"><i class="fas fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="col-sm-24 p-0" ng-show="d.pick_kind == 'M'">
+          <div class="row mb-2">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-success" ng-if="fi.select_question" ng-click="selectQuestions()"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeQuestions()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10">
+              <b-pg-controller name="questions"/>
+            </div>
+          </div>
+          <b-pg-grid name="questions" local-data="d.questions" iterator="item" search="name, code, type1, type2" on-check="onCheck(checked)">
+            <b-pg-header name="rownum">
+              <div class="text-center"><t>rownum</t></div>
+            </b-pg-header>
+            <b-pg-header name="group1">{{ d.question_groups[0].question_group_name }}</b-pg-header>
+            <b-pg-header name="group2">{{ d.question_groups[1].question_group_name }}</b-pg-header>
+            <b-pg-header name="group3">{{ d.question_groups[2].question_group_name }}</b-pg-header>
+            <b-pg-header name="group4">{{ d.question_groups[3].question_group_name }}</b-pg-header>
+            <b-pg-header name="group5">{{ d.question_groups[4].question_group_name }}</b-pg-header>
+            <b-pg-row>
+              <b-pg-col name="rownum" size=1>
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="name" size=7>
+                <div ng-bind-html="item.name"></div>
+              </b-pg-col>
+              <b-pg-col name="answer_type" size=3/>
+              <b-pg-col name="code" size=3/>
+              <b-pg-col name="group1" size=3 access="ghostCol(1)"/>
+              <b-pg-col name="group2" size=3 access="ghostCol(2)"/>
+              <b-pg-col name="state" size=3>
+                <div class="alert alert-custom text-center py-1 px-3 m-0 alert-light-{{ item.state == 'A' ? 'success' : 'danger' }}">
+                  <div class="alert-text">{{ item.state_name }}</div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+
+            <b-pg-extra-col name="writing_hint"/>
+            <b-pg-extra-col name="group3" size=3 access="ghostCol(3)"/>
+            <b-pg-extra-col name="group4" size=3 access="ghostCol(4)"/>
+            <b-pg-extra-col name="group5" size=3 access="ghostCol(5)"/>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" data-backdrop="true" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>result patterns</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-time"></i></button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-bordered">
+              <thead class="text">
+                <tr>
+                  <td class="text-right"><t>№</t></td>
+                  <td class="text-center"><t>found questions count</t></td>
+                  <td class="text-center"><t>quantity</t></td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="item in q.pattern_gen_result" ng-style="resultStyle(item)">
+                  <td class="text-right">{{ item.order_no }}</td>
+                  <td class="text-center">{{ item.found_questions_count }}</td>
+                  <td class="text-center">{{ item.quantity }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>cancel</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

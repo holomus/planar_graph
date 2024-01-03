@@ -1,0 +1,5 @@
+{
+ "pg.location_type.before": "Старое значение",
+ "pg.location_type.current": "Новое значение",
+ "pg.location_type.field_name": "Поле"
+}

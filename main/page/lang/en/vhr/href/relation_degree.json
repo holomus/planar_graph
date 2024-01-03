@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another relation degree": "The code is already assigned to another relation degree",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

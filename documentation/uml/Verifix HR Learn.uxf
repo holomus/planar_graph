@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.3.0">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>280</y>
+      <w>400</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTIONS*
+--
+*COMPANY_ID*
+*QUESTION_ID*
+/NAME/
+ANSWER_TYPE ('S'ingle, 'M'ultiple, 'W'riting)
+/CODE/
+STATE
+/WRITING_HINT/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>930</y>
+      <w>310</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAM_MANUAL_QUESTIONS*
+--
+*COMPANY_ID*
+*EXAM_ID*
+*QUESTION_ID*
+ORDER_NO
+ </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>490</y>
+      <w>400</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_OPTIONS*
+--
+*COMPANY_ID*
+*QUESTION_OPTION_ID*
+NAME
+/FILE_SHA/
+QUESTION_ID
+IS_CORRECT('Y'es, 'N'o)
+ORDER_NO
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>720</y>
+      <w>310</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAMS*
+--
+*COMPANY_ID*
+*EXAM_ID*
+NAME
+PICK_KIND ('A'uto, 'M'anual)
+TIME_LIMIT (in seconds)
+PASSING_SCORE
+/QUESTION_COUNT/
+/RANDOMIZE_QUESTIONS('Y'es, 'N'o)/
+RANDOMIZE_OPTIONS('Y'es, 'N'o)
+STATE ('A', 'P')
+ </panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>960</x>
+      <y>370</y>
+      <w>130</w>
+      <h>250</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>110.0;10.0;10.0;10.0;10.0;230.0;110.0;230.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1510</x>
+      <y>900</y>
+      <w>370</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HLN_PATTERN_QUESTION_TYPES*
+--
+*COMPANY_ID*
+*PATTERN_ID*
+*QUESTION_GROUP_ID*
+*QUESTION_TYPE_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1020</x>
+      <y>760</y>
+      <w>70</w>
+      <h>240</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>50.0;10.0;10.0;10.0;10.0;220.0;50.0;220.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>950</x>
+      <y>330</y>
+      <w>140</w>
+      <h>690</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;10.0;10.0;670.0;120.0;670.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1570</x>
+      <y>280</y>
+      <w>360</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_TYPE_BINDS*
+--
+*COMPANY_ID*
+*QUESTION_ID*
+*QUESTION_GROUP_ID*
+QUESTION_TYPE_ID</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>30</x>
+      <y>30</y>
+      <w>360</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_GROUPS*
+--
+*COMPANY_ID*
+*QUESTION_GROUP_ID*
+NAME
+/CODE/
+IS_MULTIPLE ('Y'es, 'N'o)
+IS_REQUIRED ('Y'es, 'N'o)
+/ORDER_NO/
+STATE
+/PCODE/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>470</x>
+      <y>30</y>
+      <w>360</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_TYPES*
+--
+*COMPANY_ID*
+*QUESTION_GROUP_ID*
+*QUESTION_TYPE_ID*
+NAME
+/CODE/
+/ORDER_NO/
+/PCODE/
+STATE</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>510</x>
+      <y>440</y>
+      <w>360</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HLN_QUESTION_FILES*
+--
+*COMPANY_ID*
+*QUESTION_ID*
+*FILE_SHA*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>0</x>
+      <y>0</y>
+      <w>860</w>
+      <h>250</h>
+    </coordinates>
+    <panel_attributes>*Question characteristics*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>860</x>
+      <y>390</y>
+      <w>230</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;100.0;60.0;100.0;60.0;10.0;210.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>380</x>
+      <y>70</y>
+      <w>110</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>90.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1460</x>
+      <y>330</y>
+      <w>130</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>110.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>130</y>
+      <w>400</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>*HLN_FILIAL_QUESTIONS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*QUESTION_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>990</x>
+      <y>160</y>
+      <w>100</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>80.0;10.0;10.0;10.0;10.0;150.0;80.0;150.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>850</x>
+      <y>60</y>
+      <w>870</w>
+      <h>240</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>850.0;220.0;850.0;10.0;10.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1510</x>
+      <y>730</y>
+      <w>360</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>*HLN_EXAM_PATTERNS*
+--
+*COMPANY_ID*
+*EXAM_ID*
+*PATTERN_ID*
+QUANTITY
+/ORDER_NO/</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1070</x>
+      <y>1080</y>
+      <w>310</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>*HLN_FILIAL_EXAMS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*EXAM_ID*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1370</x>
+      <y>770</y>
+      <w>160</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;140.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>990</x>
+      <y>740</y>
+      <w>100</w>
+      <h>410</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>80.0;390.0;10.0;390.0;10.0;10.0;80.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1860</x>
+      <y>770</y>
+      <w>80</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;60.0;10.0;60.0;170.0;20.0;170.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>850</x>
+      <y>30</y>
+      <w>1190</w>
+      <h>940</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;20.0;1170.0;10.0;1170.0;920.0;1030.0;920.0</additional_attributes>
+  </element>
+</diagram>

@@ -1,0 +1,464 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bStorage, AppSession, bFrame, bHttp, $q, $timeout) {
+  let d = model, 
+      q = {},
+      p = {
+        ftp_files: [],
+      };
+  
+  // sections
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+  q.active_section = storage.active_section || 'I';
+
+  function changeSection(active_section) {
+    active_section = active_section || 'I';
+    
+    if (q.active_section == active_section) return;
+    bStorage.json(storage_key, { active_section: active_section });
+    q.active_section = active_section;
+  }
+
+  let ftpModal = page.$content.find('form[name=ftp_modal] > .modal');
+
+  function showftpModal() {
+    d.filenames = [''];
+    
+    page.untouch(scope.ftp_modal);
+    $timeout(function() {
+       ftpModal.modal('show');
+    });
+  }
+
+  function hideFtpModal() {
+    ftpModal.modal('hide');
+  }
+
+  function notifySuccess() {
+    notify(t('Successfully loaded files')());
+  }
+
+  function importFtpFile() {
+    if (page.valid(scope.ftp_modal)) {
+      fi.import_ftp_file(_.pick(d, 'filenames')).then(notifySuccess, page.alert);
+    }
+  }
+
+  // Import file from excel
+  function importFile() {
+    if (d.import_file) {
+      page.confirm(t('do you want to import file?')(), function () {
+        let data = { import_file: d.import_file };
+        page.post(':import', data, 'excel').then(function(result) {
+          page.dropzone('file').clear();
+          d.import_file = '';
+          q.error_messages = _.chain(result)
+                              .pluck('errors')
+                              .flatten()
+                              .value();
+          notify(t('import completed!')());
+        }, page.alert);
+      });
+    }
+  }
+
+  // setting
+  function loadSetting(object_id) {
+    page.post(':load_setting', { object_id: object_id }).then(function(result) {
+      if (result) {
+        d.column_settings = _.mapRows(result.column_settings, ['area_id', 'area_name', 'driver_id', 'driver_name', 'column_indexes']);
+      }
+    }, page.alert);
+  }
+
+  function saveSetting() {
+    if (page.valid(scope.form)) {
+      var data = {
+        starting_row: d.starting_row,
+        date_column: d.date_column,
+        object_column: d.object_column,
+        object_id: d.object_id,
+        column_settings: _.map(d.column_settings, item => _.pick(item, 'area_id', 'driver_id', 'column_indexes')),
+        column_infos: d.column_infos
+      };
+
+      fi.save_setting(data).then(page.reload, page.alert);
+    }
+  }
+
+  // object
+  function setObject(row) {
+    if (!row) return;
+    d.object_id = row.object_id;
+    d.object_name = row.name;
+
+    if (d.object_id) {
+      loadSetting(d.object_id);
+    }
+  }
+
+  // column settings
+  function addColumnSetting(index) {
+    d.column_settings.push({});
+  }
+
+  function removeColumnSetting(index) {
+    d.column_settings.splice(index, 1);
+  }
+
+  // column infos
+  function addColumnInfo(index) {
+    d.column_infos.push(null);
+  }
+
+  function removeColumnInfo(index) {
+    d.column_infos.splice(index, 1);
+  }
+
+  function openSettings() {
+    if (!fi.server_settings) return;
+    fi.server_settings();
+  }
+
+  function addFilename() {
+    d.filenames.push('');
+  }
+
+  function removeFilename(index) {
+    d.filenames.splice(index, 1);
+  }
+
+  let ftpFilesModal = page.$content.find('form[name=ftp_files_modal] > .modal');
+  
+  function showftpFilesModal() {  
+    $timeout(function() {
+      ftpFilesModal.modal('show');
+    });
+  }
+
+  function hideFtpFilesModal() {
+    ftpFilesModal.modal('hide');
+  }
+
+  function listFiles() {
+    if (!fi.list_files) return;
+    
+    fi.list_files()
+      .then(function(filenames) {
+        p.ftp_files = _.chain(filenames)
+                       .filter(x => {
+                        let name_parts = x.split('.');
+                        if (name_parts.length < 1) return false;
+                        if (_.last(name_parts) != 'xls' && _.last(name_parts) != 'xlsx') return false;
+                        return true;
+                       })
+                       .map(x => {
+                          return {
+                            filename: x,
+                            file_loaded: 'U',
+                          }
+                        })
+                       .sortBy('filename')
+                       .value()
+                       .reverse();
+        showftpFilesModal();
+      })
+      .catch(page.alert);
+  }
+
+  function onFileCheck(checked) {
+    q.file_checked = checked;
+  }
+
+  function loadFtpFiles() {
+    if (!fi.list_files) return;
+    
+    let load_promises = [];
+    p.load_promise_size = q.file_checked.size;
+    p.load_files_cnt = 0;
+
+    notify(t('starting file load...')());
+    
+    _.each(q.file_checked.rows(), item => {
+      bHttp.unblockOnce();
+
+      let promise = page.post(':load_ftp_file', {
+                          filenames: [item.filename]
+                        })
+                        .then(function() {
+                          item.file_loaded = 'Y';
+                          p.load_files_cnt += 1;
+                        })
+                        .catch(function(error) {
+                          item.file_loaded = 'N';
+                          notify(t('couldnt load file $1')(item.filename), 'danger');
+                          console.error(error);
+                        });
+      
+
+      load_promises.push(promise);
+    });
+    
+    q.file_checked = {};
+    page.pgGrid('ftp_files').uncheckAll();
+
+    $q.all(load_promises)
+      .then(function() {
+        notify(t('finished file load')());
+      });
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.active_section == 'I' ? 'btn-success' : 'btn-default'" ng-click="changeSection('I')"><t>import section</t></button>
+    <button type="button" class="btn" ng-class="q.active_section == 'S' ? 'btn-success' : 'btn-default'" ng-click="changeSection('S')"><t>setting section</t></button>
+  </div>
+  <button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="q.active_section == 'I'"><t>import</t></button>
+  <button type="button" class="btn btn-primary" ng-click="showftpModal()" ng-if="fi.import_ftp_file && q.active_section == 'I'"><t>import ftp file</t></button>
+  <button type="button" class="btn btn-primary" ng-click="listFiles()" ng-if="fi.list_files && q.active_section == 'I'"><t>list ftp files</t></button>
+  <button type="button" class="btn btn-primary" ng-click="saveSetting()" ng-if="fi.save_setting && q.active_section == 'S'"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-if="fi.server_settings" ng-click="openSettings()">{{ fi.server_settings.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div ng-show="q.active_section == 'I'">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>file</t></label>
+                <b-dropzone name="file" model="d.import_file" accept="'.xls, .xlsx'"></b-dropzone>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>errors</t></label>
+                <div class="mb-2">
+                  <b-pg-controller name="error_messages"/>
+                </div>
+              </div>
+              <div class="form-group">
+                <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+                  <b-pg-row>
+                    <b-pg-col name="row_id" size=3/>
+                    <b-pg-col name="error" size=21>
+                      <div ng-repeat="item in row.items">
+                        {{ item }}<br/><hr ng-if="!$last"/>
+                      </div>
+                    </b-pg-col>
+                  </b-pg-row>
+                </b-pg-grid>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div ng-if="q.active_section == 'S'">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="row">
+                <div class="col-sm-12 form-group">
+                  <label><t>starting row</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.starting_row" b-number scale="0" required/>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-12 form-group">
+                  <label><t>date column</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.date_column" b-number scale="0" required/>
+                </div>
+                <div class="col-sm-12 form-group">
+                  <label><t>object column</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.object_column" b-number scale="0" required/>
+                </div>
+              </div>
+              <label><t>area and driver columns</t></label>
+              <div class="form-group">
+                <label><t>object</t></label>
+                <b-input name="objects"
+                          model="d.object_name | name"
+                          model-key="d.object_id | object_id"
+                          on-select="setObject(row)"
+                          on-delete="setObject({})">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="sg form-group">
+                <div class="sg-header">
+                  <div class="sg-row">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-7"><t>area</t></div>
+                      <div class="sg-cell col-7"><t>driver</t></div>
+                      <div class="sg-cell col-6"><t>column indexes</t></div>
+                      <div class="sg-cell col-4"><t>actions</t></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sg-content">
+                  <div class="sg-row" ng-repeat="item in d.column_settings track by $index">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-7">
+                        <b-input
+                          name="areas"
+                          model="item.area_name | name"
+                          model-key="item.area_id | area_id"
+                          required-key>
+                          {{ row.name }}
+                        </b-input>
+                      </div>
+                      <div class="sg-cell col-7">
+                        <b-input
+                          name="drivers"
+                          model="item.driver_name | name"
+                          model-key="item.driver_id | driver_id"
+                          required-key>
+                          {{ row.name }}
+                        </b-input>
+                      </div>
+                      <div class="sg-cell col-6">
+                        <input type="text" class="form-control" ng-model="item.column_indexes" required/>
+                      </div>
+                      <div class="sg-cell col-4">
+                        <div class="text-center">
+                          <button type="button" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="removeColumnSetting($index)">
+                            <i class="fa fa-trash"/>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-icon btn-default" ng-if="d.object_id" ng-click="addColumnSetting()">
+                <i class="fa fa-plus"/>
+              </button>
+            </div>
+            <div class="col-sm-12">
+              <label><t>column infos</t></label>
+              <div class="sg form-group">
+                <div class="sg-header">
+                  <div class="sg-row">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-4"><t>column index</t></div>
+                      <div class="sg-cell col-16"><t>title</t></div>
+                      <div class="sg-cell col-4"><t>actions</t></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sg-content">
+                  <div class="sg-row" ng-repeat="(key, value) in d.column_infos track by $index">
+                    <div class="sg-sub-row">
+                      <div class="sg-cell col-4 text-center">
+                        {{ $index + 1 }}
+                      </div>
+                      <div class="sg-cell col-16">
+                        <input type="text" class="form-control" ng-model="d.column_infos[key]" required/>
+                      </div>
+                      <div class="sg-cell col-4">
+                        <div class="text-center">
+                          <button type="button" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="removeColumnInfo($index)">
+                            <i class="fa fa-trash"/>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-icon btn-default" ng-click="addColumnInfo()">
+                <i class="fa fa-plus"/>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  
+  <form name="ftp_modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" style="max-width: 1000px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>FTP FILE LOAD</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-row mb-4" ng-repeat="fn in d.filenames track by $index">
+              <div class="offset-sm-4 col-sm-16">
+                <label><t>filename</t><r/></label>
+                <div class="input-group">
+                  <input class="form-control" ng-model="d.filenames[$index]" required/>
+                  <div class="input-group-append">
+                    <button type="button" ng-hide="d.filenames.length <= 1" class="btn btn-icon btn-default btn-hover-text-danger" ng-click="removeFilename($index)">
+                      <i class="fa fa-trash"/>
+                    </button>
+                    <button type="button" ng-disabled="d.filenames.length >= 5" class="btn btn-icon btn-default" ng-click="addFilename()">
+                      <i class="fa fa-plus"/>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="importFtpFile()" ng-if="fi.import_ftp_file"><t>import</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="ftp_modal" ng-click="hideFtpModal()">{{ page.close.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <form name="ftp_files_modal">
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static">
+      <div class="modal-dialog modal-md" style="max-width: 1000px;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title"><t>FTP FILES</t></h4>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="col-sm-14 mb-2">
+                <button type="button" class="btn btn-primary" ng-click="loadFtpFiles()" ng-show="q.file_checked.has">
+                  <t p1="q.file_checked.size">load $1 files</t>
+                </button>
+                <button type="button" class="btn btn-light-info" ng-show="p.load_files_cnt >= 0">
+                  <t p1="p.load_files_cnt" p2="p.load_promise_size">loaded $1/$2 files</t>
+                </button>
+              </div>
+              <div class="col-sm-10 mb-2">
+                <b-pg-controller name="ftp_files"/>
+              </div>
+            </div>
+            <b-pg-grid name="ftp_files" 
+                       local-data="p.ftp_files" 
+                       iterator="item"
+                       min-width="500"
+                       on-check="onFileCheck(checked)"
+                       limit="500">
+              <b-pg-row>
+                <b-pg-col name="filename" size="15"/>
+                <b-pg-col name="loaded" size="8">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <i style="font-size: 16px;" class="fas fa-exclamation-circle text-default" ng-if="item.file_loaded == 'U'"></i>
+                    <i style="font-size: 16px;" class="fas fa-check-circle text-success" ng-if="item.file_loaded == 'Y'"></i>
+                    <i style="font-size: 16px;" class="fas fa-times-circle text-danger" ng-if="item.file_loaded == 'N'"></i>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="ftp_files_modal" ng-click="hideFtpFilesModal()">{{ page.close.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

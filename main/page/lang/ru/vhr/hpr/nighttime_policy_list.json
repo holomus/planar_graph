@@ -1,0 +1,20 @@
+{
+ "add": "Добавить",
+ "common": "По компании",
+ "common_policies.month": "Месяц",
+ "common_policies.name": "Название",
+ "common_policies.nighttime_policy_id": "ID Политики доплат",
+ "common_policies.state_name": "Статус",
+ "copy": "Копировать",
+ "delete": "Удалить",
+ "delete $1": "Удалить $1",
+ "delete $1{policy_count} nighttime policy(ies)?": "Удалить $1 Политик доплат?",
+ "delete nighttime policy for $1{month_name}?": "Удалить Политику доплат для $1?",
+ "edit": "Изменить",
+ "standart": "По подразделениям",
+ "standart_policies.division_name": "Подразделение",
+ "standart_policies.month": "Месяц",
+ "standart_policies.name": "Название",
+ "standart_policies.nighttime_policy_id": "ID Политики доплат",
+ "standart_policies.state_name": "Статус"
+}

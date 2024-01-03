@@ -1,0 +1,92 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var tg = page.grid('table');
+
+  var status_class = { D: 'dark', P: 'primary', A: 'success', C: 'danger' };
+  tg.asHtml('status_html', 'status,status_name', row => {
+    return `<div class="alert alert-custom alert-light-${ status_class[row.status] } py-1 px-3 m-0 text-center"><div class="alert-text">${ row.status_name }</div></div>`;
+  });
+
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+});
+page.ctrl(function(scope, fi, t) {
+  var q = { to_progress: {} };
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.to_progress) prepareChecked('to_progress', checked, x => x.status == 'D');
+  }
+
+  function view(row) {
+    fi.view({ document_id: row.document_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : null;
+  }
+
+  function progressAction(message, document_id) {
+    page.confirm(message, function() {
+      fi.to_progress({ document_id: document_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function progressMany() {
+    progressAction(t('change status to progress $1{count} documents?')(q.to_progress.size), _.pluck(q.to_progress.rows, 'document_id'));
+  }
+
+  function progressOne(row) {
+    progressAction(t('change status to progress $1{title} document?')(row.title), row.document_id);
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="progressMany()" ng-if="fi.to_progress" ng-show="q.to_progress.has"><t p1="q.to_progress.size">to progress $1</t></button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="document_id, title, status" on-dblclick="onDblclick(row)" on-check="onCheck(checked)" sort="-created_on"
+          search="title, note, process_name" searchable="document_id" extra-columns="document_id, sign_kind_name, esign_allowed_name, created_by_name, modified_by_name, created_on, modified_on">
+    <b-row>
+      <b-col name="title" size=6/>
+      <b-col name="note" size=3/>
+      <b-col name="process_name" size=5/>
+      <b-col name="created_by_name" size=3/>
+      <b-col name="created_on" size=3/>
+      <b-col name="status_name" size=3 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="progressOne(row)" ng-if="fi.to_progress && row.status == 'D'">{{ fi.to_progress.title }}</button>
+    </b-action>
+
+    <b-filter name="document_id" directive="equal"/>
+    <b-filter name="title"/>
+    <b-filter name="process_id" decorate-with="process_name"/>
+    <b-filter name="created_on"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="sign_kind" decorate-with="sign_kind_name" extra/>
+    <b-filter name="esign_allowed" decorate-with="esign_allowed_name" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

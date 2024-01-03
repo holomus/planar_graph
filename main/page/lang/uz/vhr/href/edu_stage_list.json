@@ -1,0 +1,12 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{edu_stage_count} education stages?": "Haqiqatan ham <b>$1</b> ta'lim turlarini o'chirib tashlamoqchimisiz?",
+ "delete education stage $1{edu_stage_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "select $1": "Tanlash $1",
+ "table.code": "Kod",
+ "table.edu_stage_id": "ID",
+ "table.name": "Nomi",
+ "table.order_no": "Tartib raqami",
+ "table.state_name": "Holat"
+}

@@ -1,0 +1,304 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table_schedule_change_audit').param(param);
+  page.grid('table_schedule_change_audit').disable();
+});
+page.ctrl(function(scope, model, fi, $timeout, t) {
+  var d = model || {}, q = {};
+
+  d.schedule_changes = _.mapRows(model.schedule_changes, ['staff_id', 'name', 'schedule_id', 'schedule_name']);
+  q.enabledSections = ['main'];
+  q.activeSection = 'main';
+
+  function edit() {
+    fi.edit({ journal_id: d.journal_id });
+  }
+
+  function post() {
+    page.confirm(t('post journal No. $1{journal_number} of $2{journal_date}?')(d.journal_number, d.journal_date), function() {
+      fi.post({ journal_id: d.journal_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function unpost() {
+    page.confirm(t('unpost journal No. $1{journal_number} of $2{journal_date}?')(d.journal_number, d.journal_date), function() {
+      fi.unpost({ journal_id: d.journal_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function pageId(tab, prefix) {
+    return (prefix || '') + tab + page.id();
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if (_.contains(q.enabledSections, section)) return;
+    q.enabledSections.push(section);
+
+    if (q.activeSection == 'sign_document') {
+      page.subpage(section).run(fi.sign_document.uri, { document_id: d.sign_document_id });
+    }
+
+    if (section == 'schedule_change_audit') {
+      $timeout(function() {
+        let tab = _.find([ 'journal_audit', 'page_audit', 'schedule_audit'], (x) => fi[x]) || 'schedule_change_audit';
+        changeAuditTab(tab);
+        page.$content.find('[data-target="' + pageId(tab, '#') + '"]').addClass('active');
+        page.$content.find(pageId(tab, '#')).addClass('active');
+      });
+    }
+  }
+
+  // change tab
+  function changeAuditTab(tab) {
+    if (_.contains(q.enabledTabs, tab)) return;
+    if (tab == 'schedule_change_audit') {
+      page.grid('table_schedule_change_audit').fetch();
+      page.grid('table_schedule_change_audit').enable();
+    } else if (tab) {
+      page.subpage(tab).run(fi[tab].uri, { journal_id: d.journal_id });
+    }
+    q.enabledTabs.push(tab);
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ journal_id: d.journal_id, context_id: row.t_context_id });
+  }
+
+  q.enabledSections = ['main'];
+  q.enabledTabs = [];
+  q.activeSection = 'main';
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && (d.sign_document_status ? d.sign_document_status == 'D' : true)" b-hotkey="edit"><t>edit</t></button>
+  <button type="button" class="btn btn-primary" ng-click="post()" ng-if="fi.post && d.posted == 'N' && (d.sign_document_status ? d.sign_document_status == 'A' : true)"><t>post</t></button>
+  <button type="button" class="btn btn-danger" ng-click="unpost()" ng-if="fi.unpost && d.posted == 'Y' && (d.sign_document_status ? d.sign_document_status == 'A' : true)"><t>unpost</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3"><t p1="d.journal_number" p2="d.journal_date">$1{journal_number} from $2{journal_date}</t></span>
+                <span class="text-muted">&nbsp;({{ d.journal_id }})</span>
+              </div>
+              <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.posted == 'Y' ? 'alert-light-primary' : 'alert-secondary'">
+                <div class="alert-text">
+                  <t ng-if="d.posted == 'Y'">posted</t>
+                  <t ng-if="d.posted == 'N'">unposted</t>
+                </div>
+              </div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+                <a href class="navi-link py-4" ng-if="fi.sign_document && d.sign_document_status"  ng-class="{ 'active': q.activeSection == 'sign_document' }" ng-click="changeSection('sign_document')">
+                  <span class="navi-icon mr-2">
+                    <i class="fas fa-file-signature"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>sign document</t></span>
+                </a>
+                <a href class="navi-link py-4" ng-if="fi.schedule_change_audit" ng-class="{ 'active': q.activeSection == 'schedule_change_audit' }" ng-click="changeSection('schedule_change_audit')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-user-clock"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>journal date</t></label>
+                    <span class="form-view">{{ d.journal_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>journal number</t></label>
+                    <span class="form-view">{{ d.journal_number }}</span>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>journal name</t></label>
+                    <span class="form-view">{{ d.journal_name }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>division name</t></label>
+                    <span class="form-view">{{ d.division_name }}</span>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-12 mb-4">
+                    <label><t>begin date</t></label>
+                    <span class="form-view">{{ d.begin_date }}</span>
+                  </div>
+                  <div class="col-sm-12 mb-4">
+                    <label><t>end date</t></label>
+                    <span class="form-view">{{ d.end_date }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>created by</t></label>
+                      <span class="form-view">{{ d.created_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>created on</t></label>
+                      <span class="form-view">{{ d.created_on }}</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="form-group">
+                      <label><t>modified by</t></label>
+                      <span class="form-view">{{ d.modified_by_name }}</span>
+                    </div>
+                    <div class="form-group">
+                      <label><t>modified on</t></label>
+                      <span class="form-view">{{ d.modified_on }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="separator separator-solid my-6"></div>
+            <div class="row">
+              <div class="offset-sm-12 col-sm-12 mb-2">
+                <b-pg-controller name="staffs"/>
+              </div>
+            </div>
+            <b-pg-grid name="staffs" local-data="d.schedule_changes">
+              <b-pg-row>
+                <b-pg-col name="rownum" size="1">
+                  <div class="text-center">{{ row.rownum }}</div>
+                </b-pg-col>
+                <b-pg-col name="name" size="11"/>
+                <b-pg-col name="schedule_name" size="11"/>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'sign_document'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>sign document</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group" ng-if="d.sign_document_status">
+              <label>{{ fi.sign_document.title }}</label>
+              <b-subpage name="sign_document" form="fi.sign_document.uri" param="{ document_id: d.sign_document_id }"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-if="fi.schedule_change_audit" ng-show="q.activeSection == 'schedule_change_audit'">
+        <div class="card card-custom gutter-b">
+          <div class="card-header card-header-tabs-line">
+            <div class="card-title align-items-start flex-column">
+              <h5 class="font-weight-bolder mb-0 mt-2"><t>audit</t></h5>
+            </div>
+            <div class="card-toolbar align-items-end">
+              <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+                <li class="nav-item" ng-if="fi.journal_audit">
+                  <a ng-click="changeAuditTab('journal_audit')" data-target="{{ pageId('journal_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>journal</t>
+                  </a>
+                </li>
+                <li class="nav-item" ng-if="fi.page_audit">
+                  <a ng-click="changeAuditTab('page_audit')" data-target="{{ pageId('page_audit', '#')}}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>page</t>
+                  </a>
+                </li>
+                <li class="nav-item" ng-if="fi.schedule_change_audit">
+                  <a ng-click="changeAuditTab('schedule_change_audit')" data-target="{{ pageId('schedule_change_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>schedule change</t>
+                  </a>
+                </li>
+                <li class="nav-item" ng-if="fi.schedule_audit">
+                  <a ng-click="changeAuditTab('schedule_audit')" data-target="{{ pageId('schedule_audit', '#') }}" class="nav-link" data-toggle="tab" role="tab">
+                    <t>schedules</t>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tab-content">
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('journal_audit') }}">
+                <b-subpage name="journal_audit"/>
+              </div>
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('page_audit') }}">
+                <b-subpage name="page_audit"/>
+              </div>
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('schedule_change_audit') }}">
+                <div class="row mb-2">
+                  <div class="offset-sm-14 col-sm-10">
+                    <b-grid-controller name="table_schedule_change_audit"/>
+                  </div>
+                </div>
+                <b-grid name="table_schedule_change_audit" required="t_context_id, journal_id" on-dblclick="auditDetails(row)" sort="-t_timestamp"
+                        search="t_user_name, t_event_name" extra-columns="t_audit_id, t_source_project_name, t_date, t_filial_name, journal_id, division_name">
+                  <b-row>
+                    <b-col name="t_timestamp" size="5"/>
+                    <b-col name="t_user_name" size="5"/>
+                    <b-col name="t_event_name" size="5"/>
+                    <b-col name="begin_date" size="5"/>
+                    <b-col name="end_date" size="4"/>
+                  </b-row>
+
+                  <b-action>
+                    <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+                  </b-action>
+
+                  <b-filter name="t_date"/>
+                  <b-filter name="t_user_id" decorate-with="t_user_name"/>
+                  <b-filter name="t_event" decorate-with="t_event_name"/>
+                  <b-filter name="t_filial_id" decorate-with="t_filial_name"/>
+                  <b-filter name="t_source_project_code" decorate-with="t_source_project_name"/>
+                  <b-filter name="begin_date"/>
+                  <b-filter name="division_id" decorate-with="division_name" extra/>
+                  <b-filter name="end_date" extra/>
+                </b-grid>
+              </div>
+              <div class="tab-pane" role="tabpanel" id="{{ pageId('schedule_audit') }}">
+                <b-subpage name="schedule_audit"/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

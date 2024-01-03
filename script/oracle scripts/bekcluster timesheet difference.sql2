@@ -1,0 +1,14 @@
+select distinct p.Employee_Id
+  from Htt_Timesheets p
+  join Migr_Keys_Store_One Ks
+    on Ks.Company_Id = 580
+   and Ks.Key_Name = 'person_id'
+   and Ks.New_Id = p.Employee_Id
+  join Old_Vx_Tp_Timesheets q
+    on q.Company_Id = 480
+   and q.Employee_Id = Ks.Old_Id
+   and q.Timesheet_Date = p.Timesheet_Date
+ where p.Company_Id = 580
+   and p.Filial_Id = 48905
+   and p.Timesheet_Date between to_date('01.12.2022', 'dd.mm.yyyy') and Trunc(sysdate)
+   and p.Day_Kind <> q.Day_Kind

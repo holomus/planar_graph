@@ -1,0 +1,290 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, xparam, t) {
+  var d = _.isUndefined(model.job_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  function addGroupEmployee(group) {
+    group.employees.push({ esign_required: 'N' });
+  }
+
+  function removeGroupEmployee(group, index) {
+    if (group.employees.length == 1) return;
+    group.employees.splice(index, 1);
+  }
+
+  function addGroup(level) {
+    let group = { sign_min_count: 1, employees: [] };
+    level.groups.push(group);
+    addGroupEmployee(group);
+  }
+
+  function removeGroup(level, index) {
+    if (level.groups.length == 1) return;
+    level.groups.splice(index, 1);
+  }
+
+  function addLevel() {
+    let level = { sign_kind: 'S', groups: [] };
+    d.levels.push(level);
+    addGroup(level);
+  }
+
+  function removeLevel(index) {
+    if (d.levels.length == 1) return;
+    d.levels.splice(index, 1);
+  }
+
+  // employee
+  function employeeIds(group) {
+    return _.chain(group.employees).pluck('employee_id').compact().value();
+  }
+
+  function changeEmployeeQuery(group, query, value) {
+    let employee_ids = employeeIds(group);
+    let where = ['and', [
+                  ['hiring_date', '<=', moment().format('DD.MM.YYYY')],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', moment().format('DD.MM.YYYY')]
+                  ]]
+                 ]
+                ];
+
+    where  = employee_ids.length > 0 ? ['and', [['employee_id', '<>', employee_ids] , where]] : where;
+    query.where(where).searchValue(value);
+  }
+
+  function setEmployee(employee, row) {
+    if (!row) return;
+    employee.employee_id = row.employee_id;
+    employee.name = row.name;
+  }
+
+  function viewEmployee(group, employee) {
+    let employee_ids = employeeIds(group);
+    fi.view_employee(null, _.partial(setEmployee, employee), { where: employee_ids.length > 0 ? ['and', [['state', '=', 'A'], ['employee_id', '<>', employee_ids]]] : ['state', '=', 'A'] });
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'template_id', 'subfilial_id', 'cashflow_reason_id', 'journal_type_id', 'note', 'state', 'sign_kind');
+        data.levels = [];
+        _.each(d.levels, function(x) {
+          let level = { sign_kind: x.sign_kind, groups: [] };
+          _.each(x.groups, function(k) {
+            let group = { sign_min_count: k.sign_min_count, employee_ids: _.pluck(k.employees, 'employee_id') };
+            level.groups.push(group);
+          });
+          data.levels.push(level);
+        });
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  if (_.isUndefined(d.template_id)) {
+    d.levels = [];
+    addLevel();
+  } else  {
+    var all_employees = _.mapRows(model.employees, ['level_no', 'group_no', 'employee_id', 'name']);
+    var all_groups = _.mapRows(model.groups, ['level_no', 'group_no', 'sign_min_count']);
+
+    d.levels = _.chain(model.levels)
+                .mapRows(['level_no', 'sign_kind'])
+                .each(function(x) {
+                  let groups = _.where(all_groups, { level_no: x.level_no });
+                  _.each(groups, k => k.employees = _.chain(all_employees)
+                                                     .where({ level_no: x.level_no, group_no: k.group_no })
+                                                     .map(w => w = _.pick(w, ['employee_id', 'name']))
+                                                     .value());
+                  x.groups = groups;
+                })
+                .value();
+  }
+
+  q.tEmployeePlaceholder = t('employee placeholder')();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-click="save()"><t>save</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <style type="text/css">
+    .ui-vhr651 .panel {
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border: 1px solid rgba(0,0,0,.1);
+      box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.1);
+      border-radius: .25rem;
+    }
+    .ui-vhr651 .panel-header {
+      display: -ms-flexbox;
+      display: flex;
+      -ms-flex-align: center;
+      align-items: center;
+      padding: .25rem .75rem;
+      background-color: rgba(255,255,255,.85);
+      background-clip: padding-box;
+      border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .ui-vhr651 .panel-body {
+      padding: .75rem;
+    }
+  </style>
+</div>
+<div class="b-content ui-vhr651"><form name="form">
+  <div class="form-row">
+    <div class="col-sm">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>process</t></label>
+            <span class="form-view">{{ d.process_name }}</span>
+          </div>
+          <div class="form-group">
+            <label><t>journal type</t><r/></label>
+            <b-input name="journal_types"
+                     model="d.journal_type_name | name"
+                     model-key="d.journal_type_id | journal_type_id"
+                     column="order_no"
+                     sort="order_no"
+                     is-view="fi.view_reason"
+                     on-view="viewReason(row)"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows=2 ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>sign kind</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="sign_kind" value="S" ng-model="d.sign_kind"/>
+              <span><t>sequential</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="sign_kind" value="P" ng-model="d.sign_kind"/>
+              <span><t>parallel</t></span>
+            </label>
+          </div>
+          <div style="display: grid;">
+            <div class="panel mb-2" ng-class="{ 'mt-2': !$fisrt }" ng-repeat-start="level in d.levels">
+              <div class="panel-header pt-2 pr-3 pb-2 pl-3 bg-secondary">
+                <strong class="mr-auto"><t p1="$index + 1">level $1</t></strong>
+                <button type="button" class="close" ng-show="d.levels.length > 1" ng-click="removeLevel($index)">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="panel-body">
+                <div class="form-group" ng-show="level.groups.length > 1">
+                  <label><t>sign kind</t></label><br/>
+                  <label class="radio">
+                    <input type="radio" name="{{ 'sign_kind' + $index }}" value="S" ng-model="level.sign_kind"/>
+                    <span><t>sequential</t></span>
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="{{ 'sign_kind' + $index }}" value="P" ng-model="level.sign_kind"/>
+                    <span><t>parallel</t></span>
+                  </label>
+                </div>
+                <div style="display: grid;">
+                  <div ng-class="{ 'panel mb-2': level.groups.length > 1, 'mt-2': !$first }"
+                    ng-repeat-start="group in level.groups">
+                    <div class="panel-header pt-2 pr-3 pb-2 pl-3 bg-light" ng-show="level.groups.length > 1">
+                      <strong class="mr-auto"><t p1="$index + 1">group $1</t></strong>
+                      <button type="button" class="close" ng-click="removeGroup(level, $index)">
+                        <span aria-hidden="true">&times;</span>
+                      </button>
+                    </div>
+                    <div ng-class="{ 'panel-body': level.groups.length > 1 }">
+                      <div class="row" ng-show="d.esign_allowed == 'Y'">
+                        <div class="col">
+                          <label><t>employee</t></label>
+                        </div>
+                        <div class="col-3">
+                          <label><t>esign required</t></label>
+                        </div>
+                        <div class="col-2" ng-show="group.employees.length > 1"></div>
+                      </div>
+                      <div class="row mb-2" ng-repeat="employee in group.employees">
+                        <div class="col">
+                          <b-input name="employees"
+                                   model="employee.name | name"
+                                   model-key="employee.employee_id | employee_id"
+                                   on-change="changeEmployeeQuery(group, query, value)"
+                                   on-select="setEmployee(employee, row)"
+                                   on-delete="setEmployee(employee, {})"
+                                   is-view="fi.view_employee"
+                                   on-view="viewEmployee(group, employee)"
+                                   placeholder="q.tEmployeePlaceholder"
+                                   required-key>
+                            {{ row.name }}
+                          </b-input>
+                        </div>
+                        <div class="col-2 px-0" ng-show="group.employees.length > 1">
+                          <button type="button" class="btn btn-outline-danger btn-icon" ng-click="removeGroupEmployee(group, $index)">
+                            <i class="fa fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="form-group" ng-show="level.groups.length > 1 || group.employees.length > 1">
+                        <a href ng-click="addGroupEmployee(group)"><i class="fa fa-plus"></i>&nbsp;<t>add employee</t></a>
+                      </div>
+                      <div class="form-group row" ng-if="group.employees.length > 1">
+                        <div class="col-sm-8">
+                          <label><t>sign min count</t><r/></label>
+                          <input class="form-control" ng-model="group.sign_min_count" b-number precision="3" scale="6" required/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-repeat-end>
+                    <div class="ml-4" ng-show="level.sign_kind == 'S' && !$last"><i class="fa fa-arrow-down"></i></div>
+                  </div>
+                </div>
+                <div class="form-group mt-2" ng-show="level.groups.length == 1 && level.groups[0].employees.length == 1">
+                  <span>
+                    <a href ng-click="addGroupEmployee(level.groups[0])"><i class="fa fa-plus"></i>&nbsp;<t>add employee</t></a>&nbsp;/&nbsp;
+                    <a href ng-click="addGroup(level)"><t>add group</t></a>
+                  </span>
+                </div>
+                <div class="form-group mt-2" ng-class="{ 'ml-2': level.groups.length > 1 }" ng-show="level.groups.length > 1 || level.groups[0].employees.length > 1">
+                  <a href ng-click="addGroup(level)"><i class="fa fa-plus"></i>&nbsp;<t>add group</t></a>
+                </div>
+              </div>
+            </div>
+            <div ng-repeat-end>
+              <div class="ml-4" ng-show="d.sign_kind == 'S' && !$last"><i class="fa fa-arrow-down"></i></div>
+            </div>
+          </div>
+          <div class="form-group mt-4">
+            <button type="button" class="btn btn-default" ng-click="addLevel()"><t>add level</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

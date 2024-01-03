@@ -1,0 +1,18 @@
+{
+ "add": "Добавить",
+ "add person file": "Файл (добавление)",
+ "close": "Закрыть",
+ "delete": "Удалить",
+ "delete person file $1{title}?": "Удалить файл <b>$1</b>?",
+ "download": "Загрузить",
+ "edit": "Изменить",
+ "edit person file": "Файл (изменение)",
+ "file selection is required": "Необходимо выбрать файл",
+ "files": "Файлы",
+ "note": "Примечание",
+ "pg.person_files.action": "Действия",
+ "pg.person_files.note": "Примечание",
+ "pg.person_files.title": "Название",
+ "save": "Сохранить",
+ "title": "Название"
+}

@@ -1,0 +1,501 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, param, $timeout, bAlert) {
+  var d = {}, q = {}, p = {};
+
+  constructForm(model);
+
+  // Layout
+  function constructForm(model) {
+    scope.d = d = _.omit(model, 'references');
+    scope.q = q = model.references;
+    d.stages = _.mapRows(d.stages, ['stage_id', 'name', 'pcode', 'candidate_count']);
+    q.class_candidate_kind = { 'N': 'primary', 'U': 'warning', 'W': 'success', 'D': 'danger' };
+    $timeout(() => {
+      if (!d.candidate_stage_id || !d.candidate_id) return switchStageLayout(0);
+      var stage_index = _.findIndex(d.stages, s => s.stage_id == d.candidate_stage_id);
+      switchStageLayout(stage_index, d.candidate_id);
+    });
+  }
+
+  function loadForm(candidate_id) {
+    var payload = { vacancy_id: param.vacancy_id };
+    if (candidate_id) {
+      payload.candidate_id = candidate_id;
+    }
+    // TODO: page.reload() with custom param should be implemented
+    page.post(':load_form', payload).then(constructForm, page.alert);
+  }
+
+  function pageId(stage_index, candidate_index = '_list') {
+    return '#page' + page.id() + '-#stage' + stage_index + '-#candidate' + candidate_index;
+  }
+
+  function switchStageLayout(stage_index, candidate_id) {
+    var stage_hash = pageId(stage_index);
+    q.activeStage = stage_hash;
+    // loading candidate list
+    page.post(':get_candidates', {
+      vacancy_id: d.vacancy_id,
+      stage_id: d.stages[stage_index].stage_id
+    }).then(res => {
+      d.stages[stage_index].candidates = res.candidates;
+      if (candidate_id) {
+        var candidate_index = _.findIndex(d.stages[stage_index].candidates, c => (c.candidate_id == candidate_id));
+        return switchCandidateLayout(stage_index, candidate_index);
+      }
+      else if (d.stages[stage_index].candidates.length) return switchCandidateLayout(stage_index, 0);
+    }, page.alert);
+  }
+
+  function switchCandidateLayout(stage_index, candidate_index) {
+    var candidate_hash = pageId(stage_index, candidate_index);
+    d.stages[stage_index].activeCandidate = candidate_hash;
+    // loading candidate operations
+    page.post(':get_candidate_operations', {
+      vacancy_id: d.vacancy_id,
+      candidate_id: d.stages[stage_index].candidates[candidate_index].candidate_id
+    }).then(res => {
+      var operation_cols = [
+        'operation_id', 'operation_kind', 'operation_kind_name', 'candidate_id', 'candidate_name', 'from_stage_id', 'from_stage_name', 'from_stage_pcode',
+        'to_stage_id', 'to_stage_name', 'to_stage_pcode', 'reject_reason_id', 'reject_reason_name', 'note', 'created_by_name', 'created_on'
+      ];
+      d.stages[stage_index].candidates[candidate_index].operations = _.mapRows(res.operations, operation_cols);
+    }, page.alert);
+  }
+
+  function dropdownStages(curr_stage_id) {
+    return _.filter(d.stages, s => !_.contains([curr_stage_id, q.stage_accepted.stage_id, q.stage_rejected.stage_id], s.stage_id));
+  }
+
+  function stageBadgeClass(stage_pcode) {
+    if (stage_pcode == q.stage_todo.pcode) return 'primary';
+    if (stage_pcode == q.stage_accepted.pcode) return 'success';
+    if (stage_pcode == q.stage_rejected.pcode) return 'danger';
+    return 'secondary';
+  }
+
+  function onKeyDown(event) {
+    const kc_s = 83;
+    if (event.altKey && event.keyCode == kc_s) {
+      saveOperation();
+    }
+  }
+
+  // candidate
+  function addCandidate(rows) {
+    if (!rows?.length) return;
+    page.post(':add_candidate', {
+      vacancy_id: d.vacancy_id,
+      candidate_ids: _.pluck(rows, 'candidate_id'),
+    }).then(() => loadForm(), page.alert);
+  }
+
+  function selectCandidate() {
+    page.post(':get_candidate_ids', { vacancy_id: d.vacancy_id }).then(res => {
+      var xparam = { multiple_select: true };
+      if (res.candidate_ids.length) xparam.where = ['candidate_id', '<>', res.candidate_ids];
+      fi.select_candidate(null, addCandidate, xparam);
+    }, page.alert);
+  }
+
+  // photo & file
+  function getDefaultPhotoSrc(gender) {
+    var res = gender == q.pg_female ? 'fe' : '';
+    return 'page/resource/vhr/no_photo_' + res + 'male.png';
+  }
+
+  function showPhoto(row) {
+    if (!row.photo_sha) return;
+    page.previewFile({
+      sha: row.photo_sha,
+      name: row.name,
+      type: 'image'
+    });
+  }
+
+  function downloadFile(sha) {
+    window.open(page.downloadFile(sha));
+  }
+
+  // operation modal
+  var operationModal = page.$content.find('form[name=operationModal]>.modal');
+
+  function showOperationModal() {
+    page.untouch(scope.operationModal);
+    $timeout(() => {
+      operationModal.modal('show');
+      $timeout(() => page.$content.find('#operation-note-textarea').focus(), 400);
+    });
+  }
+
+  function showChangeStageModal(candidate, from_stage, to_stage) {
+    scope.p = p = {};
+    p.card_title = t('change candidate $1 stage?')(candidate.name);
+    p.data = {
+      operation_id: '',
+      operation_kind: q.operation_kind_action,
+      candidate_id: candidate.candidate_id,
+      // from stage
+      from_stage_id: from_stage.stage_id,
+      from_stage_name: from_stage.name,
+      from_stage_pcode: from_stage.pcode,
+      // to stage
+      to_stage_id: to_stage.stage_id,
+      to_stage_name: to_stage.name,
+      to_stage_pcode: to_stage.pcode,
+      // reject reason
+      reject_reason_id: '',
+      reject_reason_name: '',
+      note: ''
+    };
+    showOperationModal();
+  }
+
+  function showAddCommentModal(candidate) {
+    scope.p = p = {};
+    p.card_title = t('add comment note for candidate $1?')(candidate.name);
+    p.data = {
+      operation_id: '',
+      operation_kind: q.operation_kind_comment,
+      candidate_id: candidate.candidate_id,
+      note: ''
+    };
+    showOperationModal();
+  }
+
+  function showEditOperationModal(operation) {
+    scope.p = p = {};
+    p.card_title = t('edit comment note for candidate $1?')(operation.candidate_name);
+    p.data = {
+      operation_id: operation.operation_id,
+      operation_kind: operation.operation_kind,
+      candidate_id: operation.candidate_id,
+      // from stage
+      from_stage_id: operation.from_stage_id,
+      from_stage_name: operation.from_stage_name,
+      from_stage_pcode: operation.from_stage_pcode,
+      // to stage
+      to_stage_id: operation.to_stage_id,
+      to_stage_name: operation.to_stage_name,
+      to_stage_pcode: operation.to_stage_pcode,
+      // reject reason
+      reject_reason_id: operation.reject_reason_id,
+      reject_reason_name: operation.reject_reason_name,
+      note: operation.note
+    };
+    showOperationModal();
+  }
+
+  function changeHHStage() {
+    if (!d.hh_vacancy_code) return;
+    if (!fi.change_hh_stage) return;
+    return fi.change_hh_stage({
+      vacancy_code: d.hh_vacancy_code,
+      vacancy_id: d.vacancy_id,
+      to_stage_id: p.data.to_stage_id,
+      candidate_id: p.data.candidate_id,
+    });
+  }
+
+  async function loadHHCandidates(stage_index) {
+    if (!d.hh_vacancy_code) return;
+    let data = {
+      vacancy_code: d.hh_vacancy_code,
+      vacancy_id: d.vacancy_id,
+      stage_id: d.stages[stage_index].stage_id,
+      page: 0,
+    }
+    let result = { total_pages: 1 };
+    try {
+      while (data.page < result.total_pages) {
+        result = await fi.load_hh_candidates(data);
+        data.page += 1;
+      }
+      loadForm();
+      notify(t('successfully loaded candidates')());
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  function loadOlxCandidates() {
+    if (!d.olx_vacancy_code) return;
+
+    fi.load_olx_candidates({ vacancy_id: d.vacancy_id, olx_vacancy_code: d.olx_vacancy_code }).then(res => {
+      if (!res.candidate_codes) return;
+      _.each(res.candidate_codes, x => {
+        fi.load_candidate_info({ candidate_code: x, vacancy_id: d.vacancy_id }).then(() => { notify(t('candidate succesfully saved')())}, page.alert);
+      });
+      page.reload();
+    }, page.alert)
+  }
+
+  function saveOperation() {
+    operationModal.modal('hide');
+    var data = {
+      operation_id: p.data.operation_id,
+      operation_kind: p.data.operation_kind,
+      vacancy_id: d.vacancy_id,
+      candidate_id: p.data.candidate_id,
+      to_stage_id: p.data.to_stage_id,
+      reject_reason_id: p.data.reject_reason_id,
+      note: p.data.note
+    };
+    page.post(':save_operation', data)
+        .then(changeHHStage)
+        .then(() => loadForm(p.data.candidate_id))
+        .catch(page.alert);
+  }
+
+  function deleteOperation(operation) {
+    page.confirm(t('do you want to delete operation?')(), () => {
+      fi.delete_operation({ operation_id: operation.operation_id })
+        .then(() => loadForm(operation.candidate_id), page.alert);
+    });
+  }
+
+  // reject reason
+  function setRejectReason(item, row) {
+    if (!row) return;
+    item.reject_reason_id = row.reject_reason_id;
+    item.reject_reason_name = row.name;
+  }
+
+  function addRejectReason(item, value) {
+    fi.add_reject_reason(null, res => setRejectReason(item, res), { name: value });
+  }
+
+  function selectRejectReason(item, operation) {
+    fi.select_reject_reason(null, res => setRejectReason(item, res));
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-content vhr576">
+  <style>
+    .vhr576 .card.card-custom {
+      background-color: #ffffff !important;
+    }
+    .vhr576 .card b-pg-grid .tbl-container {
+      box-shadow: none !important;
+      border: 1px solid #ecf0f3;
+      border-radius: 3px;
+    }
+    .vhr576 b-pg-grid .tbl {
+      max-height: none!important;
+    }
+    .vhr576 b-pg-grid .tbl .tbl-header .tbl-header-cell,
+    .vhr576 b-grid .tbl .tbl-header .tbl-header-cell {
+      border-bottom: none !important;
+    }
+    .vhr576 b-pg-grid .tbl .tbl-row.tbl-no-data-row,
+    .vhr576 b-grid .tbl .tbl-row.tbl-no-data-row {
+      border-top: 1px solid #eaeaea !important;
+    }
+  </style>
+  <!-- Stages navbar -->
+  <div class="card card-custom gutter-b overflow-auto">
+    <div class="card-header card-header-tabs-line">
+      <div class="card-title">
+        <ul class="nav nav-tabs nav-tabs-space-lg nav-tabs-line nav-tabs-bold nav-tabs-line-3x flex-nowrap" role="tablist">
+          <li class="nav-item mr-4" ng-repeat="(stage_index, stage) in d.stages">
+            <a class="nav-link ml-0" ng-class="{ 'active': q.activeStage == pageId(stage_index) }" ng-click="switchStageLayout(stage_index)">
+              <span class="nav-text font-weight-bold text-nowrap">{{ stage.name }}</span>
+              <span class="text-muted">&nbsp;</span>
+              <div class="nav-text font-weight-bold d-block text-nowrap" ng-if="stage.candidate_count > 0"><t p1="stage.candidate_count">$1 {candidates}</t></div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <!-- Stage content -->
+  <div class="form-row" ng-if="q.activeStage == pageId(stage_index)" ng-repeat="(stage_index, stage) in d.stages">
+    <!-- Candidate list -->
+    <div class="col-7 col-sm-8">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title d-none d-lg-flex">
+            <h3 class="card-label"><t>candidates</t></h3>
+          </div>
+          <div class="card-toolbar">
+            <button type="button" class="btn btn-outline-primary d-none d-md-block mr-1" ng-if="fi.load_hh_candidates && !!d.hh_vacancy_code" ng-click="loadHHCandidates(stage_index)">{{ fi.load_hh_candidates.title }}</button>
+            <!-- <button type="button" class="btn btn-outline-primary d-none d-md-block mr-1" ng-if="fi.load_olx_candidates && !!d.olx_vacancy_code && d.olx_vacancy_code != -1" ng-click="loadOlxCandidates()">{{ fi.load_olx_candidates.title }}</button>    --  TODO temporary disabled -->
+            <button type="button" class="btn btn-outline-success d-none d-md-block" ng-if="fi.select_candidate && stage_index == 0" ng-click="selectCandidate()">{{ fi.select_candidate.title }}</button>
+            <button type="button" class="btn btn-outline-success btn-icon d-block d-md-none" ng-if="fi.select_candidate && stage_index == 0" ng-click="selectCandidate()"><i class="fa fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="card-body p-0 overflow-auto" style="height: calc(100vh - 288px);">
+          <div class="navi navi-bolder navi-hover navi-active" ng-if="stage.candidates.length">
+            <div class="navi-item" ng-repeat="(candidate_index, candidate) in stage.candidates">
+              <a href class="navi-link justify-content-between border-top" ng-class="{ 'active': stage.activeCandidate == pageId(stage_index, candidate_index) }" ng-click="switchCandidateLayout(stage_index, candidate_index)">
+                <div class="d-flex align-items-center">
+                  <img ng-src="{{ !candidate.photo_sha ? getDefaultPhotoSrc(candidate.gender) : page.loadImageSmall(candidate.photo_sha) }}"
+                        class="rounded-circle cursor-pointer h-50px w-50px"
+                        style="border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;
+                  <span class="d-md-block d-none">
+                    <div class="navi-text b-offcanvas-hide font-size-lg">{{ candidate.name }}</div>
+                    <div class="text-muted d-xl-block d-none">{{ candidate.phone }}</div>
+                  </span>
+                </div>
+                <div class="b-right d-xl-block d-none">
+                  <span class="badge badge-{{ q.class_candidate_kind[candidate.candidate_kind] }}">{{ candidate.candidate_kind_name }}</span>
+                </div>
+              </a>
+            </div>
+          </div>
+          <!-- blank candidate list -->
+          <div class="d-flex justify-content-center text-muted" style="margin-top: 20vh;" ng-if="!stage.candidates.length">
+            <div class="text-center">
+              <i class="far fa-id-badge display-2"></i>
+              <div class="h4"><t>empty candidates</t></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Candidate info -->
+    <div class="col-17 col-sm-16">
+      <div class="card card-custom card-stretch gutter-b" ng-if="stage.activeCandidate == pageId(stage_index, candidate_index)" ng-repeat="(candidate_index, candidate) in stage.candidates">
+        <div class="card-header">
+          <div class="card-title d-none d-sm-flex">
+            <h3 class="card-label"><t>candidate info</t></h3>
+          </div>
+          <div class="card-toolbar" ng-if="fi.add_operation">
+            <div class="btn-group" ng-if="dropdownStages(stage.stage_id).length">
+              <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>change stage</t></button>
+              <div class="dropdown-menu">
+                <a href class="dropdown-item" ng-repeat="s in dropdownStages(stage.stage_id)" ng-click="showChangeStageModal(candidate, stage, s)">{{ s.name }}</a>
+              </div>
+            </div>
+            <button type="button" class="btn btn-success ml-2" ng-if="stage.pcode != q.stage_accepted.pcode" ng-click="showChangeStageModal(candidate, stage, q.stage_accepted)">{{ q.stage_accepted.name }}</button>
+            <button type="button" class="btn btn-danger ml-2" ng-if="stage.pcode != q.stage_rejected.pcode" ng-click="showChangeStageModal(candidate, stage, q.stage_rejected)">{{ q.stage_rejected.name }}</button>
+          </div>
+        </div>
+        <div class="card-body overflow-auto" style="height: calc(100vh - 288px);">
+          <div class="d-sm-flex align-items-start form-group">
+            <!-- candidate photo -->
+            <div class="m-auto mx-sm-10 d-block dropdown h-150px w-150px text-center">
+              <div class="image-input image-input-outline" style="border-radius: 50%;">
+                <div class="image-input-wrapper h-150px w-150px" style="border-radius: inherit !important;">
+                  <img class="cursor-pointer mw-100 mh-100 h-150px w-150px"
+                        style="border-radius: inherit !important; object-fit: cover;"
+                        ng-src="{{ !candidate.photo_sha ? getDefaultPhotoSrc(candidate.gender) : page.loadImageMedium(candidate.photo_sha) }}"
+                        ng-click="showPhoto(candidate)">
+                </div>
+              </div>
+            </div>
+            <div class="mx-5">
+              <div class="h3 font-weight-bolder text-center text-sm-left mt-5">{{ candidate.name }}</div>
+              <div class="font-weight-bolder text-center text-sm-left mt-3">{{ candidate.jobs }}</div>
+              <div class="font-weight-bolder text-center text-sm-left mt-1">{{ candidate.email }}</div>
+              <div class="font-weight-bolder text-center text-sm-left mt-1">{{ candidate.phone }}</div>
+              <div class="font-weight-bolder text-center text-sm-left mt-1" ng-if="candidate.cv_sha">
+                <a href="" ng-click="downloadFile(candidate.cv_sha)"><t>download cv</t><i class="fas fa-cloud-download-alt ml-2"></i></a>
+              </div>
+            </div>
+          </div>
+          <div class="form-row form-group">
+            <div class="col-sm b-right">
+              <button type="button" class="btn btn-outline-secondary" ng-if="fi.add_operation" ng-click="showAddCommentModal(candidate)"><t>add comment note</t></button>
+            </div>
+          </div>
+          <b-pg-grid name="operations" local-data="candidate.operations" sort="-created_on" min-width="0" limit="1000">
+            <b-pg-header name="action"/>
+            <b-pg-row>
+              <b-pg-col name="note" size="9">
+                <span class="badge badge-danger" ng-if="row.reject_reason_id">{{ row.reject_reason_name }}</span>
+                <div class="mt-1">{{ row.note }}</div>
+              </b-pg-col>
+              <b-pg-col name="to_stage" size="4">
+                <span class="badge badge-{{ stageBadgeClass(row.to_stage_pcode) }}" ng-if="row.to_stage_name">{{ row.to_stage_name }}</span>
+              </b-pg-col>
+              <b-pg-col name="created_by_name" size="5"/>
+              <b-pg-col name="created_on" size="4"/>
+              <b-pg-col name="action" size="2">
+                <div class="text-center w-100 dropdown" ng-if="fi.edit_operation || fi.delete_operation">
+                  <a class="btn btn-clean btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" role="button" aria-expanded="false">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                    <a class="dropdown-item" ng-if="fi.edit_operation" ng-click="showEditOperationModal(row)"><t>edit</t></a>
+                    <a class="dropdown-item text-danger" ng-if="fi.delete_operation && row.operation_kind == q.operation_kind_comment" ng-click="deleteOperation(row)"><t>delete</t></a>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+      <!-- blank candidate info page -->
+      <div class="card card-custom card-stretch gutter-b" ng-if="!stage.candidates.length || !stage.activeCandidate">
+        <div class="card-header">
+          <div class="card-title d-none d-sm-flex">
+            <h3 class="card-label"><t>candidate info</t></h3>
+          </div>
+        </div>
+        <div class="card-body p-0" style="height: calc(100vh - 288px);">
+          <div class="d-flex justify-content-center text-muted" style="margin-top: 20vh;">
+            <div class="text-center">
+              <i class="far fa-address-card display-2"></i>
+              <div class="h4"><t>no candidate selected</t></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form name="operationModal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">{{ p.card_title }}</h4>
+          </div>
+          <div class="modal-body">
+            <!-- is change stage operation -->
+            <div class="form-group" ng-if="p.data.operation_kind == q.operation_kind_action">
+              <label><t>change stage into</t></label>
+              <div>
+                <span class="badge badge-{{ stageBadgeClass(p.data.from_stage_pcode) }}" ng-if="p.data.from_stage_name">{{ p.data.from_stage_name }}</span>
+                <span ng-if="p.data.from_stage_name"><i class="fas fa-long-arrow-alt-right"></i></span>
+                <span class="badge badge-{{ stageBadgeClass(p.data.to_stage_pcode) }}">{{ p.data.to_stage_name }}</span>
+              </div>
+            </div>
+            <!-- is to reject stage -->
+            <div class="form-group" ng-if="p.data.to_stage_pcode == q.stage_rejected.pcode">
+              <label><t>reject reason</t></label>
+              <b-input name="reject_reasons"
+                       model="p.data.reject_reason_name | name"
+                       model-key="p.data.reject_reason_id | reject_reason_id"
+                       sort="order_no"
+                       search="name"
+                       on-select="setRejectReason(p.data, row)"
+                       on-delete="setRejectReason(p.data, {})"
+                       is-add="fi.add_reject_reason"
+                       on-add="addRejectReason(p.data, value)"
+                       is-view="fi.select_reject_reason"
+                       on-view="selectRejectReason(p.data)"
+                       ng-keydown="onKeyDown($event)">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <!-- is comment operation -->
+            <label><t>note</t><r ng-if="p.data.operation_kind == q.operation_kind_comment"/></label>
+            <textarea id="operation-note-textarea" class="form-control" ng-model="p.data.note" b-maxlength="2000" ng-keydown="onKeyDown($event)" rows=4 ng-required="p.data.operation_kind == q.operation_kind_comment"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveOperation()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

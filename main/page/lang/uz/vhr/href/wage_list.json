@@ -1,0 +1,11 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{wage_count} wages?": "Haqiqatan ham <b>$1</b> oʻrtacha ish haqi(lar)ni oʻchirib tashlamoqchimisiz?",
+ "delete wage?": "Haqiqatan ham o'rtacha ish haqini o'chirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.job_name": "Lavozim",
+ "table.rank_name": "Reyting (toifa)",
+ "table.wage_begin": "Dan",
+ "table.wage_end": "Gacha",
+ "table.wage_id": "ID"
+}

@@ -1,0 +1,20 @@
+{
+ "clear preferences": "Qayta o'rnatish",
+ "CSV": "CSV",
+ "date": "Sana",
+ "division": "Bo'lim",
+ "division group": "Bo'lim guruhi",
+ "Excel": "EXCEL",
+ "generate": "Hisobotni tayyorlash",
+ "Html": "HTML",
+ "manager": "Rahbar",
+ "manager division group": "Bo'lim guruhi bo'yich rahbarni ko'rsatish",
+ "parameters": "Filtr",
+ "preferences": "Sozlamalar",
+ "save preferences": "Saqlash",
+ "save preferences?": "Sozlamalarni saqlamochimisiz?",
+ "setting minute words": "Ko'rsatish (soat, daqiqa)",
+ "setting minutes": "Daqiqalarni ko'rsatish",
+ "view": "Ko'rish",
+ "XML": "XML"
+}

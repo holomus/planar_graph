@@ -1,0 +1,56 @@
+set define off
+prompt TABLE RECORD TRANSLATE
+begin
+uis.table_record_translate('HTT_CALENDARS','VHR:1','NAME','uz','Ishchi taqvim');
+uis.table_record_translate('HTT_REQUEST_KINDS','VHR:1','NAME','uz','Kasallik so''rovi');
+uis.table_record_translate('HTT_REQUEST_KINDS','VHR:2','NAME','uz','Mehnat ta''tili');
+uis.table_record_translate('HTT_REQUEST_KINDS','VHR:3','NAME','uz','Ish safari');
+uis.table_record_translate('HTT_REQUEST_KINDS','VHR:4','NAME','uz','Qo''shimcha dam olish');
+uis.table_record_translate('HTT_REQUEST_KINDS','VHR:5','NAME','uz','Ishchi uchrashuv');
+uis.table_record_translate('HTT_SCHEDULES','VHR:1','NAME','uz','Individual ish jadvali');
+uis.table_record_translate('HTT_SCHEDULES','VHR:2','NAME','uz','Indvidual ish jadvali lavozimlar uchun');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:1','LETTER_CODE','uz','I');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:1','NAME','uz','Ishlangan vaqt');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:10','LETTER_CODE','uz','IS');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:10','NAME','uz','Ish safari');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:11','LETTER_CODE','uz','MT');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:11','NAME','uz','Mehnat ta''tili');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:12','LETTER_CODE','uz','QV');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:12','NAME','uz','Qo''shimcha ish vaqti');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:13','LETTER_CODE','uz','IU');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:13','NAME','uz','Ishchi uchrashuv');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:14','LETTER_CODE','uz','B');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:14','NAME','uz','Bayram');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:15','LETTER_CODE','uz','BD');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:15','NAME','uz','Belgilangan dam olish');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:16','LETTER_CODE','uz','ID');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:16','NAME','uz','Ishdan avvalgi vaqt');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:17','LETTER_CODE','uz','IK');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:17','NAME','uz','Ishdan keyingi vaqt');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:18','LETTER_CODE','uz','T');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:18','NAME','uz','Tushlik vaqti');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:19','LETTER_CODE','uz','RBV');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:19','NAME','uz','Rejalashtirilgan bo''sh vaqt');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:2','LETTER_CODE','uz','K');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:2','NAME','uz','Kechikish');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:20','LETTER_CODE','uz','TIV');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:20','NAME','uz','To''ldirilgan ish vaqti');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:21','LETTER_CODE','uz','TQV');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:21','NAME','uz','To''ldirilgan qo''shimcha ish vaqti');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:3','LETTER_CODE','uz','EK');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:3','NAME','uz','Erta ketish');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:4','LETTER_CODE','uz','SQD');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:4','NAME','uz','Soatbay qo''shimcha dam olish');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:5','LETTER_CODE','uz','D');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:5','NAME','uz','Dam olish');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:6','LETTER_CODE','uz','IJY');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:6','NAME','uz','Ish joyida yo''qlik');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:7','LETTER_CODE','uz','BV');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:7','NAME','uz','Bo''sh vaqt');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:8','LETTER_CODE','uz','KT');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:8','NAME','uz','Kasallik ta''tili');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:9','LETTER_CODE','uz','QD');
+uis.table_record_translate('HTT_TIME_KINDS','VHR:9','NAME','uz','Qo''shimcha dam olish');
+commit;
+end;
+/

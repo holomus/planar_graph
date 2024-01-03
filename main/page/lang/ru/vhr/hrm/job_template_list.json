@@ -1,0 +1,18 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{template_count} template(s)?": "Вы действительно хотите удалить <b>$1</b> шаблонов?",
+ "delete template $1{template_id}?": "Вы действительно хотите удалить шаблон <b>$1</b> ?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.division_id": "ИД подразделения",
+ "table.division_name": "Подразделение",
+ "table.job_name": "Должность",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.rank_name": "Разряд (категория)",
+ "table.schedule_name": "График работы",
+ "table.template_id": "ИД шаблона",
+ "table.vacation_days_limit": "Кол-во отпускных дней (в год)",
+ "table.wage_scale_name": "Тарифная группа"
+}

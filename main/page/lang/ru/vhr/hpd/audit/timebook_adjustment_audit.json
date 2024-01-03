@@ -1,0 +1,17 @@
+{
+ "details": "Детали",
+ "journal": "Документ",
+ "page audit": "Страницы",
+ "table_audit.free_time": "Вне графика",
+ "table_audit.overtime": "Сверхурочно",
+ "table_audit.page_id": "ИД страницы",
+ "table_audit.t_audit_id": "ИД записи",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата и время события",
+ "table_audit.t_user_name": "Пользователь",
+ "table_audit.turnout_time": "Факт (время)",
+ "timebook adjustment audit": "Корректировка табеля"
+}

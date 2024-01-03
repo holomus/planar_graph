@@ -1,0 +1,68 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, $timeout) {
+  var d = model;
+
+  switch (d.status) {
+    case 'D': d.status_class = 'alert-light'; break;
+    case 'P': d.status_class = 'alert-light-info'; break;
+    case 'A': d.status_class = 'alert-light-success'; break;
+    case 'C': d.status_class = 'alert-danger'; break;
+  }
+
+  $timeout(function() {
+    if (fi.sign_document) page.subpage('sign_document').on('signed', page.reload);
+  });
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm">
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <div class="alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.status_class">
+      <span class="alert-text">{{ d.status_name }}</span>
+    </div>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>title</t></label>
+            <span class="form-view">{{ d.title }}</span>
+          </div>
+          <div class="form-group">
+            <label><t>note</t></label>
+            <span class="form-view">{{ d.note }}</span>
+          </div>
+          <div class="form-group">
+            <label><t>process</t></label>
+            <span class="form-view">{{ d.process_name }}</span>
+          </div>
+          <div class="form-group">
+            <label><t>created by</t></label>
+            <span class="form-view">{{ d.created_by_name }}</span>
+          </div>
+          <div class="form-group">
+            <label><t>created on</t></label>
+            <span class="form-view">{{ d.created_on }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm" ng-if="fi.sign_document">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="form-group">
+            <label>{{ fi.sign_document.title }}</label>
+            <b-subpage name="sign_document" form="fi.sign_document.uri" param="{ document_id: d.document_id }"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

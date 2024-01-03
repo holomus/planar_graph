@@ -1,0 +1,12 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another vacancy group": "Kod allaqachon boshqa Vakansiyalar uchun so'rovnomada ishlatilgan.",
+ "is required": "Majburiy",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi kerak",
+ "order no": "Tartib raqami",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

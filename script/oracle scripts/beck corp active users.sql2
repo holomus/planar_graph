@@ -1,0 +1,42 @@
+select q.Company_Id,
+       (select w.Code
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Code,
+       (select w.Name
+          from Md_Companies w
+         where w.Company_Id = q.Company_Id) Company_Name,
+       to_char(q.Mon, 'YYYY MONTH') month,
+       sum(Decode(q.Category_Kind, 'A', 1, 0)) a_Cat,
+       sum(Decode(q.Category_Kind, 'B', 1, 0)) b_Cat,
+       sum(Decode(q.Category_Kind, 'C', 1, 0)) c_Cat,
+       sum(Decode(q.Category_Kind, 'D', 1, 0)) d_Cat,
+       count(1) Total
+  from (select q.Company_Id,
+               Trunc(q.Timesheet_Date, 'MON') Mon,
+               q.Employee_Id,
+               case
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 15 then
+                   'A'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 10 then
+                   'B'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 5 then
+                   'C'
+                  when count(distinct Trunc(q.Timesheet_Date)) >= 1 then
+                   'D'
+                  else
+                   'E'
+                end Category_Kind
+          from Htt_Timesheets q
+         where exists (select 1
+                  from Md_Companies w
+                 where w.Company_Id = q.Company_Id
+                   and w.State = 'A'
+                   and w.Company_Id = 580)
+           and q.Timesheet_Date >= '01.01.2023'
+           and exists (select 1
+                  from Htt_Timesheet_Tracks w
+                 where w.Timesheet_Id = q.Timesheet_Id)
+         group by q.Company_Id, Trunc(q.Timesheet_Date, 'MON'), q.Employee_Id) q
+ where q.Category_Kind in ('A', 'B', 'C')
+ group by q.Company_Id, q.Mon
+ order by q.Company_Id, q.Mon;

@@ -1,0 +1,22 @@
+{
+ "table.last_30_days_max_active_count": "Max active cnt last 30 days",
+ "table.last_3_days_avg_active_count": "Avg active cnt last 3 days",
+ "table.last_3_days_avg_active_perc": "Avg active % last 3 days",
+ "table.last_7_days_avg_active_count": "Avg active cnt last 7 days",
+ "table.last_7_days_avg_active_perc": "Avg active % last 7 days",
+ "table.last_month_avg_active_count": "Avg active cnt last month",
+ "table.last_month_avg_active_perc": "Avg active % last month",
+ "table.name": "Name",
+ "table.phone": "Phone",
+ "table.rownum": "№",
+ "table.today_active_count": "Active cnt Today",
+ "table.today_active_perc": "Active % Today",
+ "table.yesterday_active_count": "Active cnt Yesterday",
+ "table.yesterday_active_perc": "Active % Yesterday",
+ "table.code": "Code",
+ "table.company_id": "ID",
+ "table.email": "Email",
+ "table.employee_count": "Employee Cnt",
+ "table.last_15_days_avg_active_count": "Avg active cnt last 15 days",
+ "table.last_15_days_avg_active_perc": "Avg active % last 15 days"
+}

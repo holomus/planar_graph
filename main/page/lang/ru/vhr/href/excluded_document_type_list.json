@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete excluded document types in $1{division jobs} division jobs?": "Вы действительно хотите удалить $1 исключение(я)?",
+ "delete excluded document types of $1{job_name} in $2{division_name}?": "Вы действительно хотите удалить исключение для <b>$1</b> в <b>$2</b>?",
+ "table.division_id": "ИД отдела",
+ "table.division_name": "Отдел",
+ "table.excluded_document_types_count": "Кол-во исключенных тип документов",
+ "table.job_id": "ИД должности",
+ "table.job_name": "Должность"
+}

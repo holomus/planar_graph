@@ -1,0 +1,23 @@
+{
+ "$1{application_number}": "Talabnoma №$1",
+ "application number": "Raqam",
+ "change status from approved to completed?": "Talabnomani yakunlamoqchimisz?",
+ "change status from cancel to draft?": "Talabnomani qaytarmoqchimisz?",
+ "change status from draft to waiting?": "Talabnomani yubormoqchimisz?",
+ "change status from waiting to approved?": "Talabnomani tasdiqlamoqchimisiz?",
+ "change status from waiting to canceled?": "Talabnomani rad etmoqchimisiz?",
+ "create vacancy by application": "Talabnoma yaratish",
+ "created by": "Yaratdi",
+ "created on": "Yaratilgan sana",
+ "division name": "Bo'lim",
+ "edit": "Tahrirlash",
+ "job name": "Lavozim",
+ "main": "Asosiy ma'lumotlar",
+ "modified by": "Tahrirladi",
+ "modified on": "Tahrirlangan sana",
+ "note": "Izoh",
+ "quantity": "Ishga olinadigan xodimlar soni",
+ "requirements": "Talablar",
+ "responsibilities": "Mas'uliyatlar",
+ "wage": "Maosh"
+}

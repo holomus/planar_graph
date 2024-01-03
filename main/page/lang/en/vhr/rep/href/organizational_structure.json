@@ -1,0 +1,16 @@
+{
+ "export": "Export",
+ "export to pdf": "Document PDF",
+ "export to png": "Image PNG",
+ "organization-structure": "Org. structure",
+ "$1 employees": "$1 employee(s)",
+ "division": "Department",
+ "divisions count: $1": "Organization Qty: $1",
+ "email": "Email",
+ "employees": "Employees",
+ "filial": "Organization",
+ "phone": "Phone",
+ "region": "Region",
+ "subdivisions count: $1": "Department Qty: $1",
+ "view all": "All Employees"
+}

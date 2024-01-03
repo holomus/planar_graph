@@ -1,0 +1,41 @@
+<script biruni>
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : null;
+  }
+
+  function addDevice(row) {
+    fi.add_device({}, null, _.extend(row, { integrate_by_service: 'N' }));
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-10 offset-14 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="serial_number, name, device_type_id" on-dblclick="onDblclick(row)" sort="serial_number" search="serial_number, name">
+    <b-row>
+      <b-col name="serial_number" size=10/>
+      <b-col name="name" size=6/>
+      <b-col name="device_type_name" size=8/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="addDevice(row)" ng-if="fi.add_device">{{ fi.add_device.title }}</button>
+    </b-action>
+
+    <b-filter name="device_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="device_type_id" decorate-with="device_type_name"/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,17 @@
+{
+ "change status to progress $1{count} documents?": "1$ hujjatlarning holati ijro uchun o‘zgartirilsinmi?",
+ "change status to progress $1{title} document?": "$1 hujjat holati ijro uchun o‘zgartirilsinmi?",
+ "select": "Tanlash",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.document_id": "ID",
+ "table.esign_allowed_name": "ERI talabi",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.note": "Izoh",
+ "table.process_name": "Jarayon",
+ "table.sign_kind_name": "Imzolanish",
+ "table.status_name": "Holat",
+ "table.title": "Nom",
+ "to progress $1": "Ijro uchun"
+}

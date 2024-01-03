@@ -1,0 +1,21 @@
+{
+ "table.for_recruitment_name": "Использование для рекрутинга",
+ "delete $1": "Удалить $1",
+ "delete $1{exam_count} exam(s)?": "Вы действительно хотите удалить <b>$1</b> экзамена(ов)?",
+ "delete exam $1{ name }?": "Вы действительно хотите удалить <b>$1</b> экзамен?",
+ "select": "Выбрать",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.duration": "Длительность",
+ "table.exam_id": "ИД",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.passing_percentage": "Проходной процент",
+ "table.passing_score": "Проходной балл",
+ "table.pick_kind_name": "Выбрать тип",
+ "table.question_count": "Количество вопросов",
+ "table.randomize_options_name": "Случайные варианты ответов",
+ "table.randomize_questions_name": "Случайные варианты вопросов",
+ "table.state_name": "Статус"
+}

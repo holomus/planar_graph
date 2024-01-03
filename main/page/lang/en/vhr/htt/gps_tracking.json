@@ -1,0 +1,13 @@
+{
+ "gps turned off": "GPS turned off",
+ "gps turned on": "GPS turned on",
+ "job": "Job",
+ "left from polygon": "Left from polygon",
+ "location types": "Location Types",
+ "reload": "Reload",
+ "search": "Search",
+ "filter": "Filter",
+ "entered into <b>$1{location_name}</b> polygon": "Entered into <b>$1</b> polygon",
+ "Close": "Close",
+ "divisions": "Departments"
+}

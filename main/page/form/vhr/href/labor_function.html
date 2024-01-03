@@ -1,0 +1,65 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam, bHttp) {
+  model = model || {};
+  var d = _.isUndefined(model.labor_function_id) ? _.extend(model, xparam) : model,
+      q = {};
+
+  function validateCode() {
+    if (d.code) {
+      if (d.code == q.code_origin) {
+        q.code_is_unique = true;
+      } else {
+        bHttp.unblockOnce();
+        page.post(':code_is_unique', { code: d.code }).then(function(result) {
+          q.code_is_unique = result == "Y";
+        }, page.alert);
+      }
+    } else q.code_is_unique = true;
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  if (d.labor_function_id) {
+    q.code_origin = d.code;
+  };
+
+  validateCode();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>code</t></label>
+              <input type="text" class="form-control" ng-model="d.code" ng-model-options="{ debounce: 500 }"
+                     ng-change="validateCode()" b-validate="{ s: q.code_is_unique || d.code.length == 0 }" b-maxlength="50"/>
+              <span class="text-danger" ng-hide="d.code.length == 0 || q.code_is_unique"><t>code is already used by another labor function</t></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="150" required/>
+          </div>
+          <div class="form-group">
+            <label><t>description</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.description" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

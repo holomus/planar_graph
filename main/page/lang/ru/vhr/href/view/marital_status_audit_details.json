@@ -1,0 +1,5 @@
+{
+ "pg.marital_status.before": "Старое значение",
+ "pg.marital_status.current": "Новое значение",
+ "pg.marital_status.field_name": "Поле"
+}

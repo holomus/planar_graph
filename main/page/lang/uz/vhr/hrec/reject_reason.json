@@ -1,0 +1,11 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another reject reason": "Kod noyob bo'lishi kerak",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi kerak",
+ "order no": "Tartib raqami",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

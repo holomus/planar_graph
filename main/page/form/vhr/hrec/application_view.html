@@ -1,0 +1,157 @@
+<script biruni>
+page.ctrl(function(model, scope, fi, t) {
+  var d = model;
+  var q = {};
+
+  function edit() {
+    fi.edit({ application_id: d.application_id });
+  }
+
+  function changeStatus(name, message) {
+    page.confirm(message, function() {
+      fi[name]({ application_id: d.application_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function createVacancy() {
+    let data = _.pick(d, ['application_id', 'division_id', 'division_name', 'job_id', 'job_name', 'note', 'requirements', 'responsibilities', 'wage', 'quantity']);
+
+    fi.create_vacancy(null, null, data);
+  }
+
+  let actions = [
+    { has_access: fi.to_draft     && d.status == 'C', message: t('change status from cancel to draft?')(),       translate_name: fi.to_draft?.title,     name: 'to_draft' },
+    { has_access: fi.to_waiting   && d.status == 'D', message: t('change status from draft to waiting?')(),      translate_name: fi.to_waiting?.title,   name: 'to_waiting' },
+    { has_access: fi.to_approved  && d.status == 'W', message: t('change status from waiting to approved?')(),   translate_name: fi.to_approved?.title,  name: 'to_approved' },
+    { has_access: fi.to_canceled  && d.status == 'W', message: t('change status from waiting to canceled?')(),   translate_name: fi.to_canceled?.title,  name: 'to_canceled' },
+    { has_access: fi.to_completed && d.status == 'A', message: t('change status from approved to completed?')(), translate_name: fi.to_completed?.title, name: 'to_completed' }
+  ];
+
+  q.actions = _.chain(actions).reject(x => !x.has_access).value();
+  q.statusClass = {
+    D: 'alert-secondary',
+    W: 'alert-warning',
+    A: 'alert-primary',
+    O: 'alert-success',
+    C: 'alert-danger'
+  };
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit && (d.status == 'D' || d.status == 'W')" b-hotkey="edit"><t>edit</t></button>
+  <span ng-repeat="action in q.actions">
+    <button type="button" class="btn btn-default" ng-if="action.has_access" ng-click="changeStatus(action.name, action.message)">{{ action.translate_name }}</button>
+  </span>
+  <button type="button" class="btn btn-default" ng-if="!page.isFirst()" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body">
+          <div class="text-center">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3"><t p1="d.application_number">$1{application_number}</t></span>
+              <span class="text-muted">&nbsp;({{ d.application_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.statusClass[d.status]">{{ d.status_name }}</div>
+          </div>
+          <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4 active">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-info-circle"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h5 class="font-weight-bolder"><t>main</t></h5>
+          </div>
+          <div class="card-toolbar">
+            <button type="button" class="btn btn-success" ng-if="fi.create_vacancy && d.status == 'A'" ng-click="createVacancy()"><t>create vacancy by application</t></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-lg-12">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>application number</t></label>
+                  <span class="form-view">{{ d.application_number }}</span>
+                </div>
+              </div>
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>division name</t></label>
+                  <span class="form-view">{{ d.division_name }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>job name</t></label>
+                  <span class="form-view">{{ d.job_name }}</span>
+                </div>
+              </div>
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>quantity</t></label>
+                  <span class="form-view">{{ d.quantity }}</span>
+                </div>
+                <div class="col-sm-12">
+                  <label><t>wage</t></label>
+                  <span class="form-view">{{ d.wage }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-12">
+              <div class="form-group">
+                <label><t>responsibilities</t></label>
+                <span class="form-view">{{ d.responsibilities }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>requirements</t></label>
+                <span class="form-view">{{ d.requirements }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <span class="form-view">{{ d.note }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

@@ -1,0 +1,46 @@
+prompt PATH TRANSLATE /vhr/hes/staff
+begin
+uis.lang_en('#a:/vhr/hes/staff$change_approve','Approve request for schedule change');
+uis.lang_en('#a:/vhr/hes/staff$change_complete','Complete request for schedule change');
+uis.lang_en('#a:/vhr/hes/staff$change_delete','Delete request for schedule change');
+uis.lang_en('#a:/vhr/hes/staff$change_deny','Deny request for schedule change');
+uis.lang_en('#a:/vhr/hes/staff$change_reset','Reset request for schedule change');
+uis.lang_en('#a:/vhr/hes/staff$change_save_for_subordinate','Create request for schedule change for subordinates');
+uis.lang_en('#a:/vhr/hes/staff$day_statistics','Day Statistics');
+uis.lang_en('#a:/vhr/hes/staff$hide_salary','Hide "My Salary"');
+uis.lang_en('#a:/vhr/hes/staff$request_approve','Approve request for absence');
+uis.lang_en('#a:/vhr/hes/staff$request_complete','Comlete request for absence');
+uis.lang_en('#a:/vhr/hes/staff$request_delete','Delete request for absence');
+uis.lang_en('#a:/vhr/hes/staff$request_deny','Deny request for absence');
+uis.lang_en('#a:/vhr/hes/staff$request_reset','Reset request for absence');
+uis.lang_en('#a:/vhr/hes/staff$set_invalid','Set invalid');
+uis.lang_en('#a:/vhr/hes/staff$set_valid','Set valid');
+uis.lang_en('#f:/vhr/hes/staff','External systems (Verifix Staff)');
+uis.lang_en('ui-vhr95:credit','Loan');
+uis.lang_en('ui-vhr95:day skip amount','Skip days');
+uis.lang_en('ui-vhr95:early amount','Early Check Out');
+uis.lang_en('ui-vhr95:fact_time','Worked out');
+uis.lang_en('ui-vhr95:lack amount','Absence');
+uis.lang_en('ui-vhr95:late amount','Lateness');
+uis.lang_en('ui-vhr95:mark skip amount','Skip Track');
+uis.lang_en('ui-vhr95:onetime accrual','One-time accrual');
+uis.lang_en('ui-vhr95:onetime penalty','One-time deduction');
+uis.lang_en('ui-vhr95:overtime amount','Overtime');
+uis.lang_en('ui-vhr95:person documents, document_type=$1','Document type: $1');
+uis.lang_en('ui-vhr95:personal income tax','Personal Income Tax');
+uis.lang_en('ui-vhr95:time on your phone is wrong! please fix it!','The time on the device is not correct. Please fix it!');
+uis.lang_en('ui-vhr95:transaction is invalid','Transaction is invalid');
+uis.lang_en('ui-vhr95:user cannot send track with face recognition','User cannot send track with face recognition');
+uis.lang_en('ui-vhr95:user cannot send track with mark_types other than $1, $2 and $3','User cannot send track with identification types other than $1, $2, or $3');
+uis.lang_en('ui-vhr95:wage amount','Salary');
+uis.lang_en('ui-vhr95:when face recognition is on there must be photo of staff','When face recognition is on employee''s photo must be sent');
+uis.lang_en('ui-vhr95:you can not send input track','You cannot send "Check In"');
+uis.lang_en('ui-vhr95:you can not send output track','You cannot send "Check Out"');
+uis.lang_en('ui-vhr95:you do not have access to input','No access to check in');
+uis.lang_en('ui-vhr95:you do not have access to location, location_id=$1','No access to location, ID=$1');
+uis.lang_en('ui-vhr95:you do not have access to output','No access to check out');
+uis.lang_en('ui-vhr95:you do not have access to send track','No access to send track');
+uis.lang_en('ui-vhr95:you do not have access to track','No access to track');
+commit;
+end;
+/

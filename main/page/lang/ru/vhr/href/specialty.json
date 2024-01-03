@@ -1,0 +1,12 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another specialty": "Код уже закреплен за другой специальностью",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "specialty group add": "Группа специальностей (создание)",
+ "specialty group edit": "Группа специальностей (изменение)",
+ "state": "Статус"
+}

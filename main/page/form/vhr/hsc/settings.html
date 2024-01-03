@@ -1,0 +1,43 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = {};
+
+  function save() {
+    if (page.valid(scope.form)) {
+      let data = {};
+      data.object_group_ids = _.pluck(d.object_groups, 'division_group_id');
+          
+      page.post(':save', data).then(page.reload, page.alert);
+    }
+  }
+
+  d.object_groups = _.mapRows(model.object_groups, ['division_group_id', 'name']);
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-group">
+              <label><t>object groups</t></label>
+              <b-input
+                multiple
+                name="division_groups"
+                model="d.object_groups"
+                model-key="division_group_id">
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

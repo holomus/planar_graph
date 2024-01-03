@@ -1,0 +1,23 @@
+{
+ "indicators": "Показатели",
+ "pg.ranks.wage_html": "Оклад",
+ "wage": "Оклад",
+ "add": "Добавить",
+ "base wage": "Базовый тариф",
+ "delete $1": "Удалить $1",
+ "note": "Примечание",
+ "pg.ranks.coefficient": "Коэффициент",
+ "pg.ranks.rank_name": "Разряд (категория)",
+ "pg.ranks.rownum": "№",
+ "post": "Провести",
+ "post?": "Сохранить и провести документ?",
+ "register date": "Дата",
+ "register number": "Номер",
+ "round model": "Округление",
+ "round type": "Тип округления",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "valid from": "Вступает в силу с",
+ "wage scale": "Тарифная группа",
+ "with base wage": "Размеры тарифов уст. в привязке к базовому тарифу"
+}

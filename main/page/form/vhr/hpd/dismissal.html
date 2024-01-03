@@ -1,0 +1,535 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $http, $timeout, xparam) {
+  var d = _.omit(model, 'references'),
+      q = model.references;
+
+  q.is_dismissal_multiple = d.journal_type_id != q.journal_type_id;
+
+  if (q.is_dismissal_multiple) {
+    d.dismissals = _.mapRows(model.dismissals, ['page_id', 'dismissal_date', 'staff_id', 'staff_name', 'dismissal_reason_id', 'dismissal_reason_name',
+                                                'dismissal_reason_type', 'employment_source_id', 'employment_source_name', 'based_on_doc', 'note']);
+  }
+
+  if (xparam.by_application) d = _.extend(d, xparam);
+
+  function executeCosRequests(requests) {
+    _.each(requests, request => {
+      $http.post('util/cos_request', request).then(response => {
+        page.post(':process_cos_response', {
+          status: 'S',
+          url: request.url,
+          request_body: request.body,
+          response_body: response.data,
+          user_id: request.user_id
+        }).then(_.partial(notify, request.message), page.alert);
+      }, response => {
+        page.post(':process_cos_response', {
+          status: 'E',
+          url: request.url,
+          request_body: request.body,
+          response_body: response.data,
+        }).then(_.partial(notify, request.message, 'warning'), page.alert);;
+      });
+    });
+  }
+
+  // -------------------- dismissal_reason --------------------- //
+  function setDismissalReason(item, row) {
+    if (row) {
+      item.dismissal_reason_id = row.dismissal_reason_id;
+      item.dismissal_reason_name = row.name;
+      item.dismissal_reason_type = row.reason_type;
+    }
+  }
+
+  function selectDismissalReason(item) {
+    fi.select_dismissal_reason(null, _.partial(setDismissalReason, item));
+  }
+
+  function addDismissalReason(item, value) {
+    fi.add_dismissal_reason(null, _.partial(setDismissalReason, item), { name: value });
+  }
+
+  // -------------------- emplooyment source --------------------- //
+  function setSource(item, row) {
+    if (row) {
+      item.employment_source_id = row.source_id;
+      item.employment_source_name = row.name;
+    }
+  }
+
+  function selectSource(item) {
+    fi.select_employment_source(null, _.partial(setSource, item), { where: ['kind', '=', ['D', 'B']] });
+  }
+
+  function addSource(item, value) {
+    fi.add_employment_source(null, _.partial(setSource, item), { name: value });
+  }
+
+  // -------------------- staff ----------------------------- //
+  function setStaff(item, row) {
+    if (row) {
+      item.staff_id = row.staff_id;
+      item.staff_name = row.name;
+    }
+  }
+
+  function whereStaff(dismissal) {
+    let staff_ids = _.chain(d.dismissals).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', dismissal.dismissal_date],
+                  ['dismissal_date', '=', [null]]
+                ]];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    return where;
+  }
+
+  function changeStaffQuery(dismissal, query, value) {
+    query.where(whereStaff(dismissal)).searchValue(value);
+  }
+
+  function selectStaff(dismissal) {
+    fi.select_staff(null, _.partial(setStaff, dismissal), { where: whereStaff(dismissal) });
+  }
+
+  // -------------------- modal --------------------- //
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function changeMode(mode) {
+    q.addMode = (mode == 'ADD');
+    q.editMode = (mode == 'EDIT');
+  }
+
+  function dismissalModal(row) {
+    if (row) {
+      let index = _.findIndex(d.dismissals, row);
+
+      q.dismissal = {
+        page_id: row.page_id,
+        dismissal_date: row.dismissal_date,
+        staff_id: row.staff_id,
+        staff_name: row.staff_name,
+        dismissal_reason_id: row.dismissal_reason_id,
+        dismissal_reason_name: row.dismissal_reason_name,
+        employment_source_id: row.employment_source_id,
+        employment_source_name: row.employment_source_name,
+        based_on_doc: row.based_on_doc,
+        note: row.note,
+        index: index
+      };
+      changeMode('EDIT');
+    } else {
+      q.dismissal = {
+        dismissal_date: d.journal_date
+      };
+      changeMode('ADD');
+    }
+    page.untouch(scope.modal);
+    showModal();
+  }
+
+  function saveDismissal() {
+    if (page.valid(scope.modal)) {
+      if (q.addMode) {
+        d.dismissals.push(q.dismissal);
+      } else {
+        d.dismissals.splice(q.dismissal.index, 1, q.dismissal);
+      }
+      hideModal();
+    }
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.dismissals, item);
+      d.dismissals.splice(index, 1);
+    });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  // -------------------- modal trash --------------------- //
+  var modalTrash = page.$content.find('form[name=modalTrash]>.modal');
+
+  function showTrashModal() {
+    $timeout(function() {
+      modalTrash.modal('show');
+    });
+  }
+
+  function saveData() {
+    var data = _.pick(d, 'journal_id', 'journal_type_id', 'journal_number', 'journal_name', 'journal_date');
+    data.posted = q.posted;
+    data.dismissal = _.map(q.is_dismissal_multiple ? d.dismissals : [d], x => x = _.pick(x, 'page_id', 'dismissal_date', 'staff_id', 'dismissal_reason_id', 'employment_source_id', 'based_on_doc', 'note'));
+
+    page.post(':save', data).then(result => {
+      if (result.cos_requests) executeCosRequests(result.cos_requests);
+      page.close(result);
+    }, page.alert);
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save')(), function() {
+        q.posted = posted;
+        var dismissals = q.is_dismissal_multiple ? d.dismissals : [d];
+        var data = _.map(dismissals, x => x = _.pick(x, 'staff_id', 'dismissal_date', 'dismissal_reason_id'));
+
+        page.post(':get_influences', { data: data }).then(res => {
+          q.influences = res;
+          q.has_divisions = false;
+          q.has_locations = false;
+          q.has_blacklist = false;
+          q.has_influences = false;
+          q.has_remove_access = false;
+          q.has_sign_template = false;
+          q.has_sign_document = false;
+          q.only_access = false;
+
+          if (q.influences.length) {
+            _.each(q.influences, x => {
+              let item = dismissals[_.findIndex(dismissals, { staff_id: x.staff_id })];
+              x.staff_name = item.staff_name;
+              x.dismissal_date = item.dismissal_date;
+              x.only_access = false;
+
+              if (x.blacklisted == 'Y' && !q.has_blacklist) q.has_blacklist = true;
+              if (x.division_names && !q.has_divisions) q.has_divisions = true;
+              if (x.locations_count > 0 && !q.has_locations) q.has_locations = true;
+              if (x.remove_access == 'Y' && !q.has_remove_access) q.has_remove_access = true;
+              if (x.has_influence == 'Y' && !q.has_influences) q.has_influences = true;
+              if (x.sign_template_count > 0 && !q.has_sign_template) q.has_sign_template = true;
+              if (x.sign_document_count > 0 && !q.has_sign_document) q.has_sign_document = true;
+
+              if (q.has_remove_access &&
+                  q.has_influences &&
+                  !q.has_blacklist &&
+                  !q.has_divisions &&
+                  !q.has_locations &&
+                  !q.has_sign_document &&
+                  !q.has_sign_template &&
+                  !q.only_access) q.only_access = true;
+            });
+
+            q.has_influences ? showTrashModal() : saveData();
+          } else {
+            saveData();
+          }
+        }, page.alert);
+      });
+    }
+  }
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom gutter-b">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-group" ng-if="q.is_dismissal_multiple">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+            <div class="form-group" ng-if="!q.is_dismissal_multiple">
+              <label><t>staff</t><r/></label>
+              <b-input name="staffs"
+                       model="d.staff_name | name"
+                       model-key="d.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date"
+                       search="staff_number, name"
+                       on-change="changeStaffQuery(d, query, value)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(d)"
+                       required-key>
+                <header>
+                  <div class="col-sm-8"><t>staff number</t></div>
+                  <div class="col-sm-16"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-8">{{ row.staff_number }}</div>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </div>
+          </div>
+        </div>
+        <div ng-if="!q.is_dismissal_multiple">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-row mb-4">
+                <div class="col-sm-12">
+                  <label><t>dismissal date</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.dismissal_date" b-date-picker required/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>journal name</t></label>
+                <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+              </div>
+              <div class="form-group">
+                <label><t>dismissal reason name</t></label>
+                <b-input name="dismissal_reasons"
+                         model="d.dismissal_reason_name | name"
+                         model-key="d.dismissal_reason_id | dismissal_reason_id"
+                         column="reason_type_name, reason_type"
+                         is-add="fi.add_dismissal_reason"
+                         is-view="fi.select_dismissal_reason"
+                         on-add="addDismissalReason(d, value)"
+                         on-view="selectDismissalReason(d)"
+                         on-select="setDismissalReason(d, row)"
+                         on-delete="setDismissalReason(d, {})">
+                  <header>
+                    <div class="col-sm-12"><t>reason name</t></div>
+                    <div class="col-sm-12"><t>reason type</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-12">{{ row.name }}</div>
+                    <div class="col-sm-12">
+                      <span class="badge" ng-class="{ 'badge-primary': row.reason_type == 'P', 'badge-danger': row.reason_type == 'N' }">
+                        {{ row.reason_type_name }}
+                      </span>
+                    </div>
+                  </content>
+                </b-input>
+              </div>
+              <div class="form-group">
+                <label><t>employment source name</t></label>
+                <b-input name="employment_sources"
+                         model="d.employment_source_name | name"
+                         model-key="d.employment_source_id | source_id"
+                         is-add="fi.add_employment_source"
+                         is-view="fi.select_employment_source"
+                         on-add="addSource(d, value)"
+                         on-view="selectSource(d)">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div class="form-group">
+                <label><t>based on doc</t></label>
+                <textarea class="form-control" rows="2" ng-model="d.based_on_doc" b-maxlength="300"></textarea>
+              </div>
+              <div class="form-group">
+                <label><t>note</t></label>
+                <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div ng-if="q.is_dismissal_multiple">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="dismissalModal()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="dismissals"/>
+            </div>
+          </div>
+          <b-pg-grid name="dismissals" local-data="d.dismissals" search="staff_name" on-check="onCheck(checked)" current-limit="1000" searchable="page_id" sort="dismissal_date, staff_name">
+            <b-pg-row>
+              <b-pg-col name="dismissal_date" size="3"/>
+              <b-pg-col name="staff_name" size="5"/>
+              <b-pg-col name="dismissal_reason_name" size="3"/>
+              <b-pg-col name="employment_source_name" size="3"/>
+              <b-pg-col name="based_on_doc" size="3"/>
+              <b-pg-col name="note" size="5"/>
+              <b-pg-col name="actions" size="1">
+                <div class="text-center">
+                  <button type="button" class="btn btn-default btn-icon" ng-click="dismissalModal(row)"><i class="fa fa-edit"></i></button>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title" ng-if="q.addMode"><t>add dismissal</t></h4>
+            <h4 class="modal-title" ng-if="q.editMode"><t>edit dismissal</t></h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>staff</t><r/></label>
+              <b-input name="staffs"
+                       model="q.dismissal.staff_name | name"
+                       model-key="q.dismissal.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date"
+                       search="staff_number, name"
+                       on-change="changeStaffQuery(q.dismissal, query, value)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(q.dismissal)"
+                       required-key>
+                <header>
+                  <div class="col-sm-8"><t>staff number</t></div>
+                  <div class="col-sm-16"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-8">{{ row.staff_number }}</div>
+                  <div class="col-sm-16">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>dismissal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="q.dismissal.dismissal_date" b-date-picker required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>dismissal reason name</t></label>
+              <b-input name="dismissal_reasons"
+                       model="q.dismissal.dismissal_reason_name | name"
+                       model-key="q.dismissal.dismissal_reason_id | dismissal_reason_id"
+                       column="reason_type_name, reason_type"
+                       is-add="fi.add_dismissal_reason"
+                       is-view="fi.select_dismissal_reason"
+                       on-add="addDismissalReason(q.dismissal, value)"
+                       on-view="selectDismissalReason(q.dismissal)"
+                       on-select="setDismissalReason(q.dismissal, row)"
+                       on-delete="setDismissalReason(q.dismissal, {})">
+                <header>
+                  <div class="col-sm-12"><t>reason name</t></div>
+                  <div class="col-sm-12"><t>reason type</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-12">
+                    <span class="badge" ng-class="{ 'badge-primary': row.reason_type == 'P', 'badge-danger': row.reason_type == 'N' }">
+                      {{ row.reason_type_name }}
+                    </span>
+                  </div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>employment source name</t></label>
+              <b-input name="employment_sources"
+                       model="q.dismissal.employment_source_name | name"
+                       model-key="q.dismissal.employment_source_id | source_id"
+                       is-add="fi.add_employment_source"
+                       is-view="fi.select_employment_source"
+                       on-add="addSource(q.dismissal, value)"
+                       on-view="selectSource(q.dismissal)">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>based on doc</t></label>
+              <textarea class="form-control" rows="2" ng-model="q.dismissal.based_on_doc" b-maxlength="300"></textarea>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="2" ng-model="q.dismissal.note" b-maxlength="300"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveDismissal()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modalTrash">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" ng-class="{ 'modal-xl': q.is_dismissal_multiple && !q.only_access, 'modal-md': !q.is_dismissal_multiple || q.only_access }" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="row">
+              <div class="col-sm-2 mt-auto mb-auto"><i class="fas fa-exclamation-triangle fa-2x text-warning"></i></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="!q.is_dismissal_multiple && !q.only_access"><t p1="q.influences[0].staff_name">after dismissal $1, we will do these actions</t></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="q.is_dismissal_multiple && !q.only_access"><t>after dismissal users, we will do these actions</t></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="!q.is_dismissal_multiple && q.only_access"><t p1="q.influences[0].staff_name">after dismissal $1, user remove access to system</t></div>
+              <div class="col-sm-22 h4 mt-2" ng-if="q.is_dismissal_multiple && q.only_access"><t>after dismissal, users remove access to system</t></div>
+            </div>
+          </div>
+          <div class="modal-body" ng-if="!q.only_access">
+            <ul ng-if="q.is_dismissal_multiple">
+              <li ng-if="q.has_locations"><t>all users will detach from attached locations</t></li>
+              <li ng-if="q.has_divisions"><t>some divisions remains without manager</t></li>
+              <li ng-if="q.has_blacklist"><t>some persons will be blacklisted</t></li>
+              <li ng-if="q.has_remove_access"><t>all users lost access to system</t></li>
+              <li ng-if="q.has_sign_template"><t>find sign templates with these employees</t></li>
+              <li ng-if="q.has_sign_document"><t>find sign documents with these employees</t></li>
+            </ul>
+            <ul ng-if="!q.is_dismissal_multiple">
+              <li ng-if="q.influences[0].locations_count > 0"><t>detach from attached locations</t><span class="badge badge-pill alert-danger">{{ q.influences[0].locations_count }}</span></li>
+              <li ng-if="q.influences[0].division_names"><t p1="q.influences[0].division_names">$1 remains without manager</t></li>
+              <li ng-if="q.influences[0].blacklisted == 'Y'"><t>person will be blacklisted</t></li>
+              <li ng-if="q.influences[0].remove_access == 'Y'"><t>user lost access to system</t></li>
+              <li ng-if="q.influences[0].sign_template_count > 0"><t>find sign templates with this employee</t><span class="badge badge-pill alert-danger">{{ q.influences[0].sign_template_count }}</span></li>
+              <li ng-if="q.influences[0].sign_document_count > 0"><t>find sign documents with this employee</t><span class="badge badge-pill alert-danger">{{ q.influences[0].sign_document_count }}</span></li>
+            </ul>
+            <b-pg-grid name="influence" local-data="q.influences" iterator="item" limit="1000" ng-if="q.is_dismissal_multiple">
+              <b-pg-row>
+                <b-pg-col name="dismissal_date" size="3"/>
+                <b-pg-col name="staff_name" size="5"/>
+                <b-pg-col name="division_names" size="4"/>
+                <b-pg-col name="locations_count" size="3"/>
+                <b-pg-col name="sign_template_count" size="3"/>
+                <b-pg-col name="sign_document_count" size="3"/>
+                <b-pg-col name="blacklisted" size="3">
+                  <p ng-if="item.blacklisted == 'Y'"><t>yes</t></p>
+                  <p ng-if="item.blacklisted == 'N'"><t>no</t></p>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveData()"><t>confirm</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>reject</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

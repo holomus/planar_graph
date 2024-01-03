@@ -1,0 +1,41 @@
+select Tp.External_Code,
+       Stp.External_Code,
+       q.Person_Id,
+       p.Person_Code,
+       Sq.Person_Id Sc_Person_Id,
+       Sp.Person_Code Sc_Person_Code,
+       (select Np.Name
+          from Mr_Natural_Persons Np
+         where Np.Person_Id = q.Person_Id) name,
+       p.First_Name || ' ' || p.Last_Name Name_Code,
+       (select Nnp.Name
+          from Mr_Natural_Persons Nnp
+         where Nnp.Person_Id = Sq.Person_Id) Sc_Name,
+       Sp.First_Name || ' ' || Sp.Last_Name Sc_Name_Code,
+       t.*
+  from Hes_Matched_Photos t
+  left join Htt_Person_Photos q
+    on q.Company_Id = 1700
+   and q.Photo_Sha = t.Fr_Sha
+  left join Hac_Hik_Ex_Persons p
+    on p.Organization_Code = '16'
+   and p.Server_Id = 21
+   and p.Photo_Sha = t.Fr_Sha
+  left join Htt_Person_Photos Sq
+    on Sq.Company_Id = 1700
+   and Sq.Photo_Sha = t.Sc_Sha
+  left join Hac_Hik_Ex_Persons Sp
+    on Sp.Organization_Code = '16'
+   and Sp.Server_Id = 21
+   and Sp.Photo_Sha = t.Sc_Sha
+  left join Hac_Server_Persons Tp
+    on Tp.Company_Id = 1700
+   and Tp.Server_Id = 21
+   and (Tp.Person_Id = q.Person_Id or Tp.Person_Code = p.Person_Code)
+  left join Hac_Server_Persons Stp
+    on Stp.Company_Id = 1700
+   and Stp.Server_Id = 21
+   and (Stp.Person_Id = Sq.Person_Id or Stp.Person_Code = Sp.Person_Code)
+ where not (q.Person_Id is not null and p.Person_Code is not null and Sq.Person_Id is not null and
+        Sp.Person_Code is not null)   
+ order by t.Match_Score

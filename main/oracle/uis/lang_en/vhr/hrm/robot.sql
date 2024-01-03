@@ -1,0 +1,43 @@
+prompt PATH TRANSLATE /vhr/hrm/robot
+begin
+uis.lang_en('#a:/vhr/hrm/robot+add$add_accrual_oper_type','Create accrual');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_deduction_oper_type','Create deduction');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_job','Create job');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_labor_function','Create labour function');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_rank','Create qualification rank');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_robot_group','Create position group');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_schedule','Create work schedule');
+uis.lang_en('#a:/vhr/hrm/robot+add$add_wage_scale','Create tariff group');
+uis.lang_en('#a:/vhr/hrm/robot+add$restrict_hidden_salary','Access to hidden remuneration');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_accrual_oper_type','Select accrual');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_deduction_oper_type','Select deduction');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_job','Select job');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_job_group','Select jobs group');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_labor_function','Select labour function');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_rank','Select qualification rank');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_robot_group','Select position group');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_schedule','Select work schedule');
+uis.lang_en('#a:/vhr/hrm/robot+add$select_wage_scale','Select tariff group');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_accrual_oper_type','Create accrual');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_deduction_oper_type','Create deduction');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_job','Create job');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_labor_function','Create labour function');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_rank','Create qualification rank');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_robot_group','Create position group');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_schedule','Create work schedule');
+uis.lang_en('#a:/vhr/hrm/robot+edit$add_wage_scale','Create tariff group');
+uis.lang_en('#a:/vhr/hrm/robot+edit$restrict_hidden_salary','Access to hidden remuneration');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_accrual_oper_type','Select accrual');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_deduction_oper_type','Select deduction');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_job','Select job');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_job_group','Select jobs group');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_labor_function','Select labour function');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_rank','Select qualification rank');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_robot_group','Select position group');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_schedule','Select work schedule');
+uis.lang_en('#a:/vhr/hrm/robot+edit$select_wage_scale','Select tariff group');
+uis.lang_en('#f:/vhr/hrm/robot+add','Position / New');
+uis.lang_en('#f:/vhr/hrm/robot+edit','Position / Edit');
+commit;
+end;
+/

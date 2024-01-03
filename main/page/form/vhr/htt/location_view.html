@@ -1,0 +1,734 @@
+<script biruni>
+page.init(function(param, xparam) {
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo_${ gender == 'F'? 'fe': '' }male.png`;
+  }
+
+  var pg = page.grid('table_divisions');
+
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.disable();
+
+  var pg = page.grid('table_persons');
+
+  pg.asHtml('person_html', 'photo_sha, gender, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? defaultPhoto(row.gender) : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8); object-fit: cover;"/>&emsp;${ row.name }</div>`;
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.asHtml('attach_type_html', 'attach_type, attach_type_name', row => {
+    if (!row.attach_type) return;
+    return `<div class="alert alert-custom alert-light-${ row.attach_type == 'M' ? 'success' : 'primary' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.attach_type_name }</div></div>`;
+  });
+  pg.disable();
+
+  pg = page.grid('table_devices');
+
+  pg.asHtml('serial_number_html', 'serial_number', function(row) {
+    return `<img src="gen/barcode?text=${ row.serial_number }&width=75&height=15&font-size=12"/>`;
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.disable();
+
+  pg = page.grid('table_audit');
+
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+  pg.disable();
+
+  pg = page.grid('table_location_person_audit');
+
+  pg.asHtml('attach_type_html', 'attach_type, attach_type_name', row => {
+    if (!row.attach_type) return;
+    return `<div class="alert alert-custom alert-light-${ row.attach_type == 'M' ? 'success' : 'primary' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.attach_type_name }</div></div>`;
+  });
+  pg.disable();
+});
+
+page.ctrl(function(scope, fi, model, t) {
+  var d = _.omit(model, 'references'),
+      q = _.extend({ to_checked_division: {}, to_checked_person: {} }, model.references),
+      query_persons = page.query('table_persons'),
+      query_divisions = page.query('table_divisions'),
+      query_location_person_audit = page.query('table_location_person_audit');
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function auditDetails(row) {
+    if (!fi.audit_details) return;
+    fi.audit_details({ type: q.activeTab, location_id: d.location_id, context_id: row.t_context_id });
+  }
+
+  // location
+  function edit() {
+    fi.edit({ location_id: d.location_id }, closeIfDialog);
+  }
+
+  // division
+  function fetchDivisionQuery() {
+    var mode = q.attachModeDivision ? 'attach' : 'detach';
+
+    q.to_checked_division = {};
+    query_divisions.param({ mode: mode, location_id: d.location_id });
+    query_divisions.fetch();
+  }
+
+  function doDivisionAction(doFunc, message, division_id) {
+    page.confirm(message, function() {
+      doFunc({
+        location_id: d.location_id,
+        division_id: division_id
+      }).then(fetchDivisionQuery, page.alert);
+    });
+  }
+
+  function attachOneDivision(row) {
+    doDivisionAction(fi.attach_division, t('attach division $1{division_name}?')(row.name), row.division_id);
+  }
+
+  function attachManyDivisions(row) {
+    doDivisionAction(fi.attach_division, t('attach $1{division_count} division(s)?')(q.to_checked_division.size), _.pluck(q.to_checked_division.rows(), 'division_id'));
+  }
+
+  function detachOneDivision(row) {
+    doDivisionAction(fi.detach_division, t('detach division $1{division_name}?')(row.name), row.division_id);
+  }
+
+  function detachManyDivisions() {
+    doDivisionAction(fi.detach_division, t('detach $1{division_count} division(s)?')(q.to_checked_division.size), _.pluck(q.to_checked_division.rows(), 'division_id'));
+  }
+
+  function onCheckDivision(checked) {
+    q.to_checked_division = checked;
+  }
+
+  function setDivisionMode(mode) {
+    if (q.attachModeDivision = mode == 'attach') {
+      q.attachClassDivision = 'btn-success';
+      q.detachClassDivision = 'btn-default';
+    } else {
+      q.attachClassDivision = 'btn-default';
+      q.detachClassDivision = 'btn-success';
+    }
+    q.to_checked_division = {};
+    query_divisions.param({ mode: mode, location_id: d.location_id });
+    query_divisions.fetch();
+  }
+
+  function onDblclickDivision(row) {
+    q.attachModeDivision ? (fi.detach_division ? detachOneDivision(row) : null) : (fi.attach_division ? attachOneDivision(row) : null);
+  }
+
+  // person
+  function fetchPersonQuery() {
+    var mode = q.attachModePerson ? 'attach' : 'detach';
+
+    q.to_checked_person = {};
+    q.to_sync_person = {};
+    query_persons.param({ mode: mode, location_id: d.location_id });
+    query_persons.fetch();
+
+    if (_.contains(q.enabledGrids, 'table_location_person_audit')) query_location_person_audit.fetch();
+  }
+
+  function doPersonAction(doFunc, message, person_id) {
+    page.confirm(message, function() {
+      doFunc({
+        location_id: d.location_id,
+        person_id: person_id
+      }).then(fetchPersonQuery, page.alert);
+    });
+  }
+
+  function attachOnePerson(row) {
+    doPersonAction(fi.attach_person, t('attach person $1{person_name}?')(row.name), row.person_id);
+  }
+
+  function attachManyPersons(row) {
+    doPersonAction(fi.attach_person, t('attach $1{person_count} person(s)?')(q.to_checked_person.size), _.pluck(q.to_checked_person.rows, 'person_id'));
+  }
+
+  function detachOnePerson(row) {
+    doPersonAction(fi.detach_person, t('detach person $1{person_name}?')(row.name), row.person_id);
+  }
+
+  function detachManyPersons() {
+    doPersonAction(fi.detach_person, t('detach $1{person_count} person(s)?')(q.to_checked_person.size), _.pluck(q.to_checked_person.rows, 'person_id'));
+  }
+
+  function syncOnePerson(row) {
+    doPersonAction(fi.sync_person, t('sync person $1{person_name}?')(row.name), row.person_id);
+  }
+
+  function syncManyPersons() {
+    doPersonAction(fi.sync_person, t('sync $1{person_count} person(s)?')(q.to_sync_person.size), _.pluck(q.to_sync_person.rows(), 'person_id'));
+  }
+
+  function onCheckPerson(checked) {
+    q.to_checked_person.rows = _.filter(checked.rows(), x => x.attach_type != 'A');
+    q.to_checked_person.size = q.to_checked_person.rows.length;
+    q.to_checked_person.has = q.to_checked_person.size > 0;
+
+    q.to_sync_person = checked;
+  }
+
+  function setModePerson(mode) {
+    if (q.attachModePerson = mode == 'attach') {
+      q.attachClassPerson = 'btn-success';
+      q.detachClassPerson = 'btn-default';
+    } else {
+      q.attachClassPerson = 'btn-default';
+      q.detachClassPerson = 'btn-success';
+    }
+    q.to_checked_person = {};
+    query_persons.param({ mode: mode, location_id: d.location_id });
+    query_persons.fetch();
+  }
+
+  function onDblclickPerson(row) {
+    q.attachModePerson ? ((fi.detach_person && row.attach_type == 'M') ? detachOnePerson(row) : fi.sync_person ? syncOnePerson(row) : null) : (fi.attach_person ? attachOnePerson(row) : null);
+  }
+
+  // device
+  function view(row) {
+    fi.view({ device_id: row.device_id, location_id: d.location_id }, closeIfDialog);
+  }
+
+  function syncDeviceAction(message, device_id, callback = null) {
+    page.confirm(message, function() {
+      fi.sync_device({
+        location_id: d.location_id,
+        device_id: device_id
+      }).then(callback, page.alert);
+    });
+  }
+
+  function syncOneDevice(row) {
+    syncDeviceAction(t('sync device $1{device_name}?')(row.name), row.device_id);
+  }
+
+  function syncManyDevices() {
+    syncDeviceAction(t('sync $1{device_count} device(s)?')(q.to_sync_device.size), _.pluck(q.to_sync_device.rows, 'device_id'), () => {
+        page.query('table_devices').fetch();
+        q.to_sync_device = {};
+      });
+  }
+
+  function onDblclickDevice(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.sync_device ? syncOneDevice(row) : null;
+  }
+
+  function onCheckDevice(checked) {
+    q.to_sync_device = {};
+    q.to_sync_device.rows = _.filter(checked.rows(), x => x.device_type_id == q.dt_terminal
+                                                       || x.device_type_id == q.dt_hikvision
+                                                       || x.device_type_id == q.dt_dahua);
+    q.to_sync_device.size = q.to_sync_device.rows.length;
+    q.to_sync_device.has = q.to_sync_device.size > 0;
+  }
+
+  // chage tab
+  function changeTab(tab) {
+    q.activeTab = tab;
+    var tableName = 'table_' + tab;
+
+    if (!_.contains(q.enabledGrids, tab)) {
+      page.grid(tableName).fetch();
+      page.grid(tableName).enable();
+      page.query(tableName).param({ location_id: d.location_id })
+
+      q.enabledGrids.push(tab);
+    }
+  }
+
+  // change section
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+
+    if (section == 'audit') {
+      changeTab(section);
+    }
+
+    if (_.contains(q.enabledGrids, section)) return;
+
+    page.grid(tableName).fetch();
+    page.grid(tableName).enable();
+
+    if (section == 'persons') {
+      query_persons.filter('state', '=', 'A');
+      setModePerson('attach');
+    } else if (section == 'divisions') {
+      query_divisions.filter('state', '=', 'A');
+      setDivisionMode('attach');
+    } else page.query(tableName).param({ location_id: d.location_id });
+
+    q.enabledGrids.push(section);
+  }
+
+  var map = page.getMap('Map');
+      latlng = d.latlng.split(',');
+
+  if (latlng) {
+    map.init({
+      lat: latlng[0],
+      lng: latlng[1],
+      zoom: 15
+    });
+  }
+
+  map.then(function(api) {
+    q.mapIsReady = true;
+    api.addPlacemark('name', latlng, null, `<span><b>${t('$1')(d.name)}</b>&nbsp;</span>&nbsp;`);
+    api.addCircle('location', latlng, { radius: d.accuracy }, `<span><b>${t('accuracy $1 m')(d.accuracy)}</b>&nbsp;</span>&nbsp;`);
+    if (d.polygon_vertices.length) {
+      let vertices = _.map(d.polygon_vertices, point => _.map(point.split(','), parseFloat));
+      api.addPolygon('polygon', vertices, { color: '#8950fc' });
+    }
+  });
+
+  q.enabledGrids = [];
+  q.activeSection = 'main';
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-if="fi.edit" ng-click="edit()">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="image-input-wrapper w-auto h-auto">
+              <img class="w-100 h-100 mw-100 cursor-pointer" ngf-src="q.photo_src" ng-if="q.photo_src" ng-click="showImage()"/>
+            </div>
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.name }}</span>
+              <span class="text-muted">&nbsp;({{ d.location_id }})</span>
+            </div>
+            <div class="b-offcanvas-hide alert alert-custom text-center py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="d.state == 'A' ? 'alert-light-success' : 'alert-light-danger'">
+              <div class="alert-text">{{ d.state_name }}
+              </div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-info-circle mr-2"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>main</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.isFilial">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'divisions' }" ng-click="changeSection('divisions')">
+              <span class="navi-icon mr-2">
+                <i class="fas fa-building"></i>
+              </span>
+              <span class="navi-text b-offcanvas-hide font-size-sm"><t>divisions</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.isFilial">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'persons' }" ng-click="changeSection('persons')">
+              <span class="navi-icon mr-2">
+                <i class="fas fa-users"></i>
+              </span>
+              <span class="navi-text b-offcanvas-hide font-size-sm"><t>persons</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'devices' }" ng-click="changeSection('devices')">
+              <span class="navi-icon mr-2">
+                <i class="fas fa-tablet-alt"></i>
+              </span>
+              <span class="navi-text b-offcanvas-hide font-size-sm"><t>devices</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2" ng-if="fi.audit">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'audit' }" ng-click="changeSection('audit')">
+                <span class="navi-icon mr-2">
+                  <i class="fa fa-user-clock"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-lg"><t>audit</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'main'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>main</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>location name</t></label>
+                <span class="form-view">{{ d.name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>address</t></label>
+                <span class="form-view">{{ d.address }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>location type name</t></label>
+                <span class="form-view">{{ d.location_type_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>region name</t></label>
+                <span class="form-view">{{ d.region_name }}</span>
+              </div>
+              <div class="form-group" ng-if="!fi.isFilial">
+                <label><t>filial name</t></label>
+                <span class="form-view">{{ d.filial_name }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>code</t></label>
+                  <span class="form-view">{{ d.code }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>timezone name</t></label>
+                  <span class="form-view" >{{ d.timezone_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>bssids</t></label>
+                <span class="form-view">{{ d.bssids }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>prohibited</t></label>
+                  <span class="form-view">{{ d.prohibited_name }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>has polygon</t></label>
+                  <span class="form-view">{{ d.has_polygon_name }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm mb-4" ng-if="d.latlng">
+                  <label><t>latlng</t></label>
+                  <span class="form-view">{{ d.latlng }}</span>
+                </div>
+                <div class="col-sm mb-4" ng-if="d.latlng">
+                  <label><t>accuracy</t></label>
+                  <span class="form-view">{{ d.accuracy }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <div ng-show="q.mapIsReady">
+                  <b-map name="Map" width="100%" height="350px"/>
+                </div>
+                <div class="text-center" ng-hide="q.mapIsReady" style="line-height:300px;">
+                  <label class="spinner spinner-success spinner-lg mr-15"></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>created by name</t></label>
+              <span class="form-view">{{ d.created_by_name }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>modified by name</t></label>
+              <span class="form-view">{{ d.modified_by_name }}</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="col-sm-12 mb-4">
+              <label><t>created on</t></label>
+              <span class="form-view">{{ d.created_on }}</span>
+            </div>
+            <div class="col-sm-12 mb-4">
+              <label><t>modified on</t></label>
+              <span class="form-view">{{ d.modified_on }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'divisions'" ng-if="fi.isFilial">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>divisions</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <div class="btn-group mb-2">
+                <button type="button" class="btn" ng-class="q.attachClassDivision" ng-click="setDivisionMode('attach')"><t>attached divisions</t></button>
+                <button type="button" class="btn" ng-class="q.detachClassDivision" ng-click="setDivisionMode('detach')"><t>detached divisions</t></button>
+              </div>
+              <button type="button" class="btn btn-danger mb-2" ng-click="detachManyDivisions()" ng-if="fi.detach_division" ng-show="q.attachModeDivision && q.to_checked_division.has">
+                <t p1="q.to_checked_division.size">detach $1</t>
+              </button>
+              <button type="button" class="btn btn-primary mb-2" ng-click="attachManyDivisions()" ng-if="fi.attach_division" ng-show="!q.attachModeDivision && q.to_checked_division.has">
+                <t p1="q.to_checked_division.size">attach $1</t>
+              </button>
+            </div>
+            <div class="col-sm-12">
+              <b-grid-controller name="table_divisions"/>
+            </div>
+          </div>
+          <b-grid name="table_divisions" required="division_id, name, state" on-check="onCheckDivision(checked)" on-dblclick="onDblclickDivision(row)"
+                  sort="name" search="name" searchable="division_group_name"
+                  extra-columns="division_id, parent_name, closed_date, code">
+            <b-row>
+              <b-col name="name" size=11/>
+              <b-col name="division_group_name" size=4/>
+              <b-col name="opened_date" size=4/>
+              <b-col name="state_name" as-html="state_html" size="4"/>
+            </b-row>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="attachOneDivision(row)" ng-if="fi.attach_division && !q.attachModeDivision">{{ fi.attach_division.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="detachOneDivision(row)" ng-if="fi.detach_division && q.attachModeDivision">{{ fi.detach_division.title }}</button>
+            </b-action>
+
+            <b-filter name="division_id" directive="equal" extra/>
+            <b-filter name="name"/>
+            <b-filter name="division_group_id" decorate-with="division_group_name"/>
+            <b-filter name="opened_date"/>
+            <b-filter name="closed_date" extra/>
+            <b-filter name="parent_id" decorate-with="parent_name"/>
+            <b-filter name="state" decorate-with="state_name"/>
+            <b-filter name="code"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'persons'" ng-if="fi.isFilial">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>persons</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <div class="btn-group mb-2">
+                <button type="button" class="btn" ng-class="q.attachClassPerson" ng-click="setModePerson('attach')"><t>attached persons</t></button>
+                <button type="button" class="btn" ng-class="q.detachClassPerson" ng-click="setModePerson('detach')"><t>detached persons</t></button>
+              </div>
+              <button type="button" class="btn btn-danger mb-2" ng-click="detachManyPersons()" ng-if="fi.detach_person" ng-show="q.attachModePerson && q.to_checked_person.has">
+                <t p1="q.to_checked_person.size">detach $1</t>
+              </button>
+              <button type="button" class="btn btn-primary mb-2" ng-click="attachManyPersons()" ng-if="fi.attach_person" ng-show="!q.attachModePerson && q.to_checked_person.has">
+                <t p1="q.to_checked_person.size">attach $1</t>
+              </button>
+              <button type="button" class="btn btn-primary mb-2" ng-click="syncManyPersons()" ng-if="fi.sync_person" ng-show="q.attachModePerson && q.to_sync_person.has">
+                <t p1="q.to_sync_person.size">sync $1</t>
+              </button>
+            </div>
+            <div class="col-sm-12">
+              <b-grid-controller name="table_persons"/>
+            </div>
+          </div>
+          <b-grid name="table_persons" required="person_id, name, gender, photo_sha, attach_type, state" on-check="onCheckPerson(checked)" on-dblclick="onDblclickPerson(row)"
+                  sort="name" search="name, tin, code" searchable="region_name, birthday, main_phone, iapa, npin, email"
+                  extra-columns="person_id, last_name, first_name, middle_name, gender_name, birthday, tin, region_name, main_phone, iapa, npin, email, legal_address, address, attached_by_name, attached_on">
+            <b-row>
+              <b-col name="name" as-html="person_html" size=9/>
+              <b-col name="division_name" size=4/>
+              <b-col name="robot_name" size=4/>
+              <b-col name="tin" size=3/>
+              <b-col name="code" size=3/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="state_name" as-html="state_html"/>
+              <b-col name="attach_type_name" as-html="attach_type_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="attachOnePerson(row)" ng-if="fi.attach_person && !q.attachModePerson">{{ fi.attach_person.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="detachOnePerson(row)" ng-if="fi.detach_person && q.attachModePerson && row.attach_type == 'M'">{{ fi.detach_person.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="syncOnePerson(row)" ng-if="fi.sync_person && q.attachModePerson">{{ fi.sync_person.title }}</button>
+            </b-action>
+
+            <b-filter name="person_id" directive="equal" extra/>
+            <b-filter name="tin" directive="equal" extra/>
+            <b-filter name="iapa" directive="equal" extra/>
+            <b-filter name="npin" directive="equal" extra/>
+            <b-filter name="name"/>
+            <b-filter name="gender" decorate-with="gender_name"/>
+            <b-filter name="birthday"/>
+            <b-filter name="region_id" decorate-with="region_name"/>
+            <b-filter name="division_id" decorate-with="division_name" tree-with-parent="parent_id"/>
+            <b-filter name="robot_id" decorate-with="robot_name"/>
+            <b-filter name="main_phone"/>
+            <b-filter name="state" decorate-with="state_name"/>
+            <b-filter name="last_name" extra/>
+            <b-filter name="first_name" extra/>
+            <b-filter name="middle_name" extra/>
+            <b-filter name="email" extra/>
+            <b-filter name="legal_address" extra/>
+            <b-filter name="attach_type" decorate-with="attach_type_name" extra/>
+            <b-filter name="attached_by" decorate-with="attached_by_name" extra/>
+            <b-filter name="attached_on" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-show="q.activeSection == 'devices'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title">
+            <h3 class="card-label font-weight-bolder text-dark"><t>devices</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-sm-12">
+              <button type="button" class="btn btn-primary mb-2" ng-click="syncManyDevices()" ng-if="fi.sync_device" ng-show="q.to_sync_device.has">
+                <t p1="q.to_sync_device.size">sync $1</t>
+              </button>
+            </div>
+            <div class="col-sm-12">
+              <b-grid-controller name="table_devices" />
+            </div>
+          </div>
+          <b-grid name="table_devices" required="device_id, name, device_type_id" on-dblclick="onDblclickDevice(row)" on-check="onCheckDevice(checked)"
+                  sort="name" search="name, device_type_name, name, serial_number" extra-columns="device_id, last_seen_on">
+            <b-row>
+              <b-col name="name" size=8/>
+              <b-col name="device_type_name" size=5/>
+              <b-col name="name" size=5/>
+              <b-col name="serial_number" as-html="serial_number_html" size=5/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="state_name" as-html="state_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+              <button type="button" class="btn btn-default" ng-click="syncOneDevice(row)" ng-if="fi.sync_device && (row.device_type_id == q.dt_terminal || row.device_type_id == q.dt_hikvision || row.device_type_id == q.dt_dahua)">
+                {{ fi.sync_device.title }}
+              </button>
+            </b-action>
+
+            <b-filter name="device_id" directive="equal" extra/>
+            <b-filter name="name"/>
+            <b-filter name="device_type_id" decorate-with="device_type_name"/>
+            <b-filter name="location_id" decorate-with="name"/>
+            <b-filter name="state" decorate-with="state_name"/>
+            <b-filter name="last_seen_on" extra/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-sm-3" ng-if="fi.audit" ng-show="q.activeSection == 'audit'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header card-header-tabs-line">
+          <div class="card-title align-items-start flex-column">
+            <h5 class="font-weight-bolder mb-0 mt-2"><t>audit</t></h5>
+          </div>
+          <div class="card-toolobar align-items-end">
+            <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" role="tab" ng-class="{ 'active': q.activeTab == 'audit' }" ng-click="changeTab('audit')">
+                  <t>main info</t>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" role="tab" ng-class="{ 'active': q.activeTab == 'location_person_audit' }" ng-click="changeTab('location_person_audit')">
+                  <t>location person</t>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="tab-content">
+            <div class="tab-pane" role="tabpanel" ng-class="{ 'active': q.activeTab == 'audit' }">
+              <div class="row mb-2">
+                <div class="offset-sm-12 col-sm-12">
+                  <b-grid-controller name="table_audit"/>
+                </div>
+              </div>
+              <b-grid name="table_audit" required="t_context_id" on-dblclick="auditDetails(row)"
+                      sort="-t_timestamp" search="t_user_name, t_event_name" searchable="name, code"
+                      extra-columns="t_audit_id, t_user_id, t_source_project_name, t_date, location_id, region_name, timezone_name, latlng, accuracy, prohibited_name, code">
+                <b-row>
+                  <b-col name="t_timestamp" size=3/>
+                  <b-col name="t_user_name" size=3/>
+                  <b-col name="t_event_name" size=3/>
+                  <b-col name="name" size=5/>
+                  <b-col name="address" size=6/>
+                  <b-col name="location_type_name" size=4/>
+                </b-row>
+
+                <b-extra-columns>
+                  <b-col name="state_name" as-html="state_html"/>
+                </b-extra-columns>
+
+                <b-action>
+                  <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+                </b-action>
+
+                <b-filter name="t_date"/>
+                <b-filter name="t_user_id" decorate-with="t_user_name"/>
+                <b-filter name="t_event" decorate-with="t_event_name"/>
+                <b-filter name="state" decorate-with="state_name"/>
+                <b-filter name="prohibited" decorate-with="prohibited_name" extra/>
+              </b-grid>
+            </div>
+            <div class="tab-pane" role="tabpanel" ng-class="{ 'active': q.activeTab == 'location_person_audit' }">
+              <div class="row mb-2">
+                <div class="offset-sm-12 col-sm-12">
+                  <b-grid-controller name="table_location_person_audit"/>
+                </div>
+              </div>
+              <b-grid name="table_location_person_audit" required="t_context_id" on-dblclick="auditDetails(row)"
+                      sort="-t_timestamp" search="t_user_name, t_event_name"
+                      extra-columns="t_audit_id, t_user_id, t_source_project_name, t_date, location_id, person_id">
+                <b-row>
+                  <b-col name="t_timestamp" size=4/>
+                  <b-col name="t_user_name" size=4/>
+                  <b-col name="t_event_name" size=4/>
+                  <b-col name="person_name" size=8/>
+                  <b-col name="attach_type_name" as-html="attach_type_html" size=4/>
+                </b-row>
+
+                <b-action>
+                  <button type="button" class="btn btn-default" ng-click="auditDetails(row)" ng-if="fi.audit_details"><t>details</t></button>
+                </b-action>
+
+                <b-filter name="t_date"/>
+                <b-filter name="t_user_id" decorate-with="t_user_name"/>
+                <b-filter name="t_event" decorate-with="t_event_name"/>
+                <b-filter name="person_id" decorate-with="person_name"/>
+              </b-grid>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

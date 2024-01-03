@@ -1,0 +1,13 @@
+{
+ "begin time": "Время",
+ "begin time period begin": "Время начала периода (от)",
+ "begin time period end": "Время начала периода (до)",
+ "candidate name": "Участник",
+ "exam name": "Экзамен",
+ "examiner name": "Экзаменатор",
+ "note": "Примечание",
+ "period begin must be less than period end": "Время открытия периода должно быть меньше закрытия",
+ "save": "Сохранить",
+ "testing date": "Дата",
+ "testing number": "Номер"
+}

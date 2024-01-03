@@ -1,0 +1,20 @@
+{
+ "add": "Yaratish",
+ "common": "Umumiy",
+ "common_policies.month": "Oy",
+ "common_policies.name": "Nomi",
+ "common_policies.nighttime_policy_id": "Qo'shimcha to'lov siyosati ID",
+ "common_policies.state_name": "Holat",
+ "copy": "Nusxalash",
+ "delete": "O'chirish",
+ "delete $1": "O'chirish $1",
+ "delete $1{policy_count} nighttime policy(ies)?": "$1 qoʻshimcha toʻlovlar siyosati o'chirilsinmi?",
+ "delete nighttime policy for $1{month_name}?": "$1 uchun qoʻshimcha toʻlov siyosati o'chirilsinmi?",
+ "edit": "Tahrirlash",
+ "standart": "Bo'lim bo'yicha",
+ "standart_policies.division_name": "Bo'lim",
+ "standart_policies.month": "Oy",
+ "standart_policies.name": "Nomi",
+ "standart_policies.nighttime_policy_id": "Qo'shimcha to'lov siyosati ID",
+ "standart_policies.state_name": "Holat"
+}

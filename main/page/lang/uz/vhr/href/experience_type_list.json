@@ -1,0 +1,10 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{experience_type_count} experience type(s)?": "Haqiqatan ham <b>$1</b>ta tajriba tur(lar)ini oʻchirib tashlamoqchimisiz?",
+ "delete experience type $1{experience_type_name}?": "Haqiqatan ham <b>$1</b>ni oʻchirib tashlamoqchimisiz?",
+ "select": "Tanlash",
+ "table.code": "Kod",
+ "table.experience_type_id": "ID",
+ "table.name": "Nomi",
+ "table.state_name": "Holat"
+}

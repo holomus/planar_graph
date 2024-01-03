@@ -1,0 +1,12 @@
+{
+ "close": "Закрыть",
+ "delete $1": "Удалить $1",
+ "delete $1{person_group_count} person group(s)?": "Удалить <b>$1</b> группу(ы) людей?",
+ "delete person group $1{person_group_name}?": "Удалить группу людей  <b>$1</b>?",
+ "details": "Детали",
+ "extra details": "Детали",
+ "table.created_on": "Дата создания",
+ "table.modified_on": "Дата изменения",
+ "table.person_group_code": "Код",
+ "table.person_group_name": "Название"
+}

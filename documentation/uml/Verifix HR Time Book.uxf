@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.3.0">
+  <zoom_level>11</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>154</x>
+      <y>187</y>
+      <w>451</w>
+      <h>308</h>
+    </coordinates>
+    <panel_attributes>*hpr_timebooks*
+--
+*company_id*
+*filial_id*
+*timebook_id*
+timebook_number
+timebook_date
+month
+division_id
+status: (N)ew, (C)alculated, (S)ent, (A)ccepted, (R)eturned -- TODO: (H)istory
+barcode
+note
+created_by
+created_on
+modified_by
+modified_on
+--
+(maybe not month, period?)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>594</x>
+      <y>253</y>
+      <w>66</w>
+      <h>33</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;40.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>638</x>
+      <y>187</y>
+      <w>352</w>
+      <h>308</h>
+    </coordinates>
+    <panel_attributes>*hpr_timebook_staffs*
+--
+*company_id*
+*filial_id*
+*timebook_id*
+*staff_id*
+schedule_id (last this period, cahced)
+division_id (last this period, cached)
+job_id (last this period, cached)
+plan_days (combined) (sum of parts)
+plan_hours (combined) (sum of parts)
+fact_days (sum of parts)
+fact_hours (sum of parts, turnout)
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>979</x>
+      <y>385</y>
+      <w>55</w>
+      <h>33</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;30.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1012</x>
+      <y>341</y>
+      <w>396</w>
+      <h>209</h>
+    </coordinates>
+    <panel_attributes>*hpr_timebook_parts*
+--
+*company_id*
+*timebook_id*
+*staff_id*
+*part_begin*
+part_end
+plan_hours (dont forget calendars for period of timebook)
+plan_days (dont forget calendars)
+fact_days
+fact_hours (turnout)
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1012</x>
+      <y>187</y>
+      <w>231</w>
+      <h>143</h>
+    </coordinates>
+    <panel_attributes>*hpr_timebook_facts*
+--
+*company_id*
+*timebook_id*
+*staff_id*
+*time_kind_id*
+value
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>979</x>
+      <y>253</y>
+      <w>55</w>
+      <h>33</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;30.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>704</x>
+      <y>33</y>
+      <w>165</w>
+      <h>121</h>
+    </coordinates>
+    <panel_attributes>hpr_timesheet_locks
+--
+*company_id*
+*filial_id*
+*staff_id*
+*timesheet_date*
+timebook_id
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLUseCase</id>
+    <coordinates>
+      <x>220</x>
+      <y>660</y>
+      <w>132</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>new</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>341</x>
+      <y>671</y>
+      <w>143</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>110.0;50.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>572</x>
+      <y>726</y>
+      <w>99</w>
+      <h>33</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLUseCase</id>
+    <coordinates>
+      <x>451</x>
+      <y>715</y>
+      <w>132</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>calculated</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>770</x>
+      <y>726</y>
+      <w>99</w>
+      <h>33</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLUseCase</id>
+    <coordinates>
+      <x>649</x>
+      <y>715</y>
+      <w>132</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>sent</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLUseCase</id>
+    <coordinates>
+      <x>847</x>
+      <y>715</y>
+      <w>132</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>Accepted</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLUseCase</id>
+    <coordinates>
+      <x>220</x>
+      <y>748</y>
+      <w>132</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>returned</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>330</x>
+      <y>660</y>
+      <w>242</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>  Cancel
+lt=-&gt;&gt;</panel_attributes>
+    <additional_attributes>170.0;50.0;130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>330</x>
+      <y>737</y>
+      <w>352</w>
+      <h>121</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;40.0;170.0;90.0;300.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>704</x>
+      <y>605</y>
+      <w>220</w>
+      <h>132</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-
+Cancel</panel_attributes>
+    <additional_attributes>10.0;100.0;100.0;10.0;180.0;100.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>275</x>
+      <y>693</y>
+      <w>33</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;50.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>330</x>
+      <y>737</y>
+      <w>154</w>
+      <h>44</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>341</x>
+      <y>737</y>
+      <w>341</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>290.0;10.0;130.0;50.0;10.0;30.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>297</x>
+      <y>649</y>
+      <w>385</w>
+      <h>99</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>330.0;70.0;250.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+</diagram>

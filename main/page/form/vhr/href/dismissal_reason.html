@@ -1,0 +1,47 @@
+<script biruni>
+page.ctrl(function(scope, model, xparam) {
+  var d = _.isUndefined(model.dismissal_reason_id) ? _.extend(model, xparam) : model;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  scope.q = xparam;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group">
+            <label><t>description</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.description" b-maxlength="300"></textarea>
+          </div>
+          <div class="form-group">
+            <label><t>reason type</t></label><br/>
+            <label class="radio">
+              <input type="radio" name="reason_type" value="P" ng-model="d.reason_type" ng-disabled="q.reason_type"/>
+              <span class="badge" ng-class="d.reason_type == 'P' ? 'badge-primary' : 'badge-light'"><t>positive</t></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="reason_type" value="N" ng-model="d.reason_type" ng-disabled="q.reason_type"/>
+              <span class="badge" ng-class="d.reason_type == 'N' ? 'badge-danger' : 'badge-light'"><t>negative</t></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

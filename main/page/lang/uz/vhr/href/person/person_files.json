@@ -1,0 +1,18 @@
+{
+ "add": "Qo'shish",
+ "add person file": "Fayl (yaratish)",
+ "close": "Yopish",
+ "delete": "O'chirish",
+ "delete person file $1{title}?": "$1 faylni o'chirmoqchimisiz?",
+ "download": "Yuklab olish",
+ "edit": "Tahrirlash",
+ "edit person file": "Fayl (tahrirlash)",
+ "file selection is required": "Fayl tanlash shart",
+ "files": "Fayllar",
+ "note": "Izoh",
+ "pg.person_files.action": "Amallar",
+ "pg.person_files.note": "Izoh",
+ "pg.person_files.title": "Nom",
+ "save": "Saqlash",
+ "title": "Nom"
+}

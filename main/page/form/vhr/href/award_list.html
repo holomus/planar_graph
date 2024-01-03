@@ -1,0 +1,91 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pq = page.query('table');
+
+  if (xparam.where) pq.where(xparam.where);
+  else if (param.where) pq.where(param.where);
+
+  if (page.isInit()) pq.filter('state', '=', 'A');
+
+  page.grid('table').asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteAction(message, award_id) {
+    page.confirm(message, function() {
+      fi.delete({ award_id: award_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete award $1{award_name}?')(row.name), row.award_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{awards_count} award(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'award_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog)
+  }
+
+  function edit(row) {
+    fi.edit({ award_id: row.award_id }, closeIfDialog);
+  }
+
+  function view(row) {
+    fi.view({ award_id: row.award_id });
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form>
+  <b-grid name="table" required="award_id, name" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="name" search="name" searchable="award_id" extra-columns="award_id">
+    <b-row>
+      <b-col name="name" size=23/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="award_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+  </b-grid>
+</form></div>

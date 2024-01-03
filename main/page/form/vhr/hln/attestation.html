@@ -1,0 +1,248 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, bUtil, t) {
+  var d = model || {},
+      q = {};
+
+  // testing
+  function addTestings() {
+    d.testings.push({});
+  }
+
+  function removeTestings() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.testings, item);
+      d.testings.splice(index, 1);
+    });
+  }
+
+  // persons
+  function wherePerson() {
+    let person_ids = _.chain(d.testings).pluck('person_id').compact().value(),
+        where = ['state', '=', 'A'];
+
+    if (d.examiner_id) person_ids.push(d.examiner_id);
+
+    if (!_.isEmpty(person_ids)) {
+      where = ['and', [['person_id', '<>', person_ids], where]];
+    }
+    return where;
+  }
+
+  function changePersonQuery(query, value) {
+    query.where(wherePerson()).searchValue(value);
+  }
+
+  function setPerson(item, result) {
+    if (!result) return;
+    item.person_id = result.person_id;
+    item.person_name = result.name;
+  }
+
+  function addPerson(item, value) {
+    fi.add_person(null, _.partial(setPerson, item), { name: value });
+  }
+
+  function selectPerson(item) {
+    fi.select_person(null, _.partial(setPerson, item), { where: wherePerson() });
+  }
+
+  function selectPersons() {
+    fi.select_person(null, function(result) {
+      _.each(result, person => {
+        d.testings.push(person);
+        person.person_name = person.name;
+      })
+    }, { where: wherePerson(), multiple_select: true });
+  }
+
+  // examiner
+  function setExaminer(row) {
+    if (!row) return;
+    d.examiner_id = row.person_id;
+    d.examiner_name = row.name;
+  }
+
+  function addExaminer(row) {
+    fi.add_person(null, setExaminer,  { name: value });
+  }
+
+  function selectExaminer() {
+    fi.select_person(null, setExaminer, { where: wherePerson() });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  // exam
+  function setExam(item, result) {
+    if (!result) return;
+    item.exam_id = result.exam_id;
+    item.exam_name = result.name;
+  }
+
+  function addExam(item, value) {
+    fi.add_exam(null, _.partial(setExam, item), { name: value });
+  }
+
+  function selectExam(item) {
+    fi.select_exam(null, _.partial(setExam, item), { where: ['state', '=', 'A'] });
+  }
+
+  function setExamAll(item) {
+    let exam = { exam_id: item.exam_id, name: item.exam_name };
+    _.each(d.testings, x => {
+      if (!x.exam_id) setExam(x, exam);
+    });
+  }
+
+  // save
+  function save() {
+    if (page.valid(scope.form)) {
+      let data = angular.copy(d);
+      data.begin_time_period_begin = bUtil.timeToMinutes(data.begin_time_period_begin);
+      data.begin_time_period_end = d.is_period == 'Y' ? bUtil.timeToMinutes(data.begin_time_period_end) : null;
+
+      if (d.is_period == 'Y' && data.begin_time_period_begin > data.begin_time_period_end) {
+        q.period_valid = false;
+        return;
+      } else q.period_valid = true;
+
+      page.confirm(t('save?')(), function() {
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  d.testings = _.mapRows(d.testings, ['testing_id', 'person_id', 'person_name', 'exam_id', 'exam_name']);
+  q.tSetExam = t('set exam for all?');
+  q.period_valid = true;
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom gutter-b">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm mb-4">
+              <label><t>attestation number</t></label>
+              <input class="form-control" ng-model="d.attestation_number" b-maxlength="50"/>
+            </div>
+            <div class="col-sm mb-4">
+              <label><t>attestation date</t><r/></label>
+              <input class="form-control" ng-model="d.attestation_date" b-date-picker="DD.MM.YYYY" required/>
+            </div>
+            <div class="col-sm mb-4" ng-if="d.is_period == 'N'">
+              <label><t>begin time</t></label>
+              <input class="form-control" ng-model="d.begin_time_period_begin" b-date-picker="HH:mm"/>
+            </div>
+          </div>
+          <div class="form-row mb-4" ng-if="d.is_period == 'Y'">
+            <div class="col-sm-12">
+              <label><t>begin time period begin</t><r ng-if="d.begin_time_period_end"/></label>
+              <input class="form-control" ng-model="d.begin_time_period_begin" b-date-picker="HH:mm" ng-required="d.begin_time_period_end"/>
+            </div>
+            <div class="col-sm-12">
+              <label><t>begin time period end</t><r ng-if="d.begin_time_period_begin"/></label>
+              <input class="form-control" ng-model="d.begin_time_period_end" b-date-picker="HH:mm" ng-required="d.begin_time_period_begin"/>
+            </div>
+            <div class="col-sm">
+              <span class="text-danger" ng-hide="q.period_valid"><t>period begin must be less than period end</t></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>name</t></label>
+            <input class="form-control" ng-model="d.name" b-maxlength="100"/>
+          </div>
+          <div class="form-group">
+            <label><t>examiner name</t><r/></label>
+            <b-input name="examiners"
+                     model="d.examiner_name | name"
+                     model-key="d.examiner_id | person_id"
+                     on-change="changePersonQuery(query, value)"
+                     is-add="fi.add_person"
+                     on-add="addExaminer(value)"
+                     is-view="fi.select_person"
+                     on-view="selectExaminer()"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label><t>note</t></label>
+            <textarea class="form-control" rows="2" ng-model="d.note" b-maxlength="300"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-14 mb-2">
+          <button type="button" class="btn btn-default" ng-click="addTestings()"><t>add</t></button>
+          <button type="button" class="btn btn-success" ng-if="fi.select_person" ng-click="selectPersons()"><t>select</t></button>
+          <button type="button" class="btn btn-danger" ng-click="removeTestings()" ng-show="q.checked.has">
+            <t p1="q.checked.size">delete $1</t>
+          </button>
+        </div>
+        <div class="col-sm-10 mb-2">
+          <b-pg-controller name="testings"/>
+        </div>
+      </div>
+      <b-pg-grid name="testings" local-data="d.testings" iterator="item" search="person_name" on-check="onCheck(checked)" sort="name">
+        <b-pg-header name="rownum">
+          <div class="text-center"><t>rownum</t></div>
+        </b-pg-header>
+        <b-pg-row>
+          <b-pg-col name="rownum" size="1">
+            <div class="text-center">{{ item.rownum }}</div>
+          </b-pg-col>
+          <b-pg-col name="person_name" size="13">
+            <b-input name="persons"
+                     model="item.person_name | name"
+                     model-key="item.person_id | person_id"
+                     on-change="changePersonQuery(query, value)"
+                     is-add="fi.add_person"
+                     on-add="addPerson(item, value)"
+                     is-view="fi.select_person"
+                     on-view="selectPerson(item)"
+                     required-key>
+              {{ row.name }}
+            </b-input>
+          </b-pg-col>
+          <b-pg-col name="exam_name" size="9">
+            <div class="input-group">
+              <b-input name="exams"
+                       model="item.exam_name | name"
+                       model-key="item.exam_id | exam_id"
+                       is-add="fi.add_exam"
+                       on-add="addExam(item, value)"
+                       is-view="fi.select_exam"
+                       on-view="selectExam(item)"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+              <div class="input-group-append">
+                <button type="button" ng-disabled="!item.exam_id" class="btn btn-icon btn-default"
+                        b-toggle data-title="{{ q.tSetExam() }}" on-click-yes="setExamAll(item)">
+                  <i class="fa fa-check"/>
+                </button>
+              </div>
+            </div>
+          </b-pg-col>
+        </b-pg-row>
+      </b-pg-grid>
+    </div>
+  </div>
+</form></div>

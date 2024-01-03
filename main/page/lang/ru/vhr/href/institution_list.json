@@ -1,0 +1,10 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{institution_count} institution(s)?": "Удалить учебные заведения в количестве <b>$1</b>?",
+ "delete institution $1{institution_name}?": "Удалить учебное заведение <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.institution_id": "ИД",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

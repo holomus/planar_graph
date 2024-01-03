@@ -1,0 +1,12 @@
+{
+ "before": "Previous Value",
+ "current": "Current Value",
+ "field_name": "Field",
+ "pg.{{ data.tab }}.before": "Previous Value",
+ "pg.{{ data.tab }}.current": "Current Value",
+ "pg.{{ data.tab }}.field_name": "Field",
+ "staff_plan_items": "Effectiveness Measures",
+ "staff_plan_parts": "Parts",
+ "staff_plan_rules": "Rules",
+ "staff_plans": "Effectiveness Measures Calculation"
+}

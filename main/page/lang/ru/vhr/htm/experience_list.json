@@ -1,0 +1,15 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{experience_count} experience(s)?": "Удалить $1 карьерный путь?",
+ "delete experience $1{experience_name}?": "Удалить $1?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.experience_id": "ИД",
+ "table.job_count": "Кол-во должностей",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.state_name": "Статус"
+}

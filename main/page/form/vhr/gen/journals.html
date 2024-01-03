@@ -1,0 +1,745 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, bUtil) {
+  var d = model.data,
+      q = model.references;
+
+  // employee
+  function whereEmployee() {
+    let where = ['and', [['state', '=', 'A'], ['status', '=', ['U', 'D']]]],
+        employee_ids = _.chain(d.lists[q.section_hiring]).pluck('employee_id').compact().value();
+    
+    if (!_.isEmpty(employee_ids)) {
+      where = ['and', [where, ['employee_id', '<>', employee_ids]]];
+    }
+
+    return where;
+  }
+ 
+  function changeEmployeeQuery(query, value) {
+    query.param({ hiring_date: d.period_begin }).where(whereEmployee()).searchValue(value);
+  }
+
+  function selectEmployees() {
+    fi.select_employees(null, function(employees) {
+      if (!employees || employees.length == 0) return;
+      _.each(employees, function(employee) {
+        employee.schedules = [];
+        employee.employment_sources = [];
+        employee.dismissal_reasons = [];
+      });
+      d.lists[q.activeSection].push(...employees);
+    }, { where: whereEmployee(), multiple_select: true });
+  }
+
+  // staff
+  function addListItem() {  
+    d.lists[q.activeSection].push({
+      robots: [],
+      divisions: [],
+      jobs: [],
+      schedules: [],
+      employment_sources: [],
+      dismissal_reasons: []
+    });
+  }
+
+  function removeListItems() {
+    _.each(q.checked[q.activeSection].rows(), function(row) {
+      let index = _.findIndex(d.lists[q.activeSection], row);
+      d.lists[q.activeSection].splice(index, 1);
+    });
+    q.checked[q.activeSection] = {};
+  }
+
+  function whereStaff() {
+    let staff_ids = _.chain(d.lists[q.activeSection]).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=',  d.period_begin],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>', d.period_end]]
+                  ]]
+                ];
+
+    where = ['and', [where, ['staff_kind', '=', q.sk_primary]]];
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  function selectStaffs() {
+    fi.select_staffs(null, function(staffs) {
+      if (!staffs || staffs.length == 0) return;
+      _.each(staffs, function(staff) {
+        staff.schedules = [];
+        staff.employment_sources = [];
+        staff.dismissal_reasons = [];
+      });
+      d.lists[q.activeSection].push(...staffs);
+    }, { where: whereStaff(), multiple_select: true });
+  }
+
+  function applyColumn(item, column_key) {
+    _.chain(d.lists[q.activeSection])
+     .filter(x => _.isEmpty(x[column_key]))
+     .each(staff => staff[column_key] = angular.copy(item[column_key]));
+  }
+
+  // checks
+  function onCheck(checked) {
+    q.checked[q.activeSection] = checked;
+  }
+
+  function onDateChange() {
+    let period_begin = moment(d.period_begin, `DD.MM.YYYY`).format("YYYYMMDD"),
+        period_end = moment(d.period_end, `DD.MM.YYYY`).format("YYYYMMDD");
+    if (period_end < period_begin) {
+      d.period_end = d.period_begin;
+    }
+
+    if (!_.isEmpty(d.lists[q.section_hiring]) || !_.isEmpty(d.lists[q.section_transfer]) || !_.isEmpty(d.lists[q.section_dismissal])) {
+      page.confirm(t('all staffs will be removed. continue?')(), function() {
+        d.lists[q.section_hiring] = [];
+        d.lists[q.section_transfer] = [];
+        d.lists[q.section_dismissal] = [];
+
+        q.old_period_begin = d.period_begin;
+        q.old_period_end = d.period_end;
+      }, function() {
+        d.period_begin = q.old_period_begin;
+        d.period_end = q.old_period_end;
+      });
+    } else {
+      q.old_period_begin = d.period_begin;
+      q.old_period_end = d.period_end;
+    }
+  }
+
+  function whereFilter(item, key, key_id) {
+    let ids = _.pluck(item[key], key_id);
+    return _.isEmpty(ids) ? null : [key_id, '<>', ids];
+  }
+
+  function changeQuery(item, key, key_id, query, value) {
+    query.where(whereFilter(item, key, key_id)).searchValue(value);
+  }
+
+  function selectFilter(item, key, key_id) {
+    let select_key = 'select_' + key;
+    fi[select_key](null, function(result) {
+      if (_.isEmpty(result)) return;
+      item[key].push(...result);
+    }, { where: whereFilter(item, key, key_id), multiple_select: true });
+  }
+
+  // robot
+  function whereRobot(item) {
+    let where = ['and', [
+                  ['opened_date', '<=', d.period_begin],
+                  ['closed_date', '=', [null]]
+                ]],                
+        robot_ids = _.chain(d.lists[q.activeSection])
+                     .pluck('robots')
+                     .flatten()
+                     .pluck('robot_id')
+                     .value();
+
+    where = ['and', [['fte', '=', 1], where]];
+    where = ['and', [['contractual_wage', '=', 'Y'], where]];
+
+    if (!_.isEmpty(robot_ids)) {
+      where = ['and', [['robot_id', '<>', robot_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeRobotQuery(item, query, value) {
+    query.param({ period: d.period_begin }).where(whereRobot(item)).searchValue(value);
+  }
+
+  function setRobot(item, row) {
+    if (!row) return;
+    item.robot_id = row.robot_id;
+    item.robot_name = row.name;
+  }
+
+  function selectRobots(item) {
+    fi.select_robots(null, function(result) {
+      if (_.isEmpty(result)) return;
+      item.robots.push(...result);
+    }, { where: whereRobot(item), multiple_select: true });
+  }
+
+  // employment source
+  function whereEmploymentSource(item) {
+    let source_id = _.pluck(item.employment_sources, 'source_id'),
+        kinds = q.activeSection == q.section_hiring ? [q.es_hiring, q.es_both] : [q.es_dismissal, q.es_both],
+        where = ['kind', '=', kinds];
+    return _.isEmpty(source_id) ? where : ['and', [['source_id', '<>', source_id], where]];
+  }
+
+  function changeEmploymentSource(item, query, value) {
+    query.where(whereEmploymentSource(item)).searchValue(value);
+  }
+
+  function selectEmploymentSource(item) {
+    fi.select_employment_sources(null, function(sources) {
+      if (_.isEmpty(sources)) return;
+      item.employment_sources.push(...sources);
+    }, { where: whereEmploymentSource(item), multiple_select: true });
+  }
+
+  function setOperType(item, row) {
+    if (!row) return;
+    item.oper_type_id = row.oper_type_id;
+    item.oper_type_name = row.name;
+    item.indicator_ids = [];
+
+    if (item.oper_type_id) {
+      page.post(':get_indicators', _.pick(item, 'oper_type_id')).then((result) => {
+        result = _.mapRows(result, ['indicator_id', 'name']);
+        _.each(result, indicator => { 
+          d.indicators[indicator.indicator_id] = d.indicators[indicator.indicator_id] || indicator;
+        });
+        item.indicator_ids = _.pluck(result, 'indicator_id');
+      }, page.alert);
+    }
+  }
+
+  function whereOperType() {
+    let oper_type_ids = _.chain(d.lists[q.section_oper_type])
+                         .pluck('oper_type_id')
+                         .compact()
+                         .value(),
+        where = [];
+    if (!_.isEmpty(oper_type_ids)) {
+      where = ['oper_type_id', '<>', oper_type_ids];
+    }
+    return where;
+  }
+
+  function changeOperTypeQuery(query, value) {
+    query.where(whereOperType()).searchValue(value);
+  }
+
+  function selectOperType(item) {
+    fi.select_oper_type(null, _.partial(setOperType, item), { where: whereOperType() });
+  }
+
+  function addOperType(item, value) {
+    fi.add_oper_type(null, _.partial(setOperType, item), { name: value });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+  }
+
+  // generate
+  function generate(posted) {
+    if (page.valid(scope.form)) {
+      let confirmMessage;
+      switch(q.activeSection) {
+        case q.section_hiring:
+          confirmMessage = q.tConfirmGenerateHiring;
+          break;
+        case q.section_transfer:
+          confirmMessage = q.tConfirmGenerateTransfer;
+          break;
+        default:
+          confirmMessage = q.tConfirmGenerateDismissal;
+      };
+       
+      page.confirm(confirmMessage(), function() {
+        let data = _.pick(d, ['period_begin', 'period_end']);
+
+        data.oper_types = _.map(d.lists[q.section_oper_type], x => _.pick(x, 'oper_type_id', 'indicator_ids'));
+        data.staffs = _.chain(d.lists[q.activeSection])
+                       .each(x => {
+                        let indicators = [];
+                        _.chain(data.oper_types).pluck('indicator_ids').flatten().compact().unique().each(id => indicators.push(d.indicators[id]));
+                        x.indicators = indicators;
+                        x.robot_ids = _.pluck(x.robots, 'robot_id');
+                        x.division_ids = _.pluck(x.divisions, 'division_id');
+                        x.job_ids = _.pluck(x.jobs, 'job_id');
+                        x.schedule_ids = _.pluck(x.schedules, 'schedule_id');
+                        x.source_ids = _.pluck(x.employment_sources, 'source_id');
+                        x.reason_ids = _.pluck(x.dismissal_reasons, 'dismissal_reason_id');
+                       })
+                       .map(x => _.pick(x, 'employee_id', 'staff_id', 'robot_ids', 'division_ids', 'job_ids', 'schedule_ids', 'source_ids', 'reason_ids', 'indicators'))
+                       .value();
+
+        data.section = q.activeSection;
+        data.posted = posted;
+        
+        page.post(':generate', data).then(page.reload, page.alert);
+      });
+    }
+  }
+
+  q.activeSection = q.section_hiring;
+  q.old_period_begin = d.period_begin;
+  q.old_period_end = d.period_end;
+  q.checked = {};
+  q.tConfirmApplyDivisions = t('apply divisions to empty fields?');
+  q.tConfirmApplyJobs = t('apply jobs to empty fields?');
+  q.tConfirmApplySchedules = t('apply schedules to empty fields?');
+  q.tConfirmApplySources = t('apply employment sources to empty fields?');
+  q.tConfirmApplyReasons = t('apply dismissal reasons to empty fields?');
+  q.tConfirmGenerateHiring = t('generate hirings for these staffs?');
+  q.tConfirmGenerateTransfer = t('generate transfers for these staffs?');
+  q.tConfirmGenerateDismissal = t('generate dismissals for these staffs?');
+
+  d.lists = {};
+  d.lists[q.section_hiring] = [];
+  d.lists[q.section_transfer] = [];
+  d.lists[q.section_dismissal] = [];
+  d.lists[q.section_oper_type] = [];
+  d.indicators = {};
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="generate('N')" ng-disabled="q.activeSection == q.section_oper_type" b-hotkey="save"><t>generate</t></button>
+  <button type="button" class="btn btn-primary" ng-click="generate('Y')" ng-disabled="q.activeSection == q.section_oper_type"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-row">
+            <div class="col-sm mb-4 mb-0">
+              <label><t>gen period begin</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.period_begin" ng-change="onDateChange()" required/>
+            </div>
+            <div class="col-sm">
+              <label><t>gen period end</t><r/></label>
+              <input type="text" class="form-control" b-date-picker="DD.MM.YYYY" ng-model="d.period_end" min-date="d.period_begin" ng-change="onDateChange()" required/>
+            </div>
+          </div>
+        </div>        
+      </div>
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.section_hiring }" role="tab" ng-click="changeSection(q.section_hiring)">
+            <span><t>hiring</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.section_transfer }" role="tab" ng-click="changeSection(q.section_transfer)">
+            <span><t>transfer</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.section_dismissal }" role="tab" ng-click="changeSection(q.section_dismissal)">
+            <span><t>dismissal</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" ng-class="{ 'active': q.activeSection == q.section_oper_type }" role="tab" ng-click="changeSection(q.section_oper_type)">
+            <span><t>oper_type</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4 mb-4">
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.section_hiring }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addListItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectEmployees()" ng-if="fi.select_employees"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeListItems()" ng-show="q.checked[q.section_hiring].has">
+                <t p1="q.checked[q.section_hiring].size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="hirings"/>
+            </div>
+          </div>
+          <b-pg-grid name="hirings" search="employee_name" on-check="onCheck(checked)" local-data="d.lists[q.section_hiring]" iterator="item" current-limit="1000">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="employee_name" size="6">
+                <b-input name="employees"
+                         model="item.name | name"
+                         model-key="item.employee_id | employee_id"
+                         column="employee_number"
+                         search="employee_number, name"
+                         on-change="changeEmployeeQuery(query, value)"
+                         required-key="q.activeSection == q.section_hiring">
+                  <header>
+                    <div class="col-sm-8"><t>employee number</t></div>
+                    <div class="col-sm-16"><t>employee name</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-8">{{ row.employee_number }}</div>
+                    <div class="col-sm-16">{{ row.name }}</div>
+                  </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="robots" size="6" access="q.position_enable == 'Y'">
+                <div class="input-group">
+                  <b-input name="robots"
+                           model="item.robots"
+                           model-key="robot_id"
+                           column="fte"
+                           label="name"
+                           on-change="changeRobotQuery(item, query, value)"
+                           is-view="fi.select_robots"
+                           on-view="selectRobots(item)"
+                           multiple>
+                  <header>
+                    <div class="col-sm-12"><t>robot name</t></div>
+                    <div class="col-sm-12"><t>fte</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-12">{{ row.name}}</div>
+                    <div class="col-sm-12">{{ row.fte }}</div>
+                  </content>
+                </b-input>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="divisions" size="4" access="q.position_enable == 'N'">
+                <div class="input-group">
+                  <b-input name="divisions"
+                           model="item.divisions"
+                           model-key="division_id"
+                           label="name"
+                           on-change="changeQuery(item, 'divisions', 'division_id', query, value)"
+                           is-view="fi.select_divisions"
+                           on-view="selectFilter(item, 'divisions', 'division_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyDivisions() }}" on-click-yes="applyColumn(item, 'divisions')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="jobs" size="4" access="q.position_enable == 'N'">
+                <div class="input-group">
+                  <b-input name="jobs"
+                           model="item.jobs"
+                           model-key="job_id"
+                           label="name"
+                           on-change="changeQuery(item, 'jobs', 'job_id', query, value)"
+                           is-view="fi.select_jobs"
+                           on-view="selectFilter(item, 'jobs', 'job_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyJobs() }}" on-click-yes="applyColumn(item, 'jobs')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="schedules" size="6">
+                <div class="input-group">
+                  <b-input name="schedules"
+                           model="item.schedules"
+                           model-key="schedule_id"
+                           label="name"
+                           on-change="changeQuery(item, 'schedules', 'schedule_id', query, value)"
+                           is-view="fi.select_schedules"
+                           on-view="selectFilter(item, 'schedules', 'schedule_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplySchedules() }}" on-click-yes="applyColumn(item, 'schedules')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="employment_sources" size="4">
+                <div class="input-group">
+                  <b-input name="employment_sources"
+                           model="item.employment_sources"
+                           model-key="source_id"
+                           label="name"
+                           on-change="changeEmploymentSource(item, query, value)"
+                           is-view="fi.select_employment_sources"
+                           on-view="selectEmploymentSource(item)"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplySources() }}" on-click-yes="applyColumn(item, 'employment_sources')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.section_transfer }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addListItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectStaffs()" ng-if="fi.select_staffs"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeListItems()" ng-show="q.checked[q.section_transfer].has">
+                <t p1="q.checked[q.section_transfer].size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="transfers"/>
+            </div>
+          </div>
+          <b-pg-grid name="transfers" search="staff_name" on-check="onCheck(checked)" local-data="d.lists[q.section_transfer]" iterator="item" current-limit="1000">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="staff_name" size="6">
+                <b-input name="staffs"
+                         model="item.name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, staff_kind_name"
+                         search="staff_number, name"
+                         on-change="changeStaffQuery(query, value)"
+                         required-key="q.active_section == q.section_transfer">
+                  <header>
+                    <div class="col-sm-6"><t>staff number</t></div>
+                    <div class="col-sm-12"><t>staff name</t></div>
+                    <div class="col-sm-6"><t>staff kind name</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-6">{{ row.staff_number }}</div>
+                    <div class="col-sm-12">{{ row.name }}</div>
+                    <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                  </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="robots" size="6" access="q.position_enable == 'Y'">
+                <div class="input-group">
+                  <b-input name="robots"
+                           model="item.robots"
+                           model-key="robot_id"
+                           column="fte"
+                           label="name"
+                           on-change="changeRobotQuery(item, query, value)"
+                           is-view="fi.select_robots"
+                           on-view="selectRobots(item)"
+                           multiple>
+                  <header>
+                    <div class="col-sm-12"><t>robot name</t></div>
+                    <div class="col-sm-12"><t>fte</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-12">{{ row.name}}</div>
+                    <div class="col-sm-12">{{ row.fte }}</div>
+                  </content>
+                </b-input>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="divisions" size="4" access="q.position_enable == 'N'">
+                <div class="input-group">
+                  <b-input name="divisions"
+                           model="item.divisions"
+                           model-key="division_id"
+                           label="name"
+                           on-change="changeQuery(item, 'divisions', 'division_id', query, value)"
+                           is-view="fi.select_divisions"
+                           on-view="selectFilter(item, 'divisions', 'division_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyDivisions() }}" on-click-yes="applyColumn(item, 'divisions')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="jobs" size="4" access="q.position_enable == 'N'">
+                <div class="input-group">
+                  <b-input name="jobs"
+                           model="item.jobs"
+                           model-key="job_id"
+                           label="name"
+                           on-change="changeQuery(item, 'jobs', 'job_id', query, value)"
+                           is-view="fi.select_jobs"
+                           on-view="selectFilter(item, 'jobs', 'job_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyJobs() }}" on-click-yes="applyColumn(item, 'jobs')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="schedules" size="6">
+                <div class="input-group">
+                  <b-input name="schedules"
+                           model="item.schedules"
+                           model-key="schedule_id"
+                           label="name"
+                           on-change="changeQuery(item, 'schedules', 'schedule_id', query, value)"
+                           is-view="fi.select_schedules"
+                           on-view="selectFilter(item, 'schedules', 'schedule_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplySchedules() }}" on-click-yes="applyColumn(item, 'schedules')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.section_dismissal }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addListItem()"><t>add</t></button>
+              <button type="button" class="btn btn-success" ng-click="selectStaffs()" ng-if="fi.select_staffs"><t>select</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeListItems()" ng-show="q.checked[q.section_dismissal].has">
+                <t p1="q.checked[q.section_dismissal].size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="dismissals"/>
+            </div>
+          </div>
+          <b-pg-grid name="dismissals" search="staff_name" on-check="onCheck(checked)" local-data="d.lists[q.section_dismissal]" iterator="item" current-limit="1000">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="staff_name" size="6">
+                <b-input name="staffs"
+                         model="item.staff_name | name"
+                         model-key="item.staff_id | staff_id"
+                         column="staff_number, staff_kind_name"
+                         search="staff_number, name"
+                         on-change="changeStaffQuery(query, value)"
+                         required-key="q.active_section == q.section_dismissal">
+                  <header>
+                    <div class="col-sm-6"><t>staff number</t></div>
+                    <div class="col-sm-12"><t>staff name</t></div>
+                    <div class="col-sm-6"><t>staff kind name</t></div>
+                  </header>
+                  <content>
+                    <div class="col-sm-6">{{ row.staff_number }}</div>
+                    <div class="col-sm-12">{{ row.name }}</div>
+                    <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                  </content>
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="employment_sources" size="6">
+                <div class="input-group">
+                  <b-input name="employment_sources"
+                           model="item.employment_sources"
+                           model-key="source_id"
+                           label="name"
+                           on-change="changeEmploymentSource(item, query, value)"
+                           is-view="fi.select_employment_sources"
+                           on-view="selectEmploymentSource(item)"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplySources() }}" on-click-yes="applyColumn(item, 'employment_sources')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+              <b-pg-col name="dismissal_reasons" size="6">
+                <div class="input-group">
+                  <b-input name="dismissal_reasons"
+                           model="item.dismissal_reasons"
+                           model-key="dismissal_reason_id"
+                           label="name"
+                           on-change="changeQuery(item, 'dismissal_reasons', 'dismissal_reason_id', query, value)"
+                           is-view="fi.select_dismissal_reasons"
+                           on-view="selectFilter(item, 'dismissal_reasons', 'dismissal_reason_id')"
+                           multiple>
+                    {{ row.name }}
+                  </b-input>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyReasons() }}" on-click-yes="applyColumn(item, 'dismissal_reasons')">
+                      <i class="fa fa-check"/>
+                    </button>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.activeSection == q.section_oper_type }" role="tabpanel">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-default" ng-click="addListItem()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="removeListItems()" ng-show="q.checked[q.section_oper_type].has">
+                <t p1="q.checked[q.section_oper_type].size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-pg-controller name="oper_types"/>
+            </div>
+          </div>
+          <b-pg-grid name="oper_types" on-check="onCheck(checked)" local-data="d.lists[q.section_oper_type]" iterator="item" current-limit="1000">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1">
+                <div class="text-center">{{ item.rownum }}</div>
+              </b-pg-col>
+              <b-pg-col name="oper_type" size="10">
+                <b-input name="oper_types"
+                         model="item.oper_type_name | name"
+                         model-key="item.oper_type_id | oper_type_id"
+                         on-change="changeOperTypeQuery(query, value)"
+                         is-add="fi.add_oper_type"
+                         is-view="fi.select_oper_type"
+                         on-add="addOperType(item, value)"
+                         on-view="selectOperType(item)"
+                         on-select="setOperType(item, row)"
+                         on-delete="setOperType(item, {})"
+                         required-key>
+                  {{ row.name }}
+                </b-input>
+              </b-pg-col>
+              <b-pg-col name="indicators" size="11">
+                <div ng-repeat="id in item.indicator_ids">
+                  <div class="form-row">
+                    <label class="col-sm-12" ng-class="{ 'mb-2': !$last }">{{ d.indicators[id].name }}</label>
+                    <div class="col-sm-6" ng-class="{ 'mb-2': !$last }">
+                      <label><t>indicator_left</t></label>
+                      <input type="text" class="form-control" ng-model="d.indicators[id].indicator_left" b-number precision="20" scale="6" required>
+                    </div>
+                    <div class="col-sm-6" ng-class="{ 'mb-2': !$last }">
+                      <label><t>indicator_right</t></label>
+                      <input type="text" class="form-control" ng-model="d.indicators[id].indicator_right" b-number precision="20" scale="6" required>
+                    </div>
+                  </div>
+                </div>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

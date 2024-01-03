@@ -1,0 +1,7 @@
+{
+ "table.command": "Команда",
+ "table.device_id": "ИД устройства",
+ "table.device_name": "Устройство",
+ "table.state_changed_on": "Дата изменения",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,76 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table').param({ device_id: param.device_id });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function makeAction(action, message, track_id) {
+    page.confirm(message, function() {
+      action({ track_id: track_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function migrOne(row) {
+    makeAction(fi.migr, t('migr?')(), row.migr_track_id);
+  }
+
+  function migrMany() {
+    makeAction(fi.migr, t('migr $1?')(q.checked.size), _.pluck(q.checked.rows(), 'migr_track_id'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteOne(row) {
+    makeAction(fi.delete, t('delete?')(), row.migr_track_id);
+  }
+
+  function deleteMany() {
+    makeAction(fi.delete, t('delete $1?')(q.checked.size), _.pluck(q.checked.rows(), 'migr_track_id'));
+  }
+
+  function onDblclick(row) {
+    fi.migr ? migrOne(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-primary" ng-if="fi.migr" ng-show="q.checked.has" ng-click="migrMany()">
+      <t p1="q.checked.size">migr $1</t>
+    </button>
+    <button type="button" class="btn btn-danger" ng-if="fi.delete" ng-show="q.checked.has" ng-click="deleteMany()">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="migr_track_id" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="track_time" search="pin">
+    <b-row>
+      <b-col name="track_time" size=3/>
+      <b-col name="pin" size=4/>
+      <b-col name="track_type_name" size=3/>
+      <b-col name="mark_type_name" size=3/>
+      <b-col name="location_name" size=10/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-if="fi.migr" ng-click="migrOne(row)">{{ fi.migr.title }}</button>
+      <button type="button" class="btn btn-default" ng-if="fi.delete" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="track_time"/>
+    <b-filter name="pin" directive="equal"/>
+    <b-filter name="track_type" decorate-with="track_type_name"/>
+    <b-filter name="mark_type" decorate-with="mark_type_name"/>
+    <b-filter name="location_id" decorate-with="location_name"/>
+  </b-grid>
+</form></div>

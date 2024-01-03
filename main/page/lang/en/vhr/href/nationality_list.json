@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{nationality_count} nationality(ies)?": "Delete <b>$1</b> nationality(ies)?",
+ "delete nationality $1{nationality_name}?": "Delete $1?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.name": "Name",
+ "table.nationality_id": "ID",
+ "table.state_name": "Status"
+}

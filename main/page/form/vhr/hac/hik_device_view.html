@@ -1,0 +1,231 @@
+<script biruni>
+page.init(function() {
+  page.grid('table_company').disable();
+});
+page.ctrl(function(scope, model, fi, t) {
+  var d = model, q = {};
+
+  function edit() {
+    fi.edit({ device_id: d.device_id, server_id: d.server_id });
+  }
+
+  function changeSection(section) {
+    q.activeSection = section;
+    var tableName = 'table_' + section;
+
+    if (!_.contains(q.enabledGrids, tableName) && q.activeSection != 'main') {
+      setMode('attach');
+
+      q.enabledGrids.push(tableName);
+    }
+  }
+
+  function fetchQuery() {
+    var mode = q.attachMode ? 'attach' : 'detach';
+
+    q.checked = {};
+
+    let data = { mode: mode, device_id: d.device_id, server_id: d.server_id };
+    page.query('table_company').param(data);
+    page.grid('table_company').enable();
+    page.grid('table_company').fetch();
+  }
+
+  function doAction(doFunc, message, company_id) {
+    page.confirm(message, function() {
+      doFunc({
+        device_id: d.device_id,
+        company_id: company_id
+      }).then(function() {
+        fetchQuery();
+      }, page.alert);
+    });
+  }
+
+  function attachOne(row) {
+    doAction(fi.attach, t('attach company $1{company_name}?')(row.name), row.company_id);
+  }
+
+  function attachMany(row) {
+    doAction(fi.attach, t('attach $1{company_count} company(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'company_id'));
+  }
+
+  function detachOne(row) {
+    doAction(fi.detach, t('detach company $1{company_name}?')(row.name), row.company_id);
+  }
+
+  function detachMany() {
+    doAction(fi.detach, t('detach $1{company_count} company(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'company_id'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    q.attachMode ? detachOne(row) : attachOne(row);
+  }
+
+  function setMode(mode) {
+    if (q.attachMode = mode == 'attach') {
+      q.attachClass = 'btn-success';
+      q.detachClass = 'btn-default';
+    } else {
+      q.attachClass = 'btn-default';
+      q.detachClass = 'btn-success';
+    }
+    fetchQuery();
+  }
+
+  q.activeSection = 'main';
+  q.enabledGrids = [];
+
+  scope.q = q;
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-click="edit()" ng-if="fi.edit" b-hotkey="edit">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="d-flex flex-row">
+      <div class="flex-row-auto b-offcanvas">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="text-center">
+              <div class="b-offcanvas-hide">
+                <span class="font-weight-bolder font-size-h3">{{ d.isup_device_code }}</span>
+                <span class="text-muted">&nbsp;({{ d.device_id }})</span>
+              </div>
+            </div>
+            <div class="py-9 navi navi-bolder navi-hover navi-active navi-link-rounded">
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'main' }" ng-click="changeSection('main')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-info-circle"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>main</t></span>
+                </a>
+              </div>
+              <div class="navi-item mb-2">
+                <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'company' }" ng-click="changeSection('company')">
+                  <span class="navi-icon mr-2">
+                    <i class="fa fa-building"></i>
+                  </span>
+                  <span class="navi-text b-offcanvas-hide font-size-lg"><t>company</t></span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'main'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-header">
+            <div class="card-title">
+              <h5 class="font-weight-bolder"><t>main</t></h5>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>company name</t></label>
+                  <span class="form-view">{{ d.company_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>isup password</t></label>
+                  <span class="form-view">{{ d.isup_password }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>device name</t></label>
+                  <span class="form-view">{{ d.device_name }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>location</t></label>
+                  <span class="form-view">{{ d.location }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>status</t></label>
+                  <span class="form-view">{{ d.status_name }}</span>
+                </div>
+                <div class="form-row">
+                  <div class="col-sm-12">
+                    <label><t>device ip</t></label>
+                    <span class="form-view">{{ d.device_ip }}</span>
+                  </div>
+                  <div class="col-sm-12">
+                    <label><t>device mac</t></label>
+                    <span class="form-view">{{ d.device_mac }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>login</t></label>
+                  <span class="form-view">{{ d.login }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>password</t></label>
+                  <span class="form-view">{{ d.password }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>serial number</t></label>
+                  <span class="form-view">{{ d.serial_number }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>device code</t></label>
+                  <span class="form-view">{{ d.device_code }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>door code</t></label>
+                  <span class="form-view">{{ d.door_code }}</span>
+                </div>
+                <div class="form-group">
+                  <label><t>access level code</t></label>
+                  <span class="form-view">{{ d.access_level_code }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'company'">
+        <div class="card card-custom card-stretch gutter-b">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <div class="btn-group mb-2">
+                  <button type="button" class="btn" ng-class="q.attachClass" ng-click="setMode('attach')"><t>attached companies</t></button>
+                  <button type="button" class="btn" ng-class="q.detachClass" ng-click="setMode('detach')"><t>detached companies</t></button>
+                </div>
+                <button type="button" class="btn btn-danger mb-2" ng-click="detachMany()" ng-if="fi.detach" ng-show="q.attachMode && q.checked.has">
+                  <t p1="q.checked.size">detach $1</t>
+                </button>
+                <button type="button" class="btn btn-primary mb-2" ng-click="attachMany()" ng-if="fi.attach" ng-show="!q.attachMode && q.checked.has">
+                  <t p1="q.checked.size">attach $1</t>
+                </button>
+              </div>
+              <div class="col-sm-12">
+                <b-grid-controller name="table_company"/>
+              </div>
+            </div>
+            <b-grid name="table_company" required="company_id, name, code" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="name" search="name, code" searchable="company_id">
+              <b-row>
+                <b-col name="name" size="19"/>
+                <b-col name="code" size="4"/>
+              </b-row>
+
+              <b-action>
+                <button type="button" class="btn btn-default" ng-click="attachOne(row)" ng-if="fi.attach && !q.attachMode">{{ fi.attach.title }}</button>
+                <button type="button" class="btn btn-default" ng-click="detachOne(row)" ng-if="fi.detach && q.attachMode">{{ fi.detach.title }}</button>
+              </b-action>
+            </b-grid>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

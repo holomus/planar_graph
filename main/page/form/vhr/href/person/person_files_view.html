@@ -1,0 +1,35 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+
+  d.person_files = _.mapRows(d.person_files, ['title', 'note', 'file_sha', 'file_name']);
+
+  function downloadFile(file_sha) {
+    window.open(page.downloadFile(file_sha));
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-body">
+    <div class="row mb-2">
+      <div class="offset-sm-12 col-sm-12">
+        <b-pg-controller name="person_files"/>
+      </div>
+    </div>
+    <b-pg-grid name="person_files" local-data="d.person_files" min-height="'auto'" search="title" sort="title">
+      <b-pg-row>
+        <b-pg-col name="title" size="11"/>
+        <b-pg-col name="note" size="10"/>
+        <b-pg-col name="action" size="3">
+          <div class="text-center">
+            <button type="button" class="btn btn-icon btn-default" ng-click="downloadFile(row.file_sha)">
+              <i class="fa fa-download"/>
+            </button>
+          </div>
+        </b-pg-col>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+</div>

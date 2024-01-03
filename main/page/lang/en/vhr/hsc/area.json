@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "division groups": "Department groups",
+ "drivers": "Drivers",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

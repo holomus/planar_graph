@@ -1,0 +1,53 @@
+<script biruni>
+page.ctrl(function(scope, fi) {
+  var q = {};
+
+  function view(row) {
+    fi.view({ company_id: row.company_id });
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="company_id" sort="-three_hour_inactive"  on-dblclick="onDblclick(row)" 
+          search="name" searchable="company_id" extra-columns="company_id">
+    <b-row>
+      <b-col name="name" size="6"/>
+      <b-col name="device_count" size="2"/>
+      <b-col name="hour_inactive" size="2"/>
+      <b-col name="three_hour_inactive" size="2"/>
+      <b-col name="twelve_hour_inactive" size="2"/>
+      <b-col name="day_inactive" size="2"/>
+      <b-col name="three_day_inactive" size="2"/>
+      <b-col name="phone" size="3"/>
+      <b-col name="email" size="3"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+    </b-action>
+
+    <b-filter name="company_id" directive="equal" extra/>
+    <b-filter name="device_count"/>
+    <b-filter name="hour_inactive"/>
+    <b-filter name="three_hour_inactive"/>
+    <b-filter name="twelve_hour_inactive"/>
+    <b-filter name="day_inactive"/>
+    <b-filter name="three_day_inactive"/>
+    <b-filter name="phone"/>
+    <b-filter name="email"/>
+  </b-grid>
+</form></div>

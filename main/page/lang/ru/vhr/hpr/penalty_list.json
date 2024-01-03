@@ -1,0 +1,20 @@
+{
+ "delete penalty for $1{month_name}?": "Удалить штраф для $1?",
+ "add": "Создать",
+ "common": "По компании",
+ "common_penalties.month": "Месяц",
+ "common_penalties.name": "Название",
+ "common_penalties.penalty_id": "ИД",
+ "common_penalties.state_name": "Статус",
+ "copy": "Скопировать",
+ "delete": "Удалить",
+ "delete $1": "Удалить $1",
+ "delete $1{penalty_count} penalty(ies)?": "Удалить политики штрафов в количестве <b>$1</b>?",
+ "edit": "Изменить",
+ "standart": "По подразделениям",
+ "standart_penalties.division_name": "Подразделение",
+ "standart_penalties.month": "Месяц",
+ "standart_penalties.name": "Название",
+ "standart_penalties.penalty_id": "ИД",
+ "standart_penalties.state_name": "Статус"
+}

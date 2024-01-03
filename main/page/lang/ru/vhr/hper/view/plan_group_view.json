@@ -1,0 +1,19 @@
+{
+ "order no": "Порядковый номер",
+ "table_audit.order_no": "Порядковый номер",
+ "active": "Активный",
+ "audit": "История изменений",
+ "details": "Детали",
+ "main": "Основная информация",
+ "name": "Название",
+ "passive": "Неактивный",
+ "table_audit.name": "Название",
+ "table_audit.state_name": "Статус",
+ "table_audit.t_audit_id": "ИД записи",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата и время события",
+ "table_audit.t_user_id": "ИД пользователя",
+ "table_audit.t_user_name": "Пользователь"
+}

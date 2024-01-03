@@ -1,0 +1,23 @@
+{
+ "address": "Address",
+ "application date": "Application Date",
+ "application number": "Number",
+ "birthday": "Birth Date",
+ "email": "Email",
+ "employment type": "Employment Type",
+ "first name": "First Name",
+ "gender": "Gender",
+ "hiring date": "Hiring Date",
+ "iapa": "IPSA",
+ "last name": "Last Name",
+ "legal address": "Legal Address",
+ "middle name": "Patronymic",
+ "note": "Note",
+ "npin": "IPIN",
+ "passport series and number": "Passport Series and Number",
+ "person info": "Candidate Info",
+ "phone": "Phone",
+ "region name": "Region",
+ "robot": "Position",
+ "save": "Save"
+}

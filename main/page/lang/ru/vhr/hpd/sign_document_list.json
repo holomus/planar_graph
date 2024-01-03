@@ -1,0 +1,17 @@
+{
+ "change status to progress $1{count} documents?": "Изменить статус $1 документов к выполнению?",
+ "change status to progress $1{title} document?": "Изменить статус документа $1 к выполнению?",
+ "select": "Подбор",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.document_id": "ИД",
+ "table.esign_allowed_name": "Требование ЭЦП",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.note": "Примечание",
+ "table.process_name": "Процесс",
+ "table.sign_kind_name": "Подписание",
+ "table.status_name": "Статус",
+ "table.title": "Название",
+ "to progress $1": "К выполнению"
+}

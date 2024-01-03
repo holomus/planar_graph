@@ -1,0 +1,51 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model ? model : {};
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="150" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>host url</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.host_url" b-maxlength="300"/>
+          </div>
+          <div class="form-group">
+            <label><t>username</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.username" b-maxlength="300"/>
+          </div>
+          <div class="form-group">
+            <label><t>password</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.password" b-maxlength="300"/>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>order_no</t></label>
+              <input type="text" class="form-control" ng-model="d.order_no" b-number scale="0" precision="6"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

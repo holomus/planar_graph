@@ -1,0 +1,22 @@
+{
+ "subfilial name": "Проект",
+ "active": "Активный",
+ "cannot close division before it opens, change your opened or closed date": "Нельзя закрыть подразделение до его открытия, пожалуйста, измените дату открытия или закрытия",
+ "closed date": "Дата закрытия",
+ "code": "Код",
+ "code is already used by another division": "Код уже закреплен за другим подразделением",
+ "division group name": "Группа подразделений",
+ "is department": "Вид подразделения",
+ "job name": "Должность",
+ "manager name": "Руководитель",
+ "name": "Название",
+ "name should be unique": "Название должно уникальным",
+ "opened date": "Дата открытия",
+ "parent division": "Родитель",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "schedule name": "Режим работы",
+ "staff name": "Сотрудник",
+ "staff number": "Табельный номер",
+ "state": "Статус"
+}

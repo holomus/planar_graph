@@ -1,0 +1,64 @@
+<script biruni>
+page.init(function(param, xparam) {
+  if (page.isInit()) page.query('table').filter('state', '=', 'A');
+
+  function defaultPhoto(gender) {
+    return `page/resource/vhr/no_photo.png`;
+  }
+
+  var pg = page.grid('table');
+
+  pg.asHtml('name_html', 'photo_sha, name', function(row) {
+    return `<div><img src="${ !row.photo_sha ? 'page/resource/vhr/no_image.png' : page.loadImageSmall(row.photo_sha) }" class="rounded-circle" style="width: 55px; height: 55px; border: 1px solid rgba(230, 230, 240, 0.8);"/>&emsp;${ row.name }</div>`;
+  });
+  pg.asHtml('state_html', 'state, state_name', row => {
+    return `<div class="alert alert-custom alert-light-${ row.state == 'A' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.state_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, fi) {
+  function closeIfDialog(result) {
+    if (page.isDialog())  page.close(result);
+  }
+
+  function edit(row) {
+    fi.edit({ model_id: row.model_id }, closeIfDialog);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row): fi.edit && fi.isHead ? edit(row) : null;
+  }
+});
+</script>
+<div class="b-toolbar row">
+  <div class="offset-sm-14 col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="model_id, name, photo_sha" on-dblclick="onDblclick(row)"
+          sort="name" search="model_number, name, tin, code" searchable=""
+          extra-columns="model_id, support_face_recognation_name, support_fprint_name, support_rfid_card_name">
+    <b-row>
+      <b-col name="name" as-html="name_html" size=15/>
+      <b-col name="support_face_recognation_name" size=3/>
+      <b-col name="support_fprint_name" size=3/>
+      <b-col name="support_rfid_card_name" size=3/>
+    </b-row>
+
+    <b-extra-columns>
+      <b-col name="state_name" as-html="state_html"/>
+    </b-extra-columns>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && fi.isHead">{{ fi.edit.title }}</button>
+    </b-action>
+
+    <b-filter name="model_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="support_face_recognation" decorate-with="support_face_recognation_name"/>
+    <b-filter name="support_fprint" decorate-with="support_fprint_name"/>
+    <b-filter name="support_rfid_card" decorate-with="support_rfid_card_name"/>
+    <b-filter name="state" decorate-with="state_name"/>
+  </b-grid>
+</form></div>

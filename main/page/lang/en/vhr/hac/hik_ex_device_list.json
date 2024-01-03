@@ -1,0 +1,16 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{device_count} device(s)?": "Do you really want to delete <b>$1</b> device(s)?",
+ "delete device $1{device_name}?": "Do you really want to delete <b>$1</b>?",
+ "get devices": "Download",
+ "get devices from HCP": "Download",
+ "table.created_on": "Created on",
+ "table.device_code": "Code",
+ "table.device_ip": "IP-address",
+ "table.device_name": "Name",
+ "table.device_port": "Port",
+ "table.modified_on": "Modified on",
+ "table.serial_number": "Serial No.",
+ "table.status_name": "Status",
+ "table.treaty_type": ""
+}

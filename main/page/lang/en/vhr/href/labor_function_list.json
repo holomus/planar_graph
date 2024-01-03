@@ -1,0 +1,10 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{labor_function_count} labor function(s)?": "Do you really want to delete <b>$1</b> labour fuction(s)?",
+ "delete labor function $1{labor_function_name}?": "Do you really want to delete <b>$1</b> ?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.description": "Description",
+ "table.labor_function_id": "ID",
+ "table.name": "Name"
+}

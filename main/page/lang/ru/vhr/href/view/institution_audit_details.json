@@ -1,0 +1,5 @@
+{
+ "pg.institution.before": "Старое значение",
+ "pg.institution.current": "Новое значение",
+ "pg.institution.field_name": "Поле"
+}

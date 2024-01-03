@@ -1,0 +1,108 @@
+<script biruni>
+page.init(function() {
+  var statusClass = { N: 'primary', P: 'info', F: 'success' };
+
+  page.grid('table').asHtml('status_html', 'status, status_name', row => {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t) {
+  var q = { to_delete: {} };
+
+  function deleteAction(message, attestation_id) {
+    page.confirm(message, function() {
+      fi.delete({ attestation_id: attestation_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete attestation $1{attestation_name}?')(row.name), row.attestation_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{attestation_count} attestation(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'attestation_id'));
+  }
+
+  function control(row) {
+    fi.control({ attestation_id: row.attestation_id }, closeIfDialog);
+  }
+
+  function onCheck(checked) {
+    q.to_delete.rows = _.filter(checked.rows(), x => x.status == 'N');
+    q.to_delete.size = q.to_delete.rows.length;
+    q.to_delete.has = q.to_delete.size > 0;
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function view(row) {
+    fi.view({ attestation_id: row.attestation_id });
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog);
+  }
+
+  function edit(row) {
+    fi.edit({ attestation_id: row.attestation_id }, closeIfDialog);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.view ? view(row) : (fi.edit && row.status == 'N') ? edit(row) : fi.control ? control(row) : null;
+  }
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="attestation_id, name, status" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-attestation_date" search="name" extra-columns="attestation_id, begin_time_period_end, new_testing_count, executed_testing_count, paused_testing_count,
+          checking_testing_count, finished_testing_count, note, created_by_name, created_on, modified_by_name, modified_on">
+    <b-row>
+      <b-col name="attestation_date" size=3/>
+      <b-col name="name" size=5/>
+      <b-col name="attestation_number" size=4/>
+      <b-col name="examiner_name" size=4/>
+      <b-col name="begin_time_period_begin" size=4/>
+      <b-col name="status_name" size=3 as-html="status_html"/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+      <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit && row.status == 'N'">{{ fi.edit.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="control(row)" ng-if="fi.control">{{ fi.control.title }}</button>
+      <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.status == 'N'">{{ fi.delete.title }}</button>
+    </b-action>
+
+    <b-filter name="attestation_id" directive="equal" extra/>
+    <b-filter name="name"/>
+    <b-filter name="attestation_number"/>
+    <b-filter name="examiner_id" decorate-with="examiner_name"/>
+    <b-filter name="attestation_date"/>
+    <b-filter name="begin_time_period_begin" extra/>
+    <b-filter name="begin_time_period_end" extra/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="new_testing_count" extra/>
+    <b-filter name="executed_testing_count" extra/>
+    <b-filter name="paused_testing_count" extra/>
+    <b-filter name="checking_testing_count" extra/>
+    <b-filter name="finished_testing_count" extra/>
+    <b-filter name="created_by" decorate-with="created_by_name" extra/>
+    <b-filter name="created_on" extra/>
+    <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+    <b-filter name="modified_on" extra/>
+  </b-grid>
+</form></div>

@@ -1,0 +1,17 @@
+{
+ "details": "Details",
+ "journal": "Document",
+ "sick leave": "Sick Note",
+ "table_audit.coefficient": "Coefficient",
+ "table_audit.reason_name": "Reason",
+ "table_audit.sick_leave_number": "Number",
+ "table_audit.t_audit_id": "ID",
+ "table_audit.t_date": "Date and Time of Activity",
+ "table_audit.t_event_name": "Activity",
+ "table_audit.t_filial_name": "Organization",
+ "table_audit.t_source_project_name": "Application",
+ "table_audit.t_timestamp": "Date and Time of Activity",
+ "table_audit.t_user_name": "User",
+ "table_audit.timeoff_id": "Absence Time ID",
+ "timeoff": "Absence Time"
+}

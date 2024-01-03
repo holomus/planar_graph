@@ -1,0 +1,21 @@
+{
+ "add": "Qo'shish",
+ "attestation date": "Sana",
+ "attestation number": "Raqam:",
+ "begin time": "Boshlanish vaqti",
+ "begin time period begin": "Boshlash oraliq vaqti (dan)",
+ "begin time period end": "Boshlash oraliq vaqti (gacha)",
+ "delete $1": "O'chirish $1",
+ "examiner name": "Tekshiruvchi",
+ "name": "Nomi",
+ "note": "Izoh",
+ "period begin must be less than period end": "Davr boshlanish sanasi tugash sanasidan avval boʻlishi kerak",
+ "pg.testings.exam_name": "Imtihon",
+ "pg.testings.person_name": "Ishtirokchi",
+ "pg.testings.rownum": "№",
+ "rownum": "№",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "select": "Tanlash",
+ "set exam for all?": "Bo'sh maydonlarga qo'llanilsinmi?"
+}

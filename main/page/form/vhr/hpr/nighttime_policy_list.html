@@ -1,0 +1,159 @@
+<script biruni>
+page.init(function() {
+  function prepareGrid(grid_name) {
+    if (page.isInit()) {
+      page.query(grid_name).filter('state', '=', 'A');
+    }
+
+    pg = page.grid(grid_name);
+
+    pg.asHtml('state_html', 'state, state_name', row => {
+      return `<span class="badge badge-${ row.state == 'A' ? 'success' : 'danger' }">${ row.state_name }</span>`;
+    });
+    pg.asHtml('month_html', 'month', function(row) {
+      return row.month ? `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>` : null;
+    });
+  }
+
+  prepareGrid('standart_policies');
+  prepareGrid('common_policies');
+});
+page.ctrl(function(scope, model, t, fi, bFrame, bStorage, AppSession) {
+  var q = {};
+
+  function setActiveTab(active_tab) {
+    if (q.active_tab == active_tab) return;
+    bStorage.json(storage_key, { active_tab: active_tab });
+    q.active_tab = active_tab;
+    q.checked = {};
+  }
+
+  function deleteAction(message, nighttime_policy_id) {
+    page.confirm(message, function() {
+      fi.delete({ nighttime_policy_id: nighttime_policy_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete nighttime policy for $1{month_name}?')(moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY')), row.nighttime_policy_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{policy_count} nighttime policy(ies)?')(q.checked.size), _.pluck(q.checked.rows(), 'nighttime_policy_id'));
+  }
+
+  function add(form_type) {
+    fi.add({ form_type: form_type });
+  }
+
+  function edit(row) {
+    fi.edit({ nighttime_policy_id: row.nighttime_policy_id });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    fi.edit ? edit(row) : null;
+  }
+
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  q.active_tab = storage.active_tab || 'standart_policies';
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar" ng-hide="page.isFirst()">
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <ul class="nav nav-tabs nav-tabs-line" role="tablist">
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'common_policies' }" data-toggle="tab" ng-click="setActiveTab('common_policies')" role="tab">
+            <span><t>common</t></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href class="nav-link" ng-class="{ 'active': q.active_tab == 'standart_policies' }" data-toggle="tab" ng-click="setActiveTab('standart_policies')" role="tab">
+            <span><t>standart</t></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content mt-4">
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'common_policies' }">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-success" ng-click="add('C')" ng-if="fi.add"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-grid-controller name="common_policies"/>
+            </div>
+          </div>
+          <b-grid name="common_policies" required="nighttime_policy_id, month" sort="-month" on-check="onCheck(checked)"
+                  on-dblclick="onDblclick(row)" search="name, division_name" extra-columns="nighttime_policy_id">
+            <b-row>
+              <b-col name="month" size=5 as-html="month_html"/>
+              <b-col name="name" size=18/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="state_name" as-html="state_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit"><t>edit</t></button>
+              <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete"><t>delete</t></button>
+              <button type="button" class="btn btn-default" ng-click="copy(row)" ng-if="fi.copy"><t>copy</t></button>
+            </b-action>
+
+            <b-filter name="nighttime_policy_id" directive="equal" extra/>
+            <b-filter name="month" date-level="month"/>
+            <b-filter name="name"/>
+            <b-filter name="state" decorate-with="state_name"/>
+          </b-grid>
+        </div>
+        <div class="tab-pane" ng-class="{ 'active': q.active_tab == 'standart_policies' }">
+          <div class="row">
+            <div class="col-sm-14 mb-2">
+              <button type="button" class="btn btn-success" ng-click="add('S')" ng-if="fi.add"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+            </div>
+            <div class="col-sm-10 mb-2">
+              <b-grid-controller name="standart_policies"/>
+            </div>
+          </div>
+          <b-grid name="standart_policies" required="nighttime_policy_id, month" sort="-month" on-check="onCheck(checked)"
+                  on-dblclick="onDblclick(row)" search="name, division_name" extra-columns="nighttime_policy_id">
+            <b-row>
+              <b-col name="month" size=4 as-html="month_html"/>
+              <b-col name="name" size=13/>
+              <b-col name="division_name" size=6/>
+            </b-row>
+
+            <b-extra-columns>
+              <b-col name="state_name" as-html="state_html"/>
+            </b-extra-columns>
+
+            <b-action>
+              <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit"><t>edit</t></button>
+              <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete"><t>delete</t></button>
+              <button type="button" class="btn btn-default" ng-click="copy(row)" ng-if="fi.copy"><t>copy</t></button>
+            </b-action>
+
+            <b-filter name="nighttime_policy_id" directive="equal" extra/>
+            <b-filter name="month" date-level="month"/>
+            <b-filter name="name"/>
+            <b-filter name="division_id" decorate-with="division_name"/>
+            <b-filter name="state" decorate-with="state_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

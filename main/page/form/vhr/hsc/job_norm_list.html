@@ -1,0 +1,118 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var pq = page.query('table');
+
+  if (xparam.where) pq.where(xparam.where);
+  else if (param.where) pq.where(param.where);
+
+  let grid = page.grid('table');
+
+  grid.asHtml('month_html', 'month', function(row) {
+    return `<span style="text-transform: capitalize;">${ moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY') }</span>`;
+  });
+});
+page.ctrl(function(scope, fi, t) {
+  var q = {};
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteAction(message, norm_id) {
+    page.confirm(message, function() {
+      fi.delete({ norm_id: norm_id }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete norm?')(), row.norm_id);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1{norms_count} norm(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'norm_id'));
+  }
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function importData() {
+    fi.import(null, closeIfDialog);
+  }
+
+  function add() {
+    fi.add(null, closeIfDialog)
+  }
+
+  function edit(row) {
+    fi.edit({ norm_id: row.norm_id }, closeIfDialog);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : fi.edit ? edit(row) : null;
+  }
+
+  q.actions = [
+    { 
+      has_access: fi.import, 
+      title: fi.import?.title, 
+      execute: importData
+    }
+  ];
+
+  q.actions = _.filter(q.actions, x => x.has_access);
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group">
+      <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add || fi.add_actual" b-hotkey="add"><t>add</t></button>
+      <button type="button" class="btn btn-success dropdown-toggle" ng-if="q.actions.length > 0" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="dropdown-menu" ng-if="q.actions.length > 0">
+        <a href class="dropdown-item" ng-repeat="action in q.actions" ng-if="action.has_access" ng-click="action.execute()">{{ action.title}}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form>
+    <b-grid name="table" 
+            required="norm_id" 
+            on-check="onCheck(checked)" 
+            on-dblclick="onDblclick(row)"
+            sort="-month, object_name" 
+            search="object_name, job_name" 
+            searchable="norm_id" 
+            extra-columns="norm_id, created_by_name, created_on, modified_by_name, modified_on">
+      <b-row>
+        <b-col name="month" size=2 as-html="month_html"/>
+        <b-col name="object_name" size=5/>
+        <b-col name="job_name" size=5/>
+        <b-col name="monthly_hours" size=2/>
+        <b-col name="monthly_days" size=3/>
+        <b-col name="idle_margin" size=3/>
+        <b-col name="absense_margin" size=3/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="page.close(row)" ng-if="page.isDialog()"><t>select</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="norm_id" directive="equal" extra/>
+      <b-filter name="month" date-level="month" directive="equal"/>
+      <b-filter name="object_id" decorate-with="object_name"/>
+      <b-filter name="job_id" decorate-with="job_name"/>
+    </b-grid>
+  </form>
+</div>

@@ -1,0 +1,767 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model, xparam, bFrame, bUtil, $timeout, $sce, bBig, bConfig) {
+  var d = _.omit(model, 'references');
+      q = model.references,
+      p = {},
+      Big = bBig(q.round_value + q.rmt_round);
+
+  // ------------------------------ period change ------------------------------ //
+  function addStaffPart(item) {
+    d.staff_parts.push(item);
+  }
+
+  function deleteAllStaffs() {
+    d.staff_parts = [];
+  }
+
+  // ------------------------------ staff ------------------------------ //
+  function selectStaff(item) {
+    fi.select_staff({ date: d.period_begin }, _.partial(setStaff, item), { where: whereStaff(item) });
+  }
+
+  function setStaff(item, row) {
+    if (!row) return;
+    let old_staff_id = item.staff_id;
+
+    item.staff_id = row.staff_id;
+    item.staff_name = row.name;
+
+    let data = _.pick(d, 'period_begin', 'period_end', 'round_value');
+    data.round_value += q.rmt_round;
+    data.staff_ids = [row.staff_id];
+    data.period_kind = q.belongs_two_month ? d.period_kind : null;
+
+    if (item.staff_id) {
+      page.post(':get_period_wages', data).then((result) => {
+        _.extend(item, result[0]);
+
+        if (result.length > 1) {
+          let index = _.findIndex(d.staff_parts, item);
+          d.staff_parts.splice(index + 1, 0, ...(_.rest(result)));
+        }
+      }, page.alert);
+    } else {
+      let keys = _.keys(item);
+      _.each(keys, key => item[key] = null);
+
+      d.staff_parts = _.reject(d.staff_parts, x => { return x.staff_id == old_staff_id; });
+    }
+  }
+
+  function whereStaff(item) {
+    let staff_ids = _.chain(d.staff_parts).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=',  d.period_end],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>', d.period_begin]]
+                  ]]
+                ];
+
+    if (!_.isEmpty(q.blocked_staffs)) {
+      staff_ids.push(...q.blocked_staffs);
+    }
+    if (!_.isEmpty(d.division_ids)) {
+      where = ['and', [['division_id', '=', d.division_ids], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+    if (!_.isEmpty(q.access_staffs)) {
+      where = ['and', [['staff_id', '=', q.access_staffs], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    let data = _.pick(d, 'period_begin', 'period_end', 'sheet_id');
+    data.division_ids = d.division_ids;
+    data.period_kind = q.belongs_two_month ? d.period_kind : null;
+
+    query.param(data);
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  // ------------------------------ period change ------------------------------ //
+  function fixPeriodValues() {
+    let month_begin = moment(d.month, 'MM.YYYY').startOf('month').format('YYYYMMDD');
+    let month_end = moment(d.month, 'MM.YYYY').endOf('month').format('YYYYMMDD');
+
+    if (d.period_kind != q.period_kind_custom) {
+      d.period_begin = moment(month_begin);
+      d.period_end = moment(month_end);
+      q.belongs_two_month = false;
+
+      let diff = moment(d.period_end).diff(d.period_begin, 'days') + 1;
+      let month_middle = moment(d.period_begin).add(Math.floor(diff/2) - 1, 'days');
+
+      if (d.period_kind == q.period_kind_first_half)
+        d.period_end = moment(month_middle).format('YYYYMMDD');
+      if (d.period_kind == q.period_kind_second_half)
+        d.period_begin = moment(month_middle).add(1, 'days').format('YYYYMMDD');
+    } else {
+      d.period_begin = moment(d.period_begin, 'DD.MM.YYYY').format('YYYYMMDD');
+      d.period_end = moment(d.period_end, 'DD.MM.YYYY').format('YYYYMMDD');
+      q.belongs_two_month = Math.abs((moment(d.period_end).month() - moment(d.period_begin).month())) > 0;
+
+      if (q.belongs_two_month) q.max_date = moment(d.period_begin, 'YYYYMMDD').add(1, 'M').endOf('month').format('DD.MM.YYYY');
+      if ((moment(d.period_end).year() == moment(d.period_begin).year() && moment(d.period_end).month() - moment(d.period_begin).month() > 1 ) ||
+          (moment(d.period_end).year() != moment(d.period_begin).year() && Math.abs((moment(d.period_end).month() - moment(d.period_begin).month())) != 11)) {
+        d.period_end = moment(d.month, 'MM.YYYY').add(1, 'M').endOf('month').format('YYYYMMDD');
+      }
+
+      if (moment(d.period_begin).isSame(month_begin, 'month')) {
+        d.period_begin = _.max([d.period_begin, month_begin]);
+      } else {
+        d.period_begin = month_begin;
+      }
+    }
+
+    d.period_begin = moment(d.period_begin, 'YYYYMMDD').format('DD.MM.YYYY');
+    d.period_end = moment(d.period_end, 'YYYYMMDD').format('DD.MM.YYYY');
+  }
+
+  function changeDate() {
+    if (!_.isEmpty(d.staff_parts)) {
+      page.confirm(t('all items will be removed. continue?')(), function() {
+        fixPeriodValues();
+        deleteAllStaffs();
+        q.old_month = d.month;
+      }, function() {
+        d.month = q.old_month;
+      });
+    } else {
+      q.old_month = d.month;
+      fixPeriodValues();
+    }
+  }
+
+  // ------------------------------ division ------------------------------ //
+  function onChangeDivision() {
+    if (!q.division_inited && d.sheet_id) {
+      q.division_inited = true;
+      return;
+    }
+    if (!_.isEmpty(d.staff_parts)) {
+      page.confirm(t('all items will be removed. continue?')(), function() {
+        deleteAllStaffs();
+        q.old_division_ids = d.division_ids;
+      }, function() {
+        d.division_ids = q.old_division_ids;
+      });
+    } else {
+      q.old_division_ids = d.division_ids;
+    }
+  }
+
+  // ------------------------------ simple wage modal ------------------------------ //
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function () {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function preparePartDetails(result, row) {
+    p.data = row;
+
+    _.extend(p.data, result);
+    p.data.has_details = true;
+    p.data.month_name = moment(d.month, 'MM.YYYY').format("MMMM");
+    p.data.period_begin = d.period_begin;
+    p.data.period_end = d.period_end;
+
+    _.each(p.data.days, function(x) {
+      let date = moment(x.timesheet_date, 'DD.MM.YYYY');
+
+      x.day_text = date.format("DD");
+
+      switch (x.day_kind) {
+        case 'R':
+          x.day_html = `<span class="font-red-haze"><b>${date.format("ddd")}</b></span>`;
+          x.plan_html = `<span class="font-italic font-red-haze">${t_rest_day}</span>`;
+          break;
+        case 'H':
+          x.day_html = `<span class="font-red-haze"><b>${date.format("ddd")}</b></span>`;
+          x.plan_html = `<span class="font-italic font-red-haze">${t_holiday}</span>`;
+          break;
+        case 'A':
+          x.day_html = `<span class="font-red-haze"><b>${date.format("ddd")}</b></span>`;
+          x.plan_html = `<span class="font-italic font-red-haze">${t_additional_rest_day}</span>`;
+          break;
+        case 'N':
+          x.day_html = `<span class="font-red-haze"><b>${date.format("ddd")}</b></span>`;
+          x.plan_html = `<span class="font-italic font-red-haze">${t_nonworking_day}</span>`;
+          break;
+        default:
+          x.day_html = date.format("ddd");
+          x.plan_html = `<span>${x.begin_time} &ndash; ${x.end_time}</span>`;
+      }
+
+      let not_input   = `<span class="font-italic font-blue-dark" style="font-size:11px;">${t_not_input}</span>`;
+      let not_output  = `<span class="font-italic font-blue-dark" style="font-size:11px;">${t_not_output}</span>`;
+
+      if (x.input_time || x.output_time) x.fact_html = $sce.trustAsHtml(`<span>${x.input_time || not_input} &ndash; ${x.output_time || not_output}</span>`);
+      else x.fact_html = '';
+
+      x.sort_date = date.format('YYYYMMDD');
+    });
+
+    _.sortBy(p.data.days, 'sort_date');
+
+    showModal();
+  }
+
+  function viewPartDetail(row) {
+    if (row.has_details) {
+      p.data = row;
+      showModal();
+    } else {
+      let data = _.pick(row, 'staff_id',
+                             'division_id',
+                             'schedule_id',
+                             'fte_id',
+                             'part_begin',
+                             'part_end');
+      data.round_value = d.round_value + q.rmt_round;
+      page.post(':load_part_details', data)
+          .then(_.partial(preparePartDetails, _, row), page.alert);
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      if (item.staff_id) {
+        _.chain(d.staff_parts)
+        .filter(x => { return x.staff_id == item.staff_id; })
+        .each(x => {
+          d.staff_parts.splice(_.findIndex(d.staff_parts, x), 1);
+        })
+        .value();
+      } else {
+        d.staff_parts.splice(_.findIndex(d.staff_parts, item), 1);
+      }
+    });
+  }
+
+  function fillStaffs() {
+    let data = _.pick(d, 'sheet_id', 'division_ids', 'period_begin', 'period_end', 'round_value');
+    data.period_kind = q.belongs_two_month ? d.period_kind : null;
+    data.round_value += q.rmt_round;
+    page.post(':get_period_wages', data).then(result => {
+      d.staff_parts = result;
+    }, page.alert);
+  }
+
+  function recalc() {
+    let data = _.pick(d, 'period_begin', 'period_end', 'round_value');
+    data.period_kind = q.belongs_two_month ? d.period_kind : null;
+    data.round_value += q.rmt_round;
+    data.staff_ids = _.chain(d.staff_parts).map(x=> { return x.staff_id }).uniq().value();
+    page.post(':get_period_wages', data).then((result) => {
+      d.staff_parts = result;
+    }, page.alert);
+  }
+
+  function setStaffs() {
+    let data = {
+      period_begin: d.period_begin,
+      period_end: d.period_end,
+      sheet_id: d.sheet_id,
+      period_kind: q.belongs_two_month ? d.period_kind : null
+    };
+    page.post(':load_blocked_staffs', data).then((result) => {
+      q.blocked_staffs = result.staff_ids;
+      q.access_staffs = result.access_staff_ids;
+
+      fi.select_staff(null, function(result) {
+        if (!result || result.length == 0) return;
+        let data = _.pick(d, ['division_ids', 'period_begin', 'period_end', 'sheet_id', 'round_value']);
+            data.staff_ids = _.pluck(result, 'staff_id');
+            data.round_value += q.rmt_round;
+            data.period_kind = q.belongs_two_month ? d.period_kind : null;
+
+        page.post(':get_period_wages', data).then(result => {
+          d.staff_parts.push(...result);
+        }, page.alert);
+      }, { where: whereStaff(), multiple_select: true });
+    }, page.alert);
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        let data = _.pick(d, 'sheet_id',
+                             'sheet_number',
+                             'sheet_date',
+                             'division_ids',
+                             'round_value',
+                             'period_begin',
+                             'period_end',
+                             'period_kind',
+                             'note');
+        data.round_value += q.rmt_round;
+        data.staff_ids = _.chain(d.staff_parts)
+                          .pluck('staff_id')
+                          .unique()
+                          .value();
+        data.posted = posted;
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function runReport() {
+    var data = {
+      part_id: p.data.part_id,
+      rt: 'xlsx'
+    };
+
+    var auths = bConfig.auths();
+    _.each(auths, function(val, key) {
+      data['-' + key] = val;
+    });
+
+    window.open('b/vhr/hpr/start/wage_sheet_list:run?' + $.param(_.extend(data, auths)));
+  }
+
+  if (_.isUndefined(d.sheet_id)) {
+    d.staff_parts = [];
+    q.belongs_two_month = false;
+    q.max_date = moment('12.12.9999', 'DD.MM.YYYY').format('DD.MM.YYYY');
+  }
+  else {
+    q.belongs_two_month = Math.abs((moment(d.period_end, 'DD.MM.YYYY').month() - moment(d.period_begin, 'DD.MM.YYYY').month())) > 0;
+    q.max_date = q.belongs_two_month ? moment(d.period_begin, 'DD.MM.YYYY').add(1, 'M').endOf('month').format('DD.MM.YYYY') : moment('12.12.9999', 'DD.MM.YYYY').format('DD.MM.YYYY');
+
+    d.staff_parts = _.mapRows(d.staff_parts, ['staff_id',
+                                              'staff_name',
+                                              'part_begin',
+                                              'part_end',
+                                              'division_id',
+                                              'division_name',
+                                              'job_id',
+                                              'job_name',
+                                              'schedule_id',
+                                              'schedule_name',
+                                              'fte_id',
+                                              'monthly_amount',
+                                              'plan_amount',
+                                              'wage_amount',
+                                              'overtime_amount',
+                                              'nighttime_amount',
+                                              'late_amount',
+                                              'early_amount',
+                                              'lack_amount',
+                                              'day_skip_amount',
+                                              'mark_skip_amount',
+                                              'accrual_amount',
+                                              'penalty_amount',
+                                              'total_amount',
+                                              'part_id',
+                                              'access_to_hidden_salary']);
+  };
+
+  q.old_division_ids = d.division_ids;
+  q.old_month = d.month;
+  q.period_kinds = _.mapRows(q.period_kinds, ['value', 'name']);
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.checked = { rows: [] };
+  q.round_values = _.mapRows(q.round_values, ['round_value','name']);
+  q.t_no_access = t('no access to wage')();
+
+  if (!_.isUndefined(d.round_value)) {
+    q.round_value = d.round_value.slice(0,-1);
+  };
+
+  d.round_value = q.round_value;
+
+  let t_rest_day            = t('rest day')(),
+      t_holiday             = t('holiday')(),
+      t_additional_rest_day = t('additional rest day')(),
+      t_nonworking_day      = t('nonworking day')(),
+      t_not_output          = t('not output')(),
+      t_not_input           = t('not input')();
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+
+  scope.$watch('d.round_value', function() {
+    if (d.round_value) Big.roundModel(d.round_value + q.rmt_round);
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>sheet date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.sheet_date" b-date-picker view-format="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>sheet number</t></label>
+                <input type="text" class="form-control" ng-model="d.sheet_number"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+                <b-tree-select
+                  multiple
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_ids"
+                  on-change="onChangeDivision()"/>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="4" ng-model="d.note"/>
+            </div>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>month</t><r/></label>
+                <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="changeDate()" required/>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>period kind</t></label><br/>
+                <ui-select  ng-model="d.period_kind" ng-change="changeDate()">
+                  <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                  <ui-select-choices repeat="item.value as item in q.period_kinds | filter: $select.search">
+                    {{ item.name }}
+                  </ui-select-choices>
+                </ui-select>
+              </div>
+            </div>
+            <div class="form-row mb-4">
+              <div class="col-sm-12" ng-if="d.period_kind == q.period_kind_custom">
+                <label><t>period begin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.period_begin" max-date="d.period_end" b-date-picker ng-change="changeDate()" required/>
+              </div>
+              <div class="col-sm-12" ng-if="d.period_kind == q.period_kind_custom">
+                <label><t>period end</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.period_end" min-date="d.period_begin" max-date="q.max_date" b-date-picker ng-change="changeDate()" required/>
+              </div>
+              <div class="col-sm">
+                <span class="form-text text-muted" ng-show="q.belongs_two_month">
+                  <t>in this case you can calculate only staffs works with hourly wage</t>
+                </span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>round value</t></label><br/>
+              <div class="form-row">
+                <div class="col-18">
+                  <ui-select ng-model="d.round_value" ng-change="recalc()">
+                    <ui-select-match>{{ $select.selected.name }}</ui-select-match>
+                    <ui-select-choices repeat="item.round_value as item in q.round_values | filter: $select.search">
+                      {{ item.name }}
+                    </ui-select-choices>
+                  </ui-select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="separator separator-solid my-2"></div>
+        <div class="form-row mt-4">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="fillStaffs()"><t>fill</t></button>
+            <button type="button" class="btn btn-default" ng-click="addStaffPart({})"><t>add</t></button>
+            <button type="button" class="btn btn-success" ng-click="setStaffs()" ng-if="fi.select_staff"><t>choose</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="staff_parts"/>
+          </div>
+        </div>
+        <b-pg-grid name="staff_parts" local-data="d.staff_parts" search="staff_name, division_name, job_name" on-check="onCheck(checked)" iterator="item" current-limit="1000" searchable="rank_name" sort="rownum">
+          <b-pg-row>
+            <b-pg-col name="staff_name" size="5">
+              <b-input name="staffs"
+                       model="item.staff_name | name"
+                       model-key="item.staff_id | staff_id"
+                       column="staff_number, dismissal_date, hiring_date, division_id"
+                       on-change="changeStaffQuery(query, value)"
+                       on-select="setStaff(item, row)"
+                       on-delete="setStaff(item, {})"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(item)"
+                       required-key
+                       ng-if="!item.staff_id">
+                <header>
+                  <div class="col-sm-12"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-12">{{ row.staff_number }}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                </content>
+              </b-input>
+              <label ng-if="item.staff_id">{{ item.staff_name }}</label>
+            </b-pg-col>
+            <b-pg-col name="part_begin" size="2"/>
+            <b-pg-col name="part_end" size="2"/>
+            <b-pg-col name="division_name" size="3"/>
+            <b-pg-col name="job_name" size="2"/>
+            <b-pg-col name="schedule_name" size="2"/>
+            <b-pg-col name="accrual_amount" size="2">
+              <span ng-if="item.access_to_hidden_salary == 'Y'">{{ item.accrual_amount }}</span>
+              <span ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+            <b-pg-col name="penalty_amount" size="2">
+              <span ng-if="item.access_to_hidden_salary == 'Y'">{{ item.penalty_amount }}</span>
+              <span ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+            <b-pg-col name="total_amount" size="2">
+              <span ng-if="item.access_to_hidden_salary == 'Y'">{{ item.total_amount }}</span>
+              <span ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+            <b-pg-col name="actions" size="1">
+              <div class="text-left" ng-show="item.staff_id" ng-if="item.access_to_hidden_salary == 'Y'">
+                <button type="button" class="btn btn-default btn-icon" ng-disabled="!item.part_begin" ng-click="viewPartDetail(item)">
+                  <i class="fa fa-eye"></i>
+                </button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" style="max-width: 90vw;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>view detail</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="row" ng-if="p.data.access_to_hidden_salary == 'Y'">
+              <div class="col-sm-8 border-right">
+                <div class="form-group">
+                  <label><t>staff</t></label>
+                  <div class="form-view">{{ p.data.staff_name }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>period</t></label>
+                  <div class="form-view">{{ p.data.part_begin }} &mdash; {{ p.data.part_end }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>division</t></label>
+                  <div class="form-view">{{ p.data.division_name }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>job</t></label>
+                  <div class="form-view">{{ p.data.job_name }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>schedule</t></label>
+                  <div class="form-view">{{ p.data.schedule_name }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>fte</t></label>
+                  <div class="form-view">{{ p.data.fte_name }}</div>
+                </div>
+                <div class="form-group">
+                  <label><t>manager</t></label>
+                  <div class="form-view">{{ p.data.manager_name }}</div>
+                </div>
+                <div class="separator separator-solid my-6"></div>
+                <h5 class="text-primary"><t>month stats</t></h5>
+                <table class="table">
+                  <thead class="thead-light unselectable">
+                    <tr>
+                      <th scope="col"></th>
+                      <th scope="col"><t>time</t></th>
+                      <th scope="col"><t>days</t></th>
+                      <th scope="col"><t>amount</t></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-show="p.data.month_stats.plan_days != p.data.month_stats.monthly_days">
+                      <th score="row"><t>monthly time</t></th>
+                      <td>{{ p.data.month_stats.monthly_time }}</td>
+                      <td>{{ p.data.month_stats.monthly_days }}</td>
+                      <td>{{ p.data.monthly_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>plan time</t></th>
+                      <td>{{ p.data.month_stats.plan_time }}</td>
+                      <td>{{ p.data.month_stats.plan_days }}</td>
+                      <td>{{ p.data.plan_amount | bNumber }}</td>
+                    </tr>
+                    <tr class="table-success">
+                      <td colspan="3"><t>fact stats</t></td>
+                      <td>{{ p.data.accrual_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>worktime</t></th>
+                      <td>{{ p.data.month_stats.turnout_time }}</td>
+                      <td>{{ p.data.month_stats.turnout_days }}</td>
+                      <td>{{ p.data.wage_amount | bNumber }}</td>
+                    </tr>
+                    <tr ng-show="p.data.onetime_accrual">
+                      <th colspan="3"><t>onetime accrual</t></th>
+                      <td>{{ p.data.onetime_accrual | bNumber }}</td>
+                    </tr>
+                    <tr ng-if="p.data.month_stats.overtime_days > 0">
+                      <th score="row"><t>overtime</t></th>
+                      <td>{{ p.data.month_stats.overtime_time }}</td>
+                      <td>{{ p.data.month_stats.overtime_days }}</td>
+                      <td>{{ p.data.overtime_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <td colspan="3"><t>nighttime amount</t></td>
+                      <td>{{ p.data.nighttime_amount | bNumber }}</td>
+                    </tr>
+                    <tr class="table-danger">
+                      <td colspan="3"><t>penalty stats</t></td>
+                      <td>{{ p.data.penalty_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>late time</t></th>
+                      <td>{{ p.data.month_stats.late_time }}</td>
+                      <td>{{ p.data.month_stats.late_days }}</td>
+                      <td>{{ p.data.late_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>early time</t></th>
+                      <td>{{ p.data.month_stats.early_time }}</td>
+                      <td>{{ p.data.month_stats.early_days }}</td>
+                      <td>{{ p.data.early_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>lack time</t></th>
+                      <td>{{ p.data.month_stats.lack_time }}</td>
+                      <td>{{ p.data.month_stats.lack_days }}</td>
+                      <td>{{ p.data.lack_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>skip days</t></th>
+                      <td>{{ p.data.month_stats.day_skip_time }}</td>
+                      <td>{{ p.data.month_stats.day_skip_days }}</td>
+                      <td>{{ p.data.day_skip_amount | bNumber }}</td>
+                    </tr>
+                    <tr>
+                      <th score="row"><t>skip marks</t></th>
+                      <td>{{ p.data.month_stats.mark_skip_times }}&nbsp;<t ng-show="p.data.month_stats.mark_skip_times">times</t></td>
+                      <td>{{ p.data.month_stats.mark_skip_days }}</td>
+                      <td>{{ p.data.mark_skip_amount | bNumber }}</td>
+                    </tr>
+                    <tr ng-show="p.data.onetime_penalty">
+                      <th colspan="3"><t>onetime penalty</t></th>
+                      <td>{{ p.data.onetime_penalty | bNumber }}</td>
+                    </tr>
+                    <tr class="table-info">
+                      <td colspan="3"><t>total stats</t></td>
+                      <td>{{ p.data.total_amount | bNumber }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-sm-16">
+                <div class="row">
+                  <div class="form-group col-sm-14">
+                    <div class="form-row">
+                      <div class="form-group col-sm">
+                        <label style="text-transform: capitalize;">{{ p.data.month_name }}</label>&nbsp;<span style="font-style: italic;">({{ p.data.part_begin }} &mdash; {{ p.data.part_end }})</span>
+                      </div>
+                      <div class="form-group col-sm">
+                          <button type="button" class="btn btn-light text-primary" style="float: right" ng-click="runReport()" ng-if="p.data.part_id"><t>download in Excel</t></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group col-sm-10">
+                    <b-pg-controller name="daily_info"/>
+                  </div>
+                </div>
+                <div style="overflow-y: auto;">
+                  <b-pg-grid name="daily_info" local-data="p.data.days" search="day_text" limit="50">
+                    <b-pg-header name="day_html">#</b-pg-header>
+                    <b-pg-header name="day_text"><t>day no</t></b-pg-header>
+                    <b-pg-row>
+                      <b-pg-col name="day_html" size=1>
+                        <div style="text-transform: capitalize;" ng-bind-html="row.day_html"></div>
+                      </b-pg-col>
+                      <b-pg-col name="day_text" size=1/>
+                      <b-pg-col name="plan_html" size=3>
+                        <div class="text-center" ng-bind-html="row.plan_html"></div>
+                      </b-pg-col>
+                      <b-pg-col name="fact_html" size=3>
+                        <span ng-bind-html="row.fact_html"></span>
+                      </b-pg-col>
+                      <b-pg-col name="wage_amount" format="amount" size=3/>
+                      <b-pg-col name="overtime_amount" format="amount" size=3/>
+                      <b-pg-col name="nighttime_amount" format="amount" size=3/>
+                      <b-pg-col name="late_amount" format="amount" size=3/>
+                      <b-pg-col name="early_amount" format="amount" size=3/>
+                      <b-pg-col name="lack_amount" format="amount" size=3/>
+                      <b-pg-col name="day_skip_amount" format="amount" size="3"/>
+                      <b-pg-col name="mark_skip_amount" format="amount" size="3"/>
+                      <b-pg-col name="total_amount" format="amount" size="3"/>
+                    </b-pg-row>
+                    <b-pg-extra-col name="break_time" size=3>
+                      <div class="text-center" ng-show="row.break_enabled == 'Y'">
+                        {{ row.break_begin_time }} &ndash; {{ row.break_end_time }}
+                      </div>
+                    </b-pg-extra-col>
+                    <b-pg-extra-col name="plan_time"/>
+                    <b-pg-extra-col name="turnout_time"/>
+                    <b-pg-extra-col name="overtime_time"/>
+                    <b-pg-extra-col name="late_time"/>
+                    <b-pg-extra-col name="early_time"/>
+                    <b-pg-extra-col name="lack_time"/>
+                  </b-pg-grid>
+                </div>
+              </div>
+            </div>
+            <div ng-if="p.data.access_to_hidden_salary == 'N'">
+              <div class="d-flex justify-content-center" style="width: auto; height: 300px;">
+                <div class="align-self-center">
+                  <div class="text-center mb-4">
+                    <i style="font-size: 6rem; color: #e0e0e0" class="fas fa-eye-slash"></i>
+                    <div class="font-weight-bolder text-center">
+                      <h5><t>you don't have access to view salaries</t></h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

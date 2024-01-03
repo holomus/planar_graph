@@ -1,0 +1,113 @@
+<script biruni>
+page.ctrl(function(scope, model, t, xparam) {
+  var d = model, q = {};
+
+  // photo
+  function getDefaultPhotoSrc() {
+    return 'page/resource/vhr/no_image.png';
+  }
+
+  function setPhotoSrc() {
+    if (!d.photo_sha) {
+      q.photo_src = getDefaultPhotoSrc();
+    } else {
+      q.photo_src = page.loadImageLarge(d.photo_sha);
+    }
+  }
+
+  function removePhoto() {
+    d.photo_sha = null;
+    d.photo = null;
+    setPhotoSrc();
+  }
+
+  function showPhoto() {
+    if (d.photo || d.photo_sha) {
+      page.previewFile(d.photo || {
+        sha: d.photo_sha,
+        name: d.name,
+        type: 'image'
+      });
+    }
+  }
+
+  // save
+  function save() {
+    if(page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        d.photo_sha = d.photo ? d.photo : d.photo_sha;
+        page.post(':save', d).then(page.close, page.alert);
+      });
+    }
+  }
+
+  setPhotoSrc();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-12">
+              <label><t>photo</t></label><br/>
+              <div class="image-input image-input-outline bgi-position-center">
+                <div class="image-input-wrapper w-auto h-auto">
+                  <img class="mw-100 mh-auto cursor-pointer" ngf-src="d.photo || q.photo_src" ng-if="d.photo || q.photo_src" ng-click="showPhoto()">
+                </div>
+                <a class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" b-cropper="d.photo">
+                  <i class="fa fa-pen icon-sm text-muted"></i>
+                </a>
+                <span class="b-offcanvas-hide btn btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="remove" ng-click="removePhoto()" ng-if="d.photo || d.photo_sha">
+                  <i class="fa fa-times icon-xs text-muted"></i>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group mb-4">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.support_face_recognation"/>
+                <span><t>support face recognation</t></span>
+              </label>
+            </div>
+            <div class="form-group mb-4">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.support_fprint"/>
+                <span><t>support fprint</t></span>
+              </label>
+            </div>
+            <div class="form-group mb-4">
+              <label class="checkbox">
+                <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="d.support_rfid_card"/>
+                <span><t>support rfid card</t></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

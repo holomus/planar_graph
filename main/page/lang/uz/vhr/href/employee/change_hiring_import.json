@@ -1,0 +1,21 @@
+{
+ "data": "Ma'lumotlar",
+ "do you want to import file?": "Tanlangan faylni import qilinsinmi?",
+ "errors": "Xatoliklar",
+ "file": "Fayl",
+ "import": "Import",
+ "import succeeded!": "Fayl muvaffaqiyatli yuklandi!",
+ "pg.error_messages.error": "Xatolik",
+ "pg.error_messages.row_id": "Qator",
+ "pg.staffs.actions": "Amallar",
+ "pg.staffs.division": "Bo'lim",
+ "pg.staffs.employee_name": "Xodim",
+ "pg.staffs.hiring_date": "Ishga qabul qilingan sana",
+ "pg.staffs.job": "Lavozim",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.schedule": "Ish jadvali",
+ "pg.staffs.staff_id": "ID",
+ "save": "Saqlash",
+ "save?": "Saqlamoqchimisiz?",
+ "template": "Andoza"
+}

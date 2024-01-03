@@ -1,0 +1,9 @@
+{
+ "active": "Активный",
+ "code": "Код",
+ "code is already used by another trip reason": "Код уже закреплен за другой причиной",
+ "name": "Название",
+ "passive": "Неактивный",
+ "save": "Сохранить",
+ "state": "Статус"
+}

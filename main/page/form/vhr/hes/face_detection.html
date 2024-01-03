@@ -1,0 +1,43 @@
+<script biruni>
+page.ctrl(function(scope, model, $http, $q) {
+  var d = {
+    file_count: model.files.length,
+    error_files: [],
+    files: model.files
+  };
+ //url: `https://app2.verifix.com/b/core/m$load_image_v2?sha=${sha}&width=500&height=500`
+  function detect(sha) {
+    return $http.post('http://192.168.10.41:4545/embed', {
+      url: `https://app2.verifix.com/b/core/m$load_image_v2?sha=${sha}`
+    }).then(function(val) {
+      page.post(":save_vector", {
+        sha: sha,
+        vector: JSON.stringify(val.data)
+      });
+    }, function(error) {
+        d.error_files.push({
+          sha: sha
+        });
+    });
+  }
+
+  function detection() {
+    for(var i = 0; i < d.files.length; i ++) {
+      detect(d.files[i]);
+    }
+  }
+
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="detection()"><t>detection</t></button>
+</div>
+<div class="b-content">
+  <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"></script>
+<form name="form">
+    <h3>File count: {{d.file_count }}</h3>
+    <h3>Errored shas</h3>
+    <p ng-repeat="f in d.error_files"> {{ f.sha }}</p>
+</form>
+</div>

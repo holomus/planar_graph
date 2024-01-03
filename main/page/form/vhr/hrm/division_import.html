@@ -1,0 +1,297 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t, bStorage, AppSession, bFrame) {
+  var d = _.omit(model, 'reference', 'items') || {}, q = model.reference || {};
+  // sections
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  d.column_items = _.mapRows(model.items, ['key', 'name', 'column_number', 'is_required']);
+  
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.column_keys = _.pluck(d.column_items, 'key');
+  q.active_section = storage.active_section || 'I';
+  q.tClear = t('clear?');
+  q.tOptionTrue = t('true?');
+
+  function changeSection(active_section) {
+    active_section = active_section || 'I';
+
+    if (q.active_section == active_section) return;
+    bStorage.json(storage_key, { active_section: active_section });
+    q.active_section = active_section;
+  }
+
+  // Import file from excel
+  function importFile() {
+    if (!d.template) return;
+    page.confirm(t('do you want to import file?')(), function() {
+      page.post(':import', { template: d.template }, 'excel').then(function(result) {
+        d.divisions = _.chain(result.items)
+                        .mapRows(['name', 'code', 'parent_id', 'parent_name', 'division_group_id', 'division_group_name', 'schedule_id', 'schedule_name', 'manager_id', 'manager_name', 'opened_date', 'closed_date', 'subfilial_id', 'subfilial_name', 'is_department'])
+                        .each(x => {
+                          page.post(':name_is_unique', { name: x.name }).then(res => {
+                            x.name_is_unique = res;
+                          }, page.alert);
+
+                          page.post(':code_is_unique', { code: x.code }).then(res => {
+                            x.code_is_unique = res;
+                          }, page.alert);
+
+                          checkDates(x);
+                          fixDivisionKind(x);
+                        })
+                        .value();
+        q.error_messages = result.errors;
+      }, page.alert);
+    });
+  }
+
+  // setting imported file
+  function removeItem(row) {
+    d.divisions = _.without(d.divisions, row);
+  }
+
+  function clearDivisions() {
+    d.divisions = [];
+  }
+
+  // settings
+  function checkDuplicate() {
+    let obj = {};
+    return !_.any(_.filter(d.column_items, x => x.column_number), function(item, index) {
+      if (obj[item.column_number]) {
+        page.alert(t('more than one row cannot have one column number, row_index=$1 and row_index=$2')(obj[item.column_number], index + 1));
+        return true;
+      }
+
+      obj[item.column_number] = index + 1;
+    });
+  }
+
+  function saveSetting() {
+    if (!page.valid(scope.form) || !checkDuplicate()) return;
+    var data = {
+      starting_row: d.starting_row,
+      keys: q.column_keys,
+      column_numbers: _.pluck(d.column_items, 'column_number')
+    };
+    fi.save_setting(data).then(page.reload, page.alert);
+  }
+
+  function template() {
+    window.open(page.url('template'));
+  }
+
+  // save imported data
+  function importData() {
+    if (!page.valid(scope.form)) return;
+    page.confirm(t('save')(), function() {
+      page.post(':import_data', { items: d.divisions }).then(function() {
+        notify(t('import succeeded!')());
+        page.dropzone('file').clear();
+        q.error_messages = [];
+        d.divisions = [];
+        d.template = '';
+      }, page.alert);
+    });
+  }
+
+  function checkName(item) {
+    page.post(':name_is_unique', { name: item.name }).then(res => {
+      item.name_is_unique = res;
+    });
+  }
+
+  function checkCode(item) {
+    page.post(':code_is_unique', { code: item.code }).then(res => {
+      item.code_is_unique = res;
+    });
+  }
+
+  function fixDivisionKind(item) {
+    if (!item.parent_id) {
+      item.is_department = 'Y';
+    }
+  }
+
+  function checkDates(item) {
+    if (item.closed_date) {
+      item.date_is_valid = moment(item.opened_date, 'DD.MM.YYYY') < moment(item.closed_date, 'DD.MM.YYYY');
+    } else item.date_is_valid = true;
+  }
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.active_section == 'I' ? 'btn-success' : 'btn-default'" ng-click="changeSection('I')"><t>import section</t></button>
+    <button type="button" class="btn" ng-class="q.active_section == 'S' ? 'btn-success' : 'btn-default'" ng-click="changeSection('S')"><t>setting section</t></button>
+  </div>
+  <button type="button" class="btn btn-primary" ng-click="importData()" ng-if="q.active_section == 'I' && d.divisions.length"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="q.active_section == 'I'"><t>import</t></button>
+  <button type="button" class="btn btn-primary" ng-click="template()"><t>template</t></button>
+  <button type="button" class="btn btn-primary" ng-click="saveSetting()" ng-if="fi.save_setting && q.active_section == 'S'"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div ng-show="q.active_section == 'I'">
+        <div class="row">
+          <div class="col-sm-12 mb-4">
+            <h5><t>file</t></h5>
+            <b-dropzone name="file" model="d.template" accept="'.xls, .xlsx'"></b-dropzone>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <h5><t>errors</t></h5>
+            <div class="mb-2">
+              <b-pg-controller name="error_messages"/>
+            </div>
+            <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+              <b-pg-row>
+                <b-pg-col name="row_id" size=3/>
+                <b-pg-col name="error" size=21>
+                  <div ng-repeat="item in row.items">
+                    {{ item }}<br/><hr ng-if="!$last"/>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+        <h5><t>data</t></h5>
+        <div class="row">
+          <div class="col-sm-12 offset-sm-12 mb-2">
+            <b-pg-controller name="divisions"/>
+          </div>
+        </div>
+        <b-pg-grid name="divisions" local-data="d.divisions" iterator="item" search="division" sort="rownum" current-limit="1000">
+          <b-pg-header name="action">
+            <div class="text-center">
+              <button type="button" class="btn btn-outline-danger btn-icon" b-toggle data-title="{{ q.tClear() }}" on-click-yes="clearDivisions()" ng-if="d.divisions.length">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1"/>
+            <b-pg-col name="name" size="5">
+              <input type="text" class="form-control" ng-model="item.name" maxlength="200" ng-model-options="{ debounce: 500 }" ng-change="checkName(item)"
+                     b-validate="{ s: item.name_is_unique == 'Y' || !item.name }" required/>
+              <span class="text-danger" ng-hide="!item.name || item.name_is_unique == 'Y'"><t>name must be unique in system</t></span>
+            </b-pg-col>
+            <b-pg-col name="parent_division" size="5">
+              <b-tree-select
+                origin="q.divisions"
+                id-key="division_id"
+                model="item.parent_id"
+                parent-key="parent_id"
+                on-change="fixDivisionKind(item)"/>
+            </b-pg-col>
+            <b-pg-col name="code" size="4">
+              <input type="text" class="form-control" ng-model="item.code" maxlength="50" ng-model-options="{ debounce: 500 }" ng-change="checkCode(item)"
+                     b-validate="{ s: item.code_is_unique == 'Y' || !item.code }"/>
+              <span class="text-danger" ng-hide="!item.code || item.code_is_unique == 'Y'"><t>code must be unique in system</t></span>
+            </b-pg-col>
+            <b-pg-col name="division_group" size="4">
+              <b-input name="division_groups"
+                       model="item.division_group_name | name"
+                       model-key="item.division_group_id | division_group_id">
+                {{ row.name }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="schedule" size="4">
+              <b-input name="schedules"
+                       model="item.schedule_name | name"
+                       model-key="item.schedule_id | schedule_id">
+                {{ row.name }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="manager" size="5">
+              <div ng-if="q.position_enable == 'Y'">
+                <b-input name="robots"
+                         model="item.manager_name | name"
+                         model-key="item.manager_id | robot_id">
+                  {{ row.name }}
+                </b-input>
+              </div>
+              <div ng-if="q.position_enable == 'N'">
+                <b-input name="staffs"
+                         model="item.manager_name | name"
+                         model-key="item.manager_id | robot_id">
+                  {{ row.name }}
+                </b-input>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="opened_date" size="4">
+              <input type="text" class="form-control" ng-model="item.opened_date" ng-model-options="{ debounce: 500 }" ng-change="checkDates(item)" b-date-picker="DD.MM.YYYY" b-validate="{ s: item.date_is_valid }" required />
+              <span class="text-danger" ng-hide="!item.closed_date || item.date_is_valid"><t>cannot close division before it opens, change your opened or closed date</t></span>
+            </b-pg-col>
+            <b-pg-col name="closed_date" size="4">
+              <input type="text" class="form-control" ng-model="item.closed_date" ng-model-options="{ debounce: 500 }" ng-change="checkDates(item)" b-date-picker="DD.MM.YYYY" b-validate="{ s: item.date_is_valid }" />
+              <span class="text-danger" ng-hide="!item.closed_date || item.date_is_valid"><t>cannot close division before it opens, change your opened or closed date</t></span>
+            </b-pg-col>
+            <b-pg-col name="subfilial" size="4">
+              <b-input name="subfilials"
+                       model="item.subfilial_name | name"
+                       model-key="item.subfilial_id | subfilial_id">
+                {{ row.name }}
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="is_department" size="3">
+              <div ng-if="q.advanced_org_structure == 'Y'">
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'Y'" ng-false-value="'N'" ng-model="item.is_department"/>
+                  <span ng-show="item.is_department == 'Y'">{{ q.t_division_kind_department }}</span>
+                  <span ng-show="item.is_department == 'N'">{{ q.t_division_kind_team }}</span>
+                </label>
+              </div>
+              <div ng-if="q.advanced_org_structure == 'N'">
+                <span ng-show="item.is_department == 'N'">{{ q.t_division_kind_department }}</span>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="action" size="1">
+              <div class="text-center">
+                <button type="button" class="btn btn-default btn-hover-text-danger btn-icon" ng-click="removeItem(item)"><i class="fa fa-trash"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div ng-if="q.active_section == 'S'">
+        <div class="form-group row">
+          <div class="col-sm-12">
+            <div class="sg mb-4 mb-sm-0">
+              <div class="sg-header">
+                <div class="sg-row">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16"><t>column name</t></div>
+                    <div class="sg-cell col-8"><t>column number</t></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="item in d.column_items">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16">{{ item.name }}</div>
+                    <div class="sg-cell col-8">
+                      <input type="text" class="form-control" ng-model="item.column_number" b-number scale="0" ng-required="item.is_required == 'Y'"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="form-group">
+              <label><t>starting row</t></label>
+              <input type="text" class="form-control" ng-model="d.starting_row" b-number scale="0"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

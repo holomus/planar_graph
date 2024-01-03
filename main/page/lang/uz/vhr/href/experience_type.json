@@ -1,0 +1,10 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another experience type": "Kod allaqachon boshqa tajriba turiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nomi noyob bo'lishi kerak",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

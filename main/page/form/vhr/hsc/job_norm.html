@@ -1,0 +1,95 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t) {
+  var d = model;
+
+  // job
+  function setJob(row) {
+    if (!row) return;
+    d.job_id = row.job_id;
+    d.job_name = row.name;
+  }
+
+  function selectJob() {
+    fi.select_job(null, setJob, { where: ['state', '=', 'A'] });
+  }
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        page.post(':save', d).then(page.close, page.alert);
+      });
+    }
+  }
+  
+  scope.d = d;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save">
+    <t>save</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>month</t><r/></label>
+                <input class="form-control" style="text-transform: capitalize;" ng-model="d.month" b-date-picker="MM.YYYY" view-format="MMMM YYYY" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>object</t><r/></label>
+              <b-input
+                name="division_objects"
+                model="d.object_name | name"
+                model-key="d.object_id | object_id"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>job</t><r/></label>
+              <b-input
+                name="jobs"
+                model="d.job_name | name"
+                model-key="d.job_id | job_id"
+                on-change="changeJobQuery(query, value)"
+                is-view="fi.select_job"
+                on-view="selectJob()"
+                on-select="setJob(row)"
+                on-delete="setJob({})"
+                required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>monthly hours</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.monthly_hours" b-number precision="8" scale="2" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>monthly days</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.monthly_days" b-number precision="8" scale="0" required/>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="col-sm-12">
+                <label><t>idle margin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.idle_margin" b-number precision="8" scale="2" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>absense margin</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.absense_margin" b-number precision="8" scale="2" required/>  
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

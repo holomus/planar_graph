@@ -1,0 +1,122 @@
+<script biruni>
+page.init(function(param) {
+  page.query('table').param({ device_id: param.device_id });
+});
+page.ctrl(function(scope, fi, param, t, $timeout) {
+  var q = {};
+
+  var p = { device_id: param.device_id };
+  var modal = page.$content.find("form[name=modal]>.modal");
+
+  function openMigr(row) {
+    page.untouch(scope.modal);
+    p.pin = row.pin;
+    p.name = row.name;
+    p.migr_person_id = row.migr_person_id;
+    p.person_id = '';
+    p.staff_name = '';
+    $timeout(() => modal.modal('show'));
+  }
+
+  function migr() {
+    fi.migr(_.pick(p, 'device_id', 'pin', 'person_id', 'migr_person_id')).then(page.reload, page.alert);
+  }
+
+  function tracks() {
+    fi.tracks({ device_id: param.device_id });
+  }
+
+  function deleteAction(message, pin) {
+    page.confirm(message, function() {
+      fi.delete({ device_id: param.device_id, pin: pin }).then(page.reload, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    deleteAction(t('delete $1?')(row.name), row.pin);
+  }
+
+  function deleteMany() {
+    deleteAction(t('delete $1?')(q.checked.size), _.pluck(q.checked.rows(), 'pin'));
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function onDblclick(row) {
+    fi.migr ? openMigr(row) : null;
+  }
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-success" ng-if="fi.tracks" ng-click="tracks()">{{ fi.tracks.title }}</button>
+    <button type="button" class="btn btn-danger" ng-if="fi.delete" ng-show="q.checked.has" ng-click="deleteMany()">
+      <t p1="q.checked.size">delete $1</t>
+    </button>
+    <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="pin, person_name, migr_person_id" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="person_name" search="pin, person_name" searchable="person_role_name">
+      <b-row>
+        <b-col name="pin" size=3/>
+        <b-col name="person_name" size=15/>
+        <b-col name="person_role_name" size=5/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-if="fi.migr" ng-click="openMigr(row)">{{ fi.migr.title }}</button>
+        <button type="button" class="btn btn-default" ng-if="fi.delete" ng-click="deleteOne(row)">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="pin" directive="equal"/>
+      <b-filter name="person_name"/>
+      <b-filter name="person_role" decorate-with="person_role_name"/>
+    </b-grid>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><t>migr person</t></h5>
+            <button type="button" class="close" data-dismiss="modal"><i aria-hidden="true" class="fa fa-times"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>pin</t></label>
+              <div class="form-view">{{ p.pin }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t></label>
+              <div class="form-view">{{ p.person_name }}</div>
+            </div>
+            <div class="form-group">
+              <label><t>person</t><r/></label>
+              <b-input name="persons"
+                       model="p.person_name | name"
+                       model-key="p.person_id | person_id"
+                       required-key>
+                {{ row.name }}
+              </b-input>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="migr()"><t>migr</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

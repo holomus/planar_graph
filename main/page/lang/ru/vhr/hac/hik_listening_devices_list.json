@@ -1,0 +1,11 @@
+{
+ "copied to clipboard": "Скопировано в буфер обмена.",
+ "delete $1": "Удалить $1",
+ "delete $1{device_count} device(s)?": "Удалить устройства в количестве <b>$1</b>?",
+ "delete device $1{serial_number}?": "Удалить устройство $1?",
+ "table.company_id": "ИД компании",
+ "table.company_name": "Компания",
+ "table.device_token": "Токен",
+ "table.person_auth_type_name": "Тип аутентификации",
+ "table.serial_number": "Серийный номер"
+}

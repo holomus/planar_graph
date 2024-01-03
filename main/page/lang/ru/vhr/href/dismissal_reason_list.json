@@ -1,0 +1,11 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1{dismissal_reason_count} dismissal reason(s)?": "Удалить основания увольнения в количестве <b>$1</b>?",
+ "delete dismissal reason $1{dismissal_reason_name}?": "Удалить основание увольнения <b>$1</b>?",
+ "select": "Выбрать",
+ "select $1": "Выбрать $1",
+ "table.description": "Текст для приказа",
+ "table.dismissal_reason_id": "ИД",
+ "table.name": "Название",
+ "table.reason_type_name": "Причина увольнения"
+}

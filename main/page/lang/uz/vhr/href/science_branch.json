@@ -1,0 +1,10 @@
+{
+ "active": "Faol",
+ "code": "Kod",
+ "code is already used by another science branch": "Kod allaqachon boshqa fan sohasiga biriktirilgan",
+ "name": "Nomi",
+ "name should be unique": "Nom takrorlanmas bo'lishi shart",
+ "passive": "Faol emas",
+ "save": "Saqlash",
+ "state": "Holat"
+}

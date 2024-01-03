@@ -1,0 +1,10 @@
+{
+ "table.device_name": "Устройство",
+ "table.device_type_name": "Тип устройства",
+ "table.event_type_name": "Тип отметки",
+ "table.person_name": "Сотрудник",
+ "table.photo_exists_name": "Фото",
+ "table.photo_sha": "Фото для опознания",
+ "table.track_time": "Время",
+ "table.track_type_name": "Тип отметки"
+}

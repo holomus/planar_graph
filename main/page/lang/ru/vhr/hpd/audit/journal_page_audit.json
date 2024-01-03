@@ -1,0 +1,12 @@
+{
+ "details": "Детали",
+ "table_audit.journal_id": "ИД документа",
+ "table_audit.staff_name": "Сотрудник",
+ "table_audit.t_audit_id": "ИД",
+ "table_audit.t_date": "Дата события",
+ "table_audit.t_event_name": "Событие",
+ "table_audit.t_filial_name": "Организация",
+ "table_audit.t_source_project_name": "Продукт",
+ "table_audit.t_timestamp": "Дата события",
+ "table_audit.t_user_name": "Пользователь"
+}

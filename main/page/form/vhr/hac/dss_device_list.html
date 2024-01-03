@@ -1,0 +1,299 @@
+<script biruni>
+page.init(function(param, xparam) {
+  let t = page.query('table');
+  t.param({ server_id: param.server_id });
+
+  let tg = page.grid('table');
+  let status_class = { F: 'danger', O: 'success', U: 'secondary' };
+
+  tg.asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ status_class[row.status] }">${ row.status_name }</span>`;
+  });
+  tg.asHtml('ready_html', 'ready, ready_name', function(row) {
+    return `<div class="alert alert-custom alert-light-${ row.ready == 'Y' ? 'success' : 'danger' } text-center py-1 px-3 m-0"><div class="alert-text">${ row.ready_name }</div></div>`;
+  });
+});
+page.ctrl(function(scope, model, param, fi, t, $q, $timeout, bAlert) {
+  let q = _.extend({
+    desync_devices: {},
+    load_tracks: {},
+    is_subpage: scope.bPage.pageType() == 'subpage',
+  }, model), p = {};
+
+  function fetchQuery() {
+    q.checked = {};
+    q.desync_devices = {};
+    q.load_tracks = {};
+
+    page.query('table').param({ server_id: param.server_id });
+    page.grid('table').fetch();
+  }
+
+  function doAction(doFunc, message, device_id) {
+    page.confirm(message, function() {
+      doFunc({
+        server_id: param.server_id,
+        device_id: device_id
+      }).then(fetchQuery, page.alert);
+    });
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete device $1{device_name}?')(row.device_name), row.device_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{device_count} devices(s)?')(q.checked.size), _.pluck(q.checked.rows(), 'device_id'));
+  }
+
+  function syncDevice(row) {
+    doAction(fi.sync_devices, t('sync device $1{device_name}?')(row.device_name), row.device_id);
+  }
+
+  function syncDevices() {
+    doAction(fi.sync_devices, t('sync $1{device_count} device(s)?')(q.desync_devices.size), _.pluck(q.desync_devices.rows, 'device_id'));
+  }
+
+  function handleChange(result) {
+    if (q.is_subpage) fetchQuery();
+    if (page.isDialog()) page.close(result);
+  }
+
+  function add() {
+    fi.add({ server_id: param.server_id }, handleChange);
+  }
+
+  function edit(row) {
+    fi.edit({ device_id: row.device_id, server_id: param.server_id }, handleChange);
+  }
+
+  function view(row) {
+    fi.view({ device_id: row.device_id, server_id: param.server_id });
+  }
+
+  async function loadTracksOne(row) {
+    let data = {
+      server_id: param.server_id,
+      device_id: row.device_id,
+      page_num: 1,
+      start_time: q.start_time,
+      end_time: q.end_time
+    }
+    let result = { item_count: 1 };
+    let max_loop = 100;
+    try {
+      while (max_loop > 0 && result.item_count > 0) {
+        result = await page.post(':load_tracks', data);
+        data.page_num += 1;
+        max_loop -= 1;
+      }
+      if (max_loop <= 0 && result.item_count >= 0)
+        notify(t('loop ended before loading all data')(), 'danger');
+      else
+        notify(t('successfully loaded tracks')());
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  async function loadTracksMany() {
+    try {
+      for (item of q.load_tracks.rows) {
+        let data = {
+          server_id: param.server_id,
+          device_id: item.device_id,
+          page_num: 1,
+          start_time: q.start_time,
+          end_time: q.end_time
+        }
+        let result = { item_count: 1 };
+        let max_loop = 100;
+        try {
+          while (max_loop > 0 && result.item_count > 0) {
+            result = await page.post(':load_tracks', data);
+            data.page_num += 1;
+            max_loop -= 1;
+          }
+          if (max_loop <= 0 && result.item_count >= 0)
+            notify(t('loop ended before loading all data, device serial number: $1')(item.serial_number), 'danger');
+        }
+        catch (exception) {
+          $timeout(function() {
+            bAlert.open(exception);
+          });
+        }
+      }
+    } catch (err) {
+      page.alert(err)
+    }
+
+    fetchQuery();
+    notify(t('successfully loaded tracks')());
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+    prepareChecked('desync_devices', checked, x => x.ready == 'N');
+    prepareChecked('load_tracks', checked, x => x.ready == 'Y');
+  }
+
+  function onDblclick(row) {
+    fi.view ? view(row) : fi.edit ? edit(row) : null;
+  }
+
+  async function getDevices() {
+    q.dss_ex_device = {};
+    let data = {
+      server_id: param.server_id,
+      org_code: param.org_code,
+      page_num: 1
+    };
+    try {
+      let result = { item_count: 1 };
+      let max_loop = 100;
+      while (max_loop > 0 && result.item_count > 0) {
+        result = await page.post(':get_devices', data);
+        data.page_num += 1;
+        max_loop -= 1;
+      }
+      q.dss_ex_device = await page.post(':get_ex_device_codes', { server_id: param.server_id });
+      if (max_loop <= 0 && result.item_count >= 0) notify(t('loop ended before loading all data')(), 'danger');
+      fetchQuery();
+    }
+    catch (exception) {
+      $timeout(function() {
+        bAlert.open(exception);
+      });
+    }
+  }
+
+  async function getDeviceInfos() {
+    let info_promises = [];
+    try {
+      for (let i=0; i < q.dss_ex_device.codes.length; i++) {
+        info_promises.push(page.post(':get_device_info', { server_id: param.server_id, device_code: q.dss_ex_device.codes[i] }));
+      }
+      await $q.all(info_promises);
+    } catch (error) {
+      page.alert(error);
+    }
+  }
+
+  async function getAccessGroups() {
+    page.post(':get_access_groups', param);
+  }
+
+  async function syncDevicesAll() {
+    let result = {};
+    result = await fi.sync_devices({ server_id: param.server_id });
+  }
+
+  async function syncAll() {
+    try {
+      await getDevices();
+      await getAccessGroups();
+      await getDeviceInfos()
+      await syncDevicesAll();
+
+      fetchQuery();
+    } catch (error) {
+      page.alert(error);
+    }
+  }
+
+  q.start_time = moment().startOf('day').format('DD.MM.YYYY HH:mm');
+  q.end_time = moment().endOf('day').format('DD.MM.YYYY HH:mm');
+
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar row" ng-if="!q.is_subpage">
+  <div class="col-sm-12">
+    <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+    <button type="button" class="btn btn-success" ng-click="syncAll()" ng-if="fi.sync_all">{{ fi.sync_all.title }}</button>
+    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" ng-show="q.desync_devices.has || q.load_tracks.has"><t>choose action</t></button>
+    <div class="dropdown-menu">
+      <a href class="dropdown-item" ng-click="syncDevices()" ng-if="fi.sync_devices" ng-show="q.desync_devices.has"><t p1="q.desync_devices.size">sync $1 devices</t></a>
+      <a href class="dropdown-item" ng-click="loadTracksMany()" ng-show="q.load_tracks.has"><t p1="q.load_tracks.size">load tracks for $1 devices</t></a>
+    </div>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-3">
+    <input type="text" class="form-control" b-date-picker="DD.MM.YYYY HH:mm" ng-model="q.start_time"/>
+  </div>
+  <div class="col-sm-3">
+    <input type="text" class="form-control" b-date-picker="DD.MM.YYYY HH:mm" ng-model="q.end_time"/>
+  </div>
+  <div class="col-sm-6 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content" ng-class="{ 'card card-custom gutter-b': q.is_subpage }">
+  <div ng-class="{ 'card-body': q.is_subpage }">
+    <div class="form-group row" ng-if="q.is_subpage">
+      <div class="col-sm-10">
+        <button type="button" class="btn btn-success" ng-click="add()" ng-if="fi.add" b-hotkey="add">{{ fi.add.title }}</button>
+        <button type="button" class="btn btn-success" ng-click="syncAll()" ng-if="fi.sync_all">{{ fi.sync_all.title }}</button>
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" ng-show="q.desync_devices.has || q.load_tracks.has"><t>choose action</t></button>
+        <div class="dropdown-menu">
+          <a href class="dropdown-item" ng-click="syncDevices()" ng-if="fi.sync_devices" ng-show="q.desync_devices.has"><t p1="q.desync_devices.size">sync $1 devices</t></a>
+          <a href class="dropdown-item" ng-click="loadTracksMany()" ng-show="q.load_tracks.has"><t p1="q.load_tracks.size">load tracks for $1 devices</t></a>
+        </div>
+        <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.checked.has"><t p1="q.checked.size">delete $1</t></button>
+      </div>
+      <div class="col-sm-3">
+        <input type="text" class="form-control" b-date-picker="DD.MM.YYYY HH:mm" ng-model="q.start_time"/>
+      </div>
+      <div class="col-sm-3">
+        <input type="text" class="form-control" b-date-picker="DD.MM.YYYY HH:mm" ng-model="q.end_time"/>
+      </div>
+      <div class="col-sm-8">
+        <b-grid-controller name="table"/>
+      </div>
+    </div>
+    <b-grid name="table" required="device_id, device_name, ready, serial_number" on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+            sort="ready" search="device_name" searchable="device_id" extra-columns="device_id, password, device_mac, device_code, access_group_code">
+      <b-row>
+        <b-col name="company_name" size=3/>
+        <b-col name="device_name" size=4/>
+        <b-col name="serial_number" size=4/>
+        <b-col name="device_ip" size=3/>
+        <b-col name="login" size=3/>
+        <b-col name="ready_name" as-html="ready_html" size=3/>
+        <b-col name="status_name" as-html="status_html" size=3/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="fi.view">{{ fi.view.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="fi.edit">{{ fi.edit.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="syncDevice(row)" ng-if="fi.sync_devices" ng-show="row.ready == 'N'">{{ fi.sync_devices.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="loadTracksOne(row)" ng-if="row.ready == 'Y'"><t>load tracks</t></button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete">{{ fi.delete.title }}</button>
+      </b-action>
+
+      <b-filter name="device_id" directive="equal" extra/>
+      <b-filter name="company_id" decorate-with="company_name"/>
+      <b-filter name="device_name"/>
+      <b-filter name="serial_number"/>
+      <b-filter name="device_ip" extra/>
+      <b-filter name="device_mac" extra/>
+      <b-filter name="login" extra/>
+      <b-filter name="password" extra/>
+      <b-filter name="device_code" extra/>
+      <b-filter name="access_group_code" extra/>
+      <b-filter name="ready" decorate-with="ready_name"/>
+      <b-filter name="status" decorate-with="status_name"/>
+    </b-grid>
+  </div>
+</div>

@@ -1,0 +1,5 @@
+{
+ "pg.question_type.before": "Старое значение",
+ "pg.question_type.current": "Новое значение",
+ "pg.question_type.field_name": "Поле"
+}

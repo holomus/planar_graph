@@ -1,0 +1,14 @@
+{
+ "copiable tracks are succesfully copied": "Qaydlar muvaffaqiyatli nusxalandi",
+ "fill": "To'ldirish",
+ "no copiable tracks found for any employees": "Nusxalanadigan qaydlar topilmadi",
+ "no copiable tracks found for selected $1{employee count} employees": "$1 ta xodim(lar) uchun nusxalanadigan qaydlar topilmadi",
+ "pg.employees.division_name": "Bo'lim",
+ "pg.employees.employee_number": "Xodim raqami",
+ "pg.employees.hiring_date": "Ishga qabul qilingan sana",
+ "pg.employees.job_name": "Lavozim",
+ "pg.employees.name": "F. I. O.",
+ "pg.employees.tracks_count": "Qaydlar soni",
+ "successfully data loaded, $1{loaded employee count} employee(s) have(s) copiable tracks": "$1 ta xodim(lar)da nusxa ko'chirish mumkin bo'lgan qaydlar mavjud",
+ "successfully data loaded, $1{loaded employee count} out of $2{selected employee count} employee(s) have(s) copiable tracks": "$2 tadan $1 ta xodim(lar)da nusxa koʻchirish mumkin boʻlgan qaydlar mavjud"
+}

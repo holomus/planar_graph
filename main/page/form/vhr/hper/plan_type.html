@@ -1,0 +1,258 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, xparam) {
+  _.isUndefined(model.plan_type_id) ? _.extend(model, xparam) : null;
+
+  var d = _.omit(model, 'references'),
+      q = model.references,
+      MAX_VALUE = 1000000000;
+
+  function setPlanGroup(row) {
+    if (!row) return;
+    d.plan_group_id = row.plan_group_id;
+    d.plan_group_name = row.name;
+  }
+
+  function addPlanGroup(value) {
+    fi.add_plan_group(null, setPlanGroup, { name: value });
+  }
+
+  function viewPlanGroup() {
+    fi.view_plan_group(null, setPlanGroup);
+  }
+
+  function setTaskType(row) {
+    if (!row) return;
+    d.task_types.push(row);
+  }
+
+  function addTaskType(value) {
+    fi.add_task_type({ task_group_id: d.task_group_id }, setTaskType, { name: value });
+  }
+
+  function viewTaskType() {
+    let where = _.isEmpty(d.task_types) ? null : ['task_type_id', '<>', _.pluck(d.task_types, 'task_type_id')];
+    fi.view_task_type({ task_group_id: d.task_group_id }, setTaskType, { where: where });
+  }
+
+  function addRule() {
+    d.rules.push({});
+  }
+
+  function removeRule(index) {
+    if (index >= 0) {
+      d.rules.splice(index, 1);
+    } else {
+      d.rules = [];
+    }
+  }
+
+  function nvl(a, b) {
+    return parseFloat(a ? a : b);
+  }
+
+  function nullif(a, b) {
+    return a == b ? null : a;
+  }
+
+  function save() {
+    q.task_types_valid = !(d.calc_kind == q.ck_task && _.isEmpty(d.task_types));
+
+    // check
+    q.error.found = false;
+
+    for (let i = 0; i < d.rules.length; i++) {
+      let from_percent = nvl(d.rules[i].from_percent, 0);
+      let to_percent = nvl(d.rules[i].to_percent, MAX_VALUE);
+
+      for (let j = i + 1; j < d.rules.length; j++) {
+        let from_percent_2 = nvl(d.rules[j].from_percent, 0);
+        let to_percent_2 = nvl(d.rules[j].to_percent, MAX_VALUE);
+
+        if (to_percent > from_percent_2 && from_percent < to_percent_2) {
+          q.error.found = true;
+          q.error.message = t('plan type rule intersaction row $1 with row $2')(i + 1, j + 1);
+          break;
+        }
+      }
+
+      if (q.error.found) break;
+    }
+
+    if (page.valid(scope.form) && q.task_types_valid && !q.error.found) {
+      let data = _.omit(d, 'plan_group_name', 'task_types');
+      data.task_type_ids = _.pluck(d.task_types, 'task_type_id');
+
+      _.each(data.rules, x => x.from_percent = nullif(x.from_percent, 0));
+
+      page.post(':save', data).then(page.close, page.alert);
+    }
+  }
+
+  q.divisions = _.mapRows(q.divisions, ['division_id', 'name', 'parent_id']);
+  q.calc_kinds = _.mapRows(q.calc_kinds, ['kind', 'name']);
+  q.sale_kinds = _.mapRows(q.sale_kinds, ['kind', 'name']);
+  q.task_types_valid = true;
+  q.t_add_rule_title = t('add rule title')();
+  q.t_remove_rule_title = t('remove rule title')();
+  q.t_from_placeholder = t('from placehodler')();
+  q.t_to_placeholder = t('to placehodler')();
+  q.t_remove_all_confirm = t('delete all?')();
+  q.t_plan_percent_placeholder = t('plan percent placehodler')();
+  q.error = {};
+
+  d.task_types = _.mapRows(d.task_types, ['task_type_id', 'name']);
+  d.rules = _.mapRows(d.rules, ['from_percent', 'to_percent', 'plan_percent']);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom card-stretch">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="200" required/>
+          </div>
+          <div class="form-group">
+            <label><t>plan group</t></label>
+            <b-input name="plan_groups"
+                     model="d.plan_group_name | name"
+                     model-key="d.plan_group_id | plan_group_id"
+                     column="order_no"
+                     sort="order_no, name"
+                     is-add="fi.add_plan_group"
+                     on-add="addPlanGroup(value)"
+                     is-view="fi.view_plan_group"
+                     on-view="viewPlanGroup()">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label><t>divisions</t></label>
+            <b-tree-select
+              multiple
+              origin="q.divisions"
+              id-key="division_id"
+              model="d.division_ids"/>
+          </div>
+          <div class="form-group">
+            <label><t>calc kind</t></label><br/>
+            <label class="radio" ng-repeat="calc_kind in q.calc_kinds">
+              <input type="radio" name="calc_kind" value="{{ calc_kind.kind }}" ng-model="d.calc_kind"/><span>{{ calc_kind.name }}</span>
+            </label>
+          </div>
+          <div class="form-group" ng-if="d.calc_kind == q.ck_manual">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.with_part" ng-true-value="'Y'" ng-false-value="'N'"/>
+              <span><t>with part</t></span>
+            </label>
+          </div>
+          <div class="form-group" ng-if="d.calc_kind == q.ck_task">
+            <label><t>task types</t><r/></label><br/>
+            <b-input multiple
+                     name="task_types"
+                     model="d.task_types"
+                     model-key="task_type_id"
+                     column="task_type_id, name, order_no"
+                     sort="order_no,name"
+                     search="name"
+                     is-add="fi.add_task_type"
+                     on-add="addTaskType(value)"
+                     is-view="fi.view_task_type"
+                     on-view="viewTaskType()"
+                     required>
+              {{ row.name }}
+            </b-input>
+            <p class="text-danger" ng-hide="d.task_types.length > 0 || q.task_types_valid"><t>at least one task type must be selected!</t></p>
+          </div>
+          <div class="form-group" ng-if="d.calc_kind == q.ck_external">
+            <label><t>sale kind</t></label><br/>
+            <label class="radio" ng-repeat="sale_kind in q.sale_kinds">
+              <input type="radio" name="sale_kind" value="{{ sale_kind.kind }}" ng-model="d.sale_kind"/><span>{{ sale_kind.name }}</span>
+            </label>
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-12">
+              <label><t>code</t></label>
+              <input class="form-control" ng-model="d.code" b-maxlength="50"/>
+            </div>
+            <div class="form-group col-sm-12">
+              <label><t>order no</t></label>
+              <input class="form-control" ng-model="d.order_no" b-number scale="0" b-maxlength="3"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>state</t></label><br/>
+                <label class="switch">
+                  <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state" />
+                  <span>
+                    <t ng-if="d.state == 'A'">active</t>
+                    <t ng-if="d.state == 'P'">passive</t>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-12" ng-show="d.calc_kind == q.ck_manual || d.calc_kind == q.ck_external">
+              <div class="form-group">
+                <label>&nbsp;</label><br/>
+                <label class="checkbox">
+                  <input type="checkbox" ng-model="d.extra_amount_enabled" ng-true-value="'Y'" ng-false-value="'N'"/>
+                  <span><t>extra amount enabled</t></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-12" ng-if="d.extra_amount_enabled == 'Y' && (d.calc_kind == q.ck_manual || d.calc_kind == q.ck_external)">
+      <div class="card card-custom card-stretch">
+        <div class="card-body">
+          <label><t>plan rules</t></label>
+          <div class="form-row" ng-class="{'form-group': d.rules.length > 0}">
+            <div class="col-14 pt-2 text-black" ng-class=><t>plan fact (%)</t><r ng-if="d.rules.length > 0"/></div>
+            <div class="col-7 pt-2 text-black">
+              <t>fact percent</t>
+            </div>
+            <div class="col-3">
+              <button type="button" class="btn btn-icon btn-danger" ng-if="d.rules.length > 0"
+                b-toggle="confirm" data-title="{{ q.t_remove_all_confirm }}" data-placement="left" on-click-yes="removeRule()">
+                <i class="fa fa-trash"/>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" ng-if="d.rules.length == 0">
+            <label class="font-italic text-muted"><t>no rules</t></label>
+          </div>
+          <div class="form-group form-row" ng-repeat="row in d.rules">
+            <div class="col-7">
+              <input class="form-control" ng-model="row.from_percent" ng-required="!row.to_percent" b-number scale="2" precision="3" placeholder="{{ q.t_from_placeholder }}"/>
+            </div>
+            <div class="col-7">
+              <input class="form-control" ng-model="row.to_percent" ng-required="!row.from_percent" b-number scale="2" precision="3" placeholder="{{ q.t_to_placeholder }}"/>
+            </div>
+            <div class="col-7">
+              <input class="form-control" ng-model="row.plan_percent" b-number="signed" precision="14" scale="6" placeholder="{{ q.t_plan_percent_placeholder }}"/>
+            </div>
+            <div class="col-3">
+              <button type="button" class="btn btn-icon btn-hover-text-danger btn-default" ng-click="removeRule($index)" title="{{ q.t_remove_rule_title }}"><i class="fa fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <button type="button" class="btn btn-icon btn-default" ng-click="addRule()" title="{{ q.t_add_rule_title }}"><i class="fa fa-plus"></i></button>
+          </div>
+          <label class="font-red" ng-if="q.error.found" ng-bind-html="q.error.message"></label>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

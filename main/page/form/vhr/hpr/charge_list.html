@@ -1,0 +1,89 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var statusClass = { D: 'secondary', N: 'primary', U: 'warning', C: 'success' };
+  page.grid('table').asHtml('status_html', 'status, status_name', function(row) {
+    return `<span class="badge badge-${ statusClass[row.status] }">${ row.status_name }</span>`;
+  });
+});
+page.ctrl(function(scope, fi, t, xparam) {
+  var q = {};
+
+  function closeIfDialog(result) {
+    if (page.isDialog()) page.close(result);
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function selectMany() {
+    page.close(q.checked.rows());
+  }
+
+  function selectOne(row) {
+    q.multiple_select ? page.close([row]) : page.close(row);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? selectOne(row) : null;
+  }
+
+  q.multiple_select = xparam.multiple_select;
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+    <button type="button" class="btn btn-primary" ng-click="selectMany()" ng-if="page.isDialog() && q.multiple_select" ng-show="q.checked.has">
+      <t p1="q.checked.size">select $1</t>
+    </button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content"><form name="form">
+  <b-grid name="table" required="charge_id, staff_id, staff_name, staff_number, oper_type_id, oper_type_name, estimation_formula, division_name, job_name, begin_date, end_date, amount, status, iapa, npin, tin, schedule_name, operation_kind"
+          on-check="onCheck(checked)" on-dblclick="onDblclick(row)"
+          sort="-interval_begin_date, -begin_date" search="staff_name, oper_type_name" searchable="begin_date, end_date"
+          extra-columns="charge_id, staff_number, interval_begin_date, interval_end_date, kind_name, division_name, schedule_name, currency_name, job_name, rank_name, robot_name, oper_group_name, operation_kind_name">
+    <b-row>
+      <b-col name="staff_name" size=6/>
+      <b-col name="oper_type_name" size=5/>
+      <b-col name="amount" format="amount" align="right" size=3/>
+      <b-col name="begin_date" size=3/>
+      <b-col name="end_date" size=3/>
+      <b-col name="status" as-html="status_html" size=3/>
+    </b-row>
+
+    <b-action>
+      <button type="button" class="btn btn-default" ng-click="selectOne(row)" ng-if="page.isDialog()"><t>select</t></button>
+    </b-action>
+
+    <b-filter name="charge_id" directive="equal" extra/>
+    <b-filter name="employee_id" decorate-with="staff_name">
+    <b-filter name="amount"/>
+    <b-filter name="begin_date"/>
+    <b-filter name="end_date"/>
+    <b-filter name="status" decorate-with="status_name"/>
+    <b-filter name="operation_kind" decorate-with="operation_kind_name"/>
+    <b-filter name="staff_number" extra/>
+    <b-filter name="interval_begin_date" extra/>
+    <b-filter name="interval_end_date" extra/>
+    <b-filter name="kind" decorate-with="kind_name" extra/>
+    <b-filter name="division_id" decorate-with="division_name" extra/>
+    <b-filter name="schedule_id" decorate-with="schedule_name" extra/>
+    <b-filter name="currency_id" decorate-with="currency_name" extra/>
+    <b-filter name="job_id" decorate-with="job_name" extra/>
+    <b-filter name="rank_id" decorate-with="rank_name" extra/>
+    <b-filter name="robot_id" decorate-with="robot_name" extra/>
+    <b-filter name="oper_group_id" decorate-with="oper_group_name" extra/>
+  </b-grid>
+</form></div>

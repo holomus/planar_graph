@@ -1,0 +1,34 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+
+  d.bank_accounts = _.mapRows(d.bank_accounts, ['bank_name', 'bank_code', 'bank_account_code', 'bank_account_name', 'is_main', 'currency_name', 'card_number', 'state', 'note']);
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-body">
+    <div class="row mb-2">
+      <div class="offset-sm-12 col-sm-12">
+        <b-pg-controller name="bank_account"/>
+      </div>
+    </div>
+    <b-pg-grid name="bank_account" local-data="d.bank_accounts" search="bank_name, bank_account_name, bank_account_code, bank_code" min-height="'auto'" searche="title">
+      <b-pg-row>
+        <b-pg-col name="bank_name" size="6"/>
+        <b-pg-col name="bank_account_name" size="5"/>
+        <b-pg-col name="bank_account_code" size="4"/>
+        <b-pg-col name="card_number" size="3"/>
+        <b-pg-col name="bank_code" size="3"/>
+        <b-pg-col name="is_main_name" size="3">
+          <span>
+            <t ng-if="row.is_main =='Y'">yes</t>
+            <t ng-if="row.is_main =='N'">no</t>
+          </span>
+      </b-pg-row>
+      <b-pg-extra-col name="currency_name"/>
+      <b-pg-extra-col name="note"/>
+    </b-pg-grid>
+  </div>
+</div>

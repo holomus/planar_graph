@@ -1,0 +1,23 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{operation_count} operation(s)?": "Do you really want to delete <b>$1</b> wage payment(s)?",
+ "delete operation $1{operation_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.accounting_type_name": "Accounting",
+ "table.code": "Code",
+ "table.corr_coa_name": "Account",
+ "table.corr_ref_set": "Subcount",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.estimation_formula": "Formula",
+ "table.estimation_type_name": "Calculation and Measures",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.note": "Note",
+ "table.oper_group_name": "Payroll Assignment",
+ "table.oper_type_id": "ID",
+ "table.operation_type_name": "Operation Type",
+ "table.short_name": "Alternative Name",
+ "table.state_name": "Status"
+}

@@ -1,0 +1,22 @@
+{
+ "deduction": "Wage Deduction",
+ "pg.accruals.actions": "Actions",
+ "pg.accruals.indicators": "Indicators",
+ "pg.accruals.oper_type": "Accrual",
+ "pg.accruals.rownum": "No.",
+ "pg.deductions.actions": "Actions",
+ "pg.deductions.indicators": "Indicators",
+ "pg.deductions.oper_type": "Deduction",
+ "pg.deductions.rownum": "No.",
+ "accrual": "Remuneration",
+ "add": "Add",
+ "division name": "Department",
+ "job name": "Job",
+ "rank name": "Rank (category)",
+ "save": "Save",
+ "save?": "Save?",
+ "schedule name": "Work Schedule",
+ "vacation days limit": "Vacation Days (annual)",
+ "wage scale": "Tariff Group",
+ "you don't have access to add or view salaries": "No access to remuneration"
+}

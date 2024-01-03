@@ -1,0 +1,22 @@
+{
+ "add": "Добавить",
+ "all items will be removed. continue?": "Изменение подразделения приведет к очистке табличных частей документа. Продолжить изменение?",
+ "change date": "Дата изменения",
+ "days limit": "Кол-во отпускных дней",
+ "delete $1": "Удалить $1",
+ "division name": "Подразделение",
+ "journal date": "Дата",
+ "journal name": "Название",
+ "journal number": "Номер",
+ "pg.staffs.limit_days": "Кол-во отпускных дней",
+ "pg.staffs.rownum": "№",
+ "pg.staffs.staffs": "Сотрудник",
+ "post": "Провести",
+ "post?": "Сохранить и провести документ?",
+ "save": "Сохранить",
+ "save?": "Сохранить?",
+ "select": "Подбор",
+ "staff kind name": "Вид занятости",
+ "staff name": "Сотрудник",
+ "staff number": "Табельный номер"
+}

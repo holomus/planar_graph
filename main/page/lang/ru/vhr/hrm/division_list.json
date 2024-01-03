@@ -1,0 +1,22 @@
+{
+ "delete $1": "Удалить $1",
+ "delete $1 division(s)?": "Вы действительно хотите удалить <b>$1</b> подразделений?",
+ "delete division $1?": "Вы действительно хотите удалить подразделение <b>$1</b>?",
+ "select": "Выбрать",
+ "select $1": "Выбрать $1",
+ "table.closed_date": "Дата закрытия",
+ "table.code": "Код",
+ "table.created_by_name": "Создал",
+ "table.created_on": "Дата создания",
+ "table.division_group_name": "Группа подразделений",
+ "table.division_id": "ИД подразделения",
+ "table.is_department_name": "Вид подразделения",
+ "table.manager_name": "Руководитель",
+ "table.modified_by_name": "Изменил",
+ "table.modified_on": "Дата изменения",
+ "table.name": "Название",
+ "table.opened_date": "Дата открытия",
+ "table.schedule_name": "Режим работы",
+ "table.state_name": "Статус",
+ "table.subfilial_name": "Проект"
+}

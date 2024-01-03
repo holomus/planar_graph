@@ -1,0 +1,5 @@
+select count(1)
+  from Verifix.Migr_Biruni_Filespace q
+ where not exists (select 1
+          from Verifix_Hr.Biruni_Filespace_Controller w
+         where w.Sha = q.Sha)

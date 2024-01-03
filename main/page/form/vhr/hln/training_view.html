@@ -1,0 +1,202 @@
+<script biruni>
+page.init(function() {
+  var pg = page.grid('persons'),
+      passedClass = { Y: 'primary', N: 'danger', I: 'secondary' };
+
+  pg.asHtml('passed_html', 'passed, passed_name', row => {
+    return `<span class="badge badge-${ passedClass[row.passed] }">${ row.passed_name }</span>`;
+  });
+
+  pg.asHtml('passed_count_html', 'passed_subjects_count, all_subjects_count', row => {
+    return `<span class="badge badge-secondary">${ row.passed_subjects_count + ' / ' + row.all_subjects_count }</span>`;
+  });
+
+  pg.disable();
+});
+page.ctrl(function(scope, model, fi) {
+  var d = model,
+      q = {};
+
+  function changeSection(section) {
+    q.activeSection = section;
+
+    if(_.contains(q.enabledGrids, section)) return;
+
+    page.query(section).param({ training_id: d.training_id });
+    page.grid(section).fetch();
+    page.grid(section).enable();
+
+    q.enabledGrids.push(section);
+  }
+
+  function edit() {
+    fi.edit({ training_id: d.training_id });
+  }
+
+  switch (d.status) {
+    case 'N': q.status_class = 'alert-light-primary'; break;
+    case 'E': q.status_class = 'alert-light-info'; break;
+    case 'F': q.status_class = 'alert-light-success'; break;
+  }
+
+  q.activeSection = 'training_info';
+  q.enabledGrids = ['training_info'];
+  q.passed_percent = ((d.passed_persons / d.all_persons) * 100).toPrecision(4);
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-success" ng-if="fi.edit && d.status == 'N'" ng-click="edit()">{{ fi.edit.title }}</button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <div class="d-flex flex-row">
+    <div class="flex-row-auto b-offcanvas">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-body pt-4">
+          <div class="text-center mb-9 mt-4">
+            <div class="b-offcanvas-hide">
+              <span class="font-weight-bolder font-size-h3">{{ d.training_number }}</span>
+              <span class="text-muted">&nbsp;({{ d.training_id }})</span>
+            </div><br>
+            <div class="b-offcanvas-hide alert alert-custom text-cen py-1 px-5 mb-0 mt-2 d-inline-flex" ng-class="q.status_class">
+              <div class="alert-text">{{ d.status_name }}</div>
+            </div>
+          </div>
+          <div class="navi navi-bold navi-hover navi-active navi-link-rounded">
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'training_info' }" ng-click="changeSection('training_info')">
+                <span class="navi-icon mr-2">
+                  <i class="far fa-file-alt"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>training info</t></span>
+              </a>
+            </div>
+            <div class="navi-item mb-2">
+              <a href class="navi-link py-4" ng-class="{ 'active': q.activeSection == 'persons' }" ng-click="changeSection('persons')">
+                <span class="navi-icon mr-2">
+                  <i class="fas fa-users"></i>
+                </span>
+                <span class="navi-text b-offcanvas-hide font-size-sm"><t>persons</t></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'training_info'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>main info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>training number</t></label>
+                  <span class="form-view">{{ d.training_number }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>begin date</t></label>
+                  <span class="form-view">{{ d.begin_date }}</span>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>subject group name</t></label>
+                  <span class="form-view">{{ d.subject_group_name }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>mentor name</t></label>
+                  <span class="form-view">{{ d.mentor_name }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>subject name</t></label>
+                <span class="form-view">{{ d.subject_names }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>address</t></label>
+                <span class="form-view">{{ d.address }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>all persons count</t></label>
+                <span class="form-view">{{ d.all_persons }}</span>
+              </div>
+              <div class="form-row">
+                <div class="col-sm-12 mb-4">
+                  <label><t>passed persons count</t></label>
+                  <span class="form-view">{{ d.passed_persons }}</span>
+                </div>
+                <div class="col-sm-12 mb-4">
+                  <label><t>not passed persons count</t></label>
+                  <span class="form-view">{{ d.not_passed_persons }}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label><t>passed percent</t></label>
+                <span class="form-view">{{ q.passed_percent }}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="separator separator-solid my-6"></div>
+          <div class="form-row">
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>created by</t></label>
+                <span class="form-view">{{ d.created_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>created on</t></label>
+                <span class="form-view">{{ d.created_on }}</span>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="form-group">
+                <label><t>modified by</t></label>
+                <span class="form-view">{{ d.modified_by_name }}</span>
+              </div>
+              <div class="form-group">
+                <label><t>modified on</t></label>
+                <span class="form-view">{{ d.modified_on }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-row-fluid ml-lg-3" ng-show="q.activeSection == 'persons'">
+      <div class="card card-custom card-stretch gutter-b">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>persons</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="offset-sm-12 col-sm-12">
+              <b-grid-controller name="persons"/>
+            </div>
+          </div>
+          <b-grid name="persons" required="training_id" sort="person_name" search="person_name">
+            <b-row>
+              <b-col name="person_name" size=17/>
+              <b-col name="passed_subjects_count" as-html="passed_count_html"  size=4/>
+              <b-col name="passed_name" as-html="passed_html" size=3/>
+            </b-row>
+
+            <b-filter name="person_id" decorate-with="person_name"/>
+            <b-filter name="passed" decorate-with="passed_name"/>
+          </b-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

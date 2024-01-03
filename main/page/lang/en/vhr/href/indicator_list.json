@@ -1,0 +1,16 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{indicator_count} indicator(s)?": "Do you really want to delete <b>$1</b> variable(s)?",
+ "delete indicator $1{indicator_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.created_by_name": "Created by",
+ "table.created_on": "Created on",
+ "table.identifier": "Identifier",
+ "table.indicator_group_name": "Variable group",
+ "table.indicator_id": "ID",
+ "table.modified_by_name": "Modified by",
+ "table.modified_on": "Modified on",
+ "table.name": "Name",
+ "table.short_name": "Alternative Name",
+ "table.state_name": "Status"
+}

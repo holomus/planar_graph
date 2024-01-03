@@ -1,0 +1,11 @@
+{
+ "delete $1": "Delete $1",
+ "delete $1{fixed_term_base_count}  fixed term bases?": "Do you really want to delete <b>$1</b> proof(s)?",
+ "delete fixed term base $1{fixed_term_base_name}?": "Do you really want to delete <b>$1</b>?",
+ "select": "Select",
+ "table.code": "Code",
+ "table.fixed_term_base_id": "ID",
+ "table.name": "Name",
+ "table.state_name": "Status",
+ "table.text": "Text"
+}

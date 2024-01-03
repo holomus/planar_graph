@@ -1,0 +1,20 @@
+{
+ "add": "Qo'shish",
+ "common": "Umumiy",
+ "common_penalties.month": "Oy",
+ "common_penalties.name": "Nom",
+ "common_penalties.penalty_id": "ID",
+ "common_penalties.state_name": "Holat",
+ "copy": "Nusxalash",
+ "delete": "O'chirish",
+ "delete $1": "O'chirish $1",
+ "delete $1{penalty_count} penalty(ies)?": "<b>$1</b> ta jarima siyosat(lar)ini o'chirmoqchimisiz?",
+ "delete penalty $1{penalty_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "edit": "Tahrirlash",
+ "standart": "Bo'lim bo'yicha",
+ "standart_penalties.division_name": "Bo'lim",
+ "standart_penalties.month": "Oy",
+ "standart_penalties.name": "Nom",
+ "standart_penalties.penalty_id": "ID",
+ "standart_penalties.state_name": "Holat"
+}

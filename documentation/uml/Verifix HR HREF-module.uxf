@@ -1,0 +1,1061 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.3.0">
+  <zoom_level>4</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>48</x>
+      <y>276</y>
+      <w>108</w>
+      <h>148</h>
+    </coordinates>
+    <panel_attributes>*HREF_STAFFS*
+--
+*COMPANY_ID*
+*FILIAL_ID*
+*STAFF_ID*
+STAFF_NUMBER
+EMPLOYEE_ID
+/STATUS/
+/HIRING_DATE/
+/DISMISSAL_DATE/
+/POSITION_ID/
+/DIVISION_ID/
+/JOB_ID/
+/QUANTITY/
+/RANK_ID/
+/SCHEDULE_ID/
+/DISMISSAL_REASON_ID/
+/DISMISSAL_NOTE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>200</x>
+      <y>276</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_FIXED_TERM_BASES*
+--
+*COMPANY_ID*
+*FIXED_TERM_BASE_ID*
+NAME
+/TEXT/
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>200</x>
+      <y>376</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_EDU_STAGES*
+--
+*COMPANY_ID*
+*EDU_STAGE_ID*
+NAME
+STATE
+/CODE/
+/ORDER_NO/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>200</x>
+      <y>476</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_SCIENCE_BRANCHES*
+--
+*COMPANY_ID*
+*SCIENCE_BRANCH_ID*
+NAME
+STATE
+/CODE/
+/ORDER_NO/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>200</x>
+      <y>580</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_ACAD_DEGREES*
+--
+*COMPANY_ID*
+*ACAD_DEGREE_ID*
+NAME
+/SCIENCE_BRANCH_ID/
+/PARENT_ID/
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>200</x>
+      <y>684</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_ACAD_TITLES*
+--
+*COMPANY_ID*
+*ACAD_TITLE_ID*
+NAME
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>340</x>
+      <y>276</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_INSTITUTION*
+--
+*COMPANY_ID*
+*INSTITUTION_ID*
+NAME
+STATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>340</x>
+      <y>376</y>
+      <w>108</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>*HREF_SPECIALITY*
+--
+*COMPANY_ID*
+*SPECIALITY_ID*
+NAME
+KIND
+/PARENT_ID/
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>340</x>
+      <y>476</y>
+      <w>108</w>
+      <h>76</h>
+    </coordinates>
+    <panel_attributes>*HREF_PROFESSIONS*
+--
+*COMPANY_ID*
+*PROFESSION_ID*
+NAME
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>336</x>
+      <y>580</y>
+      <w>108</w>
+      <h>76</h>
+    </coordinates>
+    <panel_attributes>*HREF_LANGS*
+--
+*COMPANY_ID*
+*LANG_ID*
+NAME
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>336</x>
+      <y>684</y>
+      <w>108</w>
+      <h>76</h>
+    </coordinates>
+    <panel_attributes>*HREF_LANG_LEVELS*
+--
+*COMPANY_ID*
+*LANG_LEVEL_ID*
+NAME
+STATE
+/ORDER_NO/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>476</x>
+      <y>276</y>
+      <w>108</w>
+      <h>76</h>
+    </coordinates>
+    <panel_attributes>*HREF_DOC_TYPES*
+--
+*COMPANY_ID*
+*DOC_TYPE_ID*
+NAME
+STATE
+/PCODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>476</x>
+      <y>376</y>
+      <w>108</w>
+      <h>76</h>
+    </coordinates>
+    <panel_attributes>*HREF_REFERENCE_TYPES*
+--
+*COMPANY_ID*
+*REFERENCE_TYPE_ID*
+NAME
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>476</x>
+      <y>476</y>
+      <w>108</w>
+      <h>68</h>
+    </coordinates>
+    <panel_attributes>*HREF_RELATION_DEGREES*
+--
+*COMPANY_ID*
+*RELATION_DEGREE_ID*
+NAME
+STATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>476</x>
+      <y>580</y>
+      <w>108</w>
+      <h>68</h>
+    </coordinates>
+    <panel_attributes>*HREF_MARITAL_STATUS*
+--
+*COMPANY_ID*
+*MARITAL_STATUS_ID*
+NAME
+STATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>476</x>
+      <y>684</y>
+      <w>108</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HREF_EXPERIENCE_TYPES*
+--
+*COMPANY_ID*
+*EXPERIENCE_TYPE_ID*
+NAME
+STATE
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>632</x>
+      <y>276</y>
+      <w>108</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HREF_AWARDS*
+--
+*COMPANY_ID*
+*AWARD_ID*
+NAME
+STATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>632</x>
+      <y>376</y>
+      <w>108</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_DETAILS*
+--
+*COMPANY_ID*
+*PERSON_ID*
+/IAPA/
+/NPIN/
+SCIENTIFIC_WORKS_EXIST
+INVENTIONS_EXIST</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>632</x>
+      <y>472</y>
+      <w>108</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_EDU_STAGES*
+--
+*COMPANY_ID*
+*PERSON_EDU_STAGE_ID*
+PERSON_ID
+EDU_STAGE_ID
+/INSTITUTION_ID/
+/BEGIN_DATE/
+/END_DATE/
+/SPECIALITY_ID/
+/QUALIFICATION/
+/COURCE/
+/HOUR_AMOUNT/
+/BASE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>632</x>
+      <y>612</y>
+      <w>108</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_EDU_STAGE_FILES*
+--
+*COMPANY_ID*
+*PERSON_EDU_STAGE_ID*
+SHA</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>792</x>
+      <y>276</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_ACAD_DEGREES*
+--
+*COMPANY_ID*
+*PERSON_ACAD_DEGREE_ID*
+PERSON_ID
+ACAD_DEGREE_ID
+/AWARDED_DATE/
+/DISSERTATSION_COUNCIL/
+/DOC_SERIES/
+/DOC_NUMBER/
+/ISSUED_BY/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>792</x>
+      <y>396</y>
+      <w>108</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>*HREF_ACAD_DEGREE_FILES*
+--
+*COMPANY_ID*
+*PERSON_ACAD_DEGREE_ID*
+SHA</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>796</x>
+      <y>468</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_ACAD_TITLES*
+--
+*COMPANY_ID*
+*PERSON_ACAD_TITLE_ID*
+PERSON_ID
+ACAD_TITLE_ID
+/AWARDED_DATE/
+/SPECIALITY_ID/
+/DOC_SERIES/
+/DOC_NUMBER/
+/ISSUED_BY/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>796</x>
+      <y>612</y>
+      <w>108</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>*HREF_ACAD_TITLE_FILES*
+--
+*COMPANY_ID*
+*PERSON_ACAD_TITLE_ID*
+SHA</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>796</x>
+      <y>688</y>
+      <w>108</w>
+      <h>52</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_PROFESSIONS*
+--
+*COMPANY_ID*
+*PERSON_ID*
+PROFESSION_ID
+CREATED_BY
+CREATED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>956</x>
+      <y>276</y>
+      <w>108</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_SPECIALITIES*
+--
+*COMPANY_ID*
+*PERSON_APECIALITY_ID*
+PERSON_ID
+SPECIALITY_ID
+/AWARDED_DATE/
+/EXPIRED_DATE/
+/BASE/
+/DOC_SERIES/
+/DOC_NUMBER/
+/ISSUED_BY/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>956</x>
+      <y>400</y>
+      <w>108</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_SPECIALITY_FILES*
+--
+*COMPANY_ID*
+*PERSON_SPECIALITY_ID*
+SHA</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>956</x>
+      <y>464</y>
+      <w>108</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_LANGS*
+--
+*COMPANY_ID*
+*PERSON_ID*
+*LANG_ID*
+/LANG_LEVEL_ID/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>956</x>
+      <y>568</y>
+      <w>108</w>
+      <h>112</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_DOCUMENTS*
+--
+*COMPANY_ID*
+*DOCUMENT_ID*
+PERSON_ID
+DOC_TYPE_ID
+/DOC_SERIES/
+/DOC_NUMBER/
+/ISSUED_BY/
+/ISSUED_DATE/
+/BEGIN_DATE/
+/EXPIRY_DATE/
+/NOTE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>956</x>
+      <y>708</y>
+      <w>108</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_DOCUMENT_FILES*
+--
+*COMPANY_ID*
+*DOCUMENT_ID*
+SHA</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1108</x>
+      <y>276</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_REFERENCES*
+--
+*COMPANY_ID*
+*PERSON_REFERENCE_ID*
+PERSON_ID
+REFERENCE_TYPE_ID
+REF_NUMBER
+/REF_DATE/
+/START_DATE/
+/END_DATE/
+NAME
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1108</x>
+      <y>396</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_FAMILY_MEMBERS*
+--
+*COMPANY_ID*
+*PERSON_FAMILY_MEMBER_ID*
+PERSON_ID
+NAME
+/RELATION_DEGREE_ID/
+/BIRTHDAY/
+IS_DEPENDENT
+IS_PRIVATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1108</x>
+      <y>524</y>
+      <w>108</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_MARITAL_STATUSES*
+--
+*COMPANY_ID*
+*PERSON_MARITAL_STATUS_ID*
+PERSON_ID
+MARITAL_STATUS_ID
+START_DATE
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1108</x>
+      <y>616</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_EXPERIENCES*
+--
+*COMPANY_ID*
+*PERSON_EXPERIENCE_ID*
+PERSON_ID
+EXPERIENCE_TYPE_ID
+IS_WORKING
+START_DATE
+/NUM_YEAR/
+/NUM_MONTH/
+/NUM_DAY/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1264</x>
+      <y>276</y>
+      <w>104</w>
+      <h>92</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_AWARDS*
+--
+*COMPANY_ID*
+*PERSON_AWARD_ID*
+PERSON_ID
+AWARD_ID
+/DOC_TITLE/
+/DOC_NUMBER/
+/DOC_DATE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1264</x>
+      <y>392</y>
+      <w>108</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>*HREF_PERSON_WORK_PLACES*
+--
+*COMPANY_ID*
+*PERSON_WORK_PLACE_ID*
+PERSON_ID
+/START_DATE/
+/END_DATE/
+ORGANIZATION_NAME
+JOB_TITLE
+/ORGANIZATION_ADDRESS/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1264</x>
+      <y>520</y>
+      <w>108</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HREF_LABOR_FUNCTIONS*
+--
+*COMPANY_ID*
+*LABOR_FUNCTION_ID*
+NAME
+/DESCRIPTION/
+/CODE/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1264</x>
+      <y>628</y>
+      <w>108</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>*HREF_DISMISSAL_REASONS*
+--
+*COMPANY_ID*
+*DISMISSAL_REASON_ID*
+NAME
+/DESCRIPTION/
+CREATED_BY
+CREATED_ON
+MODIFIED_BY
+MODIFIED_ON</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>176</x>
+      <y>492</y>
+      <w>32</w>
+      <h>128</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0;10.0;300.0;60.0;300.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>176</x>
+      <y>392</y>
+      <w>464</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0;10.0;180.0;1090.0;180.0;1090.0;280.0;1140.0;280.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>312</x>
+      <y>256</y>
+      <w>328</w>
+      <h>264</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;100.0;10.0;100.0;10.0;10.0;730.0;10.0;730.0;640.0;800.0;640.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>308</x>
+      <y>360</y>
+      <w>332</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>80.0;90.0;10.0;90.0;10.0;10.0;720.0;10.0;720.0;430.0;810.0;430.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>616</x>
+      <y>488</y>
+      <w>24</w>
+      <h>152</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>40.0;10.0;10.0;10.0;10.0;360.0;40.0;360.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>168</x>
+      <y>244</y>
+      <w>632</w>
+      <h>364</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>80.0;890.0;10.0;890.0;10.0;10.0;1520.0;10.0;1520.0;160.0;1560.0;160.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>764</x>
+      <y>292</y>
+      <w>36</w>
+      <h>132</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;10.0;10.0;10.0;10.0;310.0;70.0;310.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>180</x>
+      <y>496</y>
+      <w>624</w>
+      <h>308</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>50.0;520.0;10.0;520.0;10.0;750.0;1490.0;750.0;1490.0;10.0;1540.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>312</x>
+      <y>364</y>
+      <w>492</w>
+      <h>156</h>
+    </coordinates>
+    <panel_attributes/>
+    <additional_attributes>10.0;80.0;10.0;20.0;1110.0;20.0;1110.0;370.0;1210.0;370.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>780</x>
+      <y>484</y>
+      <w>24</w>
+      <h>156</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>40.0;10.0;10.0;10.0;10.0;370.0;40.0;370.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>312</x>
+      <y>492</y>
+      <w>492</w>
+      <h>300</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>70.0;10.0;10.0;10.0;10.0;730.0;1190.0;730.0;1190.0;560.0;1210.0;560.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>316</x>
+      <y>228</y>
+      <w>648</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>fg=blue</panel_attributes>
+    <additional_attributes>10.0;420.0;10.0;10.0;1540.0;20.0;1540.0;200.0;1600.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>932</x>
+      <y>292</y>
+      <w>32</w>
+      <h>136</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0;10.0;320.0;60.0;320.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>316</x>
+      <y>488</y>
+      <w>648</w>
+      <h>296</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>50.0;280.0;10.0;280.0;10.0;720.0;1520.0;720.0;1520.0;10.0;1600.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>324</x>
+      <y>496</y>
+      <w>640</w>
+      <h>280</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>30.0;520.0;10.0;520.0;10.0;680.0;1530.0;680.0;1530.0;10.0;1580.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>456</x>
+      <y>260</y>
+      <w>508</w>
+      <h>352</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>50.0;90.0;10.0;90.0;10.0;10.0;1140.0;10.0;1140.0;860.0;1250.0;860.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>940</x>
+      <y>584</y>
+      <w>24</w>
+      <h>152</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>40.0;10.0;10.0;10.0;10.0;360.0;40.0;360.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>448</x>
+      <y>236</y>
+      <w>668</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>70.0;400.0;10.0;400.0;10.0;10.0;1600.0;10.0;1600.0;180.0;1650.0;180.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>456</x>
+      <y>432</y>
+      <w>660</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>50.0;160.0;10.0;160.0;10.0;70.0;1600.0;70.0;1600.0;10.0;1630.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>644</y>
+      <w>656</w>
+      <h>172</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=blue</panel_attributes>
+    <additional_attributes>40.0;150.0;10.0;150.0;10.0;410.0;1580.0;410.0;1580.0;10.0;1620.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>612</x>
+      <y>220</y>
+      <w>660</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;-
+fg=red</panel_attributes>
+    <additional_attributes>50.0;190.0;10.0;190.0;10.0;10.0;1570.0;10.0;1570.0;220.0;1630.0;220.0</additional_attributes>
+  </element>
+</diagram>

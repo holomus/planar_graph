@@ -1,0 +1,29 @@
+<script biruni>
+page.ctrl(function(scope, model) {
+  var d = model;
+  
+  d.person_references = _.mapRows(d.person_references, [ 'reference_type_name', 'ref_number', 'ref_date', 'start_date', 'end_date', 'name']);
+
+  scope.d = d;
+});
+</script>
+<div class="b-content card card-custom card-stretch gutter-b">
+  <div class="card-body">
+    <div class="row">
+      <div class="offset-sm-12 col-sm-12 mb-2">
+        <b-pg-controller name="person_references"/>
+      </div>
+    </div>
+    <b-pg-grid name="person_references" local-data="d.person_references" min-height="'auto'" search="reference_type_name, ref_number, name"
+                searchable="ref_date, start_date" sort="reference_type_name, ref_number, name, ref_date, start_date">
+      <b-pg-row>
+        <b-pg-col name="reference_type_name" size="5"/>
+        <b-pg-col name="ref_number" size="3"/>
+        <b-pg-col name="ref_date" size="3"/>
+        <b-pg-col name="start_date" size="3"/>
+        <b-pg-col name="end_date" size="3"/>
+        <b-pg-col name="name" size="7"/>
+      </b-pg-row>
+    </b-pg-grid>
+  </div>
+</div>

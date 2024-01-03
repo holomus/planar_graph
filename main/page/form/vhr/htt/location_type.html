@@ -1,0 +1,85 @@
+<script biruni>
+page.require('jquery-minicolors');
+page.ctrl(function(scope, model, xparam, t, $timeout) {
+  var d = _.isUndefined(model.location_type_id) ? _.extend(model, xparam) : model;
+
+  function save() {
+    if (page.valid(scope.form)) {
+      page.post(':save', d).then(page.close, page.alert);
+    }
+  }
+
+  function triggerColorPicker(elem, callback) {
+    elem.minicolors({
+      control: elem.attr('data-control') || 'hue',
+      defaultValue: elem.attr('data-defaultValue') || '',
+      inline: elem.attr('data-inline') == 'true',
+      letterCase: elem.attr('data-letterCase') || 'upperCase',
+      opacity: elem.attr('data-opacity'),
+      position: elem.attr('data-position') || 'bottom-left',
+      change: callback,
+      theme: 'bootstrap',
+      swatches: '#E08283|#5C9BD1|#36D7B7|#F3C200|#ffcc80|#bcaaa4|#eeeeee|#E7505A|#4B77BE|#26C281|#E87E04|#ff9800|#795548|#9e9e9e'.split('|')
+    });
+  }
+
+  d.color = d.color || '#4B77BE';
+
+  scope.d = d;
+
+  $timeout(function() {
+    triggerColorPicker(page.$content.find('.marker-color'), function(hex, opacity) {
+      if (!hex) return;
+      d.color = hex;
+    });
+    page.$content.find('.marker-color').minicolors('value', d.color);
+  });
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+  <style>
+    .minicolors-theme-bootstrap .minicolors-swatch {
+      height: 26px;
+      width: 26px;
+      top: 2px;
+    }
+  </style>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="row">
+            <div class="form-group col-sm-16">
+              <label><t>name</t><r/></label>
+              <input type="text" class="form-control" b-maxlength="100" ng-model="d.name" required/>
+            </div>
+            <div class="form-group col-sm-8">
+              <label><t>color</t></label>
+              <input type="text" class="form-control marker-color" data-control="hue"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-12">
+              <label><t>state</t></label><br/>
+              <label class="switch">
+                <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+                <span>
+                  <t ng-if="d.state == 'A'">active</t>
+                  <t ng-if="d.state == 'P'">passive </t>
+                </span>
+              </label>
+            </div>
+            <div class="form-group col-sm-12">
+              <label><t>code</t></label>
+              <input type="text" class="form-control" ng-model="d.code"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

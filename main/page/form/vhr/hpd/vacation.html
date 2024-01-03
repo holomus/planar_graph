@@ -1,0 +1,489 @@
+<script biruni>
+page.ctrl(function(scope, model, fi, t, $timeout) {
+  var d = _.omit(model, 'references') || {},
+      q = model.references,
+      p = { data: {} };
+
+  // staff
+  function whereStaff(data) {
+    let staff_ids = _.chain(d.vacations).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=', data.begin_date],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>=', data.end_date]
+                  ]]]
+                ];
+
+    if (q.access_all_employee == 'N') {
+      where = ['and', [['employee_id', '<>', q.user_id], where]];
+    }
+
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value, data) {
+    query.where(whereStaff(data)).searchValue(value);
+  }
+
+  function setStaff(data, row) {
+    if (!row) return;
+    data.staff_id = row.staff_id;
+    data.staff_name = row.name;
+  }
+
+
+  function getVacationPayment() {
+    let data = {};
+
+    data.staff_id = q.is_vacation_multiple ? _.pluck(d.vacations, 'staff_id') : d.staff_id;
+    data.begin_date = q.is_vacation_multiple ? _.pluck(d.vacations, 'begin_date') : d.begin_date;
+    data.end_date = q.is_vacation_multiple ? _.pluck(d.vacations, 'end_date') : d.end_date;
+
+    page.post(':get_vacation_payment', data).then(function (result) {
+      let vacation_payment = _.object(result.vacation_payment);
+
+      if (q.is_vacation_multiple) {
+        _.each(d.vacations, x => x.vacation_payment = vacation_payment[x.staff_id]);
+      } else {
+        d.vacation_payment = vacation_payment[d.staff_id];
+      }
+    }, page.alert);
+  }
+
+  function selectStaff(data) {
+    fi.select_staff({ date: data.begin_date }, _.partial(setStaff, data), { where: whereStaff(data) });
+  }
+
+  function setTimeKind(data, row) {
+    if (!row) return;
+    data.time_kind_id = row.time_kind_id;
+    data.time_kind_name = row.name;
+  }
+
+  function changeTimeKindQuery(query, value) {
+    query.searchValue(value);
+  }
+
+  function addTimeKind(value, param) {
+    let data = {
+      name: value,
+      parent_id: q.vacation_tk_id,
+      parent_id_name: q.vacation_tk_name
+    };
+    fi.add_time_kind(null, _.partial(setTimeKind, param), data);
+  }
+
+  function selectTimeKind(data) {
+    let where = ['or',
+                  [['parent_id', '=', q.vacation_tk_id],
+                  ['time_kind_id', '=', q.vacation_tk_id]]
+                ];
+
+    fi.select_time_kind(null, _.partial(setTimeKind, data), { where: where });
+  }
+
+  // files
+  function uploadFiles($file, data) {
+    if (_.isEmpty($file)) return;
+    data.files = _.union(data.files, $file);
+    page.dropzone('files').clear();
+  }
+
+  function deleteFile(index, data) {
+    data.files.splice(index, 1);
+  }
+
+  // ------------------------------ vacation modal ------------------------------//
+  var modal = page.$content.find('form[name=modal]>.modal');
+
+  function showModal() {
+    $timeout(function() {
+      modal.modal('show');
+    });
+  }
+
+  function hideModal() {
+    modal.modal('hide');
+  }
+
+  function vacationModal(row) {
+    if (row) {
+      let index = _.findIndex(d.vacations, row);
+      q.addMode = false;
+      p.data = _.extend(angular.copy(row), { index: index });
+      p.data.files = row.files;
+      p.title = t('edit vacation')();
+    } else {
+      q.addMode = true;
+
+      p.title = t('add vacation')();
+      p.data = {
+        begin_date: d.journal_date,
+        end_date: d.journal_date,
+      };
+    }
+
+    page.untouch(scope.modal);
+    showModal();
+  }
+
+  function saveVacation() {
+    if (page.valid(scope.modal)) {
+      if (q.addMode) d.vacations.push(p.data);
+      else d.vacations.splice(p.data.index, 1, p.data);
+
+      hideModal();
+    }
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.vacations, item);
+      d.vacations.splice(index, 1);
+    });
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      let calc_data = {
+        staff_ids: d.staff_id,
+        begin_date: d.begin_date,
+        end_date: d.end_date
+      };
+
+      let vacations = q.is_vacation_multiple ? d.vacations : [d],
+          data = {
+            staff_ids: _.pluck(vacations, 'staff_id'),
+            begin_dates: _.pluck(vacations, 'begin_date'),
+            end_dates: _.pluck(vacations, 'end_date')
+          };
+
+      page.post(':calc_vacation_days', data).then(function(result) {
+        let confirmMessage = '', staff_names;
+
+        data = _.chain(result.data)
+                .mapRows(['staff_name', 'fact_days', 'vacation_days'])
+                .filter(x => { return x.fact_days > 0; })
+                .value();
+
+        staff_names = _.pluck(data, 'staff_name');
+
+        if (staff_names.length == 1) {
+          confirmMessage = q.tWarningFactDays(data[0].staff_name, data[0].fact_days, data[0].trip_days) + '. ';
+        } else if (staff_names.length) {
+          confirmMessage = t('warning: locked fact days found $1{staff_count} staffs: $2{staff_names}')(staff_names.length, staff_names.join(', ')) + '. ';
+        }
+
+        confirmMessage += (posted == 'Y' ? t('post?')() : t('save?')());
+        
+        page.confirm(confirmMessage, function() {
+          let data = _.pick(d, 'journal_id', 'journal_type_id', 'journal_number', 'journal_name', 'journal_date');
+
+          data.posted = posted;
+          data.vacations = _.map(q.is_vacation_multiple ? d.vacations : [d], function(x) {
+            x.time_kind_id = x.alt_time_kind ? x.time_kind_id : null;
+            x.shas = _.map(x.files, x => x.sha ? x.sha : x);
+
+            return _.pick(x, 'timeoff_id', 'staff_id', 'time_kind_id', 'begin_date', 'end_date', 'shas');
+          });
+
+          page.post(':save', data).then(page.close, page.alert);
+        });
+      }, page.alert);
+    }
+  }
+
+  q.tWarningFactDays = t('warning: locked fact days found, fact days=$1, resulting vacation days=$2.');
+
+  if (!d.timeoff_id) {
+    d.time_kind_id = q.vacation_tk_id;
+    d.time_kind_name = q.vacation_tk_name
+  }
+
+  q.t_remove_file = t('remove file')();
+
+  q.is_vacation_multiple = d.journal_type_id != q.journal_type_id;
+
+  model.vacations = model.vacations || (q.is_vacation_multiple ? [] : [{}]);
+  _.each((model.vacations), x => {
+    x.files = _.mapRows(x.files, ['sha', 'name']);
+    x.alt_time_kind = x.time_kind_id != q.vacation_tk_id;
+    x.vacation_payment = null;
+  });
+
+  if (q.is_vacation_multiple) {
+    d.vacations = model.vacations;
+  } else {
+    _.extend(d, model.vacations[0]);
+  }
+
+  if(!_.isUndefined(d.journal_id)) {
+    getVacationPayment();
+  }
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"
+          ng-if="d.has_sign_template ? d.has_sign_template == 'N' : d.has_sign_document ? d.has_sign_document == 'N' : true">
+    <t>post</t>
+  </button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom" ng-if="q.is_vacation_multiple">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4"> 
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/> 
+              </div>
+              <div class="col-sm-12 mb-4"> 
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/> 
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="vacationModal()"><t>add</t></button>
+            <button type="button" class="btn btn-default" ng-click="getVacationPayment()" ng-if="d.vacations.length > 0"><t>calc</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="vacations"/>
+          </div>
+        </div>
+        <b-pg-grid name="vacations" local-data="d.vacations" search="staff_name" on-check="onCheck(checked)"
+                   current-limit="1000" searchable="page_id" sort="staff_name">
+          <b-pg-row>
+            <b-pg-col name="staff_name" size="6"/>
+            <b-pg-col name="time_kind_name" size="6 "/>
+            <b-pg-col name="begin_date" size="4"/>
+            <b-pg-col name="end_date" size="4"/>
+            <b-pg-col name="vacation_payment" size="2">
+              <div class="b-right">{{ row.vacation_payment | bNumber }}</div>
+            </b-pg-col>
+            <b-pg-col name="actions" size="1">
+              <div class="text-left">
+                <button type="button" class="btn btn-default btn-icon" ng-click="vacationModal(row)"><i class="fa fa-edit"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+    <div class="form-row" ng-if="!q.is_vacation_multiple">
+      <div class="col-sm-12">
+        <div class="card card-custom">
+          <div class="card-body">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>journal date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.journal_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>journal number</t><r ng-if="d.journal_id"/></label>
+                <input type="text" class="form-control" ng-model="d.journal_number" b-maxlength="50" ng-required="d.journal_id"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>journal name</t></label>
+              <input type="text" class="form-control" ng-model="d.journal_name" b-maxlength="150"/>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="q.alt_time_kind"/>
+                <span><t>choose vacation type</t></span>
+              </label>
+            </div>
+            <div class="form-group" ng-show="q.alt_time_kind">
+              <label><t>vacation type</t><r/></label>
+              <b-input name="time_kinds"
+                       model="d.time_kind_name | name"
+                       model-key="d.time_kind_id | time_kind_id"
+                       on-change="changeTimeKindQuery(query, value)"
+                       is-add="fi.add_time_kind"
+                       on-add="addTimeKind(value, d)"
+                       is-view="fi.select_time_kind"
+                       on-view="selectTimeKind(d)"
+                       required-key="q.alt_time_kind">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label><t>staff</t><r/></label>
+              <b-input name="staffs"
+                       model="d.staff_name | name"
+                       model-key="d.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date, staff_kind_name"
+                       search="staff_number, name"
+                       on-change="changeStaffQuery(query, value, d)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(d)"
+                       required-key>
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                  <div class="col-sm-6"><t>staff kind name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number }}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.begin_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>end date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.end_date" b-date-picker required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>files</t></label>
+              <b-dropzone name="files" multiple on-select="uploadFiles($file, d)"/>
+              <div class="form-group mt-4">
+                <div class="form-group mb-0" style="font-size: 14px;" ng-repeat="file in d.files">
+                  <label>
+                    <i class="fa fa-times" style="cursor: pointer;" title="{{ q.t_remove_file }}" ng-click="deleteFile($index, d)"/>
+                    <span class="font-blue-hoki">{{ file.name }}</span><br ng-if="!$last"/>
+                  </label>
+                </div>
+                <div style="font-size: 14px;">
+                  <label class="font-grey-salt" ng-if="d.files.length == 0"><span class="fa fa-file">&nbsp;&nbsp;</span><t>no files</t></label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row" ng-if="d.staff_id && d.begin_date && d.end_date">
+              <div class="col-sm-6 mb-4">
+                <label><t>vacation payment</t></label>
+                <div class="input-group">
+                    <input type="text" class="form-control text-right" ng-disabled="true" ng-model="d.vacation_payment" b-number>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-sm btn-default" ng-click="getVacationPayment()">
+                        <i class="fas fa-calculator"></i>
+                      </button>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form name="modal">
+    <div class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-xxl" role="journal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" ng-bind-html="p.title"></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label><t>staff</t><r/></label>
+              <b-input name="staffs"
+                       model="p.data.staff_name | name"
+                       model-key="p.data.staff_id | staff_id"
+                       column="staff_number, hiring_date, dismissal_date, staff_kind_name"
+                       search="staff_number, name"
+                       on-change="changeStaffQuery(query, value, p.data)"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(p.data)"
+                       required-key>
+                <header>
+                  <div class="col-sm-6"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                  <div class="col-sm-6"><t>staff kind name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-6">{{ row.staff_number }}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                  <div class="col-sm-6">{{ row.staff_kind_name }}</div>
+                </content>
+              </b-input>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="p.data.alt_time_kind"/>
+                <span><t>choose vacation type</t></span>
+              </label>
+            </div>
+            <div class="form-group" ng-show="p.data.alt_time_kind">
+              <label><t>vacation type</t><r/></label>
+              <b-input name="time_kinds"
+                       model="p.data.time_kind_name | name"
+                       model-key="p.data.time_kind_id | time_kind_id"
+                       on-change="changeTimeKindQuery(query, value)"
+                       is-add="fi.add_time_kind"
+                       on-add="addTimeKind(value, p.data)"
+                       is-view="fi.select_time_kind"
+                       on-view="selectTimeKind(p.data)"
+                       required-key="p.data.alt_time_kind">
+                {{ row.name }}
+              </b-input>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>begin date</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.begin_date" b-date-picker required/>
+              </div>
+              <div class="col-sm-12 mb-4">
+                <label><t>end date</t><r/></label>
+                <input type="text" class="form-control" ng-model="p.data.end_date" b-date-picker required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>files</t></label>
+              <b-dropzone name="files" multiple on-select="uploadFiles($file, p.data)"/>
+              <div class="form-group mt-4">
+                <div class="form-group mb-0" style="font-size: 14px;" ng-repeat="file in p.data.files">
+                  <label>
+                    <i class="fa fa-times" style="cursor: pointer;" title="{{ q.t_remove_file }}" ng-click="deleteFile($index, p.data)"/>
+                    <span class="font-blue-hoki">{{ file.name }}</span><br ng-if="!$last"/>
+                  </label>
+                </div>
+                <div style="font-size: 14px;">
+                  <label class="font-grey-salt" ng-if="p.data.files.length == 0"><span class="fa fa-file">&nbsp;&nbsp;</span><t>no files</t></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="saveVacation()"><t>save</t></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><t>close</t></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

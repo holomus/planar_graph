@@ -1,0 +1,13 @@
+{
+ "delete $1": "O'chirish $1",
+ "delete $1{calendar_count} calendar(s)?": "<b>$1</b> ta taqvim(lar)ni o'chirmoqchimisiz?",
+ "delete calendar $1{calendar_name}?": "<b>$1</b>ni o'chirmoqchimisiz?",
+ "select": "Tanlash",
+ "table.calendar_id": "ID",
+ "table.code": "Kod",
+ "table.created_by_name": "Yaratdi",
+ "table.created_on": "Yaratilgan sana",
+ "table.modified_by_name": "Tahrirladi",
+ "table.modified_on": "Tahrirlangan sana",
+ "table.name": "Nom"
+}

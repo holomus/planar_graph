@@ -1,0 +1,129 @@
+<script biruni>
+page.ctrl(function(scope, model, t, xparam) {
+  var d = _.isUndefined(model.request_kind_id) ? _.extend(_.omit(model, "references"), xparam) : _.omit(model, "references"),
+      q = model.references;
+
+  function save() {
+    if(page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        d.request_with_restriction_days == 'N' ? d.request_restriction_days = '' : null;
+        page.post(':save', d).then(page.close, page.alert);
+      });
+    }
+  }
+
+  q.day_count_types = _.mapRows(q.day_count_types, ["value", "name"]);
+  q.carryover_policies = _.mapRows(q.carryover_policies, ["value", "name"]);
+  q.tCarryoverCapDaysPlacholder = t('Eg: 5')();
+  q.tCarryoverExpiresDaysPlaceholder = t('Eg: 30')();
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="form-row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-body">
+          <div class="form-group">
+            <label><t>name</t><r/></label>
+            <input type="text" class="form-control" ng-model="d.name" b-maxlength="100" required/>
+          </div>
+          <div class="form-group">
+            <label><t>time kind</t><r/></label>
+            <b-input name="time_kinds"
+                     model="d.time_kind_id_name | name"
+                     model-key="d.time_kind_id | time_kind_id"
+                     required-key
+                     readonly="!!d.pcode">
+              {{ row.name }}
+            </b-input>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.user_permitted" ng-true-value="'Y'" ng-false-value="'N'"/>
+              <span><t>user permitted</t></span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.allow_unused_time" ng-true-value="'Y'" ng-false-value="'N'"/>
+              <span><t>allow unused time</t></span>
+            </label>
+          </div>
+          <div class="form-group mb-4 row">
+            <div class="col-sm-12">
+              <label class="checkbox">
+                <input type="checkbox" ng-model="d.request_with_restriction_days" ng-true-value="'Y'" ng-false-value="'N'"/>
+                <span><t>request with restriction days</t></span>
+              </label>
+              <div ng-if="d.request_with_restriction_days == 'Y'">
+                <label><t>request restriction days</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.request_restriction_days" b-number="signed" precision="3" scale="0" ng-required="d.request_with_restriction_days == 'Y'"/>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>day count type</t></label><br/>
+            <label class="radio" ng-repeat="day_count_type in q.day_count_types">
+              <input type="radio" name="dayCountType" value="{{ day_count_type.value }}" ng-model="d.day_count_type">
+              <span>{{ day_count_type.name }}</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" ng-model="d.annually_limited" ng-true-value="'Y'" ng-false-value="'N'"/>
+              <span><t>annually limited</t></span>
+            </label>
+          </div>
+          <div ng-if="d.annually_limited == 'Y'">
+            <div class="form-row">
+              <div class="col-sm-12">
+                <div class="form-group">
+                  <label><t>annual day limit</t><r/></label>
+                  <input type="text" class="form-control" ng-model="d.annual_day_limit" b-number precision="3" scale="0" required/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>carryover policy</t></label><br/>
+              <label class="radio" ng-repeat="carryover_policy in q.carryover_policies">
+                <input type="radio" name="carryover_policy" value="{{ carryover_policy.value }}" ng-model="d.carryover_policy">
+                <span>{{ carryover_policy.name }}</span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="col-sm-12" ng-if="d.carryover_policy == q.cp_cap">
+                <div class="form-group">
+                  <label><t>carryover cap (days)</t><r/></label>
+                  <input type="text" class="form-control text-left" b-number b-maxlength="3" scale="0" ng-model="d.carryover_cap_days" required placeholder="{{ q.tCarryoverCapDaysPlacholder }}"/>
+                </div>
+              </div>
+              <div class="col-sm-12" ng-if="d.carryover_policy != q.cp_zero">
+                <div class="form-group">
+                  <label><t>expires after (days)</t><r/></label>
+                  <input type="text" class="form-control text-left" b-number b-maxlength="3" scale="0" ng-model="d.carryover_expires_days" required placeholder="{{ q.tCarryoverExpiresDaysPlaceholder }}"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

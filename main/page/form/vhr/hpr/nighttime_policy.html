@@ -1,0 +1,205 @@
+<script biruni>
+page.ctrl(function(scope, model, param, fi, t, bUtil) {
+  var d = model.data, q = {};
+
+  function addRule() {
+    d.rules.push({});
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), rule => {
+      let index = _.findIndex(d.rules, rule);
+      d.rules.splice(index, 1);
+    }); 
+    q.checked = {};
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function check_rules() {
+    q.isvalid = true;
+    q.rule_numbers = [];
+    q.invalid_coef_rules = []
+    
+    for(i = 0; i < d.rules.length; i ++) {
+      if (d.rules[i].nighttime_coef <= 1) {
+        q.isvalid = false;
+        q.invalid_coef_rules.push(i + 1);
+      }
+
+      for(j = i + 1; j < d.rules.length; j ++) {
+        var first_begin_time = bUtil.timeToMinutes(d.rules[i].begin_time),
+            first_end_time = bUtil.timeToMinutes(d.rules[i].end_time),
+            second_begin_time = bUtil.timeToMinutes(d.rules[j].begin_time),
+            second_end_time = bUtil.timeToMinutes(d.rules[j].end_time);
+
+        if (first_begin_time > first_end_time) {
+          first_end_time += 1440;
+        }
+
+        if (second_begin_time > second_end_time) {
+          second_end_time += 1440;
+        }
+
+        if (Math.max(first_begin_time, second_begin_time) < Math.min(first_end_time, second_end_time)) {
+          q.isvalid = false;
+          q.rule_numbers.push(i + 1);
+          q.rule_numbers.push(j + 1);
+        }
+      }
+    }
+
+    q.rule_numbers = _.uniq(q.rule_numbers);
+  }
+
+  function save() {
+    check_rules();
+
+    if (q.isvalid && page.valid(scope.form)) {
+      page.confirm(t('save?')(), function() {
+        let data = _.pick(d, 'name', 'nighttime_policy_id', 'month', 'division_id', 'state');
+
+        data.rules = _.map(d.rules, x => {
+          var y = {};
+          y.begin_time = bUtil.timeToMinutes(x.begin_time);
+          y.end_time = bUtil.timeToMinutes(x.end_time);
+          y.nighttime_coef  = x.nighttime_coef;
+
+          return y;
+        });
+
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+  
+  q.form_type = param.form_type;
+  q.divisions = _.mapRows(model.divisions, ['division_id', 'name', 'parent_id']);
+  q.policy_undefined = _.isUndefined(d.nighttime_policy_id);
+  q.t_begin_time_placeholder = t('begin time')();
+  q.t_end_time_placeholder = t('end time')();
+  q.t_coef_placeholder = t('coefficient')();
+
+  if (!q.policy_undefined) {
+    d.month_view = moment(d.month, 'MM.YYYY').format('MMMM YYYY');
+  }
+
+  d.rules = _.chain(d.rules || [])
+             .mapRows(['begin_time', 'end_time', 'nighttime_coef'])
+             .each(x => {
+              x.begin_time = bUtil.minutesToTime(x.begin_time);
+              x.end_time = bUtil.minutesToTime(x.end_time % 1440);
+             })
+             .value();
+
+  
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save()" b-hotkey="save"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="card card-custom">
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>main info</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div ng-if="q.policy_undefined">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>policy month</t><r/></label>
+                <input class="form-control" style="text-transform: capitalize;" view-format="MMMM YYYY" ng-model="d.month" b-date-picker="MM.YYYY" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100"/>
+            </div>
+            <div class="form-group" ng-if="q.form_type != 'C'">
+              <label><t>division</t><r ng-if="q.form_type == 'S'"/></label>
+              <b-tree-select multiple
+                             origin="q.divisions"
+                             id-key="division_id"
+                             model="d.division_id"
+                             required
+                             ng-if="q.form_type == 'S'"/>
+            </div>
+          </div>
+          <div ng-if="!q.policy_undefined">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>policy month</t></label>
+                <div class="form-view" style="text-transform: capitalize;">{{ d.month_view }}</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>name</t></label>
+              <input type="text" class="form-control" ng-model="d.name" b-maxlength="100"/>
+            </div>
+            <div class="form-group" ng-if="d.division_id">
+              <label><t>division</t></label>
+              <div class="form-view">{{ d.division_name }}</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><t>state</t></label><br/>
+            <label class="switch">
+              <input type="checkbox" ng-true-value="'A'" ng-false-value="'P'" ng-model="d.state"/>
+              <span>
+                <t ng-if="d.state == 'A'">active</t>
+                <t ng-if="d.state == 'P'">passive</t>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="card-header">
+          <div class="card-title">
+            <h3 class="card-label"><t>policy rules</t></h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-sm-10 mb-4">
+              <button type="button" class="btn btn-default" ng-click="addRule()"><t>add</t></button>
+              <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+                <t p1="q.checked.size">delete $1</t>
+              </button>
+            </div>
+            <div class="col-sm-14" ng-if="d.rules.length > 10">
+              <b-pg-controller name="rules"/>
+            </div>
+          </div>
+          <div ng-if="q.rule_numbers.length > 0">
+            <span class="text-danger"><t p1="q.rule_numbers.join(', ')">there is intersection between $1 rule(s)</t></span>
+          </div>
+          <div ng-if="q.invalid_coef_rules.length > 0">
+            <span class="text-danger"><t p1="q.invalid_coef_rules.join(', ')">coefficient must be greater than 1 for $1 rule(s)</t></span>
+          </div>
+          <b-pg-grid name="rules" local-data="d.rules" on-check="onCheck(checked)" search="name" sort="begin_time" iterator="rule" min-width="500">
+            <b-pg-row>
+              <b-pg-col name="rownum" size="1"></b-pg-col>
+              <b-pg-col name="begin_time" size=9>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="rule.begin_time" placeholder="{{ q.t_begin_time_placeholder }}" required/>
+              </b-pg-col>
+              <b-pg-col name="end_time" size=9>
+                <input type="text" class="form-control" b-date-picker="HH:mm" ng-model="rule.end_time" placeholder="{{ q.t_end_time_placeholder }}" required/>
+              </b-pg-col>
+              <b-pg-col name="nighttime_coef" size=4>
+                <input class="form-control" ng-model="rule.nighttime_coef" b-number precision="3" scale="6" placeholder="{{ q.t_coef_placeholder }}" required/>
+              </b-pg-col>
+            </b-pg-row>
+          </b-pg-grid>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div>

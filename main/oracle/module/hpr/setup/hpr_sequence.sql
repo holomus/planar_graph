@@ -1,0 +1,15 @@
+create sequence hpr_timebooks_sq;
+create sequence hpr_charges_sq;
+create sequence hpr_oper_groups_sq;
+create sequence hpr_book_types_sq;
+create sequence hpr_penalties_sq;
+create sequence hpr_wage_sheets_sq;
+create sequence hpr_sheet_parts_sq;
+create sequence hpr_cv_contract_facts_sq;
+create sequence hpr_cv_contract_fact_items_sq;
+create sequence hpr_sales_bonus_payments_sq;
+create sequence hpr_sales_bonus_payment_operations_sq;
+create sequence hpr_charge_documents_sq;
+create sequence hpr_charge_document_operations_sq;
+create sequence hpr_nighttime_policies_sq;
+create sequence hpr_credits_sq;

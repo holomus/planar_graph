@@ -1,0 +1,231 @@
+<script biruni>
+page.init(function(param, xparam) {
+  var t = page.query('table');
+
+  if (xparam.where) t.where(xparam.where);
+  else if (param.where) t.where(param.where);
+
+  var pg = page.grid('table');
+  var postedClass = {
+    Y: 'primary',
+    N: 'secondary'
+  };
+
+  pg.asHtml('posted_html', 'posted, posted_name', function(row) {
+    return `<span class="badge badge-${postedClass[row.posted]}">${row.posted_name}</span>`;
+  });
+
+  pg.asHtml('barcode_html', 'barcode', function(row) {
+    return `<img src="gen/barcode?text=${row.barcode}&width=75&height=15&font-size=12"/>`;
+  });
+
+  pg.asHtml('month_html', 'month', function(row) {
+    return `<span style="text-transform: capitalize;">${moment(row.month, 'DD.MM.YYYY').format('MMMM YYYY')}</span>`;
+  });
+});
+page.ctrl(function(scope, model, fi, t, bFrame) {
+  var q = _.extend(model, {
+      to_post: {},
+      to_unpost: {},
+      to_delete: {}
+    }),
+    actions = {};
+
+  function doAction(doFunc, doTrans, journal_id, callbackFunc) {
+    page.confirm(doTrans, function() {
+      doFunc({
+          journal_id: journal_id
+        })
+        .then(function(result) {
+          page.query('table').fetch();
+
+          q.to_post = {};
+          q.to_unpost = {};
+          q.to_delete = {};
+        }, page.alert);
+    });
+  }
+
+  function postOne(row) {
+    doAction(fi.post, t('post journal No. $1{journal_number} of $2{journal_date}?')(row.journal_number, row.journal_date), row.journal_id);
+  }
+
+  function postMany() {
+    doAction(fi.post, t('post $1 journal(s)?')(q.to_post.size), _.pluck(q.to_post.rows, 'journal_id'));
+  }
+
+  function unpostOne(row) {
+    doAction(fi.unpost, t('unpost journal No. $1{journal_number} of $2{journal_date}?')(row.journal_number, row.journal_date), row.journal_id);
+  }
+
+  function unpostMany() {
+    doAction(fi.unpost, t('unpost $1 journal(s)?')(q.to_unpost.size), _.pluck(q.to_unpost.rows, 'journal_id'));
+  }
+
+  function deleteOne(row) {
+    doAction(fi.delete, t('delete journal No. $1{journal_number} of $2{journal_date}?')(row.journal_number, row.journal_date), row.journal_id);
+  }
+
+  function deleteMany() {
+    doAction(fi.delete, t('delete $1{journal_count} journal(s)?')(q.to_delete.size), _.pluck(q.to_delete.rows, 'journal_id'));
+  }
+
+  function hasAudit(pcode) {
+    return fi[`${actions[pcode]}_audit`];
+  }
+
+  function audit(row) {
+    fi[`${actions[row.pcode]}_audit`]({ journal_id: row.journal_id });
+  }
+
+  function hasAdd(pcode) {
+    return fi[`${actions[pcode]}_add`];
+  }
+
+  function add(journal_type) {
+    fi[`${actions[journal_type.pcode]}_add`]({
+      journal_type_id: journal_type.journal_type_id
+    });
+  }
+
+  function hasEdit(pcode) {
+    return fi[`${actions[pcode]}_edit`];
+  }
+
+  function edit(row) {
+    fi[`${actions[row.pcode]}_edit`]({
+      journal_id: row.journal_id
+    });
+  }
+
+  function hasView(pcode) {
+    return fi[`${actions[pcode]}_view`];
+  }
+
+  function view(row) {
+    fi[`${actions[row.pcode]}_view`]({
+      journal_id: row.journal_id
+    });
+  }
+
+  function run(row) {
+    window.open(page.url('run', {
+      pcode: row.pcode,
+      journal_id: row.journal_id
+    }));
+  }
+
+  function prepareChecked(key, checked, filterFunc) {
+    q[key].rows = _.filter(checked.rows(), filterFunc);
+    q[key].size = q[key].rows.length;
+    q[key].has = q[key].size > 0;
+  }
+
+  function onCheck(checked) {
+    if (fi.post) prepareChecked('to_post', checked, x => x.posted == 'N' && !x.source_table);
+    if (fi.unpost) prepareChecked('to_unpost', checked, x => x.posted == 'Y' && !x.source_table);
+    if (fi.delete) prepareChecked('to_delete', checked, x => x.posted == 'N' && !x.source_table);
+  }
+
+  function onDblclick(row) {
+    page.isDialog() ? page.close(row) : hasView(row.pcode) ? view(row) : hasEdit(row.pcode) && !row.source_table ? edit(row) : null;
+  }
+
+  function openReportSetting(tmp) {
+    page.openDialog(tmp.setting_form, {
+      template_id: tmp.template_id
+    });
+  }
+
+  function runReport(tmp, row) {
+    bFrame.openWindow(tmp.uri, {
+      journal_id: row.journal_id,
+      template_id: tmp.template_id
+    });
+  }
+
+  function filteredReportActions(row) {
+    return _.filter(q.report_actions, x => x.journal_type_id == row.journal_type_id);
+  }
+
+  actions[q.pcode_sick_leave] = 'sick_leave';
+  actions[q.pcode_sick_leave_multiple] = 'sick_leave_multiple';
+  actions[q.pcode_vacation] = 'vacation';
+  actions[q.pcode_vacation_multiple] = 'vacation_multiple';
+  
+  q.journal_types = _.mapRows(model.journal_types, ['journal_type_id', 'journal_type_name', 'pcode']);
+  q.add_actions = _.chain(q.journal_types)
+                    .filter(x => hasAdd(x.pcode))
+                    .value();
+  q.report_actions = _.mapRows(model.reports, ['uri', 'template_id', 'name', 'setting_form', 'journal_type_id']);
+
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar row">
+  <div class="col-sm-14">
+    <div class="btn-group" ng-if="q.add_actions.length">
+      <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><t>add</t></button>
+      <div class="dropdown-menu" style="max-height: calc(100vh - 130px); overflow-y: auto;">
+        <a href class="dropdown-item" ng-repeat="action in q.add_actions" ng-click="add(action)">{{ action.journal_type_name }}</a>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" ng-click="postMany()" ng-if="fi.post" ng-show="q.to_post.has"><t p1="q.to_post.size">post $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="unpostMany()" ng-if="fi.unpost" ng-show="q.to_unpost.has"><t p1="q.to_unpost.size">unpost $1</t></button>
+    <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-if="fi.delete" ng-show="q.to_delete.has"><t p1="q.to_delete.size">delete $1</t></button>
+    <button type="button" class="btn btn-default" ng-click="page.close()" ng-hide="page.isFirst()">{{ page.close.title }}</button>
+  </div>
+  <div class="col-sm-10 b-right">
+    <b-grid-controller name="table"/>
+  </div>
+</div>
+<div class="b-content">
+  <form name="form">
+    <b-grid name="table" required="journal_id, journal_number, journal_date, journal_type_id, posted, source_table, pcode" on-check="onCheck(checked)" on-dblclick="onDblclick(row)" sort="-journal_date, -created_on"
+      search="journal_number, journal_type_name, employee_name" searchable="journal_id, journal_name" extra-columns="journal_id, journal_name, created_by_name, modified_by_name, created_on, modified_on">
+      <b-row>
+        <b-col name="journal_date" size=3/>
+        <b-col name="journal_number" size=3/>
+        <b-col name="journal_type_name" size=3/>
+        <b-col name="employee_name" size=6/>
+        <b-col name="begin_date" size=3/>
+        <b-col name="end_date" size=3/>
+        <b-col name="posted_name" as-html="posted_html" size=2/>
+      </b-row>
+
+      <b-action>
+        <button type="button" class="btn btn-default" ng-click="view(row)" ng-if="hasView(row.pcode)"><t>view</t></button>
+        <button type="button" class="btn btn-default" ng-click="edit(row)" ng-if="hasEdit(row.pcode) && !row.source_table"><t>edit</t></button>
+        <button type="button" class="btn btn-default" ng-click="postOne(row)" ng-if="fi.post && row.posted == 'N' && !row.source_table">{{ fi.post.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="unpostOne(row)" ng-if="fi.unpost && row.posted == 'Y' && !row.source_table">{{ fi.unpost.title }}</button>
+        <button type="button" class="btn btn-default" ng-click="deleteOne(row)" ng-if="fi.delete && row.posted == 'N' && !row.source_table">{{ fi.delete.title }}</button>
+        <div class="btn-group" ng-if="filteredReportActions(row).length && row.posted == 'Y'">
+          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><t>print</t></button>
+          <ul class="dropdown-menu">
+            <li ng-repeat="action in filteredReportActions(row)">
+              <a href class="dropdown-item py-1">
+                <button type="button" class="btn btn-xs btn-icon btn-default" ng-if="action.setting_form" ng-click="openReportSetting(action)">
+                  <i class="fa fa-cog"></i>
+                </button>&nbsp;
+                <span class="my-auto" ng-click="runReport(action, row)">{{ action.name }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <button type="button" class="btn btn-default" ng-click="audit(row)" ng-if="hasAudit(row.pcode)"><t>audit</t></button>
+      </b-action>
+      <b-filter name="journal_id" directive="equal" extra/>
+      <b-filter name="journal_date"/>
+      <b-filter name="journal_number"/>
+      <b-filter name="journal_type_id" decorate-with="journal_type_name"/>
+      <b-filter name="employee_id" decorate-with="employee_name"/>
+      <b-filter name="begin_date"/>
+      <b-filter name="end_date"/>
+      <b-filter name="posted" decorate-with="posted_name"/>
+      <b-filter name="created_by" decorate-with="created_by_name" extra/>
+      <b-filter name="created_on" extra/>
+      <b-filter name="modified_by" decorate-with="modified_by_name" extra/>
+      <b-filter name="modified_on" extra/>
+    </b-grid>
+  </form>
+</div>

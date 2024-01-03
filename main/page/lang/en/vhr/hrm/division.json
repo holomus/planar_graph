@@ -1,0 +1,22 @@
+{
+ "subfilial name": "Project",
+ "active": "Active",
+ "cannot close division before it opens, change your opened or closed date": "It is not possible to close the department before it opens, please change the opening or closing date",
+ "closed date": "End Date",
+ "code": "Code",
+ "code is already used by another division": "The code is already assigned to another department",
+ "division group name": "Department Group",
+ "is department": "Department Type",
+ "job name": "Job",
+ "manager name": "Manager",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "opened date": "Start Date",
+ "parent division": "Parent",
+ "passive": "Inactive",
+ "save": "Save",
+ "schedule name": "Schedule",
+ "staff name": "Employee",
+ "staff number": "PersNo",
+ "state": "Status"
+}

@@ -1,0 +1,13 @@
+{
+ "add group specialty": "Создать группу",
+ "add specialty": "Создать",
+ "delete $1": "Удалить $1",
+ "delete $1{specialty_count} specialty(ies)?": "Удалить специальности в количестве <b>$1</b>?",
+ "delete specialty $1{specialty_name}?": "Удалить специальность <b>$1</b>?",
+ "select": "Выбрать",
+ "table.code": "Код",
+ "table.kind_name": "Тип",
+ "table.name": "Название",
+ "table.specialty_id": "ИД",
+ "table.state_name": "Статус"
+}

@@ -1,0 +1,16 @@
+{
+ "export": "Eksport",
+ "export to pdf": "PDF hujjat",
+ "export to png": "PNG rasm",
+ "organization-structure": "Tashkiliy tuzilma",
+ "$1 employees": "$1 ta xodim(lar)",
+ "division": "Bo'lim",
+ "divisions count: $1": "Tashkilotlar soni: $1",
+ "email": "E-mail",
+ "employees": "Xodimlar",
+ "filial": "Tashkilot",
+ "phone": "Telefon raqami",
+ "region": "Hudud",
+ "subdivisions count: $1": "Bo'limlar soni: $1",
+ "view all": "Barcha xodimlar"
+}

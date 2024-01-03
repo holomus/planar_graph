@@ -1,0 +1,10 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "is required": "Required",
+ "name": "Name",
+ "order no": "No.",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

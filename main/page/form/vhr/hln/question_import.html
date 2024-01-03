@@ -1,0 +1,381 @@
+<script biruni>
+page.ctrl(function (scope, model, fi, t, bStorage, AppSession, bFrame) {
+  var d = model, 
+      q = model.references;
+
+  // sections
+  var storage_key = _.last(bFrame.pages).path + '/' + AppSession.si.user.user_id;
+  var storage = bStorage.json(storage_key);
+
+  function changeSection(active_section) {
+    active_section = active_section || 'I';
+    
+    if (q.active_section == active_section) return;
+    bStorage.json(storage_key, { active_section: active_section });
+    q.active_section = active_section;
+  }
+
+  // Import file from excel
+  function importFile() {
+    if (d.template) {
+      page.confirm(t('do you want to import file?')(), function() {
+        let data = { template: d.template };
+        page.post(':import', data, 'excel').then(function(result) {
+          d.questions = _.mapRows(result.items, q.column_keys);
+          _.each(d.questions, question => {
+            question.right_options = question.right_option_no ? question.right_option_no.split(',') : [];
+            question.right_options = _.map(question.right_options, item => item = +item);
+          });
+
+          q.error_messages = result.errors;
+        }, page.alert);
+      });
+    }
+  }
+
+  // setting imported file
+  function removeItem(row) {
+    d.questions = _.without(d.questions, row);
+  }
+
+  function clearQuestions() {
+    d.questions = [];
+  }
+
+  function checkGroupRequired(group_no) {
+    return d.question_groups[group_no - 1].is_required == 'Y'; 
+  }
+
+  function checkOptionRequired(row, index) {
+    for (;index <= d.option_count; index++) {
+      if (row['option' + index]) return true;
+    };
+    return false;
+  }
+
+  function setOptionTrue(row, option_no) {
+    !row.right_options.includes(option_no) ? row.right_options.push(+option_no) : null;
+  }
+
+  function setOptionFalse(row, option_no) {
+    if (row.right_options.length > 1) {
+      let index = row.right_options.indexOf(option_no);
+      if (index != -1) {
+        row.right_options.splice(index, 1);
+      }
+    }
+  }
+  
+  function checkOptionTrue(row, option_no) {
+    return row.right_options.includes(option_no);
+  }
+
+  // settings
+  function checkDuplicate() {
+    let obj = {};
+    return !_.any(_.filter(d.column_items, x => x.column_number), function(item, index) {
+      if (obj[item.column_number]) {
+        page.alert(t('more than one row cannot have one column number, row_index=$1 and row_index=$2')(obj[item.column_number], index + 1));
+        return true;
+      }
+
+      obj[item.column_number] = index + 1;
+    });
+  }
+
+  function saveSetting() {
+    if (page.valid(scope.form)) {
+      if (checkDuplicate()) {
+        var data = {
+          starting_row: d.starting_row,
+          option_count: d.option_count,
+          keys: q.column_keys,
+          column_numbers: _.pluck(d.column_items, 'column_number')
+        };
+        fi.save_setting(data).then(page.reload, page.alert);
+      }
+    }
+  }
+
+  function template() {
+    window.open(page.url('template'));
+  }
+
+  function checkOptionCount() {
+    if (d.option_count > 10) d.option_count = 10;
+  }
+
+  // save imported data
+  function importData() {
+    if (page.valid(scope.form)) {
+      page.confirm(t('save')(), function() {
+        page.post(':import_data', { items: d.questions }).then(function() {
+          notify(t('import succeeded!')());
+          page.dropzone('file').clear();
+          q.error_messages = [];
+          d.questions = [];
+          d.template = '';
+        }, page.alert);
+      });
+    }
+  }
+
+  d.column_items = _.mapRows(model.items, ['key', 'name', 'column_number', 'is_required']);
+  d.question_groups = _.mapRows(model.question_groups, ['question_group_id', 'is_required', 'group_name']);
+
+  q.column_keys = _.pluck(d.column_items, 'key');
+  q.active_section = storage.active_section || 'I';
+  q.tClear = t('clear?');
+  q.tOptionTrue = t('true?');
+
+  scope.d = d;
+  scope.q = q;
+});
+</script>
+<div class="b-toolbar">
+  <div class="btn-group">
+    <button type="button" class="btn" ng-class="q.active_section == 'I' ? 'btn-success' : 'btn-default'" ng-click="changeSection('I')"><t>import section</t></button>
+    <button type="button" class="btn" ng-class="q.active_section == 'S' ? 'btn-success' : 'btn-default'" ng-click="changeSection('S')"><t>setting section</t></button>
+  </div>
+  <button type="button" class="btn btn-primary" ng-click="importData()" ng-if="q.active_section == 'I' && d.questions.length"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="importFile()" ng-if="q.active_section == 'I'"><t>import</t></button>
+  <button type="button" class="btn btn-primary" ng-click="template()"><t>template</t></button>
+  <button type="button" class="btn btn-primary" ng-click="saveSetting()" ng-if="fi.save_setting && q.active_section == 'S'"><t>save</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content"><form name="form">
+  <div class="card card-custom">
+    <div class="card-body">
+      <div ng-show="q.active_section == 'I'">
+        <div class="row">
+          <div class="col-sm-12 mb-4">
+            <h5><t>file</t></h5>
+            <b-dropzone name="file" model="d.template" accept="'.xls, .xlsx'"></b-dropzone>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <h5><t>errors</t></h5>
+            <div class="mb-2">
+              <b-pg-controller name="error_messages"/>
+            </div>
+            <b-pg-grid name="error_messages" local-data="q.error_messages" search="row_id, error" sort="row_id" min-width="0">
+              <b-pg-row>
+                <b-pg-col name="row_id" size=3/>
+                <b-pg-col name="error" size=21>
+                  <div ng-repeat="item in row.items">
+                    {{ item }}<br/><hr ng-if="!$last"/>
+                  </div>
+                </b-pg-col>
+              </b-pg-row>
+            </b-pg-grid>
+          </div>
+        </div>
+        <h5><t>data</t></h5>
+        <div class="row">
+          <div class="col-sm-12 offset-sm-12 mb-2">
+            <b-pg-controller name="questions"/>
+          </div>
+        </div>
+        <b-pg-grid name="questions" local-data="d.questions" search="division" sort="rownum" current-limit="1000">
+          <b-pg-header name="action">
+            <div class="text-center">
+              <button type="button" class="btn btn-outline-danger btn-icon" b-toggle data-title="{{ q.tClear() }}" on-click-yes="clearQuestions()" ng-if="d.questions.length">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </b-pg-header>
+          <b-pg-header name="group1">{{ d.question_groups[0].group_name }}</b-pg-header> 
+          <b-pg-header name="group2">{{ d.question_groups[1].group_name }}</b-pg-header>
+          <b-pg-header name="group3">{{ d.question_groups[2].group_name }}</b-pg-header>
+          <b-pg-header name="group4">{{ d.question_groups[3].group_name }}</b-pg-header>
+          <b-pg-header name="group5">{{ d.question_groups[4].group_name }}</b-pg-header>
+          <b-pg-row>
+            <b-pg-col name="rownum" size="1"/>
+            <b-pg-col name="question_name" size="5">
+              <textarea class="form-control" rows="1" ng-model="row.question_name" b-maxlength="2000" required></textarea>
+            </b-pg-col>
+            <b-pg-col name="option1" size="4">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option1" maxlength="300" required/>
+                <div class="input-group-append" ng-if="row.option1">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 1) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;"
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 1)" on-click-no="setOptionFalse(row, 1)">
+                    <i ng-class="checkOptionTrue(row, 1) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option2" size="4">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option2" maxlength="300" required/>
+                <div class="input-group-append" ng-if="row.option2">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 2) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 2)" on-click-no="setOptionFalse(row, 2)">
+                    <i ng-class="checkOptionTrue(row, 2) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option3" size="4" access="d.option_count > 2">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option3" maxlength="300" ng-required="checkOptionRequired(row, 3)"/>
+                <div class="input-group-append" ng-if="row.option3">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 3) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 3)" on-click-no="setOptionFalse(row, 3)">
+                    <i ng-class="checkOptionTrue(row, 3) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option4" size="4" access="d.option_count > 3">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option4" maxlength="300" ng-required="checkOptionRequired(row, 4)"/>
+                <div class="input-group-append" ng-if="row.option4">
+                  <button type="button" class="btn btn-icon" ng-class="row.option4 ? (checkOptionTrue(row, 4) ? 'btn-light-success' : 'btn-light-danger') : 'btn-default'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 4)" on-click-no="setOptionFalse(row, 4)">
+                    <i ng-class="checkOptionTrue(row, 4) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option5" size="4" access="d.option_count > 4">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option5" maxlength="300" ng-required="checkOptionRequired(row, 5)"/>
+                <div class="input-group-append" ng-if="row.option5">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 5) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 5)" on-click-no="setOptionFalse(row, 5)">
+                    <i ng-class="checkOptionTrue(row, 5) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option6" size="4" access="d.option_count > 5">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option6" maxlength="300" ng-required="checkOptionRequired(row, 6)"/>
+                <div class="input-group-append" ng-if="row.option6">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 6) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 6)" on-click-no="setOptionFalse(row, 6)">
+                    <i ng-class="checkOptionTrue(row, 6) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option7" size="4" access="d.option_count > 6">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option7" maxlength="300" ng-required="checkOptionRequired(row, 7)">
+                <div class="input-group-append" ng-if="row.option7">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 7) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 7)" on-click-no="setOptionFalse(row, 7)">
+                    <i ng-class="checkOptionTrue(row, 7) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option8" size="4" access="d.option_count > 7">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option8" maxlength="300" ng-required="checkOptionRequired(row, 8)"/>
+                <div class="input-group-append" ng-if="row.option8">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 8) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 8)" on-click-no="setOptionFalse(row, 8)">
+                    <i ng-class="checkOptionTrue(row, 8) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option9" size="4" access="d.option_count > 8">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option9" maxlength="300" ng-required="checkOptionRequired(row, 9)"/>
+                <div class="input-group-append" ng-if="row.option9">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 9) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 9)" on-click-no="setOptionFalse(row, 9)">
+                    <i ng-class="checkOptionTrue(row, 9) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="option10" size="4" access="d.option_count > 9">
+              <div class="input-group" ng-if="row.answer_type != q.answer_type_writing">
+                <input type="text" class="form-control" ng-model="row.option10" maxlength="300" ng-required="checkOptionRequired(row, 10)"/>
+                <div class="input-group-append" ng-if="row.option10">
+                  <button type="button" class="btn btn-icon" ng-class="checkOptionTrue(row, 10) ? 'btn-light-success' : 'btn-light-danger'" style="z-index: 1 !important;" 
+                          b-toggle data-title="{{ q.tOptionTrue() }}" on-click-yes="setOptionTrue(row, 10)" on-click-no="setOptionFalse(row, 10)">
+                    <i ng-class="checkOptionTrue(row, 10) ? 'fa fa-check' : 'fa fa-minus'"/>
+                  </button>
+                </div>
+              </div>
+            </b-pg-col>
+            <b-pg-col name="writing_hint" size="5">
+              <textarea class="form-control" rows="1" ng-model="row.writing_hint" ng-if="row.answer_type == q.answer_type_writing" b-maxlength="500"></textarea>
+            </b-pg-col>
+            <b-pg-col name="answer_type" size="4">
+              <input type="text" class="form-control" ng-model="row.answer_type" required/>
+            </b-pg-col>
+            <b-pg-col name="group1" size="4" access="d.question_groups.length > 0">
+              <input type="text" class="form-control" ng-model="row.group1" maxlength="100" ng-required="checkGroupRequired(1)"/>
+            </b-pg-col>
+            <b-pg-col name="group2" size="4" access="d.question_groups.length > 1">
+              <input type="text" class="form-control" ng-model="row.group2" maxlength="100" ng-required="checkGroupRequired(2)"/>
+            </b-pg-col>
+            <b-pg-col name="group3" size="4" access="d.question_groups.length > 2">
+              <input type="text" class="form-control" ng-model="row.group3" maxlength="100" ng-required="checkGroupRequired(3)"/>
+            </b-pg-col>
+            </b-pg-col>
+            <b-pg-col name="group4" size="4" access="d.question_groups.length > 3">
+              <input type="text" class="form-control" ng-model="row.group4" maxlength="100" ng-required="checkGroupRequired(4)"/>
+            </b-pg-col>
+            </b-pg-col>
+            <b-pg-col name="group5" size="4" access="d.question_groups.length > 4">
+              <input type="text" class="form-control" ng-model="row.group5" maxlength="100" ng-required="checkGroupRequired(5)"/>
+            </b-pg-col>
+            <b-pg-col name="code" size="1">
+              <input type="text" class="form-control" ng-model="row.code"/>
+            </b-pg-col>
+            <b-pg-col name="action" size="1">
+              <div class="text-center">
+                <button type="button" class="btn btn-default btn-hover-text-danger btn-icon" ng-click="removeItem(row)"><i class="fa fa-trash"></i></button>
+              </div>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+      <div ng-if="q.active_section == 'S'">
+        <div class="form-group row">
+          <div class="col-sm-12">
+            <div class="sg mb-4 mb-sm-0">
+              <div class="sg-header">
+                <div class="sg-row">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16"><t>column name</t></div>
+                    <div class="sg-cell col-8"><t>column number</t></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sg-content">
+                <div class="sg-row" ng-repeat="item in d.column_items">
+                  <div class="sg-sub-row">
+                    <div class="sg-cell col-16">{{ item.name }}</div>
+                    <div class="sg-cell col-8">
+                      <input type="text" class="form-control" ng-model="item.column_number" b-number scale="0" ng-required="item.is_required == 'Y'"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="form-group">
+              <label><t>starting row</t></label>
+              <input type="text" class="form-control" ng-model="d.starting_row" b-number scale="0"/>
+            </div>
+            <div class="form-group">
+              <label><t>option count</t></label>
+              <input type="text" class="form-control" ng-model="d.option_count" b-number scale="0" ng-change="checkOptionCount()"/>
+              <span class="form-text text-muted mt-0"> 
+                <t>max option count 10</t>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form></div> 

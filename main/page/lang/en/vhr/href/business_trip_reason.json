@@ -1,0 +1,9 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another trip reason": "The code is already assigned to another business trip reason",
+ "name": "Name",
+ "passive": "Inactive",
+ "save": "Save",
+ "state": "Status"
+}

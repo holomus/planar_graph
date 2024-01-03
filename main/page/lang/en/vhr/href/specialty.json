@@ -1,0 +1,12 @@
+{
+ "active": "Active",
+ "code": "Code",
+ "code is already used by another specialty": "The code is already assigned to another specialty",
+ "name": "Name",
+ "name should be unique": "Name must be unique",
+ "passive": "Inactive",
+ "save": "Save",
+ "specialty group add": "Specialty Group / New",
+ "specialty group edit": "Specialty Group / Edit",
+ "state": "Status"
+}

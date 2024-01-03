@@ -1,0 +1,357 @@
+<script biruni>
+page.ctrl(function(scope, fi, t, model) {
+  var d = _.omit(model, 'references');
+      q = model.references,
+      p = {};
+
+  // ------------------------------ period change ------------------------------ //
+  function addSheetStaff(item) {
+    d.sheet_staffs.push(item);
+  }
+
+  function deleteAllStaffs() {
+    d.sheet_staffs = [];
+  }
+
+  // ------------------------------ staff ------------------------------ //
+  function selectStaff(item) {
+    fi.select_staff({ date: d.period_begin }, _.partial(setStaff, item), { where: whereStaff(item) });
+  }
+
+  function setStaff(item, row) {
+    if (!row) return;
+    item.staff_id = row.staff_id;
+    item.staff_name = row.name;
+
+    let data = _.pick(d, 'period_begin', 'period_end');
+    data.staff_ids = [row.staff_id];
+
+    if (item.staff_id) {
+      page.post(':get_period_info', data).then((result) => {
+        _.extend(item, result[0]);
+      }, page.alert);
+    } else {
+      let keys = _.keys(item);
+      _.each(keys, key => item[key] = null);
+    }
+  }
+
+  function whereStaff(item) {
+    let staff_ids = _.chain(d.sheet_staffs).pluck('staff_id').compact().value(),
+        where = ['and', [
+                  ['hiring_date', '<=',  d.period_end],
+                  ['or', [
+                    ['dismissal_date', '=', [null]],
+                    ['dismissal_date', '>', d.period_begin]]
+                  ]]
+                ];
+
+    if (!_.isEmpty(q.blocked_staffs)) {
+      staff_ids.push(...q.blocked_staffs);
+    }
+    if (!_.isEmpty(d.division_ids)) {
+      where = ['and', [['division_id', '=', d.division_ids], where]];
+    }
+    if (!_.isEmpty(staff_ids)) {
+      where = ['and', [['staff_id', '<>', staff_ids], where]];
+    }
+
+    return where;
+  }
+
+  function changeStaffQuery(query, value) {
+    let data = _.pick(d, 'period_begin', 'period_end', 'sheet_id');
+    data.division_ids = d.division_ids;
+    
+    query.param(data);
+    query.where(whereStaff()).searchValue(value);
+  }
+
+  // ------------------------------ period change ------------------------------ //
+  function fixPeriodValues() {
+    let month_begin = moment(d.month, 'MM.YYYY').startOf('month').format('YYYYMMDD');
+    let month_end = moment(d.month, 'MM.YYYY').endOf('month').format('YYYYMMDD');
+
+    if (d.period_kind != q.period_kind_custom) {
+      d.period_begin = moment(month_begin);
+      d.period_end = moment(month_end);
+
+      let diff = moment(d.period_end).diff(d.period_begin, 'days') + 1;
+      let month_middle = moment(d.period_begin).add(Math.floor(diff/2) - 1, 'days');
+
+      if (d.period_kind == q.period_kind_first_half)
+        d.period_end = moment(month_middle).format('YYYYMMDD');
+      if (d.period_kind == q.period_kind_second_half)
+        d.period_begin = moment(month_middle).add(1, 'days').format('YYYYMMDD');
+    } else {
+      d.period_begin = moment(d.period_begin, 'DD.MM.YYYY').format('YYYYMMDD');
+      d.period_end = moment(d.period_end, 'DD.MM.YYYY').format('YYYYMMDD');
+
+      if (moment(d.period_begin).isSame(month_begin, 'month')) {
+        d.period_begin = _.max([d.period_begin, month_begin]);
+        d.period_end = _.min([d.period_end, month_end]);
+      } else {
+        d.period_begin = month_begin;
+        d.period_end = month_end;
+      }
+    }
+
+    d.period_begin = moment(d.period_begin, 'YYYYMMDD').format('DD.MM.YYYY');
+    d.period_end = moment(d.period_end, 'YYYYMMDD').format('DD.MM.YYYY');
+  }
+
+  function changeDate() {
+    if (!_.isEmpty(d.sheet_staffs)) {
+      page.confirm(t('changing date. all items will be removed. continue?')(), function() {
+        fixPeriodValues();
+        deleteAllStaffs();
+        q.old_month = d.month;
+      }, function() {
+        d.month = q.old_month;
+      });
+    } else {
+      q.old_month = d.month;
+      fixPeriodValues();
+    }
+  }
+
+  // ------------------------------ division ------------------------------ //
+  function onChangeDivision() {
+    if (!q.division_inited && d.sheet_id) {
+      q.division_inited = true;
+      return;
+    }
+    if (!_.isEmpty(d.sheet_staffs)) {
+      page.confirm(t('all items will be removed. continue?')(), function() {
+        deleteAllStaffs();
+        q.old_division_ids = d.division_ids;
+      }, function() {
+        d.division_ids = q.old_division_ids;
+      });
+    } else {
+      q.old_division_ids = d.division_ids;
+    }
+  }
+
+  function onCheck(checked) {
+    q.checked = checked;
+  }
+
+  function deleteMany() {
+    _.each(q.checked.rows(), item => {
+      let index = _.findIndex(d.sheet_staffs, item);
+      d.sheet_staffs.splice(index, 1);
+    });
+  }
+
+  function setStaffs() {
+    let data = {
+      period_begin: d.period_begin,
+      period_end: d.period_end
+    };
+    page.post(':load_blocked_staffs', data).then((result) => {
+      q.blocked_staffs = result.staff_ids;
+
+      fi.select_staff(null, function(result) {
+        if (!result || result.length == 0) return;
+        let data = _.pick(d, ['division_ids', 'period_begin', 'period_end']);
+            data.staff_ids = _.pluck(result, 'staff_id');
+
+        page.post(':get_period_info', data).then(result => {
+          d.sheet_staffs.push(...result);
+        }, page.alert);
+      }, { where: whereStaff(), multiple_select: true });
+    }, page.alert);
+  }
+
+  function fillStaffs() {
+    let data = _.pick(d, 'period_begin', 'period_end');
+    data.division_ids = d.division_ids;
+
+    page.post(':get_period_info', data).then(result => {
+      d.sheet_staffs = result;
+    }, page.alert);
+  }
+
+  function save(posted) {
+    if (page.valid(scope.form)) {
+      page.confirm(posted == 'Y' ? t('post?')() : t('save?')(), function() {
+        let data = _.pick(d, 'sheet_id',
+                             'sheet_number',
+                             'sheet_date',
+                             'division_ids',
+                             'period_begin',
+                             'period_end',
+                             'period_kind',
+                             'note');
+
+        data.sheet_staffs = _.map(d.sheet_staffs, x => x = _.pick(x, 'staff_id', 'accrual_amount', 'penalty_amount'));
+        data.posted = posted;
+        page.post(':save', data).then(page.close, page.alert);
+      });
+    }
+  }
+
+  function calcTotalAmount(item) {
+    item.total_amount = (+item.accrual_amount || 0)
+                      - (+item.penalty_amount || 0);
+    item.total_amount = item.total_amount == 0 ? null : item.total_amount;
+  }
+
+  function applyAmount(item, amount_kind) {
+    _.chain(d.sheet_staffs).filter(x => !x[amount_kind]).each(function(staff) {
+      staff[amount_kind] = item[amount_kind];
+      calcTotalAmount(staff);
+    });
+  }
+
+  if (_.isUndefined(d.sheet_id)) d.sheet_staffs = []
+  else {
+    d.sheet_staffs = _.mapRows(d.sheet_staffs, ['staff_id',
+                                                'staff_name',
+                                                'division_id',
+                                                'division_name',
+                                                'job_id',
+                                                'job_name',
+                                                'schedule_id',
+                                                'schedule_name',
+                                                'accrual_amount',
+                                                'penalty_amount',
+                                                'total_amount',
+                                                'access_to_hidden_salary']);
+  };
+
+  
+  q.old_division_ids = d.division_ids;
+  q.old_month = d.month;
+  q.period_kinds = _.mapRows(q.period_kinds, ['value', 'name']);
+  q.divisions = _.chain(q.divisions)
+                 .mapRows(['division_id', 'name', 'parent_id', 'enabled'])
+                 .each(x => x.disabled = x.enabled == 'N')
+                 .value();
+  q.checked = { rows: [] };
+  q.tConfirmApplyAccrual = t('apply accrual amount to empty fields?');
+  q.tConfirmApplyPenalty = t('apply penalty amount to empty fields?');
+  q.t_no_access = t('no access to wage')();
+
+  scope.d = d;
+  scope.q = q;
+  scope.p = p;
+});
+</script>
+<div class="b-toolbar">
+  <button type="button" class="btn btn-primary" ng-click="save('N')"><t>save</t></button>
+  <button type="button" class="btn btn-primary" ng-click="save('Y')"><t>post</t></button>
+  <button type="button" class="btn btn-default" ng-click="page.close()">{{ page.close.title }}</button>
+</div>
+<div class="b-content">
+  <form name="form">
+    <div class="card card-custom">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="form-row mb-4">
+              <div class="col-sm-12">
+                <label><t>sheet date</t><r/></label>
+                <input type="text" class="form-control" ng-model="d.sheet_date" b-date-picker view-format="DD.MM.YYYY" required/>
+              </div>
+              <div class="col-sm-12">
+                <label><t>sheet number</t></label>
+                <input type="text" class="form-control" ng-model="d.sheet_number"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><t>division name</t></label>
+                <b-tree-select
+                  multiple
+                  origin="q.divisions"
+                  id-key="division_id"
+                  model="d.division_ids"
+                  on-change="onChangeDivision()"/>
+            </div>
+            <div class="form-group">
+              <label><t>note</t></label>
+              <textarea class="form-control" rows="4" ng-model="d.note"/>
+            </div>
+          </div>
+          <div class="col-sm-12 mb-4">
+            <div class="form-row">
+              <div class="col-sm-12 mb-4">
+                <label><t>month</t><r/></label>
+                <input type="text" class="form-control" b-date-picker="MM.YYYY" view-format="MMMM YYYY" ng-model="d.month" ng-change="changeDate()" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="separator separator-solid my-2"></div>
+        <div class="form-row mt-4">
+          <div class="col-sm-14 mb-2">
+            <button type="button" class="btn btn-default" ng-click="fillStaffs()"><t>fill</t></button>
+            <button type="button" class="btn btn-default" ng-click="addSheetStaff({})"><t>add</t></button>
+            <button type="button" class="btn btn-success" ng-click="setStaffs()" ng-if="fi.select_staff"><t>choose</t></button>
+            <button type="button" class="btn btn-danger" ng-click="deleteMany()" ng-show="q.checked.has">
+              <t p1="q.checked.size">delete $1</t>
+            </button>
+          </div>
+          <div class="col-sm-10 mb-2">
+            <b-pg-controller name="sheet_staffs"/>
+          </div>
+        </div>
+        <b-pg-grid name="sheet_staffs" local-data="d.sheet_staffs" search="staff_name, division_name, job_name" on-check="onCheck(checked)" iterator="item" current-limit="1000" searchable="rank_name" sort="rownum">
+          <b-pg-row>
+            <b-pg-col name="staff_name" size="5">
+              <b-input name="staffs"
+                       model="item.staff_name | name"
+                       model-key="item.staff_id | staff_id"
+                       column="staff_number, dismissal_date, hiring_date, division_id"
+                       on-change="changeStaffQuery(query, value)"
+                       on-select="setStaff(item, row)"
+                       on-delete="setStaff(item, {})"
+                       is-view="fi.select_staff"
+                       on-view="selectStaff(item)"
+                       required-key>
+                <header>
+                  <div class="col-sm-12"><t>staff number</t></div>
+                  <div class="col-sm-12"><t>staff name</t></div>
+                </header>
+                <content>
+                  <div class="col-sm-12">{{ row.staff_number }}</div>
+                  <div class="col-sm-12">{{ row.name }}</div>
+                </content>
+              </b-input>
+            </b-pg-col>
+            <b-pg-col name="division_name" size="3"/>
+            <b-pg-col name="job_name" size="3"/>
+            <b-pg-col name="schedule_name" size="3"/>
+            <b-pg-col name="accrual_amount" size="3">
+              <div class="input-group" ng-if="item.access_to_hidden_salary == 'Y'">
+                <input type="text" class="form-control" ng-model="item.accrual_amount" ng-blur="calcTotalAmount(item)" b-number/>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyAccrual() }}" on-click-yes="applyAmount(item, 'accrual_amount')">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+              <span class="form-view" ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+            <b-pg-col name="penalty_amount" size="3">
+              <div class="input-group" ng-if="item.access_to_hidden_salary == 'Y'">
+                <input type="text" class="form-control" ng-model="item.penalty_amount" ng-blur="calcTotalAmount(item)" b-number/>
+                <div class="input-group-append">
+                  <button type="button" class="btn btn-default btn-icon" style="z-index: 1 !important;" b-toggle data-title="{{ q.tConfirmApplyPenalty() }}" on-click-yes="applyAmount(item, 'penalty_amount')">
+                    <i class="fa fa-check"/>
+                  </button>
+                </div>
+              </div>
+              <span class="form-view" ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+            <b-pg-col name="total_amount" size="3">
+              <span class="form-view text-right" ng-if="item.access_to_hidden_salary == 'Y'">{{ item.total_amount | bNumber }}</span>
+              <span class="form-view" ng-if="item.access_to_hidden_salary == 'N'">{{ q.t_no_access }}</span>
+            </b-pg-col>
+          </b-pg-row>
+        </b-pg-grid>
+      </div>
+    </div>
+  </form>
+</div>
