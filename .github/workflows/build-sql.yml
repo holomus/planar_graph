@@ -41,3 +41,6 @@ jobs:
         git add .
         git commit -m "Build SQL changes"
         git push
+
+    - name: List Files
+      run: ls -R
