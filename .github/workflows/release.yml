@@ -67,7 +67,7 @@ jobs:
       run: |
         export TAG_NAME=$(cat VERSION.md)
         echo "Version read from VERSION.md: $TAG_NAME"
-        echo "::set-output name=tag_name::$TAG_NAME"
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
     - name: Create tag
       run: |
@@ -79,7 +79,6 @@ jobs:
       with:
         files: './release/lib/vhr.jar'  # Add file paths to include in the release (leave empty for just the tag)
         tag_name: "${{ steps.read-version.outputs.tag_name }}"
-        title: "Release ${{ steps.read-version.outputs.tag_name }}"
         body: "Release notes or description for version ${{ steps.read-version.outputs.tag_name }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
