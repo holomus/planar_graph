@@ -18,9 +18,6 @@ jobs:
       with:
         python-version: 3.8
 
-    - name: Print Working Directory
-      run: echo "Current working directory: $(pwd)"
-
     - name: List Files
       run: ls -R
 
