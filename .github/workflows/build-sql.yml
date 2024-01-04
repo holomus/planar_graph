@@ -27,8 +27,8 @@ jobs:
         pip install chardet
 
     - name: Run build_sql.py
-      run: python script/build_oracle/build_sql.py
-      working-directory: ./
+      run: python build_sql.py
+      working-directory: ./script/build_oracle
       
 
     - name: Commit and push changes
