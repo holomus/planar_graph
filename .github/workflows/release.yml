@@ -112,5 +112,7 @@ jobs:
     - name: Create new patch branch from master
       run: |
         git checkout master
+        git pull upstream master
+        git reset --hard upstream/master
         git checkout -b patch
         git push origin patch
