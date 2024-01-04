@@ -86,12 +86,11 @@ startAll= readBufferFrom('start_all.sql', ['start.sql', ''], [start])
 
 if success == 1:
     print("read files successful ...")
-    try:
-        deleteFile(file_path + "_pack.sql")
-        deleteFile(file_path + "_all.sql")
-        writeFileByEncode(file_path + "_pack.sql", start, "utf-8")       
-        writeFileByEncode(file_path + "_all.sql", startAll, "utf-8")
-        print("create " + file_prefix + "_pack.sql successful...")
-        print("create " + file_prefix + "_all.sql successful...")        
+    deleteFile(file_path + "_pack.sql")
+    deleteFile(file_path + "_all.sql")
+    writeFileByEncode(file_path + "_pack.sql", start, "utf-8")       
+    writeFileByEncode(file_path + "_all.sql", startAll, "utf-8")
+    print("create " + file_prefix + "_pack.sql successful...")
+    print("create " + file_prefix + "_all.sql successful...")        
 else:
     print("fail ...")        
