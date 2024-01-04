@@ -58,7 +58,8 @@ def readBufferFrom(filePath, exceptPath, data):
         result += "\n"
     return result
 
-def writeFileByEncode(path, data, encode):    
+def writeFileByEncode(path, data, encode):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     c = codecs.open(path, mode="wb")    
     c.write(data.encode(encode))
     c.close()
