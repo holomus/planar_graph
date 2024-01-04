@@ -11,10 +11,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.8
 
@@ -48,7 +48,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Git
       run: |
@@ -90,11 +90,16 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Delete existing patch branch
       run: |
-        git push origin --delete patch
+        if git ls-remote --exit-code --heads origin patch; then
+          git push origin --delete patch
+          echo "Deleted remote branch 'patch'"
+        else
+          echo "Remote branch 'patch' not found. Skipping deletion."
+        fi
         git branch -D patch
 
     - name: Create new patch branch from master
