@@ -78,8 +78,6 @@ directory_path = '/'.join(dirs[0: len(dirs) - 2])
 file_path = directory_path + '/release/install_db/{}'.format(file_prefix)
 DIRECTORY = directory_path + '/main/oracle'
 
-print(DIRECTORY)
-
 startUi = readBufferFrom('start_ui.sql', ['', ''], '')
 startUis = readBufferFrom('start_uis.sql', ['', ''], '')
 start   = readBufferFrom('start.sql', ['start_ui.sql', 'start_uis.sql'], [startUi, startUis])
