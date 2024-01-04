@@ -1,0 +1,26 @@
+name: Check VERSION.md Changes
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-version-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check for changes in VERSION.md
+      run: |
+        # Fetch the changes in the pull request
+        git fetch origin ${{ github.event.before }}:refs/remotes/origin/base
+        # Check if VERSION.md was modified
+        if git diff --name-only origin/base..HEAD | grep '^VERSION.md$'; then
+          echo "VERSION.md has been modified in the pull request."
+        else
+          echo "No changes detected in VERSION.md."
+          exit 1  # Fail the workflow if VERSION.md was not modified
+        fi
