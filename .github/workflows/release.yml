@@ -1,0 +1,104 @@
+name: Build and Push SQL Changes
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install chardet
+
+    - name: Run build_sql.py
+      run: python build_sql.py
+      working-directory: ./script/build_oracle
+      
+    - name: Commit and push changes
+      run: |
+        git status --porcelain
+        changes=$(git status --porcelain)
+        if [ -n "$changes" ]; then
+          echo "Changes detected. Committing and pushing."
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Build SQL changes"
+          git push origin master
+        else
+          echo "No changes detected. Skipping commit step."
+        fi
+
+  create-tag-and-release:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Git
+      run: |
+        git config user.name "${{ github.actor }}"
+        git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+    - name: Check if VERSION.md exists
+      run: |
+        if [ ! -f "VERSION.md" ]; then
+          echo "Error: VERSION.md file not found"
+          exit 1
+        fi
+
+    - name: Read version from VERSION.md
+      id: read-version
+      run: |
+        export TAG_NAME=$(cat VERSION.md)
+        echo "Version read from VERSION.md: $TAG_NAME"
+        echo "::set-output name=tag_name::$TAG_NAME"
+
+    - name: Create tag
+      run: |
+        git tag "${{ steps.read-version.outputs.tag_name }}" -m "Tag created on merge to master"
+        git push origin "${{ steps.read-version.outputs.tag_name }}"
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: './release/lib/vhr.jar'  # Add file paths to include in the release (leave empty for just the tag)
+        tag_name: "${{ steps.read-version.outputs.tag_name }}"
+        title: "Release ${{ steps.read-version.outputs.tag_name }}"
+        body: "Release notes or description for version ${{ steps.read-version.outputs.tag_name }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-patch-branch:
+    needs: create-tag-and-release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Delete existing patch branch
+      run: |
+        git push origin --delete patch
+        git branch -D patch
+
+    - name: Create new patch branch from master
+      run: |
+        git checkout master
+        git checkout -b patch
+        git push origin patch
