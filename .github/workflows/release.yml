@@ -94,13 +94,21 @@ jobs:
 
     - name: Delete existing patch branch
       run: |
+        # Check if the branch 'patch' exists on the remote
         if git ls-remote --exit-code --heads origin patch; then
           git push origin --delete patch
           echo "Deleted remote branch 'patch'"
+
+          # Check if the local branch 'patch' exists
+          if git show-ref --verify --quiet "refs/heads/patch"; then
+            git branch -D patch
+            echo "Deleted local branch 'patch'"
+          else
+            echo "Local branch 'patch' not found. Skipping local deletion."
+          fi
         else
           echo "Remote branch 'patch' not found. Skipping deletion."
         fi
-        git branch -D patch
 
     - name: Create new patch branch from master
       run: |
