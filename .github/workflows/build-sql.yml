@@ -29,6 +29,9 @@ jobs:
     - name: Run build_sql.py
       run: python build_sql.py
       working-directory: ./script/build_oracle
+
+    - name: List Files
+      run: ls -R
       
 
     - name: Commit and push changes
