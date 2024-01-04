@@ -87,7 +87,11 @@ jobs:
     needs: create-tag-and-release
     runs-on: ubuntu-latest
 
+
     steps:
+    - name: Fetch changes in update-patch-branch job
+      run: git fetch
+    
     - name: Checkout repository
       uses: actions/checkout@v4
 
@@ -112,7 +116,5 @@ jobs:
     - name: Create new patch branch from master
       run: |
         git checkout master
-        git pull upstream master
-        git reset --hard upstream/master
         git checkout -b patch
         git push origin patch
