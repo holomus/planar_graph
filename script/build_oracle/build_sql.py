@@ -92,9 +92,6 @@ if success == 1:
         writeFileByEncode(file_path + "_pack.sql", start, "utf-8")       
         writeFileByEncode(file_path + "_all.sql", startAll, "utf-8")
         print("create " + file_prefix + "_pack.sql successful...")
-        print("create " + file_prefix + "_all.sql successful...")            
-    except IOError:
-        print("fail ... to create " + file_prefix + "_pack.sql")
-        print("fail ... to create " + file_prefix + "_all.sql")
+        print("create " + file_prefix + "_all.sql successful...")        
 else:
     print("fail ...")        
